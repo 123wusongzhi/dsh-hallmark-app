@@ -2,6 +2,8 @@
 
 当前版本 **0.3.0**：支持 Agent 编写普通 React/TSX/CSS 源码组件、预览与截图反馈、源码模板复用、保存版本与恢复，以及将勾选商品作为原生附件加入聊天输入框。包含蓝白商品模板、独立能力服务和 DSH 原生插件。详见[源码组件作者指南](docs/source-component-authoring.md)和[0.3.0 交付记录](docs/release-0.3.0.md)。该版本已通过 440 项测试、类型检查和构建；原生 GUI 完整点击验收仍待完成。
 
+新增源码示例：[helen 店铺利润率组件](component-workspace/helen-margin/DESIGN.md)。Agent 与组件的交互流程见[说明文档](docs/agent-component-interaction.md)或[交互 HTML](docs/agent-component-interaction.html)（下载后用浏览器打开）。示例构建通过；真实数据和本地截图不随源码上传。
+
 仓库仅保存开发代码、测试、技能、模板及文档。本地业务数据库、凭据、浏览器配置、构建归档和运行证据不纳入 Git；历史文档中的 `artifacts/` 链接指向本地验收材料。`scripts/install-desktop-*`、`reload-local-service-*` 是原开发机的版本部署记录，其他机器应先配置实际路径和进程信息。
 
 以下为历次交付背景；旧版本号、工具数量及现场数据描述保留其当时语境。

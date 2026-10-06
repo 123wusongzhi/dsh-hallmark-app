@@ -1,0 +1,935 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="shadcn" data-mode="light" data-style="80">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="Answer me with HTML 0.4.8">
+<title>Agent 如何制作、运行和修改组件</title>
+<style>
+html[data-theme="blueprint"], html[data-theme="blueprint"][data-mode="light"] {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --radius: 0px;
+  --shadow: none;
+  --bw: 1.5px;
+  --head-font: var(--font-sans);
+  --bg: #f6f6f3;
+  --paper: #ffffff;
+  --ink: #16181d;
+  --ink-2: #4b5260;
+  --ink-3: #8b929e;
+  --line: #1d2026;
+  --line-2: #d6dae1;
+  --fill: #f3f5f8;
+  --accent: #1d5fbf;
+  --accent-bg: #e4ecf8;
+  --ok: #1d5fbf;
+  --ok-bg: #e4ecf8;
+  --err: #c62828;
+  --err-bg: #fbeaea;
+  --warn: #a8620a;
+  --warn-bg: #fdf3e2;
+  --head-bg: #16181d;
+  --head-fg: #ffffff;
+}
+html[data-theme="blueprint"][data-mode="dark"] {
+  --bg: #081322;
+  --paper: #0d1c31;
+  --ink: #e6edf7;
+  --ink-2: #a9b8cc;
+  --ink-3: #6b7f99;
+  --line: #c9d6e8;
+  --line-2: #23385a;
+  --fill: #12253f;
+  --accent: #6ea8ff;
+  --accent-bg: #16305a;
+  --ok: #6ea8ff;
+  --ok-bg: #16305a;
+  --err: #ff7070;
+  --err-bg: #3b1620;
+  --warn: #f0b14a;
+  --warn-bg: #3a2a10;
+  --head-bg: #e6edf7;
+  --head-fg: #081322;
+}
+@media (prefers-color-scheme: dark) {
+html[data-theme="blueprint"][data-mode="auto"] {
+  --bg: #081322;
+  --paper: #0d1c31;
+  --ink: #e6edf7;
+  --ink-2: #a9b8cc;
+  --ink-3: #6b7f99;
+  --line: #c9d6e8;
+  --line-2: #23385a;
+  --fill: #12253f;
+  --accent: #6ea8ff;
+  --accent-bg: #16305a;
+  --ok: #6ea8ff;
+  --ok-bg: #16305a;
+  --err: #ff7070;
+  --err-bg: #3b1620;
+  --warn: #f0b14a;
+  --warn-bg: #3a2a10;
+  --head-bg: #e6edf7;
+  --head-fg: #081322;
+}
+}
+
+html[data-theme="shadcn"], html[data-theme="shadcn"][data-mode="light"] {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --radius: 8px;
+  --shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+  --bw: 1px;
+  --head-font: var(--font-sans);
+  --bg: #fafafa;
+  --paper: #ffffff;
+  --ink: #09090b;
+  --ink-2: #71717a;
+  --ink-3: #a1a1aa;
+  --line: #e4e4e7;
+  --line-2: #f0f0f2;
+  --fill: #f4f4f5;
+  --accent: #2563eb;
+  --accent-bg: #eff6ff;
+  --ok: #16a34a;
+  --ok-bg: #f0fdf4;
+  --err: #dc2626;
+  --err-bg: #fef2f2;
+  --warn: #d97706;
+  --warn-bg: #fffbeb;
+  --head-bg: #18181b;
+  --head-fg: #fafafa;
+}
+html[data-theme="shadcn"][data-mode="dark"] {
+  --bg: #09090b;
+  --paper: #121215;
+  --ink: #fafafa;
+  --ink-2: #a1a1aa;
+  --ink-3: #71717a;
+  --line: #27272a;
+  --line-2: #1c1c1f;
+  --fill: #18181b;
+  --accent: #60a5fa;
+  --accent-bg: #172554;
+  --ok: #4ade80;
+  --ok-bg: #052e16;
+  --err: #f87171;
+  --err-bg: #450a0a;
+  --warn: #fbbf24;
+  --warn-bg: #451a03;
+  --head-bg: #fafafa;
+  --head-fg: #18181b;
+}
+@media (prefers-color-scheme: dark) {
+html[data-theme="shadcn"][data-mode="auto"] {
+  --bg: #09090b;
+  --paper: #121215;
+  --ink: #fafafa;
+  --ink-2: #a1a1aa;
+  --ink-3: #71717a;
+  --line: #27272a;
+  --line-2: #1c1c1f;
+  --fill: #18181b;
+  --accent: #60a5fa;
+  --accent-bg: #172554;
+  --ok: #4ade80;
+  --ok-bg: #052e16;
+  --err: #f87171;
+  --err-bg: #450a0a;
+  --warn: #fbbf24;
+  --warn-bg: #451a03;
+  --head-bg: #fafafa;
+  --head-fg: #18181b;
+}
+}
+
+html[lang="ja"][data-theme][data-mode] {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans CJK JP", "Noto Sans JP", "PingFang SC", "Microsoft YaHei", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+html[lang="ja"][data-theme="3b1b"][data-mode] {
+  --v-title-font: "CMU Serif", "Latin Modern Roman", "Iowan Old Style", "Palatino", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif CJK JP", "Noto Serif JP", "Songti SC", serif;
+}
+
+/* Answer me with HTML base — uses theme variables only, never hard-coded colors (theme tokens: themes/index.js). Exception: the var() fallbacks of diagrams (flow / sequence) equal the blueprint light tokens, guarded by a test. */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-sans); font-size: 14px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+code, pre, kbd { font-family: var(--font-mono); }
+
+/* ── Toolbar ─────────────────────────────── */
+.am-toolbar {
+  position: fixed; top: 12px; right: 12px; z-index: 10; display: flex; gap: 6px;
+}
+.am-btn {
+  font: 12px/1 var(--font-sans); color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line-2); border-radius: var(--radius); padding: 7px 10px; cursor: pointer;
+}
+.am-btn:hover { border-color: var(--ink-3); }
+.am-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Header ───────────────────────────────── */
+.am-head { margin: 0 0 20px; padding-right: 260px; }
+.am-head h1 { margin: 0; font-size: 24px; line-height: 1.25; letter-spacing: -0.01em; }
+.am-sub { margin: 4px 0 0; color: var(--ink-2); }
+.am-head-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 12px; color: var(--ink-2); }
+.am-head-meta b { font-family: var(--font-mono); font-weight: 400; color: var(--ink-3); margin-right: 6px; }
+.am-intro { margin-top: 12px; max-width: 80ch; }
+
+/* ── sheet template ────────────────────────── */
+.am-sheet { max-width: 1680px; margin: 0 auto; padding: 32px 28px 40px; }
+.am-frame { position: relative; }
+.am-grid {
+  display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: 20px; align-items: start;
+}
+.am-ruler { display: none; }
+html[data-theme="blueprint"] .am-frame { border: 1px solid var(--line); padding: 30px; }
+html[data-theme="blueprint"] .am-frame::before {
+  content: ""; position: absolute; inset: 18px; border: 1px solid var(--line); pointer-events: none;
+}
+html[data-theme="blueprint"] .am-ruler {
+  display: flex; position: absolute; font: 10px/1 var(--font-mono); color: var(--ink-3);
+}
+.am-ruler span { flex: 1; display: flex; align-items: center; justify-content: center; }
+.am-ruler--top, .am-ruler--bottom { left: 18px; right: 18px; height: 18px; }
+.am-ruler--top { top: 0; }
+.am-ruler--bottom { bottom: 0; }
+.am-ruler--left, .am-ruler--right { top: 18px; bottom: 18px; width: 18px; flex-direction: column; }
+.am-ruler--left { left: 0; }
+.am-ruler--right { right: 0; }
+.am-ruler--top span + span, .am-ruler--bottom span + span { border-left: 1px solid var(--line); }
+.am-ruler--left span + span, .am-ruler--right span + span { border-top: 1px solid var(--line); }
+
+/* ── Panels ───────────────────────────────── */
+.am-panel {
+  background: var(--paper); border: var(--bw) solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); min-width: 0; overflow: hidden;
+}
+.am-panel-head {
+  display: flex; align-items: stretch; gap: 0; border-bottom: var(--bw) solid var(--line); min-height: 34px;
+}
+.am-panel-id {
+  display: flex; align-items: center; justify-content: center; min-width: 34px; padding: 0 8px;
+  background: var(--head-bg); color: var(--head-fg); font-weight: 600; font-size: 14px;
+}
+html[data-theme="shadcn"] .am-panel-id { border-radius: 6px; min-width: 24px; height: 24px; margin: 9px 0 9px 14px; font-size: 12px; }
+html[data-theme="shadcn"] .am-panel-head { border-bottom-width: 1px; }
+.am-panel-head h2 { margin: 0; padding: 7px 12px; font-size: 15px; font-weight: 600; flex: 1; display: flex; align-items: center; }
+.am-panel-meta { align-self: center; padding: 0 12px; font: 11px/1.3 var(--font-mono); color: var(--ink-2); text-align: right; }
+.am-panel-body { padding: 14px 16px 16px; }
+.am-panel-body > * + * { margin-top: 12px; }
+
+/* ── Markdown body ───────────────────────── */
+.am-md > :first-child { margin-top: 0; }
+.am-md > :last-child { margin-bottom: 0; }
+.am-md p { margin: 0 0 8px; }
+.am-md ul, .am-md ol { margin: 0 0 8px; padding-left: 20px; }
+.am-md li + li { margin-top: 3px; }
+.am-md h3, .am-md h4 { margin: 14px 0 6px; font-size: 13px; }
+.am-md a { color: var(--accent); }
+.am-md blockquote { margin: 0 0 8px; padding: 2px 12px; border-left: 3px solid var(--line-2); color: var(--ink-2); }
+.am-md :not(pre) > code { font-size: 0.9em; background: var(--fill); padding: 1px 5px; border-radius: 4px; }
+.am-md hr { border: 0; border-top: 1px solid var(--line-2); margin: 12px 0; }
+.am-md table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.am-md th {
+  text-align: left; font: 11px/1.3 var(--font-mono); color: var(--ink-2); font-weight: 400;
+  padding: 6px 10px; border-bottom: 1px solid var(--line-2);
+}
+/* th { text-align: left } outranks the align attribute from Markdown alignment, so restore right and center columns explicitly. */
+.am-md th[align="right"] { text-align: right; }
+.am-md th[align="center"] { text-align: center; }
+.am-md td { padding: 7px 10px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+.am-md tbody tr:nth-child(even) td { background: var(--fill); }
+.am-table-wrap { overflow-x: auto; }
+.am-code {
+  margin: 0; padding: 12px 14px; background: var(--fill); border: 1px solid var(--line-2);
+  border-radius: var(--radius); overflow-x: auto; font-size: 12.5px; line-height: 1.5;
+}
+
+/* ── Status badges ok / no / warn ──────────────── */
+.am-status { white-space: nowrap; font-weight: 500; }
+.am-status--ok { color: var(--ok); }
+.am-status--no { color: var(--err); }
+.am-status--warn { color: var(--warn); }
+.am-status-icon { display: inline-block; width: 1.1em; font-weight: 700; }
+
+/* ── callout ─────────────────────────────── */
+.am-callout {
+  border: 1px solid var(--line-2); border-left: 3px solid var(--accent); background: var(--accent-bg);
+  padding: 10px 14px; border-radius: var(--radius);
+}
+.am-callout--ok { border-left-color: var(--ok); background: var(--ok-bg); }
+.am-callout--warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.am-callout--err { border-left-color: var(--err); background: var(--err-bg); }
+.am-callout-title { font-weight: 600; margin-bottom: 4px; }
+
+/* ── kv title block ─────────────────────────── */
+.am-kv {
+  display: grid; grid-template-columns: repeat(var(--kv-cols, 2), minmax(0, 1fr)); margin: 0;
+  border-top: var(--bw) solid var(--line); border-left: var(--bw) solid var(--line);
+}
+.am-kv-cell { border-right: var(--bw) solid var(--line); border-bottom: var(--bw) solid var(--line); padding: 6px 10px 8px; min-width: 0; }
+.am-kv-cell--wide { grid-column: 1 / -1; }
+.am-kv dt { font: 11px/1.4 var(--font-mono); color: var(--ink-2); }
+.am-kv dd { margin: 2px 0 0; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.am-kv-cell--wide dd { font-size: 17px; font-weight: 600; }
+html[data-theme="shadcn"] .am-kv { border-color: var(--line); border-radius: var(--radius); overflow: hidden; }
+
+/* ── timeline ────────────────────────────── */
+.am-timeline { list-style: none; margin: 0; padding: 0; }
+.am-timeline--h { display: grid; grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr)); padding-top: 4px; }
+.am-timeline--h li { position: relative; text-align: center; padding: 0 6px; }
+.am-timeline--h li::before {
+  content: ""; position: absolute; top: 31px; left: 0; right: 0; border-top: var(--bw) solid var(--line);
+}
+.am-timeline--h li:first-child::before { left: 50%; }
+.am-timeline--h li:last-child::before { right: 50%; }
+.am-tl-when { display: block; font-size: 15px; font-weight: 500; height: 24px; }
+.am-tl-dot {
+  position: relative; display: block; width: 11px; height: 11px; margin: 2px auto 8px;
+  border: var(--bw) solid var(--line); border-radius: 50%; background: var(--paper);
+}
+.am-tl-item--hi .am-tl-dot { background: var(--accent); border-color: var(--accent); }
+.am-tl-title { display: block; font-size: 12.5px; font-weight: 500; }
+.am-tl-text { display: block; font-size: 12px; color: var(--ink-2); line-height: 1.45; }
+.am-timeline--v li { position: relative; padding: 0 0 14px 22px; }
+.am-timeline--v li::before { content: ""; position: absolute; left: 5px; top: 6px; bottom: -6px; border-left: var(--bw) solid var(--line-2); }
+.am-timeline--v li:last-child::before { display: none; }
+.am-timeline--v .am-tl-dot { position: absolute; left: 0; top: 4px; margin: 0; }
+.am-timeline--v .am-tl-when { display: inline; height: auto; font: 12px var(--font-mono); color: var(--ink-2); margin-right: 8px; }
+.am-timeline--v .am-tl-title { display: inline; font-size: 14px; }
+.am-timeline--v .am-tl-text { margin-top: 2px; }
+
+/* ── annot sentence notes ──────────────────────── */
+.am-annot + .am-annot { border-top: 1px solid var(--line-2); padding-top: 12px; }
+.am-annot-head { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.am-annot-meta { font: 11px var(--font-mono); font-weight: 400; color: var(--ink-2); }
+.am-annot-scroll { overflow-x: auto; }
+.am-annot-line {
+  position: relative; display: inline-block; white-space: pre; font: 14px/1.6 var(--font-mono);
+  padding-bottom: calc(var(--rows, 0) * 17px + 14px);
+}
+.am-annot-line--wrap { display: block; white-space: normal; padding-bottom: 10px; }
+.am-annot-line--wrap .am-seg { white-space: nowrap; }
+.am-seg { position: relative; }
+.am-seg::after {
+  content: ""; position: absolute; left: 1px; right: 1px; top: calc(100% + 1px); height: 5px;
+  border: 1px solid var(--accent); border-top: 0;
+}
+.am-seg-n {
+  position: absolute; left: 0; top: calc(100% + 8px + var(--row, 0) * 17px);
+  font: 11px/16px var(--font-sans); color: var(--accent); white-space: nowrap;
+}
+.am-seg--err { color: var(--err); }
+.am-seg--err::after { border-color: var(--err); }
+.am-seg--err .am-seg-n { color: var(--err); }
+.am-annot-caption { font-size: 12px; color: var(--ink-2); }
+
+/* ── limits bars ───────────────────────── */
+.am-lim + .am-lim { margin-top: 14px; }
+.am-lim-head { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; margin-bottom: 4px; }
+.am-lim-val { font: 12px var(--font-mono); color: var(--accent); white-space: nowrap; }
+.am-lim-track { position: relative; height: 12px; border: 1px solid var(--line-2); background: var(--fill); border-radius: calc(var(--radius) / 2); }
+.am-lim-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent-bg); border-right: 1px solid var(--accent); }
+.am-lim-mark { position: absolute; top: -4px; bottom: -4px; border-left: 2px solid var(--accent); }
+.am-lim.is-over .am-lim-fill { background: var(--err-bg); border-right-color: var(--err); }
+.am-lim.is-over .am-lim-val { color: var(--err); }
+.am-lim-ticks { position: relative; height: 16px; font: 10px/16px var(--font-mono); color: var(--ink-3); }
+.am-lim-ticks span { position: absolute; transform: translateX(-50%); }
+.am-lim-ticks span:first-child { transform: none; }
+.am-lim-note { font-size: 11px; color: var(--ink-2); margin-left: 6px; }
+
+/* ── tree ─────────────────────────── */
+.am-tree { font-size: 13px; }
+.am-tree-root { display: flex; justify-content: center; position: relative; padding-bottom: 18px; }
+.am-tree-root::after { content: ""; position: absolute; bottom: 0; left: 50%; height: 18px; border-left: var(--bw) solid var(--line); }
+.am-tree-root--solo { padding-bottom: 12px; }
+.am-tree-root--solo::after { display: none; }
+.am-tree-box {
+  border: var(--bw) solid var(--line); background: var(--paper); padding: 6px 14px; text-align: center;
+  border-radius: var(--radius); font-weight: 600;
+}
+.am-tree-box small { display: block; font-weight: 400; color: var(--ink-2); font-size: 12px; }
+.am-tree-box--root { background: var(--accent-bg); font-size: 15px; padding: 8px 28px; }
+.am-tree-cols { display: grid; grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr)); }
+.am-tree-col { position: relative; padding: 18px 8px 0; min-width: 0; }
+.am-tree-col::before { content: ""; position: absolute; top: 0; left: 0; right: 0; border-top: var(--bw) solid var(--line); }
+.am-tree-col:first-child::before { left: 50%; }
+.am-tree-col:last-child::before { right: 50%; }
+.am-tree-col::after { content: ""; position: absolute; top: 0; left: 50%; height: 18px; border-left: var(--bw) solid var(--line); }
+.am-tree-list, .am-tree-list ul { list-style: none; margin: 0; padding: 0; }
+.am-tree-col > .am-tree-list { margin: 8px 0 0 14px; }
+.am-tree-list ul { margin-left: 16px; }
+.am-tree-list li { position: relative; padding: 3px 0 3px 18px; }
+.am-tree-list li::before { content: ""; position: absolute; left: 0; top: 0.95em; width: 12px; border-top: 1px solid var(--ink-3); }
+.am-tree-list li::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; border-left: 1px solid var(--ink-3); }
+.am-tree-list li:last-child::after { bottom: auto; height: 0.95em; }
+.am-tree-tag { font: 11px var(--font-mono); color: var(--ink-3); margin-right: 4px; }
+.am-tree code { font: 12px var(--font-mono); }
+.am-tree-sub { display: block; font-size: 11.5px; color: var(--ink-2); }
+.am-tree-hi > .am-tree-label { color: var(--accent); font-weight: 600; }
+
+/* ── Diagrams (flow / sequence) ───────────────── */
+.am-diagram { margin: 0; overflow-x: auto; text-align: center; }
+/* Embedded previews can lose html[data-theme]; the fallbacks keep diagrams readable, and defined theme variables still win. */
+.am-diagram svg { max-width: 100%; height: auto; font-family: var(--font-sans, sans-serif); }
+.am-diagram text { fill: var(--ink, #16181d); font-size: 13px; }
+.am-node-shape { fill: var(--paper, #ffffff); stroke: var(--line, #1d2026); stroke-width: var(--bw, 1.5px); }
+.am-node--hi .am-node-shape { fill: var(--accent-bg, #e4ecf8); stroke: var(--accent, #1d5fbf); }
+.am-node--hi text { fill: var(--accent, #1d5fbf); font-weight: 600; }
+.am-edge { fill: none; stroke: var(--ink-2, #4b5260); stroke-width: 1.3; }
+.am-edge--dashed { stroke-dasharray: 5 4; }
+.am-arrow { fill: var(--ink-2, #4b5260); }
+.am-edge-label rect { fill: var(--paper, #ffffff); }
+.am-diagram .am-edge-label text { fill: var(--accent, #1d5fbf); font-size: 11.5px; }
+.am-cluster { fill: var(--fill, #f3f5f8); stroke: var(--line-2, #d6dae1); stroke-width: 1; stroke-dasharray: 4 3; }
+.am-diagram .am-cluster-label { fill: var(--ink-2, #4b5260); font: 11px var(--font-mono, monospace); }
+.am-lifeline { stroke: var(--ink-3, #8b929e); stroke-width: 1; stroke-dasharray: 4 4; }
+.am-actor { fill: var(--paper, #ffffff); stroke: var(--line, #1d2026); stroke-width: var(--bw, 1.5px); }
+.am-note { fill: var(--warn-bg, #fdf3e2); stroke: var(--warn, #a8620a); stroke-width: 1; }
+.am-diagram .am-step { fill: var(--ink-3, #8b929e); font: 10px var(--font-mono, monospace); }
+
+/* ── doc template ────────────────────────── */
+.am-doc { max-width: 1120px; margin: 0 auto; padding: 40px 28px 64px; }
+.am-doc-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 32px; align-items: start; }
+.am-doc-layout--notoc { grid-template-columns: minmax(0, 1fr); max-width: 860px; }
+.am-toc { position: sticky; top: 24px; font-size: 13px; }
+.am-toc a { display: block; color: var(--ink-2); text-decoration: none; padding: 4px 0 4px 10px; border-left: 2px solid var(--line-2); }
+.am-toc a:hover { color: var(--ink); border-left-color: var(--accent); }
+.am-doc-body > .am-panel + .am-panel { margin-top: 20px; }
+
+/* ── Responsive and print ─────────────────────────── */
+@media (max-width: 1100px) {
+  .am-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .am-grid > .am-panel { grid-column: auto !important; }
+  .am-grid > .am-panel.am-span-wide { grid-column: 1 / -1 !important; }
+}
+@media (max-width: 760px) {
+  .am-sheet, .am-doc { padding: 56px 12px 24px; }
+  .am-head { padding-right: 0; }
+  .am-grid { grid-template-columns: minmax(0, 1fr); }
+  .am-grid > .am-panel.am-span-wide { grid-column: auto !important; }
+  html[data-theme="blueprint"] .am-frame { padding: 0; border: 0; }
+  html[data-theme="blueprint"] .am-frame::before, html[data-theme="blueprint"] .am-ruler { display: none; }
+  .am-doc-layout { grid-template-columns: minmax(0, 1fr); }
+  .am-toc { position: static; }
+  .am-timeline--h { grid-template-columns: minmax(0, 1fr); }
+  .am-tree-cols { grid-template-columns: minmax(0, 1fr); }
+  /* Tables and diagrams keep their size: the wrapper scrolls horizontally when they overflow. */
+  .am-md th, .am-md td { min-width: 6em; }
+  .am-diagram svg { max-width: none; }
+}
+.am-colophon { text-align: center; padding: 0 0 28px; font: 11px var(--font-mono); color: var(--ink-3); }
+
+@media print {
+  .am-toolbar { display: none; }
+  body { background: var(--paper); }
+  .am-panel { break-inside: avoid; box-shadow: none; }
+}
+.am-panel--bare { border: 0; background: transparent; box-shadow: none; }
+.am-panel--bare > .am-panel-body { padding: 0; }
+.am-panel--bare .am-kv { background: var(--paper); }
+
+</style>
+</head>
+<body>
+<div class="am-toolbar">
+<button class="am-btn" type="button" data-am="theme" data-labels="{&quot;blueprint&quot;:&quot;主题：图纸&quot;,&quot;shadcn&quot;:&quot;主题：卡片&quot;}">主题：卡片</button>
+<button class="am-btn" type="button" data-am="mode" data-labels="{&quot;auto&quot;:&quot;明暗：跟随系统&quot;,&quot;light&quot;:&quot;明暗：亮&quot;,&quot;dark&quot;:&quot;明暗：暗&quot;}">明暗：亮</button>
+<button class="am-btn" type="button" data-am="copy" data-done="已复制 ✓">复制源稿</button>
+</div>
+<main class="am-doc">
+<header class="am-head"><h1>Agent 如何制作、运行和修改组件</h1><p class="am-sub">源码、模板、编译、DSH、附件，各自做什么</p><div class="am-head-meta"><span><b>source</b>本地 0.3.0 源码核对 · 2026-10-06</span></div><div class="am-intro am-md"><div class="am-md"><p><strong>是源码编译。这里的“模板”是一份已有源码工程。</strong> Agent 可以复制它再修改，也可以新建工程。两条路最终都运行编译后的页面。</p>
+<p>点击左侧目录切换话题。先看 <a href="#panel-B">B：两种起点</a>，再看 <a href="#panel-C">C：制作过程</a> 和 <a href="#panel-E">E：勾选怎样交给 Agent</a>。本页是交互说明，不连接店铺或发送聊天。</p>
+</div></div></header>
+<div class="am-doc-layout">
+<nav class="am-toc" aria-label="目录"><a href="#panel-A">A · 先把五个名称分清</a><a href="#panel-B">B · 两种起点，最后都是普通源码</a><a href="#panel-C">C · Agent 如何把需求变成页面</a><a href="#panel-D">D · 页面运行时，Agent 不参与每次点击</a><a href="#panel-E">E · 勾选之后，Agent 什么时候知道</a><a href="#panel-F">F · 保存、复用和再次修改</a><a href="#panel-G">G · 为什么编译通过，勾选仍会出错</a><a href="#panel-H">H · 对照源码与操作入口</a></nav><div class="am-doc-body">
+<section class="am-panel" id="panel-A">
+<header class="am-panel-head"><span class="am-panel-id">A</span><h2>先把五个名称分清</h2></header>
+<div class="am-panel-body"><div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>名称</th>
+<th>在这个项目里是什么</th>
+<th>谁使用它</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>UI 组件库</td>
+<td>shadcn 的按钮、表格等可编辑源码</td>
+<td>Agent 写页面时复用</td>
+</tr>
+<tr>
+<td>源码模板</td>
+<td>一整个可复制的 React 工程</td>
+<td>Agent 或用户作为起点</td>
+</tr>
+<tr>
+<td>编译产物 dist</td>
+<td>工程生成的 HTML、JS、CSS、图片等</td>
+<td>浏览器负责执行</td>
+</tr>
+<tr>
+<td>会话组件</td>
+<td>当前聊天登记的一份构建及数据绑定</td>
+<td>DSH 右侧栏展示</td>
+</tr>
+<tr>
+<td>已保存组件库</td>
+<td>用户正式保存的组件和版本</td>
+<td>后续打开、编辑和复用</td>
+</tr>
+</tbody></table></div>
+</div>
+<div class="am-callout am-callout--info" role="note"><div class="am-callout-title">本次“采集商品”究竟从哪来</div><div class="am-callout-body am-md"><p>这是我随 0.3.0 提供的商品源码工程。安装时将它登记成内置源码模板，再从模板打开为当前会话组件。</p>
+<p>它不是 DSH Agent 在那次聊天里从零写出的页面。之前我用“Agent 编译的组件”概括它，省略了这层来源。</p>
+</div></div></div>
+</section>
+<section class="am-panel" id="panel-B">
+<header class="am-panel-head"><span class="am-panel-id">B</span><h2>两种起点，最后都是普通源码</h2></header>
+<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 250 507" width="250" height="507" role="img" aria-label="流程图：需求、从哪里开始?、新建工程、复制源码模板、可编辑工程、修改TSX和CSS、编译dist" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M131.5,49 L131.5,60.5 Q131.5,72 131.5,83.5 L131.5,95" marker-end="url(#am1-arrow)"/></g><g data-step="1"><path class="am-edge" d="M153,143 L174.5,163 Q196,183 196,199 L196,215" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="168" y="174" width="56" height="18" rx="3"/><text x="196" y="183" text-anchor="middle" dominant-baseline="central">从零编写</text></g></g><g data-step="2"><path class="am-edge" d="M110,143 L88.5,163 Q67,183 67,199 L67,215" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="27.5" y="174" width="79" height="18" rx="3"/><text x="67" y="183" text-anchor="middle" dominant-baseline="central">复用已有设计</text></g></g><g data-step="3"><path class="am-edge" d="M196,250 L196,261.5 Q196,273 177.7,284.5 L159.4,296" marker-end="url(#am1-arrow)"/></g><g data-step="4"><path class="am-edge" d="M67,250 L67,261.5 Q67,273 85.3,284.5 L103.6,296" marker-end="url(#am1-arrow)"/></g><g data-step="5"><path class="am-edge" d="M131.5,331 L131.5,342.5 Q131.5,354 131.5,365.5 L131.5,377" marker-end="url(#am1-arrow)"/></g><g data-step="6"><path class="am-edge" d="M131.5,412 L131.5,423.5 Q131.5,435 131.5,446.5 L131.5,458" marker-end="url(#am1-arrow)"/></g></g><g><g class="am-node am-node--rect" data-key="需求" data-step="0"><rect class="am-node-shape" x="99.5" y="14" width="64" height="35" rx="3"/><text x="131.5" y="31.5" text-anchor="middle" dominant-baseline="central">需求</text></g><g class="am-node am-node--diamond" data-key="从哪里开始?" data-step="0"><polygon class="am-node-shape" points="131.5,95 206.7,123 131.5,151 56.3,123"/><text x="131.5" y="123" text-anchor="middle" dominant-baseline="central">从哪里开始?</text></g><g class="am-node am-node--rect" data-key="新建工程" data-step="1"><rect class="am-node-shape" x="156" y="215" width="80" height="35" rx="3"/><text x="196" y="232.5" text-anchor="middle" dominant-baseline="central">新建工程</text></g><g class="am-node am-node--rect" data-key="复制源码模板" data-step="2"><rect class="am-node-shape" x="14" y="215" width="106" height="35" rx="3"/><text x="67" y="232.5" text-anchor="middle" dominant-baseline="central">复制源码模板</text></g><g class="am-node am-node--rect" data-key="可编辑工程" data-step="3"><rect class="am-node-shape" x="85" y="296" width="93" height="35" rx="3"/><text x="131.5" y="313.5" text-anchor="middle" dominant-baseline="central">可编辑工程</text></g><g class="am-node am-node--rect" data-key="修改TSX和CSS" data-step="5"><rect class="am-node-shape" x="71.5" y="377" width="120" height="35" rx="3"/><text x="131.5" y="394.5" text-anchor="middle" dominant-baseline="central">修改TSX和CSS</text></g><g class="am-node am-node--rect" data-key="编译dist" data-step="6"><rect class="am-node-shape" x="93.1" y="458" width="76.9" height="35" rx="3"/><text x="131.5" y="475.5" text-anchor="middle" dominant-baseline="central">编译dist</text></g></g></svg></figure>
+<div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>起点</th>
+<th>Agent 实际做什么</th>
+<th>能否改变设计</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>从零写</td>
+<td>新建工程，编写页面，接入需要的 SDK 能力</td>
+<td>可以自由设计</td>
+</tr>
+<tr>
+<td>复制起点</td>
+<td>复制商品工程，改源码、样式和依赖</td>
+<td>可以重做整个布局</td>
+</tr>
+<tr>
+<td>打开已保存组件</td>
+<td>恢复到新的工作目录，再编辑源码</td>
+<td>可以继续修改并保存版本</td>
+</tr>
+</tbody></table></div>
+<p><strong>当前技能确实偏向复用。</strong> 它先建议查看已有组件，再复制工程起点。底层打开接口并不要求使用这个模板，也没有固定页面布局。</p>
+<p>模板已有可用 dist 时可以直接打开。Agent 修改源码后，需要重新编译才能显示修改。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-C">
+<header class="am-panel-head"><span class="am-panel-id">C</span><h2>Agent 如何把需求变成页面</h2></header>
+<div class="am-panel-body"><figure class="am-diagram am-seq"><svg viewBox="0 0 776 526" width="776" height="526" role="img" aria-label="时序图：用户、Agent、文件与命令工具、预览工具、Hallmark插件" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><line class="am-lifeline" x1="54" y1="42" x2="54" y2="522"/><g data-key="用户"><rect class="am-actor" x="12" y="8" width="84" height="34" rx="2"/><text x="54" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">用户</text></g><line class="am-lifeline" x1="231" y1="42" x2="231" y2="522"/><g data-key="Agent"><rect class="am-actor" x="189" y="8" width="84" height="34" rx="2"/><text x="231" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">Agent</text></g><line class="am-lifeline" x1="456" y1="42" x2="456" y2="522"/><g data-key="文件与命令工具"><rect class="am-actor" x="396.5" y="8" width="119" height="34" rx="2"/><text x="456" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">文件与命令工具</text></g><line class="am-lifeline" x1="585.5" y1="42" x2="585.5" y2="522"/><g data-key="预览工具"><rect class="am-actor" x="543.5" y="8" width="84" height="34" rx="2"/><text x="585.5" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">预览工具</text></g><line class="am-lifeline" x1="709.7" y1="42" x2="709.7" y2="522"/><g data-key="Hallmark插件"><rect class="am-actor" x="655.5" y="8" width="108.3" height="34" rx="2"/><text x="709.7" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">Hallmark插件</text></g><g data-step="0"><text x="142.5" y="70" text-anchor="middle">做一个可勾选的商品清单</text><path class="am-edge" d="M54,80 L229,80" marker-end="url(#am2-arrow)"/><text class="am-step" x="60" y="74" text-anchor="start">1</text></g><g data-step="1"><text x="271" y="108" dominant-baseline="central">读取设计技能和视觉规范</text><path class="am-edge" d="M231,104 H261 V124 H233" marker-end="url(#am2-arrow)"/><text class="am-step" x="237" y="114" text-anchor="start">2</text></g><g data-step="2"><text x="470.3" y="158" text-anchor="middle">查询商品，取得数据绑定</text><path class="am-edge" d="M231,168 L707.7,168" marker-end="url(#am2-arrow)"/><text class="am-step" x="237" y="162" text-anchor="start">3</text></g><g data-step="3"><text x="343.5" y="198" text-anchor="middle">新建或复制工程，编辑源码</text><path class="am-edge" d="M231,208 L454,208" marker-end="url(#am2-arrow)"/><text class="am-step" x="237" y="202" text-anchor="start">4</text></g><g data-step="4"><text x="343.5" y="238" text-anchor="middle">执行 npm run build</text><path class="am-edge" d="M231,248 L454,248" marker-end="url(#am2-arrow)"/><text class="am-step" x="237" y="242" text-anchor="start">5</text></g><g data-step="5"><text x="343.5" y="278" text-anchor="middle">dist 文件或编译错误</text><path class="am-edge am-edge--dashed" d="M456,288 L233,288" marker-end="url(#am2-arrow)"/><text class="am-step" x="450" y="282" text-anchor="end">6</text></g><g data-step="6"><text x="408.3" y="318" text-anchor="middle">加载 dist，截图并执行交互步骤</text><path class="am-edge" d="M231,328 L583.5,328" marker-end="url(#am2-arrow)"/><text class="am-step" x="237" y="322" text-anchor="start">7</text></g><g data-step="7"><text x="408.3" y="358" text-anchor="middle">图片、错误与交互反馈</text><path class="am-edge am-edge--dashed" d="M585.5,368 L233,368" marker-end="url(#am2-arrow)"/><text class="am-step" x="579.5" y="362" text-anchor="end">8</text></g><g data-step="8"><text x="271" y="396" dominant-baseline="central">读图并判断是否需要修改</text><path class="am-edge" d="M231,392 H261 V412 H233" marker-end="url(#am2-arrow)"/><text class="am-step" x="237" y="402" text-anchor="start">9</text></g><g data-step="9"><text x="470.3" y="446" text-anchor="middle">open_source_component 登记构建</text><path class="am-edge" d="M231,456 L707.7,456" marker-end="url(#am2-arrow)"/><text class="am-step" x="237" y="450" text-anchor="start">10</text></g><g data-step="10"><text x="381.8" y="486" text-anchor="middle">在本会话组件里打开页面</text><path class="am-edge am-edge--dashed" d="M709.7,496 L56,496" marker-end="url(#am2-arrow)"/><text class="am-step" x="703.7" y="490" text-anchor="end">11</text></g></svg></figure>
+<div class="am-md"><p><strong>Agent 写代码并调用命令；TypeScript 和 Vite 执行编译。</strong> <code>hallmark_open_source_component</code> 只登记已有构建，不负责写代码或编译。</p>
+<p>源码可使用 React 状态、循环、事件、CSS 和普通依赖。当前页面使用 shadcn 基础源码与 TanStack Table。它的布局不是由旧 ViewSpec 或 json-render 生成。</p>
+<p>预览可以使用已有查询数据文件。登记到 DSH 后，也可以用会话 ID 和 viewId 读取绑定数据做预览。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-D">
+<header class="am-panel-head"><span class="am-panel-id">D</span><h2>页面运行时，Agent 不参与每次点击</h2></header>
+<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 1045 84" width="1045" height="84" role="img" aria-label="流程图：编译dist、本机构建存档、DSH插件Host、iframe页面、React状态" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am3-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M90.9,42 L129,42 Q167,42 205.1,42 L243.2,42" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="114.9" y="33" width="104.3" height="18" rx="3"/><text x="167" y="42" text-anchor="middle" dominant-baseline="central">登记并产生buildId</text></g></g><g data-step="1"><path class="am-edge" d="M349.2,42 L375.2,42 Q401.2,42 427.2,42 L453.2,42" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="373.2" y="33" width="56" height="18" rx="3"/><text x="401.2" y="42" text-anchor="middle" dominant-baseline="central">提供资源</text></g></g><g data-step="2"><path class="am-edge" d="M563.6,42 L597.5,42 Q631.5,42 665.4,42 L699.3,42" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="587.6" y="33" width="87.7" height="18" rx="3"/><text x="631.5" y="42" text-anchor="middle" dominant-baseline="central">加载同一份dist</text></g></g><g data-step="3"><path class="am-edge" d="M791.6,49.2 L829.1,55.1 Q866.6,61 904.1,55 L941.6,49.1" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="815.6" y="52" width="102" height="18" rx="3"/><text x="866.6" y="61" text-anchor="middle" dominant-baseline="central">勾选、筛选、翻页</text></g></g><g data-step="4"><path class="am-edge" d="M941.6,34.9 L904.1,29 Q866.6,23 829.1,28.9 L791.6,34.8" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="838.6" y="14" width="56" height="18" rx="3"/><text x="866.6" y="23" text-anchor="middle" dominant-baseline="central">更新显示</text></g></g></g><g><g class="am-node am-node--rect" data-key="编译dist" data-step="0"><rect class="am-node-shape" x="14" y="24.5" width="76.9" height="35" rx="3"/><text x="52.4" y="42" text-anchor="middle" dominant-baseline="central">编译dist</text></g><g class="am-node am-node--rect" data-key="本机构建存档" data-step="0"><rect class="am-node-shape" x="243.2" y="24.5" width="106" height="35" rx="3"/><text x="296.2" y="42" text-anchor="middle" dominant-baseline="central">本机构建存档</text></g><g class="am-node am-node--rect" data-key="DSH插件Host" data-step="1"><rect class="am-node-shape" x="453.2" y="24.5" width="110.4" height="35" rx="3"/><text x="508.4" y="42" text-anchor="middle" dominant-baseline="central">DSH插件Host</text></g><g class="am-node am-node--rect" data-key="iframe页面" data-step="2"><rect class="am-node-shape" x="699.3" y="24.5" width="92.2" height="35" rx="3"/><text x="745.5" y="42" text-anchor="middle" dominant-baseline="central">iframe页面</text></g><g class="am-node am-node--rect" data-key="React状态" data-step="3"><rect class="am-node-shape" x="941.6" y="24.5" width="88.8" height="35" rx="3"/><text x="986" y="42" text-anchor="middle" dominant-baseline="central">React状态</text></g></g></svg></figure>
+<div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>层</th>
+<th>负责什么</th>
+<th>主要代码</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>源码页面</td>
+<td>布局、筛选、勾选、统计与交互</td>
+<td><code>Component.tsx</code>、CSS</td>
+</tr>
+<tr>
+<td>薄 SDK</td>
+<td>通过 postMessage 与外层通信</td>
+<td><code>component-runtime/src/client.ts</code></td>
+</tr>
+<tr>
+<td>外层 SourceFrame</td>
+<td>提供数据、上下文、刷新与附件桥接</td>
+<td><code>client/source-frame.tsx</code></td>
+</tr>
+<tr>
+<td>DSH 插件 Host</td>
+<td>注册资源地址，转发本机服务请求</td>
+<td><code>server/source-assets.ts</code></td>
+</tr>
+<tr>
+<td>本机服务</td>
+<td>数据绑定、构建存档、会话归属和保存</td>
+<td><code>packages/service</code>、<code>presentation</code></td>
+</tr>
+</tbody></table></div>
+<p><code>getData()</code> 从外层取得当前数据包。外层先从本机服务读取快照；它不为每次勾选调用 Agent 或店铺接口。</p>
+<p><code>refresh()</code> 请求外层刷新数据。<code>getContext()</code> 提供主题、会话及附件可用状态。<code>attachSelection()</code> 把当前选择交给附件桥接。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-E">
+<header class="am-panel-head"><span class="am-panel-id">E</span><h2>勾选之后，Agent 什么时候知道</h2></header>
+<div class="am-panel-body"><figure class="am-diagram am-seq"><svg viewBox="0 0 1114 454" width="1114" height="454" role="img" aria-label="时序图：用户、源码页面、插件桥接、聊天输入框、Agent" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am4-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><line class="am-lifeline" x1="54" y1="42" x2="54" y2="450"/><g data-key="用户"><rect class="am-actor" x="12" y="8" width="84" height="34" rx="2"/><text x="54" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">用户</text></g><line class="am-lifeline" x1="179" y1="42" x2="179" y2="450"/><g data-key="源码页面"><rect class="am-actor" x="137" y="8" width="84" height="34" rx="2"/><text x="179" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">源码页面</text></g><line class="am-lifeline" x1="437.8" y1="42" x2="437.8" y2="450"/><g data-key="插件桥接"><rect class="am-actor" x="395.8" y="8" width="84" height="34" rx="2"/><text x="437.8" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">插件桥接</text></g><line class="am-lifeline" x1="678.1" y1="42" x2="678.1" y2="450"/><g data-key="聊天输入框"><rect class="am-actor" x="631.6" y="8" width="93" height="34" rx="2"/><text x="678.1" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">聊天输入框</text></g><line class="am-lifeline" x1="803.1" y1="42" x2="803.1" y2="450"/><g data-key="Agent"><rect class="am-actor" x="761.1" y="8" width="84" height="34" rx="2"/><text x="803.1" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">Agent</text></g><g data-step="0"><text x="116.5" y="70" text-anchor="middle">勾选商品</text><path class="am-edge" d="M54,80 L177,80" marker-end="url(#am4-arrow)"/><text class="am-step" x="60" y="74" text-anchor="start">1</text></g><g data-step="1"><text x="219" y="108" dominant-baseline="central">更新 selected 状态和已选数量</text><path class="am-edge" d="M179,104 H209 V124 H181" marker-end="url(#am4-arrow)"/><text class="am-step" x="185" y="114" text-anchor="start">2</text></g><g data-step="2"><text x="116.5" y="158" text-anchor="middle">点击附加到聊天</text><path class="am-edge" d="M54,168 L177,168" marker-end="url(#am4-arrow)"/><text class="am-step" x="60" y="162" text-anchor="start">3</text></g><g data-step="3"><text x="308.4" y="198" text-anchor="middle">bindingId、keys、revision</text><path class="am-edge" d="M179,208 L435.8,208" marker-end="url(#am4-arrow)"/><text class="am-step" x="185" y="202" text-anchor="start">4</text></g><g data-step="4"><text x="477.8" y="236" dominant-baseline="central">从当前快照取回稳定商品ID</text><path class="am-edge" d="M437.8,232 H467.8 V252 H439.8" marker-end="url(#am4-arrow)"/><text class="am-step" x="443.8" y="242" text-anchor="start">5</text></g><g data-step="5"><text x="558" y="286" text-anchor="middle">添加原生 JSON 文件附件</text><path class="am-edge" d="M437.8,296 L676.1,296" marker-end="url(#am4-arrow)"/><text class="am-step" x="443.8" y="290" text-anchor="start">6</text></g><g data-step="6"><text x="366.1" y="326" text-anchor="middle">补充要求并点击发送</text><path class="am-edge" d="M54,336 L676.1,336" marker-end="url(#am4-arrow)"/><text class="am-step" x="60" y="330" text-anchor="start">7</text></g><g data-step="7"><text x="740.6" y="366" text-anchor="middle">用户文字和附件</text><path class="am-edge" d="M678.1,376 L801.1,376" marker-end="url(#am4-arrow)"/><text class="am-step" x="684.1" y="370" text-anchor="start">8</text></g><g data-step="8"><text x="843.1" y="404" dominant-baseline="central">读取附件，查询商品并处理要求</text><path class="am-edge" d="M803.1,400 H833.1 V420 H805.1" marker-end="url(#am4-arrow)"/><text class="am-step" x="809.1" y="410" text-anchor="start">9</text></g></svg></figure>
+<div class="am-callout am-callout--ok" role="note"><div class="am-callout-title">两个不同时间点</div><div class="am-callout-body am-md"><p>勾选时：只有页面状态改变，Agent 尚未收到消息。</p>
+<p>发送时：Agent 才收到文字和附件，并读取所选商品 ID。</p>
+</div></div>
+<div class="am-md"><p>附件名类似 <code>Hallmark-已选产品-2项.json</code>。输入框保留你的原有文字；附加按钮不会自动发送。</p>
+<p>下面是协议形状示意。产品 ID 使用示意值，不代表真实商品。</p>
+</div>
+<pre class="am-code"><code data-lang="json">{
+  &quot;bindingId&quot;: &quot;collected&quot;,
+  &quot;keys&quot;: [&quot;宿主给出的商品选择键&quot;],
+  &quot;revision&quot;: &quot;当前数据版本&quot;
+}</code></pre>
+<div class="am-md"><p>页面传递选择键。外层生成的附件再包含 <code>products</code> 中的稳定商品 ID。Agent 按 ID 查详情，再结合你的文字决定下一步。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-F">
+<header class="am-panel-head"><span class="am-panel-id">F</span><h2>保存、复用和再次修改</h2></header>
+<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 294 507" width="294" height="507" role="img" aria-label="流程图：已登记的会话草稿、用户要求保存什么?、保存组件、保存源码模板、打开工作副本、复制新工作副本、编辑并重新编译、登记新构建" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am5-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M147.8,49 L147.8,60.5 Q147.8,72 147.8,83.5 L147.8,95" marker-end="url(#am5-arrow)"/></g><g data-step="1"><path class="am-edge" d="M173.8,144 L197.9,163.5 Q222,183 222,199 L222,215" marker-end="url(#am5-arrow)"/><g class="am-edge-label"><rect x="165.3" y="174" width="113.5" height="18" rx="3"/><text x="222" y="183" text-anchor="middle" dominant-baseline="central">固定当前设计与绑定</text></g></g><g data-step="2"><path class="am-edge" d="M121.7,144 L97.6,163.5 Q73.5,183 73.5,199 L73.5,215" marker-end="url(#am5-arrow)"/><g class="am-edge-label"><rect x="22.5" y="174" width="102" height="18" rx="3"/><text x="73.5" y="183" text-anchor="middle" dominant-baseline="central">作为后续复用起点</text></g></g><g data-step="3"><path class="am-edge" d="M222,250 L222,261.5 Q222,273 222,284.5 L222,296" marker-end="url(#am5-arrow)"/></g><g data-step="4"><path class="am-edge" d="M73.5,250 L73.5,261.5 Q73.5,273 73.5,284.5 L73.5,296" marker-end="url(#am5-arrow)"/></g><g data-step="5"><path class="am-edge" d="M222,331 L222,342.5 Q222,354 200.9,365.5 L179.8,377" marker-end="url(#am5-arrow)"/></g><g data-step="6"><path class="am-edge" d="M73.5,331 L73.5,342.5 Q73.5,354 94.6,365.5 L115.7,377" marker-end="url(#am5-arrow)"/></g><g data-step="7"><path class="am-edge" d="M147.8,412 L147.8,423.5 Q147.8,435 147.8,446.5 L147.8,458" marker-end="url(#am5-arrow)"/></g></g><g><g class="am-node am-node--rect" data-key="已登记的会话草稿" data-step="0"><rect class="am-node-shape" x="81.8" y="14" width="132" height="35" rx="3"/><text x="147.8" y="31.5" text-anchor="middle" dominant-baseline="central">已登记的会话草稿</text></g><g class="am-node am-node--diamond" data-key="用户要求保存什么?" data-step="0"><polygon class="am-node-shape" points="147.8,95 252.2,123 147.8,151 43.3,123"/><text x="147.8" y="123" text-anchor="middle" dominant-baseline="central">用户要求保存什么?</text></g><g class="am-node am-node--rect" data-key="保存组件" data-step="1"><rect class="am-node-shape" x="182" y="215" width="80" height="35" rx="3"/><text x="222" y="232.5" text-anchor="middle" dominant-baseline="central">保存组件</text></g><g class="am-node am-node--rect" data-key="保存源码模板" data-step="2"><rect class="am-node-shape" x="20.5" y="215" width="106" height="35" rx="3"/><text x="73.5" y="232.5" text-anchor="middle" dominant-baseline="central">保存源码模板</text></g><g class="am-node am-node--rect" data-key="打开工作副本" data-step="3"><rect class="am-node-shape" x="169" y="296" width="106" height="35" rx="3"/><text x="222" y="313.5" text-anchor="middle" dominant-baseline="central">打开工作副本</text></g><g class="am-node am-node--rect" data-key="复制新工作副本" data-step="4"><rect class="am-node-shape" x="14" y="296" width="119" height="35" rx="3"/><text x="73.5" y="313.5" text-anchor="middle" dominant-baseline="central">复制新工作副本</text></g><g class="am-node am-node--rect" data-key="编辑并重新编译" data-step="5"><rect class="am-node-shape" x="88.3" y="377" width="119" height="35" rx="3"/><text x="147.8" y="394.5" text-anchor="middle" dominant-baseline="central">编辑并重新编译</text></g><g class="am-node am-node--rect" data-key="登记新构建" data-step="7"><rect class="am-node-shape" x="101.3" y="458" width="93" height="35" rx="3"/><text x="147.8" y="475.5" text-anchor="middle" dominant-baseline="central">登记新构建</text></g></g></svg></figure>
+<div class="am-md"><p>登记草稿时，源码和构建已经落盘。正式保存到组件库，是另外一个动作。</p>
+<p>保存内容包含源码、资源、依赖锁文件、dist 和数据绑定。已有组件支持打开历史版本，再保存为新版本。</p>
+<p><strong>模板复制后成为独立工作副本。</strong> 更新母模板不会自动改写之前复制出的组件。这次我分别更新了内置模板和你正在使用的会话组件。</p>
+<p>保存源码模板也会保留绑定配置。复用于其他店铺时，Agent 要明确更换数据绑定；不会因换了标题而自动换店铺。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-G">
+<header class="am-panel-head"><span class="am-panel-id">G</span><h2>为什么编译通过，勾选仍会出错</h2></header>
+<div class="am-panel-body"><div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>环节</th>
+<th>能确认什么</th>
+<th>当前是否自动执行</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>模板的 npm run build</td>
+<td>类型检查、打包成功</td>
+<td>执行该命令时会运行</td>
+</tr>
+<tr>
+<td>截图与人工式读图</td>
+<td>颜色、层级、溢出和布局</td>
+<td>Agent 按技能主动调用并查看</td>
+</tr>
+<tr>
+<td>指定交互步骤</td>
+<td>勾选、筛选、附加后的真实状态</td>
+<td>需要传入交互步骤</td>
+</tr>
+<tr>
+<td>本次新增回归测试</td>
+<td>商品模板不再陷入渲染循环</td>
+<td>运行项目测试时执行</td>
+</tr>
+<tr>
+<td>打开源码工具</td>
+<td>构建存在、登记和绑定有效</td>
+<td>调用工具时执行</td>
+</tr>
+</tbody></table></div>
+</div>
+<div class="am-callout am-callout--warn" role="note"><div class="am-callout-title">当前并没有统一的自动质量关卡</div><div class="am-callout-body am-md"><p>打开源码工具不会先替每个新组件运行全部交互测试。截图工具未传入步骤时，也不会自动推断该点击哪些按钮。</p>
+<p>技能已经要求 Agent 查看截图并操作控件；这是工作指引，不是后端强制检查。</p>
+</div></div>
+<div class="am-md"><p>本次错误：分页数组每次渲染都改变，触发表格自动重置，再次渲染。</p>
+<p>本次修复：缓存分页数组，并声明分页由页面管理。新增测试复现旧错误，验证单选、全选、跨页选择和附件 ID。</p>
+<p>复用新版商品模板会带上修复。从零写新组件仍要实际验证。Agent 不会因为这次修复，就自动学会规避所有运行时错误。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-H">
+<header class="am-panel-head"><span class="am-panel-id">H</span><h2>对照源码与操作入口</h2></header>
+<div class="am-panel-body"><div class="am-md"><p>路径均相对于 <code>E:/project/deepseek_h/dsh-hallmark-app</code>。</p>
+<div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>想核对的问题</th>
+<th>文件</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>谁让 Agent 优先复制起点</td>
+<td><code>skills/hallmark-component-design/SKILL.md</code></td>
+</tr>
+<tr>
+<td>Host 给 Agent 什么指引</td>
+<td><code>packages/dsh-plugin/server/design-guidance.ts</code></td>
+</tr>
+<tr>
+<td>商品模板究竟是什么</td>
+<td><code>component-workspace/collected-products/src/Component.tsx</code></td>
+</tr>
+<tr>
+<td>打开工具有没有编译</td>
+<td><code>packages/core/src/index.ts</code>、<code>packages/presentation/src/index.ts</code></td>
+</tr>
+<tr>
+<td>源码与 dist 如何归档</td>
+<td><code>packages/source-components/src/index.ts</code></td>
+</tr>
+<tr>
+<td>iframe 怎样交换数据</td>
+<td><code>packages/dsh-plugin/client/source-frame.tsx</code>、<code>source-bridge.ts</code></td>
+</tr>
+<tr>
+<td>怎样变成原生附件</td>
+<td><code>packages/dsh-plugin/client/selection.ts</code>、<code>selection-native.ts</code></td>
+</tr>
+<tr>
+<td>交互步骤怎么执行</td>
+<td><code>scripts/source-capture.mjs</code></td>
+</tr>
+<tr>
+<td>勾选循环怎样测试</td>
+<td><code>test/source-preview/selection-interaction.test.ts</code></td>
+</tr>
+</tbody></table></div>
+<p><a href="#panel-B">回到两种源码起点</a> · <a href="#panel-C">重看 Agent 制作过程</a> · <a href="#panel-E">重看附件时序</a> · <a href="#panel-G">查看验证边界</a></p>
+<p>这次只解释现有实现，没有改变 Agent 技能、接口或你的组件。</p>
+</div></div>
+</section>
+</div>
+</div>
+</main>
+<footer class="am-colophon">Generated by Answer me with HTML 0.4.8 · 2026-10-06 18:55</footer>
+<textarea id="am-source" hidden readonly aria-hidden="true">---
+template: doc
+theme: shadcn
+mode: light
+title: Agent 如何制作、运行和修改组件
+subtitle: 源码、模板、编译、DSH、附件，各自做什么
+lang: zh
+source: 本地 0.3.0 源码核对 · 2026-10-06
+---
+
+**是源码编译。这里的“模板”是一份已有源码工程。** Agent 可以复制它再修改，也可以新建工程。两条路最终都运行编译后的页面。
+
+点击左侧目录切换话题。先看 [B：两种起点](#panel-B)，再看 [C：制作过程](#panel-C) 和 [E：勾选怎样交给 Agent](#panel-E)。本页是交互说明，不连接店铺或发送聊天。
+
+## A 先把五个名称分清
+
+| 名称 | 在这个项目里是什么 | 谁使用它 |
+|---|---|---|
+| UI 组件库 | shadcn 的按钮、表格等可编辑源码 | Agent 写页面时复用 |
+| 源码模板 | 一整个可复制的 React 工程 | Agent 或用户作为起点 |
+| 编译产物 dist | 工程生成的 HTML、JS、CSS、图片等 | 浏览器负责执行 |
+| 会话组件 | 当前聊天登记的一份构建及数据绑定 | DSH 右侧栏展示 |
+| 已保存组件库 | 用户正式保存的组件和版本 | 后续打开、编辑和复用 |
+
+```callout info 本次“采集商品”究竟从哪来
+这是我随 0.3.0 提供的商品源码工程。安装时将它登记成内置源码模板，再从模板打开为当前会话组件。
+
+它不是 DSH Agent 在那次聊天里从零写出的页面。之前我用“Agent 编译的组件”概括它，省略了这层来源。
+```
+
+## B 两种起点，最后都是普通源码
+
+```flow
+需求 -&gt; {从哪里开始?}
+{从哪里开始?} -&gt; 新建工程: 从零编写
+{从哪里开始?} -&gt; 复制源码模板: 复用已有设计
+新建工程 -&gt; 可编辑工程
+复制源码模板 -&gt; 可编辑工程
+可编辑工程 -&gt; 修改TSX和CSS
+修改TSX和CSS -&gt; 编译dist
+```
+
+| 起点 | Agent 实际做什么 | 能否改变设计 |
+|---|---|---|
+| 从零写 | 新建工程，编写页面，接入需要的 SDK 能力 | 可以自由设计 |
+| 复制起点 | 复制商品工程，改源码、样式和依赖 | 可以重做整个布局 |
+| 打开已保存组件 | 恢复到新的工作目录，再编辑源码 | 可以继续修改并保存版本 |
+
+**当前技能确实偏向复用。** 它先建议查看已有组件，再复制工程起点。底层打开接口并不要求使用这个模板，也没有固定页面布局。
+
+模板已有可用 dist 时可以直接打开。Agent 修改源码后，需要重新编译才能显示修改。
+
+## C Agent 如何把需求变成页面
+
+```sequence num
+participants: 用户, Agent, 文件与命令工具, 预览工具, Hallmark插件
+用户 -&gt; Agent: 做一个可勾选的商品清单
+Agent -&gt; Agent: 读取设计技能和视觉规范
+Agent -&gt; Hallmark插件: 查询商品，取得数据绑定
+Agent -&gt; 文件与命令工具: 新建或复制工程，编辑源码
+Agent -&gt; 文件与命令工具: 执行 npm run build
+文件与命令工具 --&gt; Agent: dist 文件或编译错误
+Agent -&gt; 预览工具: 加载 dist，截图并执行交互步骤
+预览工具 --&gt; Agent: 图片、错误与交互反馈
+Agent -&gt; Agent: 读图并判断是否需要修改
+Agent -&gt; Hallmark插件: open_source_component 登记构建
+Hallmark插件 --&gt; 用户: 在本会话组件里打开页面
+```
+
+**Agent 写代码并调用命令；TypeScript 和 Vite 执行编译。** `hallmark_open_source_component` 只登记已有构建，不负责写代码或编译。
+
+源码可使用 React 状态、循环、事件、CSS 和普通依赖。当前页面使用 shadcn 基础源码与 TanStack Table。它的布局不是由旧 ViewSpec 或 json-render 生成。
+
+预览可以使用已有查询数据文件。登记到 DSH 后，也可以用会话 ID 和 viewId 读取绑定数据做预览。
+
+## D 页面运行时，Agent 不参与每次点击
+
+```flow LR
+编译dist -&gt; 本机构建存档: 登记并产生buildId
+本机构建存档 -&gt; DSH插件Host: 提供资源
+DSH插件Host -&gt; iframe页面: 加载同一份dist
+iframe页面 -&gt; React状态: 勾选、筛选、翻页
+React状态 -&gt; iframe页面: 更新显示
+```
+
+| 层 | 负责什么 | 主要代码 |
+|---|---|---|
+| 源码页面 | 布局、筛选、勾选、统计与交互 | `Component.tsx`、CSS |
+| 薄 SDK | 通过 postMessage 与外层通信 | `component-runtime/src/client.ts` |
+| 外层 SourceFrame | 提供数据、上下文、刷新与附件桥接 | `client/source-frame.tsx` |
+| DSH 插件 Host | 注册资源地址，转发本机服务请求 | `server/source-assets.ts` |
+| 本机服务 | 数据绑定、构建存档、会话归属和保存 | `packages/service`、`presentation` |
+
+`getData()` 从外层取得当前数据包。外层先从本机服务读取快照；它不为每次勾选调用 Agent 或店铺接口。
+
+`refresh()` 请求外层刷新数据。`getContext()` 提供主题、会话及附件可用状态。`attachSelection()` 把当前选择交给附件桥接。
+
+## E 勾选之后，Agent 什么时候知道
+
+```sequence num
+participants: 用户, 源码页面, 插件桥接, 聊天输入框, Agent
+用户 -&gt; 源码页面: 勾选商品
+源码页面 -&gt; 源码页面: 更新 selected 状态和已选数量
+用户 -&gt; 源码页面: 点击附加到聊天
+源码页面 -&gt; 插件桥接: bindingId、keys、revision
+插件桥接 -&gt; 插件桥接: 从当前快照取回稳定商品ID
+插件桥接 -&gt; 聊天输入框: 添加原生 JSON 文件附件
+用户 -&gt; 聊天输入框: 补充要求并点击发送
+聊天输入框 -&gt; Agent: 用户文字和附件
+Agent -&gt; Agent: 读取附件，查询商品并处理要求
+```
+
+```callout ok 两个不同时间点
+勾选时：只有页面状态改变，Agent 尚未收到消息。
+
+发送时：Agent 才收到文字和附件，并读取所选商品 ID。
+```
+
+附件名类似 `Hallmark-已选产品-2项.json`。输入框保留你的原有文字；附加按钮不会自动发送。
+
+下面是协议形状示意。产品 ID 使用示意值，不代表真实商品。
+
+```json
+{
+  &quot;bindingId&quot;: &quot;collected&quot;,
+  &quot;keys&quot;: [&quot;宿主给出的商品选择键&quot;],
+  &quot;revision&quot;: &quot;当前数据版本&quot;
+}
+```
+
+页面传递选择键。外层生成的附件再包含 `products` 中的稳定商品 ID。Agent 按 ID 查详情，再结合你的文字决定下一步。
+
+## F 保存、复用和再次修改
+
+```flow
+已登记的会话草稿 -&gt; {用户要求保存什么?}
+{用户要求保存什么?} -&gt; 保存组件: 固定当前设计与绑定
+{用户要求保存什么?} -&gt; 保存源码模板: 作为后续复用起点
+保存组件 -&gt; 打开工作副本
+保存源码模板 -&gt; 复制新工作副本
+打开工作副本 -&gt; 编辑并重新编译
+复制新工作副本 -&gt; 编辑并重新编译
+编辑并重新编译 -&gt; 登记新构建
+```
+
+登记草稿时，源码和构建已经落盘。正式保存到组件库，是另外一个动作。
+
+保存内容包含源码、资源、依赖锁文件、dist 和数据绑定。已有组件支持打开历史版本，再保存为新版本。
+
+**模板复制后成为独立工作副本。** 更新母模板不会自动改写之前复制出的组件。这次我分别更新了内置模板和你正在使用的会话组件。
+
+保存源码模板也会保留绑定配置。复用于其他店铺时，Agent 要明确更换数据绑定；不会因换了标题而自动换店铺。
+
+## G 为什么编译通过，勾选仍会出错
+
+| 环节 | 能确认什么 | 当前是否自动执行 |
+|---|---|---|
+| 模板的 npm run build | 类型检查、打包成功 | 执行该命令时会运行 |
+| 截图与人工式读图 | 颜色、层级、溢出和布局 | Agent 按技能主动调用并查看 |
+| 指定交互步骤 | 勾选、筛选、附加后的真实状态 | 需要传入交互步骤 |
+| 本次新增回归测试 | 商品模板不再陷入渲染循环 | 运行项目测试时执行 |
+| 打开源码工具 | 构建存在、登记和绑定有效 | 调用工具时执行 |
+
+```callout warn 当前并没有统一的自动质量关卡
+打开源码工具不会先替每个新组件运行全部交互测试。截图工具未传入步骤时，也不会自动推断该点击哪些按钮。
+
+技能已经要求 Agent 查看截图并操作控件；这是工作指引，不是后端强制检查。
+```
+
+本次错误：分页数组每次渲染都改变，触发表格自动重置，再次渲染。
+
+本次修复：缓存分页数组，并声明分页由页面管理。新增测试复现旧错误，验证单选、全选、跨页选择和附件 ID。
+
+复用新版商品模板会带上修复。从零写新组件仍要实际验证。Agent 不会因为这次修复，就自动学会规避所有运行时错误。
+
+## H 对照源码与操作入口
+
+路径均相对于 `E:/project/deepseek_h/dsh-hallmark-app`。
+
+| 想核对的问题 | 文件 |
+|---|---|
+| 谁让 Agent 优先复制起点 | `skills/hallmark-component-design/SKILL.md` |
+| Host 给 Agent 什么指引 | `packages/dsh-plugin/server/design-guidance.ts` |
+| 商品模板究竟是什么 | `component-workspace/collected-products/src/Component.tsx` |
+| 打开工具有没有编译 | `packages/core/src/index.ts`、`packages/presentation/src/index.ts` |
+| 源码与 dist 如何归档 | `packages/source-components/src/index.ts` |
+| iframe 怎样交换数据 | `packages/dsh-plugin/client/source-frame.tsx`、`source-bridge.ts` |
+| 怎样变成原生附件 | `packages/dsh-plugin/client/selection.ts`、`selection-native.ts` |
+| 交互步骤怎么执行 | `scripts/source-capture.mjs` |
+| 勾选循环怎样测试 | `test/source-preview/selection-interaction.test.ts` |
+
+[回到两种源码起点](#panel-B) · [重看 Agent 制作过程](#panel-C) · [重看附件时序](#panel-E) · [查看验证边界](#panel-G)
+
+这次只解释现有实现，没有改变 Agent 技能、接口或你的组件。
+</textarea>
+<script>
+(() => {
+  const root = document.documentElement;
+  const cycle = (list, cur) => list[(list.indexOf(cur) + 1) % list.length];
+  const label = (btn, value) => {
+    const map = JSON.parse(btn.dataset.labels || '{}');
+    btn.textContent = map[value] || value;
+  };
+  const bind = (name, attr, values) => {
+    const btn = document.querySelector(`[data-am="${name}"]`);
+    if (!btn) return;
+    label(btn, root.getAttribute(attr));
+    btn.addEventListener('click', () => {
+      const next = cycle(values, root.getAttribute(attr));
+      root.setAttribute(attr, next);
+      label(btn, next);
+    });
+  };
+  bind('theme', 'data-theme', ['blueprint', 'shadcn']);
+  bind('mode', 'data-mode', ['auto', 'light', 'dark']);
+
+  const copyBtn = document.querySelector('[data-am="copy"]');
+  copyBtn?.addEventListener('click', async () => {
+    const nodes = document.querySelectorAll('#am-source');
+    const text = nodes[nodes.length - 1]?.value ?? '';
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = Object.assign(document.createElement('textarea'), { value: text });
+      document.body.append(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    const original = copyBtn.textContent;
+    copyBtn.textContent = copyBtn.dataset.done;
+    setTimeout(() => { copyBtn.textContent = original; }, 1400);
+  });
+})();
+</script>
+</body>
+</html>

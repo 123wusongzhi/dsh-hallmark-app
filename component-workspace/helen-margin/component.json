@@ -1,0 +1,13 @@
+{
+  "id": "helen-store-margin",
+  "name": "helen 店铺 · 在售利润率",
+  "title": "helen 在售商品利润率",
+  "entry": "index.html",
+  "description": "helen 店铺在售商品的售价、采购价与参考利润率清单；宽页表格、窄栏图文列表，可勾选附加到聊天。",
+  "bindings": [],
+  "designSources": [
+    {"name": "shadcn/ui Button · adapted for React 18", "url": "https://github.com/shadcn-ui/ui/blob/main/apps/v4/registry/new-york-v4/ui/button.tsx", "license": "MIT", "files": ["src/components/ui/button.tsx"]},
+    {"name": "shadcn/ui Table · adapted for React 18", "url": "https://github.com/shadcn-ui/ui/blob/main/apps/v4/registry/new-york-v4/ui/table.tsx", "license": "MIT", "files": ["src/components/ui/table.tsx"]},
+    {"name": "Hallmark 视觉规范", "file": "DESIGN.md"}
+  ]
+}
