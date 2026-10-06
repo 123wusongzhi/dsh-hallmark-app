@@ -1,0 +1,31 @@
+node_modules/
+data/
+*.db
+*.db-wal
+*.db-shm
+*.log
+coverage/
+packages/dsh-plugin/dist/
+packages/dsh-plugin/lib/
+packages/dsh-plugin/client/client.js
+test/browser/artifacts/
+test/serialization/
+artifacts/
+
+# Local credentials, caches and generated output
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.tgz
+.pnpm-store/
+.preview/
+dist/
+*.tsbuildinfo
+
+# Browser profiles, screenshots and downloaded host inspection material
+test/browser/*-artifacts/
+test/spike/evidence/
+test/spike/*-evidence/
+test/spike/sdk-*/

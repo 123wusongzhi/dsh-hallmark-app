@@ -1,0 +1,8 @@
+{
+  "name": "@hallmark/component-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {".": "./src/client.ts", "./react": "./src/react.tsx"},
+  "peerDependencies": {"react": ">=18"}
+}

@@ -1,0 +1,33 @@
+{
+  "name": "hallmark-app-service",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "service": "node packages/service/src/main.ts",
+    "test": "node --test test/**/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build:plugin": "node scripts/build-plugin.mjs",
+    "backup": "node scripts/backup.mjs"
+  },
+  "devDependencies": {
+    "@deepseek-ai/schemastery": "3.18.4",
+    "@types/node": "^24.0.0",
+    "@types/react": "18.3.1",
+    "@types/react-dom": "18.3.0",
+    "esbuild": "^0.25.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@json-render/core": "0.21.0",
+    "@tanstack/react-table": "8.21.3",
+    "react-is": "18.3.1",
+    "recharts": "3.10.1",
+    "zod": "4.3.6"
+  }
+}

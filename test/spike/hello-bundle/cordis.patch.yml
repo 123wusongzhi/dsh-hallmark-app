@@ -1,0 +1,4 @@
+# M0-only read-only hello; installs via official manager, never modifies core.
+- insert:
+    - id: hallmark-hello-spike
+      name: dsh-plugin-hallmark-hello-spike

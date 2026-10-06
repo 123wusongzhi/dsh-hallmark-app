@@ -1,0 +1,7 @@
+# Additive profile layer. Install/uninstall through the official manager.
+- insert:
+    - id: hallmark-app
+      name: dsh-plugin-hallmark
+      config:
+        serviceUrl: http://127.0.0.1:4180
+        autoStart: false

@@ -1,0 +1,25 @@
+{
+  "name": "dsh-plugin-hallmark-hello-spike",
+  "version": "0.0.1",
+  "description": "Read-only M0 hello spike; no Hallmark business writes or production M11 implementation",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./client/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib", "client", "cordis.patch.yml"],
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.4",
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+  },
+  "dsh": {
+    "bundle": {"patch": "./cordis.patch.yml"},
+    "client": {
+      "platform": "web",
+      "inject": ["@deepseek-ai/dsh-client-ui-renderer", "@deepseek-ai/dsh-client-ui-tool"],
+      "external": ["react"]
+    }
+  }
+}

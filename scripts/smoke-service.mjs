@@ -1,0 +1,10 @@
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+const dir=process.env.HALLMARK_APP_DATA_DIR??join(process.env.LOCALAPPDATA,'dsh-hallmark-app');
+const token=readFileSync(join(dir,'service-key'),'utf8').trim();
+const base=`http://127.0.0.1:${process.env.HALLMARK_APP_PORT??4180}`;
+const headers={authorization:`Bearer ${token}`,'content-type':'application/json'};
+const health=await fetch(base+'/health',{headers}).then(r=>r.json());
+const tools=await fetch(base+'/tools',{headers}).then(r=>r.json());
+if(health.status!=='ok'||!Array.isArray(tools.tools))throw new Error('Service smoke failed');
+console.log(JSON.stringify({status:health.status,service:health.service,hallmarkStatus:health.hallmark.status,toolCount:tools.tools.length,credentialsExposed:false}));

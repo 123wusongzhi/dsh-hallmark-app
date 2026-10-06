@@ -1,0 +1,41 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { AppStore } from '../../packages/store/src/index.ts';
+import { PresentationManager } from '../../packages/presentation/src/index.ts';
+import type { ViewSpec } from '../../packages/presentation/src/types.ts';
+const spec:ViewSpec={id:'original',title:'我的采集',layout:{type:'column',children:['note']},widgets:[{id:'note',type:'text',text:'原版'}],bindings:[]};
+test('reopen saved designs as separate drafts; update with revision; stale edit cannot overwrite',t=>{
+  const store=new AppStore(':memory:');t.after(()=>store.close());const p=new PresentationManager(store);
+  p.renderView(spec);const first=p.saveComponent(spec.id,'保存');
+  const a=p.openComponent(first.component.id),b=p.openComponent(first.component.id);
+  assert.notEqual(a.spec.id,b.spec.id);assert.notEqual(a.spec.id,spec.id);
+  p.updateView(a.spec.id,[{op:'replace',path:'/widgets/0/text',value:'新版'}]);
+  assert.equal(p.listSaved().components[0].spec.widgets[0].text,'原版');
+  const updated=p.saveComponent(a.spec.id,'更新原组件','新标题',{mode:'update',componentId:a.sourceComponentId,expectedRevision:a.baseRevision});
+  assert.equal(updated.component.id,spec.id);assert.equal(updated.component.revision,2);
+  assert.equal(updated.component.spec.widgets[0].text,'新版');assert.equal(p.listSaved().entries.length,1);
+  assert.throws(()=>p.saveComponent(b.spec.id,'更新',undefined,{mode:'update'}),(e:any)=>e.code==='INVALID_SPEC');
+  assert.throws(()=>p.saveComponent(b.spec.id,'更新',undefined,{mode:'update',componentId:b.sourceComponentId,expectedRevision:b.baseRevision}),(e:any)=>e.code==='COMPONENT_CONFLICT');
+  const copy=p.saveComponent(b.spec.id,'另存为','副本',{mode:'save_as'});
+  assert.notEqual(copy.component.id,spec.id);assert.equal(copy.component.revision,1);
+  assert.equal(p.listSaved().components.length,2);
+});
+test('old saved components start at revision one; pinning changes only the entry',t=>{
+  const store=new AppStore(':memory:');t.after(()=>store.close());const p=new PresentationManager(store);
+  store.put('components',spec.id,{id:spec.id,title:spec.title,spec,userRequest:'历史保存',savedAt:'2026-01-01'});
+  assert.equal(p.openComponent(spec.id).baseRevision,1);
+  p.renderView({...spec,id:'new'});const saved=p.saveComponent('new','保存');
+  p.manageSaved('entry',saved.entry.id,{action:'pin',pinned:true});
+  assert.equal(p.listSaved().entries[0].pinned,true);
+  assert.equal(p.listSaved().components.find(c=>c.id==='new')!.revision,1);
+  assert.throws(()=>p.manageSaved('component','new',{action:'pin',pinned:true}));
+});
+test('saved design remains editable after its template is deleted',t=>{
+  const store=new AppStore(':memory:');t.after(()=>store.close());const p=new PresentationManager(store);
+  p.renderView({...spec,theme:{primary:'#123456'}});
+  const template=p.saveTemplate(spec.id,'我的模板','保存模板');
+  const view=p.renderFromTemplate(template.id,'从模板建立',[]);p.saveComponent(view.id,'保存组件');
+  p.manageSaved('template',template.id,{action:'delete'});
+  const draft=p.openComponent(view.id);assert.equal(draft.spec.theme?.primary,'#123456');
+  assert.doesNotThrow(()=>p.renderView(draft.spec));
+});

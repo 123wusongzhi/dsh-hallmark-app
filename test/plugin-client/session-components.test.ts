@@ -1,0 +1,40 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { HallmarkBridge } from '../../packages/dsh-plugin/client/api.ts';
+import { createClientPlugin } from '../../packages/dsh-plugin/client/plugin.ts';
+import { COMPONENTS_SIDEBAR_ID, COMPONENTS_SIDEBAR_KIND } from '../../packages/dsh-plugin/client/sidebar-contract.ts';
+import { createWorkspaceState, workspaceReducer } from '../../packages/dsh-plugin/client/workspace-tabs.ts';
+import { ownedWorkspaceIntent } from '../../packages/dsh-plugin/client/workspace-intent.ts';
+
+test('session management carries exact ownership, publishes invalidation only after matching success, and exposes failure for retry',async()=>{
+ const calls:any[]=[];const events:any[]=[];const originalWindow=Object.getOwnPropertyDescriptor(globalThis,'window');const target=new EventTarget();Object.defineProperty(globalThis,'window',{configurable:true,value:target});target.addEventListener('hallmark-view-updated',event=>events.push((event as CustomEvent).detail));
+ let mode:'ok'|'failed'|'foreign'='ok';const fetcher=(async(_input:unknown,init?:RequestInit)=>{const body=JSON.parse(String(init?.body));calls.push(body);return mode==='failed'?Response.json({error:{code:'SYNTHETIC_FAILURE',message:'保留列表以重试'}},{status:503}):Response.json({sessionId:mode==='foreign'?'b':'a',viewId:body.viewId,action:body.operation,...(body.operation==='rename'?{title:body.title}:{})});}) as typeof fetch;
+ try{
+  await assert.rejects(new HallmarkBridge('',fetcher).manageSessionView('owned','remove'),{code:'SESSION_REQUIRED'});const bridge=new HallmarkBridge('a',fetcher);
+  await assert.rejects(bridge.manageSessionView('owned','rename',' '),{code:'INVALID_INPUT'});await assert.rejects(bridge.manageSessionView('owned','remove','global deletion'),{code:'INVALID_INPUT'});assert.equal(calls.length,0);
+  assert.equal((await bridge.manageSessionView('owned','rename','  New name  ')).title,'New name');assert.deepEqual(calls[0],{sessionId:'a',action:'manageSessionView',viewId:'owned',operation:'rename',title:'New name'});
+  mode='failed';await assert.rejects(bridge.manageSessionView('owned','remove'),{code:'SYNTHETIC_FAILURE',message:'保留列表以重试'});assert.equal(events.length,1);
+  mode='foreign';await assert.rejects(bridge.manageSessionView('owned','remove'),{code:'INVALID_SESSION_VIEW_CHANGE'});assert.equal(events.length,1);
+  mode='ok';await bridge.manageSessionView('owned','remove');assert.deepEqual(events,[{sessionId:'a',viewId:'owned',action:'rename'},{sessionId:'a',viewId:'owned',action:'remove'}]);assert.deepEqual(calls.at(-1),{sessionId:'a',action:'manageSessionView',viewId:'owned',operation:'remove'});
+ }finally{if(originalWindow)Object.defineProperty(globalThis,'window',originalWindow);else Reflect.deleteProperty(globalThis,'window');}
+});
+test('session-owned UI reads require an explicit Session and carry it on every narrow GET',async()=>{
+  const calls:URL[]=[];const fetcher=(async(input:unknown)=>{const url=new URL(String(input),'http://127.0.0.1');calls.push(url);const resource=url.searchParams.get('resource');return new Response(JSON.stringify(resource==='sessionViews'?{sessionId:'a',views:[{viewId:'owned',title:'真实组件',createdAt:'2026-01-01T00:00:00Z',updatedAt:'2026-01-01T00:00:00Z',state:'ready',ignored:'not-returned'}]}:resource==='sessionView'?{id:'owned'}:{status:'ok',data:{viewId:'owned',bindings:[],missing:[]}}));}) as typeof fetch;
+  const bridge=new HallmarkBridge('a',fetcher);const list=await bridge.sessionViews();assert.equal(Object.keys(list.views[0]).length,5);await bridge.sessionView('owned');await bridge.sessionViewData('owned');assert.deepEqual(calls.map(url=>url.searchParams.get('resource')),['sessionViews','sessionView','sessionViewData']);assert.ok(calls.every(url=>url.searchParams.get('sessionId')==='a'));await assert.rejects(()=>new HallmarkBridge('',fetcher).sessionViews(),/会话/);assert.equal(calls.length,3);
+});
+test('foreign metadata response is rejected, not mixed into current sidebar',async()=>{
+  const fetcher=(async()=>new Response(JSON.stringify({sessionId:'b',views:[]}))) as typeof fetch;await assert.rejects(()=>new HallmarkBridge('a',fetcher).sessionViews(),/不匹配/);
+});
+test('native two-stage registration keys body/title by definition ID and cleans up every handle',()=>{
+  const registrations:any[]=[];const definitions:any[]=[];const handles:(()=>void)[]=[];let disposed=0;const component=()=>null;const layout={selectPanel:(_id:string|null)=>{}};const workspace={openSession:(_id:string)=>{}};const sidebar={mounted:{getSnapshot:()=> 'a'},openTab:()=>{}};const registry={register:(definition:unknown)=>{definitions.push(definition);return()=>{disposed++;};}};const faces:Record<string,unknown>={layout,uiWorkspace:workspace,sidebarRight:sidebar,sidebarRightTabs:registry};
+  const plugin=createClientPlugin({sidebarIcon:component,main:()=>component,toolview:component,sidebar:{body:(received,right)=>{assert.equal(received,layout);assert.equal(right,sidebar);return component;},title:component,input:right=>{assert.equal(right,sidebar);return component;}}});
+  plugin.apply({get:name=>faces[name],slots:{register:(options)=>{registrations.push(options);return()=>{disposed++;};},inject:(_name,effect)=>{const result=effect();handles.push(...(typeof result==='function'?[result]:result));}}});
+  assert.equal(definitions[0].id,COMPONENTS_SIDEBAR_ID);assert.equal(definitions[0].kind,COMPONENTS_SIDEBAR_KIND);assert.equal(definitions[0].guide[0].title(),'本会话组件');assert.deepEqual(registrations.filter(entry=>entry.name.startsWith('sidebar.right.pane')).map(entry=>entry.key),[COMPONENTS_SIDEBAR_ID,COMPONENTS_SIDEBAR_ID]);assert.ok(registrations.some(entry=>entry.name==='conversation.input.left'));assert.ok(registrations.some(entry=>entry.key==='hallmark_open_component'));assert.ok(!registrations.some(entry=>entry.name==='rightbar.session'));assert.ok(!registrations.some(entry=>entry.name==='shell.overlay'));for(const dispose of handles)dispose();assert.equal(disposed,10);
+});
+test('owned workspace intent is metadata-only, one-shot and cannot transfer A view into B',()=>{
+  let state=createWorkspaceState();const pinned=state.activeId;const wrong=workspaceReducer(state,{type:'open-view',appId:'hallmark',viewId:'v',title:'A组件',owned:true,sessionId:'a',currentSessionId:'b'});assert.equal(wrong,state);state=workspaceReducer(state,{type:'open-view',appId:'hallmark',viewId:'v',title:'A组件',owned:true,sessionId:'a',currentSessionId:'a'});assert.equal(state.tabs[1].sessionId,'a');assert.equal(state.tabs[1].owned,true);state=workspaceReducer(state,{type:'session-change',sessionId:'b'});assert.equal(state.tabs.length,1);assert.equal(state.activeId,pinned);let notifications=0;const dispose=ownedWorkspaceIntent.subscribe(()=>notifications++);ownedWorkspaceIntent.open({sessionId:'a',viewId:'v',title:'A组件'});assert.equal(notifications,1);assert.deepEqual(ownedWorkspaceIntent.take(),{sessionId:'a',viewId:'v',title:'A组件'});assert.equal(ownedWorkspaceIntent.take(),undefined);dispose();
+});
+test('sidebar and native ToolView always use scoped owned reads with no global fallback or copied chat',()=>{
+  const sidebar=readFileSync(new URL('../../packages/dsh-plugin/client/sidebar.tsx',import.meta.url),'utf8');const snapshot=readFileSync(new URL('../../packages/dsh-plugin/client/snapshot.tsx',import.meta.url),'utf8');const entry=readFileSync(new URL('../../packages/dsh-plugin/client/index.tsx',import.meta.url),'utf8');assert.ok(sidebar.includes('bridge.sessionViews'));assert.ok(sidebar.includes('info.tab.actions.openTab'));assert.ok(sidebar.includes('viewId={selectedId} owned'));assert.ok(sidebar.includes('loadedOwner===sessionId'));assert.ok(!sidebar.includes('bridge.saved('));assert.ok(snapshot.includes('bridge.sessionView('));assert.ok(snapshot.includes('bridge.sessionViewData('));assert.ok(snapshot.includes('loadedIdentity===identity'));assert.ok(entry.includes('viewId={viewId} owned onOpenSidebar'));assert.ok(!entry.includes('openTabIn('));assert.ok(!sidebar.includes('<dialog'));assert.ok(!sidebar.includes('<textarea'));
+});

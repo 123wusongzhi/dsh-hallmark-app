@@ -1,0 +1,62 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {AppStore} from '../../packages/store/index.ts';
+import {PresentationManager} from '../../packages/presentation/src/index.ts';
+import {AppCore} from '../../packages/core/src/index.ts';
+import {createAppServer} from '../../packages/service/src/server.ts';
+import {HallmarkPlugin,UI_PATH} from '../../packages/dsh-plugin/server/index.ts';
+import type {PluginContext,NativeTool} from '../../packages/dsh-plugin/server/types.ts';
+
+test('actual Host + HTTP service source flow preserves exact dist, refreshes draft query, and reopens versions after full restart',async()=>{
+ const directory=mkdtempSync(join(tmpdir(),'hallmark-source-flow-')),project=join(directory,'project'),db=join(directory,'app.db'),sources=join(directory,'sources'),token='b'.repeat(64);
+ mkdirSync(join(project,'dist','assets'),{recursive:true});mkdirSync(join(project,'src'));
+ writeFileSync(join(directory,'service-key'),token);writeFileSync(join(project,'package.json'),JSON.stringify({name:'source-fixture'}));writeFileSync(join(project,'package-lock.json'),'{}');writeFileSync(join(project,'component.json'),JSON.stringify({title:'彩色采集商品'}));
+ const initialHtml='<html><body><script type="module" src="./assets/app.js"></script></body></html>',image=Buffer.from([0,255,128,0,5]);
+ writeFileSync(join(project,'dist','index.html'),initialHtml);writeFileSync(join(project,'dist','assets','app.js'),'document.body.dataset.version="one";');writeFileSync(join(project,'dist','assets','图.png'),image);writeFileSync(join(project,'src','Component.tsx'),'export const title="one";');
+ let searches=0;
+ const blocked=async()=>{throw new Error('Unexpected business write or unrelated read');};
+ const adapter:any={getStores:blocked,getStoreProducts:blocked,syncStoreProducts:blocked,getTargetMargin:blocked,getCollectedItem:blocked,platformCall:blocked,platformRead:blocked,searchCollectedItems:async()=>{searches++;return {status:'ok',raw:[{id:'fixture-one',name:'实际只读结果',profit:{actualMargin:.17}}],provenance:{source:'collected_item',endpoint:'/api/items'}};}};
+ const broker:any={getStoreTask:blocked,getListingTask:blocked,requestId:()=>''};
+ const agent={id:'A'},tools=new Map<string,NativeTool>(),routes=new Map<string,any>();
+ let store:AppStore|undefined,presentation:PresentationManager|undefined,core:AppCore|undefined,server:ReturnType<typeof createAppServer>|undefined,plugin:HallmarkPlugin|undefined;
+ const context:PluginContext={agents:{get:id=>id==='A'?agent:undefined,list:()=>[agent]},sessions:{get:id=>id==='A'?agent:undefined},tools:{register:tool=>{tools.set(tool.name,tool);return()=>{tools.delete(tool.name);};}},commands:{register:()=>()=>{}},systemPrompt:{context:()=>()=>{}},connection:{fetch:{register:route=>{assert.equal(routes.has(route.path),false);routes.set(route.path,route);return async()=>{routes.delete(route.path);};}}},on:()=>()=>{}} as PluginContext;
+ const start=async()=>{
+  store=new AppStore(db);if(!store.get('session_apps','A'))store.put('session_apps','A',{sessionId:'A',appId:'hallmark',active:true});presentation=new PresentationManager(store,{sourceDirectory:sources});core=new AppCore({store,presentation,client:adapter,broker});
+  server=createAppServer({store,presentation,core,token,health:async()=>({status:'ok'})});await new Promise<void>(resolve=>server!.listen(0,'127.0.0.1',resolve));
+  plugin=new HallmarkPlugin(context,{dataDirectory:directory,serviceUrl:`http://127.0.0.1:${(server.address() as any).port}`});await plugin.start();
+ };
+ const stop=async()=>{await plugin?.dispose();plugin=undefined;if(server){server.closeAllConnections();await new Promise<void>(resolve=>server!.close(()=>resolve()));server=undefined;}store?.close();store=undefined;};
+ const invoke=async(name:string,args:any)=>{const tool=tools.get(name)!;assert.ok(tool,`tool ${name} registered`);return tool.execute(args,{name,arguments:args,agent,signal:new AbortController().signal});};
+ const asset=async(buildId:string,file:string)=>{const path=`/api/hallmark-source/${buildId}/${file.split('/').map(encodeURIComponent).join('/')}`,route=routes.get(path);assert.ok(route,`exact asset ${file} registered`);return route.fetch(new Request(`http://dsh.invalid${path}`)) as Promise<Response>;};
+ const ui=async(body:unknown)=>plugin!.ui(new Request(`http://dsh.invalid${UI_PATH}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}));
+ try {
+  await start();
+  const opened=await invoke('hallmark_open_source_component',{directory:project,bindings:[{id:'collected',query:{tool:'hallmark_search_collected_items',params:{limit:50}},fieldMap:{}}]});assert.equal(opened.status,'ok');const first=(opened.data as any).spec,firstBuild=first.source.buildId;
+  assert.equal((await asset(firstBuild,'index.html')).headers.get('content-type'),'text/html; charset=utf-8');assert.equal(await (await asset(firstBuild,'index.html')).text(),initialHtml);assert.deepEqual(Buffer.from(await (await asset(firstBuild,'assets/图.png')).arrayBuffer()),image);
+  const datasetKey=first.bindings[0].datasetKey;assert.match(datasetKey,/^query:/);assert.equal(store!.list('components').length,0);assert.equal(store!.list('queries').length,0);assert.deepEqual(core!.getRefreshCandidates(),[]);
+  assert.equal(searches,1);assert.equal((opened.data as any).initialData[0].status,'ok');assert.equal(core!.getSessionViewData('A',first.id)?.status,'ok');
+  const refreshed=await invoke('hallmark_refresh_data',{datasetKey});assert.equal(refreshed.status,'ok');assert.equal(searches,2);assert.equal((core!.getSessionViewData('A',first.id)?.data as any).bindings[0].payload.items[0].profit.actualMargin,.17);assert.equal(store!.list('components').length,0);
+  const saved1=await invoke('hallmark_save_component',{viewId:first.id,userRequest:'保存此源码组件',mode:'save_as'});assert.equal(saved1.status,'ok');const component=(saved1.data as any).component;
+  const draftResult=await invoke('hallmark_open_component',{componentId:component.id});assert.equal(draftResult.status,'ok');const draft=(draftResult.data as any),secondProject=draft.spec.source.directory;
+  writeFileSync(join(secondProject,'src','Component.tsx'),'export const title="two";');writeFileSync(join(secondProject,'dist','assets','app.js'),'document.body.dataset.version="two";');
+  const updated=await invoke('hallmark_open_source_component',{directory:secondProject,viewId:draft.viewId});assert.equal(updated.status,'ok');const second=(updated.data as any).spec;assert.notEqual(second.source.buildId,firstBuild);assert.deepEqual(second.bindings,first.bindings);
+  const saved2=await invoke('hallmark_save_component',{viewId:second.id,userRequest:'更新原组件',mode:'update',componentId:component.id,expectedRevision:draft.baseRevision});assert.equal(saved2.status,'ok');assert.equal((saved2.data as any).component.revision,2);
+  const templateResult=await invoke('hallmark_save_template',{viewId:second.id,name:'源码模板',userRequest:'保存模板'});assert.equal(templateResult.status,'ok');const templateId=(templateResult.data as any).id;
+  await stop();assert.equal(routes.size,0);await start();
+  assert.ok(core!.getSessionView('A',first.id));assert.ok(core!.getSessionView('A',second.id));
+  const read=await plugin!.ui(new Request(`http://dsh.invalid${UI_PATH}?resource=sessionView&sessionId=A&viewId=${first.id}`));assert.equal(read.status,200);assert.equal((await read.json()).source.buildId,firstBuild);assert.equal(await (await asset(firstBuild,'assets/app.js')).text(),'document.body.dataset.version="one";');
+  const historical=await invoke('hallmark_open_component',{componentId:component.id,revision:1});assert.equal(historical.status,'ok');assert.equal((historical.data as any).baseRevision,2);assert.equal((historical.data as any).spec.source.buildId,firstBuild);assert.equal(readFileSync(join((historical.data as any).spec.source.directory,'src','Component.tsx'),'utf8'),'export const title="one";');
+  const conflict=await invoke('hallmark_save_component',{viewId:(historical.data as any).viewId,userRequest:'旧基础版本更新',mode:'update',componentId:component.id,expectedRevision:1});assert.equal(conflict.error?.code,'COMPONENT_CONFLICT');
+  const restored=await invoke('hallmark_save_component',{viewId:(historical.data as any).viewId,userRequest:'恢复版本一',mode:'update',componentId:component.id,expectedRevision:2});assert.equal(restored.status,'ok');assert.equal((restored.data as any).component.revision,3);assert.equal((restored.data as any).component.revisions.length,3);
+  const uiDraft=await ui({action:'openComponent',componentId:component.id,sessionId:'A'});assert.equal(uiDraft.status,200);const owned=await uiDraft.json();assert.ok(core!.getSessionView('A',owned.spec.id));
+  assert.equal((await invoke('hallmark_open_source_component',{directory:owned.spec.source.directory,viewId:owned.spec.id})).status,'ok');
+  const templateDraft=await ui({action:'openTemplate',templateId,sessionId:'A',bindings:[{id:'collected',query:{tool:'hallmark_search_collected_items',params:{limit:1}},fieldMap:{}}]});assert.equal(templateDraft.status,200);const templateOwned=await templateDraft.json();assert.ok(core!.getSessionView('A',templateOwned.spec.id));assert.equal(templateOwned.initialData[0].status,'ok');assert.equal(core!.getSessionViewData('A',templateOwned.spec.id)?.status,'ok');assert.equal(searches,3);
+  assert.equal((await invoke('hallmark_open_source_component',{directory:templateOwned.spec.source.directory,viewId:templateOwned.spec.id})).status,'ok');assert.equal(searches,3);
+  const info=await invoke('hallmark_app_info',{}),summary=(info.data as any).sessionComponents.find((item:any)=>item.viewId===templateOwned.spec.id);assert.deepEqual(summary.source,{directory:templateOwned.spec.source.directory,buildId:templateOwned.spec.source.buildId});assert.equal(summary.kind,'source');
+  core!.manageSessionView('A',templateOwned.spec.id,{action:'remove'});assert.equal(((await invoke('hallmark_app_info',{})).data as any).sessionComponents.some((item:any)=>item.viewId===templateOwned.spec.id),false);
+  assert.equal((await ui({action:'openComponent',componentId:component.id,sessionId:'foreign-unknown'})).status,400);
+ }finally{await stop();assert.match(directory,/hallmark-source-flow-[^\\/]+$/);rmSync(directory,{recursive:true,force:true});}
+});
