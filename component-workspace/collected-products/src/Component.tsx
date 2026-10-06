@@ -33,7 +33,8 @@ export default function Component(){
   },[binding,selection]);
   const sources=useMemo(()=>Array.from(new Set(products.map(item=>item.source))),[products]);
   const filtered=useMemo(()=>products.filter(item=>(source==='all'||item.source===source)&&`${item.title} ${item.source}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).sort((a,b)=>(b.timestamp??-Infinity)-(a.timestamp??-Infinity)),[products,source,search]);
-  const pageCount=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));const currentPage=Math.min(page,pageCount-1);const visible=filtered.slice(currentPage*PAGE_SIZE,(currentPage+1)*PAGE_SIZE);
+  const pageCount=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));const currentPage=Math.min(page,pageCount-1);
+  const visible=useMemo(()=>filtered.slice(currentPage*PAGE_SIZE,(currentPage+1)*PAGE_SIZE),[filtered,currentPage]);
   const canSelect=selection?.eligible===true;
   const selectedVisible=visible.filter(item=>selected.has(item.key)).length;
   useEffect(()=>setPage(0),[search,source]);
@@ -48,7 +49,8 @@ export default function Component(){
     {id:'price',header:'来源报价',cell:({row})=><span className={row.original.price===undefined?'missing-value':'product-price'}>{displayPrice(row.original)}</span>},
     {id:'date',header:()=><span className="sort-label">记录时间 <ArrowDown size={13}/></span>,cell:({row})=><time title={`${row.original.timeLabel} · ${row.original.collectedAt??'未提供'}`} dateTime={row.original.collectedAt}>{displayDate(row.original.collectedAt)}<span className="time-kind">{row.original.collectedAt?row.original.timeLabel:''}</span></time>}
   ];
-  const table=useReactTable({data:visible,columns,getCoreRowModel:getCoreRowModel(),getRowId:row=>row.key});
+  // Pagination belongs to this component; table resets must not enqueue another render.
+  const table=useReactTable({data:visible,columns,getCoreRowModel:getCoreRowModel(),getRowId:row=>row.key,manualPagination:true});
   const empty=!loading&&!error&&products.length===0;const noResults=!empty&&!loading&&!error&&filtered.length===0;
   return <main className="collection-app" data-ready={loading?'loading':'ready'}>
     <header className="collection-header"><div className="collection-heading"><div className="collection-icon"><Layers3 size={23}/></div><div><div className="eyebrow">HALLMARK COLLECTION</div><h1>采集商品<span className="count-chip">{products.length}</span></h1></div></div><Button variant="outline" className="refresh-button" onClick={onRefresh} disabled={loading} aria-label="刷新商品"><RefreshCw size={15} className={loading?'spin':''}/><span>刷新</span></Button></header>

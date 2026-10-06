@@ -29,6 +29,7 @@ Node ≥ 22.18（实际开发/测试使用 DSH bundled Node 24.21.0），TypeScr
 ```powershell
 # 位于本项目根目录，使用可用 Node/pnpm
 pnpm install --ignore-scripts
+npm --prefix component-workspace/collected-products ci --ignore-scripts
 pnpm run typecheck
 pnpm test
 pnpm run build:plugin
