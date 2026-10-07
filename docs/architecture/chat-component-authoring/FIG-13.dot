@@ -1,0 +1,31 @@
+digraph FIG13 {
+  graph [rankdir=TB, fontname="Microsoft YaHei", label="FIG-13 原聊天组件创作闭环 / A.1 目标"];
+  node [shape=box, style="rounded,filled", fillcolor="#eef6ff", fontname="Microsoft YaHei"];
+  edge [fontname="Microsoft YaHei"];
+  A [label="1  原输入框 @应用\n任意已有会话；保留正文与附件\n引用不自动发送；用户原方式发送"];
+  B [label="2  真实会话 / 连接绑定\nHost 核实 sessionId + appId\nRuntime 激活明确 connectionId"];
+  C [label="3  同一个原 DSH Agent\n消费原发送；发现已有能力工具\n使用原文件 / 命令工具"];
+  D [label="4  独立可编辑工作副本\n新建 / 复制模板，或 saved checkout\n旧构建、旧保存版本保持可读"];
+  E [label="5  编辑源码与只读绑定\n普通 React / TSX / CSS / 资源 / 依赖\nappId + connectionId + bindingId"];
+  F [label="6  构建同一份 dist\n源文件 + 锁文件 + dist 内容快照\n构建失败保留旧可用视图"];
+  G [label="7  真实预览与验证反馈\n同份 dist：截图 / 运行错误 / 交互\n报告匹配 buildId；失败继续修改"];
+  H [label="8  登记不可变构建\ncapture / open_source_component\nRuntime 事务更新草稿和引用"];
+  I [label="9  本会话 viewId 展示\n新 frameInstanceId 握手与加载检查\n只改应用 / 右侧组件；尚未正式保存"];
+  J [label="10  原聊天继续提出修改\n保持 sessionId / viewId 与工作目录\n反馈回到同一 Agent，重复构建验证\n无需独立聊天标签"];
+  K [label="11  用户明确保存\nsave_as：新 componentId\nupdate：componentId\n+ expectedRevision\n冲突保留工作副本"];
+  L [label="12  组件库版本资产\n保存 revision；历史版本保留\n另一会话打开 → 新 view / checkout\n刷新只更新数据，不改设计"];
+  A -> B [label="核实引用与绑定"];
+  B -> C [label="用户原发送后消费"];
+  C -> D [label="创建或打开副本"];
+  D -> E [label="源码修改"];
+  E -> F [label="构建"];
+  F -> G [label="实际预览"];
+  G -> E [label="不合格：反馈修改", style=dashed];
+  G -> H [label="验证通过"];
+  H -> I [label="加载当前构建"];
+  I -> J [label="继续反馈"];
+  J -> C [label="下一轮原发送", style=dashed];
+  I -> K [label="明确保存"];
+  K -> L [label="CAS 更新 / 另存"];
+  L -> D [label="打开保存版：新副本", style=dashed];
+}

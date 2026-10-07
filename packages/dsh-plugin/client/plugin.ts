@@ -8,6 +8,8 @@ import { selectionInputBridge } from './selection.ts';
 import { nativeAttachmentRuntime, nativeSessionDisabledReason } from './selection-native.ts';
 import type { NativeAttachmentRuntime, NativeInputActions, NativeInputState } from './selection-native.ts';
 import { chatEntryIntent } from './chat-entry.ts';
+import {configureComponentHandlers} from './component-handlers.ts';
+import type {ComponentHandlerFactory} from './component-handlers.ts';
 export interface ClientLayout {selectPanel:(id:string|null)=>void}
 export interface ClientUIWorkspace {openSession:(sessionId:string)=>void}
 export interface ClientContext {
@@ -44,7 +46,7 @@ function bindNativeInput(Component:ComponentType<any>,sidebar:NativeSidebarRight
   };
 }
 /** Every injection returns cleanup, including stage-one tab registry ownership. */
-export function createClientPlugin(components:{sidebarIcon:ComponentType<any>;main:(layout:ClientLayout|undefined,workspace:ClientUIWorkspace|undefined,sidebar?:NativeSidebarRight)=>ComponentType<any>;toolview:ComponentType<any>;toolviewForSidebar?:(sidebar:NativeSidebarRight|undefined)=>ComponentType<any>;sidebar?:{body:(layout:ClientLayout|undefined,sidebar:NativeSidebarRight|undefined)=>ComponentType<any>;title:ComponentType<any>;input:(sidebar:NativeSidebarRight|undefined)=>ComponentType<any>}}){
+export function createClientPlugin(components:{sidebarIcon:ComponentType<any>;main:(layout:ClientLayout|undefined,workspace:ClientUIWorkspace|undefined,sidebar?:NativeSidebarRight)=>ComponentType<any>;toolview:ComponentType<any>;toolviewForSidebar?:(sidebar:NativeSidebarRight|undefined)=>ComponentType<any>;toolKeys?:readonly string[];toolviewForKey?:(key:string,sidebar:NativeSidebarRight|undefined)=>ComponentType<any>;componentHandlers?:ComponentHandlerFactory;sidebar?:{body:(layout:ClientLayout|undefined,sidebar:NativeSidebarRight|undefined)=>ComponentType<any>;title:ComponentType<any>;input:(sidebar:NativeSidebarRight|undefined)=>ComponentType<any>}}){
   return {name:'dsh-plugin-hallmark-client',inject:['slots','layout','uiWorkspace','conversation',...(components.sidebar?['sidebarRightTabs','sidebarRight']:[])],apply(ctx:ClientContext){
     const layout=ctx.get('layout') as ClientLayout|undefined;const workspace=ctx.get('uiWorkspace') as ClientUIWorkspace|undefined;
     const sidebar=(components.sidebar||components.toolviewForSidebar?ctx.get('sidebarRight'):undefined) as NativeSidebarRight|undefined;
@@ -54,10 +56,8 @@ export function createClientPlugin(components:{sidebarIcon:ComponentType<any>;ma
     ctx.slots.inject('main',()=>ctx.slots.register({name:'main',key:'hallmark-apps'},components.main(layout,workspace,sidebar)));
     const toolview=components.toolviewForSidebar?.(sidebar)??components.toolview;
     ctx.slots.inject('tool.call.toolview',()=>[
-      ctx.slots.register({name:'tool.call.toolview',key:'hallmark_render_view'},toolview),
-      ctx.slots.register({name:'tool.call.toolview',key:'hallmark_update_view'},toolview),
-      ctx.slots.register({name:'tool.call.toolview',key:'hallmark_open_component'},toolview),
-      ctx.slots.register({name:'tool.call.toolview',key:'hallmark_open_source_component'},toolview),
+      ...(components.componentHandlers?[configureComponentHandlers(components.componentHandlers)]:[]),
+      ...(components.toolKeys??['hallmark_render_view','hallmark_update_view','hallmark_open_component','hallmark_open_source_component']).map(key=>ctx.slots.register({name:'tool.call.toolview',key},components.toolviewForKey?.(key,sidebar)??toolview)),
     ]);
     if(components.sidebar&&registry&&typeof registry.register==='function'&&sidebar){
       const contribution=components.sidebar;

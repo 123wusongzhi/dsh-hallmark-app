@@ -2,7 +2,7 @@ export type ResultStatus = 'ok' | 'needs_clarification' | 'pending' | 'partial' 
 export type OperationState = 'pending' | 'running' | 'succeeded' | 'failed' | 'partial' | 'unknown';
 export interface Provenance { source: 'ozon_api' | 'hallmark_snapshot' | 'collected_item' | 'hallmark_compute' | 'app_snapshot'; endpoint?: string; fetchedAt?: string; dataTime?: string; storeId?: string }
 export interface ToolResult<T = unknown> { status: ResultStatus; data?: T; provenance?: Provenance; clarification?: {missing: string[]; candidates?: unknown[]; question: string}; operation?: {operationId: string; state: OperationState}; error?: {code: string; message: string; retryable: boolean; retryAfterMs?: number}; metricBasis?: string }
-export interface InvocationContext { sessionId: string; signal?: AbortSignal; userRequest?: string }
+export interface InvocationContext { sessionId: string; signal?: AbortSignal; userRequest?: string; /** Runtime assigns the only operation identity before domain dispatch. */ operationId?: string }
 export type ToolKind = 'read' | 'compute' | 'write' | 'refresh' | 'view' | 'save' | 'manage';
 export interface JsonSchema { type?: string | string[]; properties?: Record<string, JsonSchema>; additionalProperties?: boolean; required?: string[]; items?: JsonSchema; enum?: unknown[]; minLength?: number; maxLength?: number; minimum?: number; maximum?: number; minItems?: number; maxItems?: number; description?: string }
 export interface ToolDescriptor { name: string; description: string; kind: ToolKind; readOnly: boolean; parameters: JsonSchema }

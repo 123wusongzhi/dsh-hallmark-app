@@ -1,4 +1,6 @@
 /** A small host bridge. The component itself is an ordinary application: no layout or style vocabulary. */
+export {COMPONENT_CHANNEL, ComponentBridgeError, createAppsClient, sameBridgeIdentity} from './apps-client.ts';
+export type {AppsComponentClient, ComponentEvent, ComponentHello, ComponentResponse, AttachReceipt, AgentReceipt} from './apps-client.ts';
 export const SOURCE_CHANNEL = 'hallmark.source.v1';
 export interface SourceBindingData {
   bindingId:string;datasetKey:string;payload:unknown;dataTime?:string;lastSuccessAt?:string;

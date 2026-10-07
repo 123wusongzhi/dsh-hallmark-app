@@ -44,7 +44,7 @@ export function toolViewId(props: {phase?:string;block?:{meta?:unknown}}): strin
   const meta = (props.block?.meta as any)?.hallmark;
   return props.phase === 'result' && meta && typeof meta === 'object' && typeof meta.viewId === 'string' && meta.viewId.trim() ? meta.viewId : undefined;
 }
-export function refreshDatasetKeys(spec: ViewSpec): string[] { return [...new Set(spec.bindings.map(binding => binding.datasetKey).filter((key):key is string => typeof key === 'string' && /^(store_products|profit|query|category|collected):.+/.test(key)))]; }
+export function refreshDatasetKeys(spec: ViewSpec): string[] { return [...new Set(spec.bindings.map(binding => binding.datasetKey).filter((key):key is string => typeof key === 'string' && /^(?:(?:store_products|profit|query|category|collected):.+|dataset:v1:[a-f0-9]{64})$/.test(key)))]; }
 export function profitBasis(widget:WidgetSpec,binding:BindingData|undefined): string | undefined {
   return binding?.metricBasis ?? (typeof (binding?.payload as any)?.metricBasis === 'string' ? (binding!.payload as any).metricBasis : undefined);
 }

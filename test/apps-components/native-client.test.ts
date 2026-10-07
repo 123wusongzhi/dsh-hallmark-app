@@ -1,0 +1,69 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdirSync,mkdtempSync,rmSync} from 'node:fs';
+import {resolve,join} from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {build} from 'esbuild';
+
+test('candidate Apps client renders explicit gateway metadata and its iframe proxy invokes the real Runtime with native manual-send attachments',async()=>{
+  mkdirSync('artifacts',{recursive:true});const directory=mkdtempSync(resolve('artifacts/apps-native-client-')),entry=join(directory,'native.mjs');
+  try{
+    await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
+      import React from 'react';
+      import {create,act} from 'react-test-renderer';
+      import assert from 'node:assert/strict';
+      import {mkdirSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
+      import {join} from 'node:path';
+      import {AppsRuntime,RuntimeStore} from './packages/app-runtime/src/index.ts';
+      import {NotesProvider,resolveNotesResources} from './packages/app-notes/src/index.ts';
+      import {AppsPresentationService} from './packages/app-presentation/src/index.ts';
+      import {SourceComponentStore} from './packages/source-components/src/index.ts';
+      import {createAppsServer} from './packages/service/src/apps-server.ts';
+      import {AppsHost,HttpAppsHostTransport} from './packages/plugin-apps/src/index.ts';
+      import candidate from './bundles/apps/client/index.tsx';
+      import {appsToolViewReference} from './packages/plugin-apps/client/view.tsx';
+      import {selectionInputBridge} from './packages/dsh-plugin/client/selection.ts';
+      import {SourceFrame} from './packages/dsh-plugin/client/source-frame.tsx';
+      import {createAppsClient} from './packages/component-runtime/src/apps-client.ts';
+      const nativeFetch=globalThis.fetch,origin='http://native.fixture',tools=new Map(),registered=new Map(),cleanup=[];
+      const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),workspace=mkdtempSync(join(${JSON.stringify(directory)},'service-'));
+      runtime.register(new NotesProvider({store}));const presentation=new AppsPresentationService({store,runtime,sources:new SourceComponentStore(join(workspace,'builds')),resources:resolveNotesResources});runtime.register(presentation.provider());
+      for(const [appId,connectionId] of [['notes','n'],['apps','presentation']]){runtime.addConnection({appId,connectionId,displayName:appId,config:{},configRevision:1,enabled:true});runtime.bind({sessionId:'s',appId,connectionId,enabled:true,boundAt:new Date().toISOString()});}
+      const request={protocolVersion:'1.0',appId:'notes',connectionId:'n',invocationId:'initial-note',traceId:'trace-note',capabilityId:'notes.notes.create',capabilityVersion:'1.0.0',input:{id:'note-a',title:'Actual Runtime Note',content:'Evidence'},source:{kind:'agent',sessionId:'s',nativeCallId:'create'},deadlineAt:new Date(Date.now()+30000).toISOString(),idempotencyKey:'fixture-note'};assert.equal((await runtime.invoke(request)).status,'ok');
+      const server=createAppsServer({runtime,presentation,token:'x'.repeat(64)});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const url='http://127.0.0.1:'+server.address().port;
+      const agent={id:'s'},host=new AppsHost({tools:{register:tool=>{tools.set(tool.name,tool);return()=>tools.delete(tool.name);}},agents:{get:id=>id==='s'?agent:undefined},connection:{fetch:{register:()=>async()=>{}}}},new HttpAppsHostTransport(url,'x'.repeat(64)));await host.start();const detachApps=host.attachApp('apps'),detachNotes=host.attachApp('notes');
+      const project=join(workspace,'source');mkdirSync(join(project,'dist'),{recursive:true});writeFileSync(join(project,'package-lock.json'),'{}');writeFileSync(join(project,'dist','index.html'),'<button>Ordinary component</button>');
+      const args={appId:'apps',connectionId:'presentation',capabilityId:'apps.presentation.open_source_component',capabilityVersion:'1.0.0',input:{directory:project,title:'Native source',bindings:[{bindingId:'notes',appId:'notes',connectionId:'n',capabilityId:'notes.notes.list',capabilityMajor:1,input:{},projection:[],refresh:{mode:'manual'}}]}};
+      const gateway=tools.get('apps_invoke'),value=await gateway.execute(args,{agent,signal:new AbortController().signal,callId:'native-source'});assert.equal(value.result.status,'ok');const meta=gateway.output.presentationMeta(args,value);assert.equal(meta.apps.sessionId,'s');
+      assert.equal(appsToolViewReference({sessionId:'foreign',phase:'result',block:{meta}}),undefined);assert.equal(appsToolViewReference({sessionId:'s',phase:'result',block:{meta:{result:value}}}),undefined);
+      const parentListeners=new Map(),childListeners=new Set(),posts=[],files=[];let attachments=[],submissions=0,nextId=0;
+      const parent={location:{origin},addEventListener:(type,listener)=>{const set=parentListeners.get(type)??new Set();set.add(listener);parentListeners.set(type,set);},removeEventListener:(type,listener)=>parentListeners.get(type)?.delete(listener),dispatchEvent:event=>{for(const listener of parentListeners.get(event.type)??[])listener(event);return true;},postMessage:message=>{posts.push(message);for(const listener of parentListeners.get('message')??[])void listener({source:child,origin,data:message});}};
+      const child={parent,location:{origin},addEventListener:(_type,listener)=>childListeners.add(listener),removeEventListener:(_type,listener)=>childListeners.delete(listener),postMessage:message=>{for(const listener of childListeners)listener({source:parent,origin,data:message});}};
+      globalThis.window=parent;globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+      globalThis.fetch=(target,options)=>String(target).startsWith('/api/dsh-apps')?host.ui(new Request(origin+target,options)):nativeFetch(target,options);
+      const attachmentRuntime={createDrafts:(sessionId,created)=>{assert.equal(sessionId,'s');return created.map(file=>{files.push(file);return {kind:'file',id:'attachment-'+(++nextId),file};});},releaseDraftAttachments:()=>{},blocks:{storeFor:()=>({getSnapshot:()=>undefined,subscribe:()=>()=>{}})}};
+      candidate.apply({get:name=>name==='conversation'?attachmentRuntime:undefined,slots:{register:(definition,component)=>{registered.set(definition.key??definition.id,component);return()=>registered.delete(definition.key??definition.id);},inject:(_name,effect)=>{const result=effect();if(typeof result==='function')cleanup.push(result);else for(const release of result)cleanup.push(release);}}});
+      assert.ok(registered.has('apps_invoke'));assert.equal([...registered.keys()].filter(key=>String(key).startsWith('hallmark_')).length,4);assert.equal([...registered.keys()].filter(key=>key==='hallmark-apps').length,1);
+      selectionInputBridge.attachmentRuntime(attachmentRuntime);selectionInputBridge.observeSession('s');const unbind=selectionInputBridge.bind('s',{actions:{addAttachments:ids=>{attachments=[...attachments,...ids];return true;},submit:()=>{submissions++;throw new Error('No auto submission');}},readState:()=>({phase:'plain',attachmentIds:attachments}),disabledReason:()=>undefined});
+      let tree,client;try{
+        const ToolView=registered.get('apps_invoke');await act(async()=>{tree=create(<ToolView sessionId="s" phase="result" block={{meta}}/>,{createNodeMock:node=>node.type==='iframe'?{contentWindow:child}:null});await new Promise(resolve=>setTimeout(resolve,50));});
+        assert.equal(tree.root.findByType('iframe').props.src.startsWith('/api/hallmark-source/'),true);
+        client=createAppsClient({window:child,timeoutMs:3000});const hello=await client.hello();assert.equal(hello.sessionId,'s');assert.ok(hello.supportedMethods.includes('invokeCapability'));assert.ok(hello.supportedMethods.includes('attachSelection'));assert.ok(!hello.supportedMethods.includes('requestAgent'));
+        const packet=await client.getData();assert.equal(packet.bindings[0].resources[0].resourceId,'note-a');const before=store.list('invocations').length;
+        const read=await client.invokeCapability({appId:'notes',connectionId:'n',capabilityId:'notes.notes.get',capabilityVersion:'1.0.0',input:{id:'note-a'},deadlineAt:new Date(Date.now()+30000).toISOString()});assert.equal(read.status,'ok');assert.equal(read.data.note.title,'Actual Runtime Note');assert.equal(store.list('invocations').length,before+1);
+        const ledger=store.list('invocations').at(-1);assert.equal(ledger.request.source.kind,'component');assert.equal(ledger.request.source.sessionId,'s');assert.equal(ledger.request.source.viewId,meta.apps.viewId);assert.equal(ledger.request.source.frameInstanceId,hello.frameInstanceId);
+        const selection={bindingId:'notes',datasetRevision:packet.bindings[0].revision,resources:packet.bindings[0].resources};const attached=await client.attachSelection(selection);assert.equal(attached.status,'attached');assert.equal(files.length,1);assert.equal(attachments.length,1);assert.equal(submissions,0);const payload=JSON.parse(await files[0].text());assert.equal(payload.type,'dsh.apps.resource-selection');assert.equal(payload.resources[0].resourceId,'note-a');assert.ok(!('title' in payload.resources[0]));
+        await client.refresh();await assert.rejects(client.attachSelection(selection),{code:'SELECTION_STALE'});assert.equal(files.length,1);await assert.rejects(client.requestAgent({text:'Analyze'}),{code:'UNSUPPORTED_HOST_CAPABILITY'});await assert.rejects(client.updateContext({selection}),{code:'UNSUPPORTED_HOST_CAPABILITY'});
+        await assert.rejects(client.invokeCapability({appId:'notes',connectionId:'foreign',capabilityId:'notes.notes.get',capabilityVersion:'1.0.0',input:{id:'note-a'},deadlineAt:new Date(Date.now()+30000).toISOString()}),{code:'CONNECTION_NOT_BOUND'});assert.equal(submissions,0);
+        client.dispose();await act(async()=>tree.unmount());tree=undefined;
+        globalThis.document={documentElement:{getAttribute:()=>null,className:''}};globalThis.getComputedStyle=()=>({colorScheme:'light',getPropertyValue:()=>''});globalThis.MutationObserver=class{observe(){}disconnect(){}};parent.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
+        const view=presentation.getView(meta.apps.viewId),legacySpec={kind:'source',id:view.viewId,title:view.title,source:view.source,layout:{type:'column',children:[]},widgets:[],bindings:[]};
+        await act(async()=>{tree=create(<SourceFrame sessionId="s" spec={legacySpec} data={[]} onRefresh={async()=>[]}/>,{createNodeMock:node=>node.type==='iframe'?{contentWindow:child}:null});});
+        client=createAppsClient({window:child,timeoutMs:3000});const legacyHello=await client.hello();assert.ok(legacyHello.supportedMethods.includes('invokeCapability'));assert.ok(legacyHello.supportedMethods.includes('attachSelection'));assert.ok(legacyHello.supportedMethods.includes('resize'));
+        const legacyData=await client.getData();assert.equal(legacyData.bindings[0].resources[0].resourceId,'note-a');const legacyRead=await client.invokeCapability({appId:'notes',connectionId:'n',capabilityId:'notes.notes.get',capabilityVersion:'1.0.0',input:{id:'note-a'},deadlineAt:new Date(Date.now()+30000).toISOString()});assert.equal(legacyRead.status,'ok');assert.equal(files.length,1);assert.equal(submissions,0);
+        console.log(JSON.stringify({candidateClientCovered:true,legacySourceFrameProxyCovered:true,hostProxyCovered:true,actualNotesRuntimeCovered:true,nativeAttachments:files.length,modelRequests:0,installedDshGuiCovered:false}));
+      }finally{client?.dispose();if(tree)await act(async()=>tree.unmount());unbind();for(const release of cleanup.reverse())release();selectionInputBridge.attachmentRuntime(undefined);selectionInputBridge.observeSession(undefined);globalThis.fetch=nativeFetch;detachApps();detachNotes();await host.dispose();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await runtime.dispose();store.close();rmSync(workspace,{recursive:true,force:true});}
+    `},banner:{js:"import {createRequire} from 'node:module'; const require=createRequire(import.meta.url);"},outfile:entry,bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-test-renderer']});
+    const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:20000});assert.equal(result.status,0,result.error?.message??result.stderr);assert.match(result.stdout,/"candidateClientCovered":true/);assert.match(result.stdout,/"nativeAttachments":1/);
+  }finally{rmSync(directory,{recursive:true,force:true});}
+});

@@ -2,6 +2,7 @@ import type { BindingData, DataBinding, ViewSpec, WidgetSpec } from '../../prese
 import { payloadRows } from './model.ts';
 import { nativeAttachmentDisabledReason, nativeAttachmentRuntime } from './selection-native.ts';
 import type { NativeAttachmentRuntime, NativeDraftAttachment, NativeInputBinding } from './selection-native.ts';
+import type {SelectionEnvelope} from '../../app-contracts/src/index.ts';
 
 export type ProductIdentity = {kind:'collected_item';itemId:string}|{kind:'store_product';storeId:string;offerId?:string;productId?:string};
 export interface SelectableProduct {key:string;row:Record<string,unknown>;identity:ProductIdentity}
@@ -126,8 +127,17 @@ export class SelectionInputBridge {
   }
   attach(sessionId:string,context:ProductSelectionContext):AttachSelectionResult {
     if(context.sessionId!==sessionId)return {ok:false,message:'附件所属会话不匹配，未附加。'};
+    return this.attachPrepared(sessionId,selectionAttachment(context));
+  }
+  /** Runtime has already checked membership/revision; native insertion only carries exact generic ResourceRefs. */
+  attachResources(sessionId:string,context:SelectionEnvelope&{sessionId:string;viewId:string;buildId:string}):AttachSelectionResult {
+    if(context.sessionId!==sessionId||!id(context.viewId)||!id(context.buildId)||!id(context.bindingId)||!id(context.datasetRevision)||!Array.isArray(context.resources)||!context.resources.length||context.resources.some(resource=>!id(resource.appId)||!id(resource.connectionId)||!id(resource.resourceType)||!id(resource.resourceId)))return {ok:false,message:'资源选择或附件所属会话无效，未附加。'};
+    const exact={type:'dsh.apps.resource-selection',version:2,sessionId,viewId:context.viewId,buildId:context.buildId,bindingId:context.bindingId,datasetRevision:context.datasetRevision,resources:context.resources.map(resource=>({appId:resource.appId,connectionId:resource.connectionId,resourceType:resource.resourceType,resourceId:resource.resourceId,...(resource.revision!==undefined?{revision:resource.revision}:{})}))};
+    const attachment={name:`Apps-已选资源-${exact.resources.length}项.json`,content:JSON.stringify(exact,null,2)+'\n',signature:JSON.stringify({...exact,resources:[...exact.resources].sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)))})};
+    return this.attachPrepared(sessionId,attachment);
+  }
+  private attachPrepared(sessionId:string,attachment:ReturnType<typeof selectionAttachment>):AttachSelectionResult {
     const state=this.availability(sessionId);if(!state.available)return {ok:false,message:state.disabledReason!};
-    const attachment=selectionAttachment(context);
     if(this.inputs.has(sessionId))return this.insert(sessionId,attachment);
     if(!this.navigate)return {ok:false,message:'原生聊天导航尚未就绪。'};
     if(this.pending?.sessionId===sessionId&&this.pending.attachment.signature===attachment.signature&&this.pending.expiresAt>=Date.now())return {ok:true,pending:true,message:'正在等待原聊天输入框，请勿重复附加。'};
@@ -155,7 +165,7 @@ export class SelectionInputBridge {
       const changedReason=nativeAttachmentDisabledReason(input.binding);if(changedReason)throw new Error(changedReason);
       if(!input.binding.actions.addAttachments(drafts.map(draft=>draft.id)))throw new Error('输入框正在提交，附件未附加；请稍后重试。');
       accepted=true;attached.set(attachment.signature,{id:drafts[0].id,beforeIds});this.attached.set(sessionId,attached);
-      result={ok:true,message:'已添加产品 JSON 附件，正文未修改。等待上传完成后，补充要求并手动发送。'};
+      result={ok:true,message:attachment.name.startsWith('Apps-')?'已添加资源 JSON 附件，等待上传完成后补充要求并手动发送。':'已添加产品 JSON 附件，正文未修改。等待上传完成后，补充要求并手动发送。'};
     }catch(error){result={ok:false,message:error instanceof Error?error.message:'选择未附加，请重试。'};}
     finally {if(!accepted&&drafts.length&&runtime)try{runtime.releaseDraftAttachments(drafts);}catch{result={ok:false,message:'附件未附加，但宿主未确认取消上传；请检查附件栏。'};}}
     this.notices.set(sessionId,result.message);this.changed();return result;

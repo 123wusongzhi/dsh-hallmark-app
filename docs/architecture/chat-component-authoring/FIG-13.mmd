@@ -1,0 +1,28 @@
+flowchart TB
+  %% A.1 target. @ reference, Runtime binding, and original manual send are distinct.
+  A["1  原输入框 @应用<br/>任意已有会话；保留正文与附件<br/>引用不自动发送；用户原方式发送"]
+  B["2  真实会话 / 连接绑定<br/>Host 核实 sessionId + appId<br/>Runtime 激活明确 connectionId"]
+  C["3  同一个原 DSH Agent<br/>消费原发送；发现已有能力工具<br/>使用原文件 / 命令工具"]
+  D["4  独立可编辑工作副本<br/>新建 / 复制模板，或 saved checkout<br/>旧构建、旧保存版本保持可读"]
+  E["5  编辑源码与只读绑定<br/>普通 React / TSX / CSS / 资源 / 依赖<br/>appId + connectionId + bindingId"]
+  F["6  构建同一份 dist<br/>源文件 + 锁文件 + dist 内容快照<br/>构建失败保留旧可用视图"]
+  G["7  真实预览与验证反馈<br/>同份 dist：截图 / 运行错误 / 交互<br/>报告匹配 buildId；失败继续修改"]
+  H["8  登记不可变构建<br/>capture / open_source_component<br/>Runtime 事务更新草稿和引用"]
+  I["9  本会话 viewId 展示<br/>新 frameInstanceId 握手与加载检查<br/>只改应用 / 右侧组件；尚未正式保存"]
+  J["10  原聊天继续提出修改<br/>保持 sessionId / viewId 与工作目录<br/>反馈回到同一 Agent，重复构建验证<br/>无需独立聊天标签"]
+  K["11  用户明确保存<br/>save_as：新 componentId<br/>update：componentId<br/>+ expectedRevision<br/>冲突保留工作副本"]
+  L["12  组件库版本资产<br/>保存 revision；历史版本保留<br/>另一会话打开 → 新 view / checkout<br/>刷新只更新数据，不改设计"]
+  A -->|"核实引用与绑定"| B
+  B -->|"用户原发送后消费"| C
+  C -->|"创建或打开副本"| D
+  D -->|"源码修改"| E
+  E -->|"构建"| F
+  F -->|"实际预览"| G
+  G -.->|"不合格：反馈修改"| E
+  G -->|"验证通过"| H
+  H -->|"加载当前构建"| I
+  I -->|"继续反馈"| J
+  J -.->|"下一轮原发送"| C
+  I -->|"明确保存"| K
+  K -->|"CAS 更新 / 另存"| L
+  L -.->|"打开保存版：新副本"| D

@@ -7,7 +7,7 @@ export class SourceComponentError extends Error {
   code: string;
   constructor(code:string,message:string){super(message);this.name='SourceComponentError';this.code=code;}
 }
-export interface SourceBuildManifest { buildId:string; entry:string; files:string[]; projectFiles:string[]; createdAt:string }
+export interface SourceBuildManifest { buildId:string; entry:string; files:string[]; projectFiles:string[]; createdAt:string; manifestVersion?:2; fileManifest?:{path:string;size:number;sha256:string}[] }
 const ignored=new Set(['node_modules','.git','.preview']);
 function walk(root:string,current=root):string[]{
   return readdirSync(current,{withFileTypes:true}).flatMap(item=>{
@@ -55,7 +55,7 @@ export class SourceComponentStore {
     if(!existsSync(join(destination,'manifest.json'))){
       const staging=join(this.directory,'builds',`.${buildId}-${randomUUID()}`);mkdirSync(staging,{recursive:true});
       for(const {file,bytes} of contents){const target=filePath(join(staging,'project'),file);mkdirSync(dirname(target),{recursive:true});writeFileSync(target,bytes);}
-      const manifest:SourceBuildManifest={buildId,entry:'index.html',files:distFiles,projectFiles,createdAt:new Date().toISOString()};
+      const manifest:SourceBuildManifest={buildId,entry:'index.html',files:distFiles,projectFiles,createdAt:new Date().toISOString(),manifestVersion:2,fileManifest:contents.map(({file,bytes})=>({path:file,size:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')}))};
       writeFileSync(join(staging,'manifest.json'),JSON.stringify(manifest,null,2));
       try{renameSync(staging,destination);}catch(error){if(!existsSync(join(destination,'manifest.json')))throw error;}
     }
@@ -83,6 +83,20 @@ export class SourceComponentStore {
   }
   manifest(buildId:string):SourceBuildManifest|undefined {
     const path=join(this.buildDirectory(buildId),'manifest.json');return existsSync(path)?JSON.parse(readFileSync(path,'utf8')):undefined;
+  }
+  /** Verify immutable archived bytes; old manifests remain readable without being rewritten. */
+  verify(buildId:string):{valid:boolean;errors:string[]} {
+    const manifest=this.manifest(buildId);if(!manifest)return {valid:false,errors:['SOURCE_BUILD_NOT_FOUND']};
+    const errors:string[]=[];
+    if(manifest.fileManifest){
+      if(manifest.fileManifest.length!==manifest.projectFiles.length||manifest.fileManifest.some(file=>!manifest.projectFiles.includes(file.path)))errors.push('SOURCE_MANIFEST_MISMATCH');
+      for(const file of manifest.fileManifest){
+        try{const bytes=readFileSync(filePath(join(this.buildDirectory(buildId),'project'),file.path));if(bytes.length!==file.size||createHash('sha256').update(bytes).digest('hex')!==file.sha256)errors.push(`SOURCE_FILE_HASH_MISMATCH: ${file.path}`);}catch{errors.push(`SOURCE_FILE_NOT_FOUND: ${file.path}`);}
+      }
+    }
+    // Content addressing is also checked for historical manifests, whose file list predates per-file hashes.
+    try{if(projectSnapshot(join(this.buildDirectory(buildId),'project')).buildId!==buildId)errors.push('SOURCE_BUILD_HASH_MISMATCH');}catch{errors.push('SOURCE_BUILD_UNREADABLE');}
+    return {valid:errors.length===0,errors};
   }
   readFile(buildId:string,file:string):{bytes:Buffer;mime:string}|undefined {
     const manifest=this.manifest(buildId);if(!manifest?.files.includes(file))return undefined;

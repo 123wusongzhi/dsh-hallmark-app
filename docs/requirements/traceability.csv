@@ -1,0 +1,49 @@
+requirementId,group,title,taskIds,testId,implementationStatus,testStatus,fixtureStatus,remainingRealStatus,evidencePath
+REQ-001,系统边界,不修改 DSH 核心,TODO-001;TODO-008,TST-001,VERIFIED,PASS,PASS,PASS,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-001/result.json
+REQ-002,系统边界,一个外壳与 N 个接入,TODO-003;TODO-010;TODO-011,TST-002,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-002/result.json
+REQ-003,系统边界,一个业务事实来源,TODO-003;TODO-005;TODO-008,TST-003,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-003/result.json
+REQ-004,系统边界,一个能力执行实现,TODO-005;TODO-007;TODO-008;TODO-013,TST-004,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-004/result.json
+REQ-005,注册与发现,唯一运行时目录,TODO-007;TODO-010,TST-005,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-005/result.json
+REQ-006,注册与发现,生命周期与卸载,TODO-010;TODO-026,TST-006,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-006/result.json
+REQ-007,注册与发现,连接独立于应用,TODO-004;TODO-009;TODO-011,TST-007,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-007/result.json
+REQ-008,注册与发现,会话应用集合与焦点分离,TODO-009;TODO-012,TST-008,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-008/result.json
+REQ-009,注册与发现,显式路由与歧义处理,TODO-004;TODO-009;TODO-012,TST-009,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-009/result.json
+REQ-010,注册与发现,按需工具发现,TODO-002;TODO-014,TST-010,VERIFIED,PASS,PASS,PASS,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-010/result.json
+REQ-011,注册与发现,兼容性握手,TODO-004;TODO-007;TODO-014;TODO-026,TST-011,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-011/result.json
+REQ-012,能力契约,输入输出同时声明,TODO-004;TODO-005;TODO-007;TODO-013,TST-012,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-012/result.json
+REQ-013,能力契约,底层 API 不是第二套业务,TODO-015,TST-013,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-013/result.json
+REQ-014,能力契约,未知写接口显式分类,TODO-015,TST-014,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-014/result.json
+REQ-015,能力契约,生成 SDK 与调用语义,TODO-013,TST-015,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-015/result.json
+REQ-016,能力契约,数据来源时间口径,TODO-004;TODO-005,TST-016,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-016/result.json
+REQ-017,执行可靠性,幂等身份与请求哈希,TODO-016,TST-017,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-017/result.json
+REQ-018,执行可靠性,状态与业务核实,TODO-016;TODO-024,TST-018,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-018/result.json
+REQ-019,执行可靠性,取消不等于撤销,TODO-016,TST-019,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-019/result.json
+REQ-020,执行可靠性,并发与冲突域,TODO-016,TST-020,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-020/result.json
+REQ-021,执行可靠性,脚本子调用日志,TODO-017,TST-021,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-021/result.json
+REQ-022,执行可靠性,跨应用不假装事务,TODO-017,TST-022,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-022/result.json
+REQ-023,执行可靠性,模型预算与数据句柄,TODO-013;TODO-017;TODO-018,TST-023,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-023/result.json
+REQ-024,执行可靠性,稳定错误契约,TODO-004;TODO-015;TODO-016,TST-024,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-024/result.json
+REQ-025,组件与交互,普通源码为主路径,TODO-006;TODO-008;TODO-022,TST-025,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-025/result.json
+REQ-026,组件与交互,构建与保存分离,TODO-006;TODO-021,TST-026,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-026/result.json
+REQ-027,组件与交互,桥接握手与协议,TODO-019;TODO-022,TST-027,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-027/result.json
+REQ-028,组件与交互,通用资源选择,TODO-006;TODO-011;TODO-019,TST-028,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-028/result.json
+REQ-029,组件与交互,本地动作不经过模型,TODO-019;TODO-020;TODO-022,TST-029,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-029/result.json
+REQ-030,组件与交互,上下文与消息分开,TODO-002;TODO-020;TODO-022,TST-030,VERIFIED,PASS,PASS,PASS,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-030/result.json
+REQ-031,组件与交互,确定性会话投影,TODO-002;TODO-020;TODO-022,TST-031,VERIFIED,PASS,PASS,PASS,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-031/result.json
+REQ-032,组件与交互,多应用绑定,TODO-006;TODO-012;TODO-021,TST-032,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-032/result.json
+REQ-033,组件与交互,离线与版本冲突,TODO-006;TODO-021;TODO-022,TST-033,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-033/result.json
+REQ-034,数据与迁移,明确状态所有者,TODO-003;TODO-007;TODO-023,TST-034,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-034/result.json
+REQ-035,数据与迁移,确定性数据集身份,TODO-004;TODO-021;TODO-023,TST-035,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-035/result.json
+REQ-036,数据与迁移,历史数据可追溯迁移,TODO-023,TST-036,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-036/result.json
+REQ-037,数据与迁移,禁止双写切换,TODO-024,TST-037,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-037/result.json
+REQ-038,数据与迁移,有条件回退,TODO-024,TST-038,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-038/result.json
+REQ-039,数据与迁移,引用驱动清理,TODO-023;TODO-025,TST-039,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-039/result.json
+REQ-040,兼容与发布,保留旧工具与协议入口,TODO-008;TODO-019;TODO-023;TODO-026,TST-040,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-040/result.json
+REQ-041,兼容与发布,DSH 兼容探针,TODO-002;TODO-014;TODO-020;TODO-026,TST-041,VERIFIED,PASS,PASS,PASS,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-041/result.json
+REQ-042,兼容与发布,统一分发但独立版本,TODO-003;TODO-010;TODO-026,TST-042,VERIFIED,PASS,PASS,PASS,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-042/result.json
+REQ-043,验收与运行,异构应用验证,TODO-011;TODO-012,TST-043,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-043/result.json
+REQ-044,验收与运行,可定位观测记录,TODO-016;TODO-018;TODO-025,TST-044,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-044/result.json
+REQ-045,验收与运行,自动化故障矩阵,TODO-018;TODO-026,TST-045,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-045/result.json
+REQ-046,验收与运行,性能与上下文基准,TODO-018;TODO-026,TST-046,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-046/result.json
+REQ-047,验收与运行,可复现交付证据,TODO-001;TODO-008;TODO-012;TODO-018;TODO-022;TODO-026,TST-047,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-047/result.json
+REQ-048,验收与运行,不扩张本期目标,TODO-003;TODO-026,TST-048,VERIFIED,PASS,PASS,NOT_RUN,dsh-hallmark-app/evidence/apps-v1-20261007/tests/TST-048/result.json

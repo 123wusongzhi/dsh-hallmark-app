@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {createHallmarkClient} from './client.ts';
 import type {SourceAttachRequest,SourceClient,SourceContext,SourceData} from './client.ts';
+export {useApps} from './apps-react.tsx';
 
 /** React is optional: other frameworks can use createHallmarkClient directly. */
 export function useHallmark(){

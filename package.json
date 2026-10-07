@@ -11,7 +11,14 @@
     "test": "node --test test/**/*.test.ts",
     "typecheck": "tsc --noEmit",
     "build:plugin": "node scripts/build-plugin.mjs",
-    "backup": "node scripts/backup.mjs"
+    "backup": "node scripts/backup.mjs",
+    "service:apps": "node packages/service/src/apps-main.ts",
+    "generate:apps-sdk": "node scripts/generate-apps-sdk.mjs",
+    "build:apps": "node scripts/build-apps-bundle.mjs",
+    "test:apps": "node --test test/app-contracts/*.test.ts test/app-hallmark/*.test.ts test/app-notes/*.test.ts test/apps-runtime/*.test.ts test/apps-components/*.test.ts test/dsh-compat/*.test.ts test/apps-host/*.test.ts test/apps-migration/*.test.ts",
+    "migrate:apps": "node scripts/migrate-apps.mjs",
+    "maintain:apps": "node scripts/apps-maintenance.mjs",
+    "create:apps-source": "node scripts/create-apps-source.mjs"
   },
   "devDependencies": {
     "@deepseek-ai/schemastery": "3.18.4",

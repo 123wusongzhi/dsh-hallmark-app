@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1870" height="1950" viewBox="0 0 1870 1950" role="img" aria-label="FIG-14  原聊天组件创作顺序与失败处理">
+<defs><marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#5278ae"/></marker><marker id="loop" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#bd7e18"/></marker></defs>
+<rect width="1870" height="1950" fill="#f6f9fe"/>
+<text x="64" y="64" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="32" font-weight="700" fill="#14243d" text-anchor="start">FIG-14  原聊天组件创作顺序与失败处理</text>
+<text x="64" y="104" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="21" font-weight="400" fill="#5f718c" text-anchor="start">A.1 目标顺序 · 原会话手动发送为默认路径 · 可选 requestAgent 另见 FIG-08</text>
+<rect x="19" y="138" width="272" height="74" rx="12" fill="#eaf2ff" stroke="#b6cdec"/>
+<text x="155" y="182" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="24" font-weight="700" fill="#14243d" text-anchor="middle">用户</text>
+<line x1="155" y1="212" x2="155" y2="1695" stroke="#bdc9da" stroke-dasharray="6 7"/>
+<rect x="329" y="138" width="272" height="74" rx="12" fill="#eaf2ff" stroke="#b6cdec"/>
+<text x="465" y="182" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="24" font-weight="700" fill="#14243d" text-anchor="middle">原输入框 / Host</text>
+<line x1="465" y1="212" x2="465" y2="1695" stroke="#bdc9da" stroke-dasharray="6 7"/>
+<rect x="639" y="138" width="272" height="74" rx="12" fill="#eaf2ff" stroke="#b6cdec"/>
+<text x="775" y="182" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="24" font-weight="700" fill="#14243d" text-anchor="middle">原 DSH Agent</text>
+<line x1="775" y1="212" x2="775" y2="1695" stroke="#bdc9da" stroke-dasharray="6 7"/>
+<rect x="949" y="138" width="272" height="74" rx="12" fill="#eaf2ff" stroke="#b6cdec"/>
+<text x="1085" y="182" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="24" font-weight="700" fill="#14243d" text-anchor="middle">工程 / 真实预览</text>
+<line x1="1085" y1="212" x2="1085" y2="1695" stroke="#bdc9da" stroke-dasharray="6 7"/>
+<rect x="1259" y="138" width="272" height="74" rx="12" fill="#eaf2ff" stroke="#b6cdec"/>
+<text x="1395" y="182" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="24" font-weight="700" fill="#14243d" text-anchor="middle">P2 Runtime</text>
+<line x1="1395" y1="212" x2="1395" y2="1695" stroke="#bdc9da" stroke-dasharray="6 7"/>
+<rect x="1569" y="138" width="272" height="74" rx="12" fill="#eaf2ff" stroke="#b6cdec"/>
+<text x="1705" y="182" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="24" font-weight="700" fill="#14243d" text-anchor="middle">组件 frame / Client</text>
+<line x1="1705" y1="212" x2="1705" y2="1695" stroke="#bdc9da" stroke-dasharray="6 7"/>
+<path d="M155 270 H465" fill="none" stroke="#5278ae" stroke-width="2.7"  marker-end="url(#arrow)"/>
+<text x="169" y="256" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="start">01  @ 选择应用：保留原会话 / 正文 / 附件</text>
+<circle cx="155" cy="270" r="4.5" fill="#1769e8"/>
+<path d="M465 348 H1395" fill="none" stroke="#5278ae" stroke-width="2.7"  marker-end="url(#arrow)"/>
+<text x="479" y="334" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="start">02  核实真实 sessionId，绑定 appId + connectionId</text>
+<circle cx="465" cy="348" r="4.5" fill="#1769e8"/>
+<path d="M1395 426 H465" fill="none" stroke="#5278ae" stroke-width="2.7" stroke-dasharray='8 6' marker-end="url(#arrow)"/>
+<text x="1381" y="412" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="end">03  真实绑定结果；失败或多连接时明确说明</text>
+<circle cx="1395" cy="426" r="4.5" fill="#1769e8"/>
+<path d="M155 504 H465" fill="none" stroke="#5278ae" stroke-width="2.7"  marker-end="url(#arrow)"/>
+<text x="169" y="490" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="start">04  用户手动发送创建 / 编辑要求</text>
+<circle cx="155" cy="504" r="4.5" fill="#1769e8"/>
+<path d="M465 582 H775" fill="none" stroke="#5278ae" stroke-width="2.7"  marker-end="url(#arrow)"/>
+<text x="479" y="568" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="start">05  DSH 正式输入：正文 / 应用引用 / 原附件</text>
+<circle cx="465" cy="582" r="4.5" fill="#1769e8"/>
+<path d="M775 660 H1395" fill="none" stroke="#5278ae" stroke-width="2.7"  marker-end="url(#arrow)"/>
+<text x="789" y="646" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="start">06  可选：open_component(componentId, revision?)</text>
+<circle cx="775" cy="660" r="4.5" fill="#1769e8"/>
+<path d="M1395 738 H775" fill="none" stroke="#5278ae" stroke-width="2.7" stroke-dasharray='8 6' marker-end="url(#arrow)"/>
+<text x="1381" y="724" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="end">07  本会话新 view 与独立 checkout 目录</text>
+<circle cx="1395" cy="738" r="4.5" fill="#1769e8"/>
+<path d="M775 816 H1085" fill="none" stroke="#5278ae" stroke-width="2.7"  marker-end="url(#arrow)"/>
+<text x="789" y="802" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="start">08  新建 / 修改 TSX、CSS、绑定与依赖；实际构建</text>
+<circle cx="775" cy="816" r="4.5" fill="#1769e8"/>
+<path d="M1085 894 H775" fill="none" stroke="#5278ae" stroke-width="2.7" stroke-dasharray='8 6' marker-end="url(#arrow)"/>
+<text x="1071" y="880" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="end">09  同份 dist 的截图、运行错误与交互报告</text>
+<circle cx="1085" cy="894" r="4.5" fill="#1769e8"/>
+<path d="M775 972 H1085" fill="none" stroke="#5278ae" stroke-width="2.7"  marker-end="url(#arrow)"/>
+<text x="789" y="958" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="start">10  不合格：继续修改、构建和预览；取消则停止</text>
+<circle cx="775" cy="972" r="4.5" fill="#1769e8"/>
+<path d="M775 1050 H1395" fill="none" stroke="#5278ae" stroke-width="2.7"  marker-end="url(#arrow)"/>
+<text x="789" y="1036" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="start">11  通过：open_source_component(directory, viewId?)</text>
+<circle cx="775" cy="1050" r="4.5" fill="#1769e8"/>
+<path d="M1395 1128 H465" fill="none" stroke="#5278ae" stroke-width="2.7" stroke-dasharray='8 6' marker-end="url(#arrow)"/>
+<text x="1381" y="1114" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="end">12  capture 成功后事务更新 build / view / 引用</text>
+<circle cx="1395" cy="1128" r="4.5" fill="#1769e8"/>
+<path d="M465 1206 H1705" fill="none" stroke="#5278ae" stroke-width="2.7"  marker-end="url(#arrow)"/>
+<text x="479" y="1192" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="start">13  当前 session + view + build + 新 frame 握手加载</text>
+<circle cx="465" cy="1206" r="4.5" fill="#1769e8"/>
+<path d="M1705 1284 H465" fill="none" stroke="#5278ae" stroke-width="2.7" stroke-dasharray='8 6' marker-end="url(#arrow)"/>
+<text x="1691" y="1270" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="end">14  实际展示检查：显示成功或保留最后可用版</text>
+<circle cx="1705" cy="1284" r="4.5" fill="#1769e8"/>
+<path d="M155 1362 H465" fill="none" stroke="#5278ae" stroke-width="2.7"  marker-end="url(#arrow)"/>
+<text x="169" y="1348" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="start">15  原聊天继续反馈；或明确“保存到组件库”</text>
+<circle cx="155" cy="1362" r="4.5" fill="#1769e8"/>
+<path d="M465 1440 H775" fill="none" stroke="#5278ae" stroke-width="2.7"  marker-end="url(#arrow)"/>
+<text x="479" y="1426" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="start">16  消费下一次原手动发送；修改回到步骤 8</text>
+<circle cx="465" cy="1440" r="4.5" fill="#1769e8"/>
+<path d="M775 1518 H1395" fill="none" stroke="#5278ae" stroke-width="2.7"  marker-end="url(#arrow)"/>
+<text x="789" y="1504" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="start">17  仅明确保存：save_as 或 update + expectedRevision</text>
+<circle cx="775" cy="1518" r="4.5" fill="#1769e8"/>
+<path d="M1395 1596 H775" fill="none" stroke="#5278ae" stroke-width="2.7" stroke-dasharray='8 6' marker-end="url(#arrow)"/>
+<text x="1381" y="1582" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="20" font-weight="500" fill="#14243d" text-anchor="end">18  新 componentId / revision；或 COMPONENT_CONFLICT</text>
+<circle cx="1395" cy="1596" r="4.5" fill="#1769e8"/>
+<rect x="64" y="1710" width="1742" height="181" rx="16" fill="#fffaf0" stroke="#e4cf9e"/>
+<text x="90" y="1748" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="24" font-weight="700" fill="#14243d" text-anchor="start">失败与身份边界</text>
+<text x="90" y="1788" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="21" font-weight="400" fill="#5f718c" text-anchor="start">构建 / 预览失败或取消：保留工作副本与旧可用视图，不自动登记 / 保存；事务已完成则如实报告。</text>
+<text x="90" y="1821" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="21" font-weight="400" fill="#5f718c" text-anchor="start">frame 或会话切换：迟到结果无效。更新保存版须 CAS；冲突保留修改，可另存或重新打开最新版本。</text>
+<text x="90" y="1854" font-family="'Microsoft YaHei','Segoe UI',sans-serif" font-size="21" font-weight="400" fill="#5f718c" text-anchor="start">刷新只更新数据与 freshness；本地筛选 / 勾选不唤醒模型。原生附件成功仍要等用户手动发送。</text>
+</svg>

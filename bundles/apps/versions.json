@@ -1,0 +1,35 @@
+{
+  "releaseId": "apps-v1-20261007",
+  "bundleVersion": "1.0.0-candidate.6",
+  "hostPluginVersion": "1.0.0-candidate.6",
+  "runtimeVersion": "1.0.0-candidate.4",
+  "transportMajor": 1,
+  "catalogSchemaVersion": 1,
+  "databaseSchemaVersion": 3,
+  "providers": {
+    "hallmark": "1.0.0",
+    "notes": "1.0.0"
+  },
+  "nativeProjections": {
+    "hallmark": "1.0.0-candidate.4",
+    "notes": "1.0.0-candidate.4"
+  },
+  "legacyContractVersion": "0.3.0",
+  "defaultNativeTools": [
+    "apps_list",
+    "apps_describe",
+    "apps_invoke",
+    "apps_inspect"
+  ],
+  "legacyNativeToolProjection": "explicit compatibility option; default false",
+  "hostCompatibility": {
+    "installedCli": "0.2.0-rc.2",
+    "liveBundleAcceptance": "NOT_RUN for candidate.6; prior candidate evidence preserved",
+    "dynamicSchema": "unsupported; fixed gateway",
+    "nativeSessionAdapter": "disabled by default; explicit dsh-0.2.0-rc.2 contract opt-in with strict ACTIVE service lifecycle",
+    "requestAgent": "opt-in formal queue/flush/inspect; accepted means durable queued",
+    "persistentContext": "opt-in async assembly from Runtime immutable snapshot; native history owns consumption"
+  },
+  "installationOwner": "Official DSH plugin manager",
+  "newFrameworkRuntimeProcesses": 1
+}

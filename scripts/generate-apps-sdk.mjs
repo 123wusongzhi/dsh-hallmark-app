@@ -1,0 +1,11 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { generateArtifacts } from '../packages/app-sdk/src/index.ts';
+import { HALLMARK_DESCRIPTORS } from '../packages/app-hallmark/src/index.ts';
+import { NOTES_DESCRIPTORS } from '../packages/app-notes/src/index.ts';
+import { APP_PRESENTATION_DESCRIPTORS } from '../packages/app-presentation/src/descriptors.ts';
+const artifacts=generateArtifacts([...HALLMARK_DESCRIPTORS,...NOTES_DESCRIPTORS,...APP_PRESENTATION_DESCRIPTORS]);
+await mkdir('packages/app-sdk/generated',{recursive:true});
+await writeFile('packages/app-sdk/src/generated.ts',artifacts.source);
+await writeFile('packages/app-sdk/generated/tools.json',JSON.stringify(artifacts.tools,null,2)+'\n');
+await writeFile('docs/apps-capabilities.md',artifacts.documentation);
+console.log(`Generated SDK, documentation and tools from ${artifacts.tools.length} shared descriptors.`);

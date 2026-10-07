@@ -8,6 +8,9 @@ coverage/
 packages/dsh-plugin/dist/
 packages/dsh-plugin/lib/
 packages/dsh-plugin/client/client.js
+bundles/apps/lib/
+bundles/apps/client/client.js
+bundles/apps/sdk/
 test/browser/artifacts/
 test/serialization/
 artifacts/
@@ -29,3 +32,12 @@ test/browser/*-artifacts/
 test/spike/evidence/
 test/spike/*-evidence/
 test/spike/sdk-*/
+
+# Private state for the explicitly requested isolated DSH test session
+evidence/apps-live-bill-20261007/host-session/dsh-home/
+
+# Local acceptance archives may contain real shop data and desktop/session state.
+# Publish only the source, documentation and sanitized summaries under docs/.
+/evidence/
+/apps-test-output.txt
+/bundles/apps/source-starter/

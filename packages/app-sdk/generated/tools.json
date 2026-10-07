@@ -1,0 +1,6767 @@
+[
+  {
+    "name": "apps.presentation.list_saved",
+    "description": "Shared component listSaved. Builds and drafts remain separate from explicit saved assets.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "componentId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "view": {
+                "type": "object",
+                "properties": {
+                  "viewId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "ownerSessionId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "design": {},
+                  "bindings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "bindingId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "appId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "connectionId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "capabilityId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "capabilityMajor": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "input": {},
+                        "projection": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "datasetId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "refresh": {
+                          "type": "object",
+                          "properties": {
+                            "mode": {
+                              "enum": [
+                                "manual",
+                                "scheduled"
+                              ]
+                            },
+                            "scheduleId": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "mode"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "bindingId",
+                        "appId",
+                        "connectionId",
+                        "capabilityId",
+                        "capabilityMajor",
+                        "input",
+                        "projection",
+                        "refresh"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "buildId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "directory": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "entry": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "files": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "thumbnail": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "preview": {
+                        "type": "object",
+                        "properties": {
+                          "screenshotPath": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "reportPath": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "width": {
+                            "type": "number"
+                          },
+                          "height": {
+                            "type": "number"
+                          },
+                          "capturedAt": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "screenshotPath",
+                          "reportPath"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "buildId",
+                      "directory",
+                      "entry",
+                      "files"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sourceComponentId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "baseRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "initialData": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "bindingId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "datasetId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "status": {
+                          "enum": [
+                            "ready",
+                            "failed",
+                            "unavailable",
+                            "empty"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "bindingId",
+                        "datasetId",
+                        "status"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "viewId",
+                  "ownerSessionId",
+                  "title",
+                  "design",
+                  "bindings",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "additionalProperties": false
+              },
+              "userRequest": {
+                "type": "string",
+                "minLength": 1
+              },
+              "savedAt": {
+                "type": "string",
+                "minLength": 1
+              },
+              "legacyTemplate": {},
+              "revisions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "savedAt": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "buildId": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "revision",
+                    "title",
+                    "savedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "componentId",
+              "revision",
+              "title",
+              "view",
+              "userRequest",
+              "savedAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "assetId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "kind": {
+                    "const": "entry"
+                  },
+                  "entryKind": {
+                    "enum": [
+                      "data",
+                      "component"
+                    ]
+                  },
+                  "componentId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "binding": {
+                    "type": "object",
+                    "properties": {
+                      "bindingId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "appId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "capabilityId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "capabilityMajor": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "input": {},
+                      "projection": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "datasetId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "refresh": {
+                        "type": "object",
+                        "properties": {
+                          "mode": {
+                            "enum": [
+                              "manual",
+                              "scheduled"
+                            ]
+                          },
+                          "scheduleId": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "mode"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "bindingId",
+                      "appId",
+                      "connectionId",
+                      "capabilityId",
+                      "capabilityMajor",
+                      "input",
+                      "projection",
+                      "refresh"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "legacyBinding": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "datasetKey": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "fieldMap": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      },
+                      "query": {
+                        "type": "object",
+                        "properties": {
+                          "tool": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "params": {
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "tool",
+                          "params"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "fieldMap"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "legacyFieldOrder": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "userRequest": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "pinned": {
+                    "type": "boolean"
+                  },
+                  "order": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "assetId",
+                  "kind",
+                  "title",
+                  "userRequest",
+                  "pinned",
+                  "order"
+                ],
+                "oneOf": [
+                  {
+                    "required": [
+                      "binding"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "componentId"
+                    ]
+                  }
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "assetId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "kind": {
+                    "const": "template"
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "design": {},
+                  "bindings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "bindingId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "appId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "connectionId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "capabilityId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "capabilityMajor": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "input": {},
+                        "projection": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "datasetId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "refresh": {
+                          "type": "object",
+                          "properties": {
+                            "mode": {
+                              "enum": [
+                                "manual",
+                                "scheduled"
+                              ]
+                            },
+                            "scheduleId": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "mode"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "bindingId",
+                        "appId",
+                        "connectionId",
+                        "capabilityId",
+                        "capabilityMajor",
+                        "input",
+                        "projection",
+                        "refresh"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "buildId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "directory": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "entry": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "files": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "thumbnail": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "preview": {
+                        "type": "object",
+                        "properties": {
+                          "screenshotPath": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "reportPath": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "width": {
+                            "type": "number"
+                          },
+                          "height": {
+                            "type": "number"
+                          },
+                          "capturedAt": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "screenshotPath",
+                          "reportPath"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "buildId",
+                      "directory",
+                      "entry",
+                      "files"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "userRequest": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "savedAt": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "assetId",
+                  "kind",
+                  "title",
+                  "design",
+                  "bindings",
+                  "userRequest"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "components",
+        "assets"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "apps.presentation.manage_saved",
+    "description": "Shared component manageSaved. Builds and drafts remain separate from explicit saved assets.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "component",
+            "entry",
+            "template"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "enum": [
+            "rename",
+            "delete",
+            "pin",
+            "reorder"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "order": {
+          "type": "integer"
+        },
+        "pinned": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "componentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "view": {
+              "type": "object",
+              "properties": {
+                "viewId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ownerSessionId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "design": {},
+                "bindings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "bindingId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "appId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "capabilityId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "capabilityMajor": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "input": {},
+                      "projection": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "datasetId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "refresh": {
+                        "type": "object",
+                        "properties": {
+                          "mode": {
+                            "enum": [
+                              "manual",
+                              "scheduled"
+                            ]
+                          },
+                          "scheduleId": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "mode"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "bindingId",
+                      "appId",
+                      "connectionId",
+                      "capabilityId",
+                      "capabilityMajor",
+                      "input",
+                      "projection",
+                      "refresh"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "buildId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "directory": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "entry": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "thumbnail": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "preview": {
+                      "type": "object",
+                      "properties": {
+                        "screenshotPath": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "reportPath": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "width": {
+                          "type": "number"
+                        },
+                        "height": {
+                          "type": "number"
+                        },
+                        "capturedAt": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "screenshotPath",
+                        "reportPath"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "buildId",
+                    "directory",
+                    "entry",
+                    "files"
+                  ],
+                  "additionalProperties": false
+                },
+                "createdAt": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sourceComponentId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "baseRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "initialData": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "bindingId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "datasetId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "status": {
+                        "enum": [
+                          "ready",
+                          "failed",
+                          "unavailable",
+                          "empty"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "bindingId",
+                      "datasetId",
+                      "status"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "viewId",
+                "ownerSessionId",
+                "title",
+                "design",
+                "bindings",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            },
+            "userRequest": {
+              "type": "string",
+              "minLength": 1
+            },
+            "savedAt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "legacyTemplate": {},
+            "revisions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "savedAt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "buildId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "revision",
+                  "title",
+                  "savedAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "componentId",
+            "revision",
+            "title",
+            "view",
+            "userRequest",
+            "savedAt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "assetId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "const": "entry"
+            },
+            "entryKind": {
+              "enum": [
+                "data",
+                "component"
+              ]
+            },
+            "componentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "binding": {
+              "type": "object",
+              "properties": {
+                "bindingId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "appId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "connectionId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "capabilityId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "capabilityMajor": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "input": {},
+                "projection": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "datasetId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "refresh": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "enum": [
+                        "manual",
+                        "scheduled"
+                      ]
+                    },
+                    "scheduleId": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "mode"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "bindingId",
+                "appId",
+                "connectionId",
+                "capabilityId",
+                "capabilityMajor",
+                "input",
+                "projection",
+                "refresh"
+              ],
+              "additionalProperties": false
+            },
+            "legacyBinding": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "datasetKey": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "fieldMap": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "query": {
+                  "type": "object",
+                  "properties": {
+                    "tool": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "params": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "tool",
+                    "params"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "fieldMap"
+              ],
+              "additionalProperties": false
+            },
+            "legacyFieldOrder": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "userRequest": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pinned": {
+              "type": "boolean"
+            },
+            "order": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "assetId",
+            "kind",
+            "title",
+            "userRequest",
+            "pinned",
+            "order"
+          ],
+          "oneOf": [
+            {
+              "required": [
+                "binding"
+              ]
+            },
+            {
+              "required": [
+                "componentId"
+              ]
+            }
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "assetId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "const": "template"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": {
+              "type": "string"
+            },
+            "design": {},
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "bindingId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "appId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "connectionId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityMajor": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "input": {},
+                  "projection": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "datasetId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "refresh": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "enum": [
+                          "manual",
+                          "scheduled"
+                        ]
+                      },
+                      "scheduleId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "mode"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "bindingId",
+                  "appId",
+                  "connectionId",
+                  "capabilityId",
+                  "capabilityMajor",
+                  "input",
+                  "projection",
+                  "refresh"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "buildId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "directory": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "entry": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "thumbnail": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "preview": {
+                  "type": "object",
+                  "properties": {
+                    "screenshotPath": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "reportPath": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "width": {
+                      "type": "number"
+                    },
+                    "height": {
+                      "type": "number"
+                    },
+                    "capturedAt": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "screenshotPath",
+                    "reportPath"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "buildId",
+                "directory",
+                "entry",
+                "files"
+              ],
+              "additionalProperties": false
+            },
+            "userRequest": {
+              "type": "string",
+              "minLength": 1
+            },
+            "savedAt": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "assetId",
+            "kind",
+            "title",
+            "design",
+            "bindings",
+            "userRequest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "deleted": {
+              "const": true
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "deleted",
+            "id"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "apps.presentation.open_component",
+    "description": "Shared component openComponent. Builds and drafts remain separate from explicit saved assets.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "componentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "directory": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "componentId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "viewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ownerSessionId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "design": {},
+        "bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bindingId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "appId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "connectionId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityMajor": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "input": {},
+              "projection": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "datasetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "refresh": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "manual",
+                      "scheduled"
+                    ]
+                  },
+                  "scheduleId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "bindingId",
+              "appId",
+              "connectionId",
+              "capabilityId",
+              "capabilityMajor",
+              "input",
+              "projection",
+              "refresh"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "buildId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "directory": {
+              "type": "string",
+              "minLength": 1
+            },
+            "entry": {
+              "type": "string",
+              "minLength": 1
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "thumbnail": {
+              "type": "string",
+              "minLength": 1
+            },
+            "preview": {
+              "type": "object",
+              "properties": {
+                "screenshotPath": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reportPath": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "width": {
+                  "type": "number"
+                },
+                "height": {
+                  "type": "number"
+                },
+                "capturedAt": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "screenshotPath",
+                "reportPath"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "buildId",
+            "directory",
+            "entry",
+            "files"
+          ],
+          "additionalProperties": false
+        },
+        "createdAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceComponentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "initialData": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bindingId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "datasetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "enum": [
+                  "ready",
+                  "failed",
+                  "unavailable",
+                  "empty"
+                ]
+              }
+            },
+            "required": [
+              "bindingId",
+              "datasetId",
+              "status"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "viewId",
+        "ownerSessionId",
+        "title",
+        "design",
+        "bindings",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "apps.presentation.open_source_component",
+    "description": "Shared component openSource. Builds and drafts remain separate from explicit saved assets.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "viewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bindingId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "appId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "connectionId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityMajor": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "input": {},
+              "projection": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "datasetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "refresh": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "manual",
+                      "scheduled"
+                    ]
+                  },
+                  "scheduleId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "bindingId",
+              "appId",
+              "connectionId",
+              "capabilityId",
+              "capabilityMajor",
+              "input",
+              "projection",
+              "refresh"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "legacyBindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "datasetKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fieldMap": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "query": {
+                "type": "object",
+                "properties": {
+                  "tool": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "params": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "tool",
+                  "params"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "fieldMap"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "directory"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "viewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ownerSessionId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "design": {},
+        "bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bindingId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "appId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "connectionId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityMajor": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "input": {},
+              "projection": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "datasetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "refresh": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "manual",
+                      "scheduled"
+                    ]
+                  },
+                  "scheduleId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "bindingId",
+              "appId",
+              "connectionId",
+              "capabilityId",
+              "capabilityMajor",
+              "input",
+              "projection",
+              "refresh"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "buildId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "directory": {
+              "type": "string",
+              "minLength": 1
+            },
+            "entry": {
+              "type": "string",
+              "minLength": 1
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "thumbnail": {
+              "type": "string",
+              "minLength": 1
+            },
+            "preview": {
+              "type": "object",
+              "properties": {
+                "screenshotPath": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reportPath": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "width": {
+                  "type": "number"
+                },
+                "height": {
+                  "type": "number"
+                },
+                "capturedAt": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "screenshotPath",
+                "reportPath"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "buildId",
+            "directory",
+            "entry",
+            "files"
+          ],
+          "additionalProperties": false
+        },
+        "createdAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceComponentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "initialData": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bindingId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "datasetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "enum": [
+                  "ready",
+                  "failed",
+                  "unavailable",
+                  "empty"
+                ]
+              }
+            },
+            "required": [
+              "bindingId",
+              "datasetId",
+              "status"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "viewId",
+        "ownerSessionId",
+        "title",
+        "design",
+        "bindings",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "apps.presentation.render_view",
+    "description": "Shared component renderView. Builds and drafts remain separate from explicit saved assets.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "design": {},
+        "bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bindingId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "appId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "connectionId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityMajor": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "input": {},
+              "projection": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "datasetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "refresh": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "manual",
+                      "scheduled"
+                    ]
+                  },
+                  "scheduleId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "bindingId",
+              "appId",
+              "connectionId",
+              "capabilityId",
+              "capabilityMajor",
+              "input",
+              "projection",
+              "refresh"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "viewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "legacyViewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "templateId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "directory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "legacyBindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "datasetKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fieldMap": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "query": {
+                "type": "object",
+                "properties": {
+                  "tool": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "params": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "tool",
+                  "params"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "fieldMap"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "requiredBindingIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "legacyNeedsSpecification": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "viewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ownerSessionId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "design": {},
+        "bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bindingId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "appId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "connectionId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityMajor": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "input": {},
+              "projection": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "datasetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "refresh": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "manual",
+                      "scheduled"
+                    ]
+                  },
+                  "scheduleId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "bindingId",
+              "appId",
+              "connectionId",
+              "capabilityId",
+              "capabilityMajor",
+              "input",
+              "projection",
+              "refresh"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "buildId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "directory": {
+              "type": "string",
+              "minLength": 1
+            },
+            "entry": {
+              "type": "string",
+              "minLength": 1
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "thumbnail": {
+              "type": "string",
+              "minLength": 1
+            },
+            "preview": {
+              "type": "object",
+              "properties": {
+                "screenshotPath": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reportPath": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "width": {
+                  "type": "number"
+                },
+                "height": {
+                  "type": "number"
+                },
+                "capturedAt": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "screenshotPath",
+                "reportPath"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "buildId",
+            "directory",
+            "entry",
+            "files"
+          ],
+          "additionalProperties": false
+        },
+        "createdAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceComponentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "initialData": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bindingId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "datasetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "enum": [
+                  "ready",
+                  "failed",
+                  "unavailable",
+                  "empty"
+                ]
+              }
+            },
+            "required": [
+              "bindingId",
+              "datasetId",
+              "status"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "viewId",
+        "ownerSessionId",
+        "title",
+        "design",
+        "bindings",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "apps.presentation.save_component",
+    "description": "Shared component saveComponent. Builds and drafts remain separate from explicit saved assets.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "viewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "userRequest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "enum": [
+            "save_as",
+            "update"
+          ]
+        },
+        "componentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "legacyComponentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "legacyTemplate": {}
+      },
+      "required": [
+        "viewId",
+        "userRequest",
+        "mode"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "componentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "view": {
+          "type": "object",
+          "properties": {
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ownerSessionId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "design": {},
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "bindingId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "appId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "connectionId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityMajor": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "input": {},
+                  "projection": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "datasetId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "refresh": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "enum": [
+                          "manual",
+                          "scheduled"
+                        ]
+                      },
+                      "scheduleId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "mode"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "bindingId",
+                  "appId",
+                  "connectionId",
+                  "capabilityId",
+                  "capabilityMajor",
+                  "input",
+                  "projection",
+                  "refresh"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "buildId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "directory": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "entry": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "thumbnail": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "preview": {
+                  "type": "object",
+                  "properties": {
+                    "screenshotPath": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "reportPath": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "width": {
+                      "type": "number"
+                    },
+                    "height": {
+                      "type": "number"
+                    },
+                    "capturedAt": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "screenshotPath",
+                    "reportPath"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "buildId",
+                "directory",
+                "entry",
+                "files"
+              ],
+              "additionalProperties": false
+            },
+            "createdAt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "updatedAt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceComponentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "baseRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "initialData": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "bindingId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "datasetId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "status": {
+                    "enum": [
+                      "ready",
+                      "failed",
+                      "unavailable",
+                      "empty"
+                    ]
+                  }
+                },
+                "required": [
+                  "bindingId",
+                  "datasetId",
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "viewId",
+            "ownerSessionId",
+            "title",
+            "design",
+            "bindings",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        },
+        "userRequest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "savedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "legacyTemplate": {},
+        "revisions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "savedAt": {
+                "type": "string",
+                "minLength": 1
+              },
+              "buildId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "revision",
+              "title",
+              "savedAt"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "componentId",
+        "revision",
+        "title",
+        "view",
+        "userRequest",
+        "savedAt"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "apps.presentation.save_entry",
+    "description": "Shared component saveEntry. Builds and drafts remain separate from explicit saved assets.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "binding": {
+          "type": "object",
+          "properties": {
+            "bindingId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "appId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "connectionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capabilityMajor": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "input": {},
+            "projection": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "datasetId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "refresh": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "manual",
+                    "scheduled"
+                  ]
+                },
+                "scheduleId": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "bindingId",
+            "appId",
+            "connectionId",
+            "capabilityId",
+            "capabilityMajor",
+            "input",
+            "projection",
+            "refresh"
+          ],
+          "additionalProperties": false
+        },
+        "legacyBinding": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "datasetKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "fieldMap": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "query": {
+              "type": "object",
+              "properties": {
+                "tool": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "params": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "tool",
+                "params"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "id",
+            "fieldMap"
+          ],
+          "additionalProperties": false
+        },
+        "legacyFieldOrder": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "userRequest": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "title",
+        "binding",
+        "userRequest"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "assetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "entry"
+        },
+        "entryKind": {
+          "enum": [
+            "data",
+            "component"
+          ]
+        },
+        "componentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "binding": {
+          "type": "object",
+          "properties": {
+            "bindingId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "appId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "connectionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capabilityMajor": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "input": {},
+            "projection": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "datasetId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "refresh": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "manual",
+                    "scheduled"
+                  ]
+                },
+                "scheduleId": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "bindingId",
+            "appId",
+            "connectionId",
+            "capabilityId",
+            "capabilityMajor",
+            "input",
+            "projection",
+            "refresh"
+          ],
+          "additionalProperties": false
+        },
+        "legacyBinding": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "datasetKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "fieldMap": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "query": {
+              "type": "object",
+              "properties": {
+                "tool": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "params": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "tool",
+                "params"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "id",
+            "fieldMap"
+          ],
+          "additionalProperties": false
+        },
+        "legacyFieldOrder": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "userRequest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "order": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "assetId",
+        "kind",
+        "title",
+        "userRequest",
+        "pinned",
+        "order"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "binding"
+          ]
+        },
+        {
+          "required": [
+            "componentId"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "apps.presentation.save_template",
+    "description": "Shared component saveTemplate. Builds and drafts remain separate from explicit saved assets.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "viewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "userRequest": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "viewId",
+        "name",
+        "userRequest"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "assetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "template"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "design": {},
+        "bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bindingId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "appId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "connectionId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityMajor": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "input": {},
+              "projection": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "datasetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "refresh": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "manual",
+                      "scheduled"
+                    ]
+                  },
+                  "scheduleId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "bindingId",
+              "appId",
+              "connectionId",
+              "capabilityId",
+              "capabilityMajor",
+              "input",
+              "projection",
+              "refresh"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "buildId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "directory": {
+              "type": "string",
+              "minLength": 1
+            },
+            "entry": {
+              "type": "string",
+              "minLength": 1
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "thumbnail": {
+              "type": "string",
+              "minLength": 1
+            },
+            "preview": {
+              "type": "object",
+              "properties": {
+                "screenshotPath": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reportPath": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "width": {
+                  "type": "number"
+                },
+                "height": {
+                  "type": "number"
+                },
+                "capturedAt": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "screenshotPath",
+                "reportPath"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "buildId",
+            "directory",
+            "entry",
+            "files"
+          ],
+          "additionalProperties": false
+        },
+        "userRequest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "savedAt": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "assetId",
+        "kind",
+        "title",
+        "design",
+        "bindings",
+        "userRequest"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "apps.presentation.update_view",
+    "description": "Shared component updateView. Builds and drafts remain separate from explicit saved assets.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "viewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "design": {},
+        "bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bindingId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "appId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "connectionId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityMajor": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "input": {},
+              "projection": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "datasetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "refresh": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "manual",
+                      "scheduled"
+                    ]
+                  },
+                  "scheduleId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "bindingId",
+              "appId",
+              "connectionId",
+              "capabilityId",
+              "capabilityMajor",
+              "input",
+              "projection",
+              "refresh"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "viewId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "viewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ownerSessionId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "design": {},
+        "bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bindingId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "appId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "connectionId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityMajor": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "input": {},
+              "projection": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "datasetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "refresh": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "manual",
+                      "scheduled"
+                    ]
+                  },
+                  "scheduleId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "bindingId",
+              "appId",
+              "connectionId",
+              "capabilityId",
+              "capabilityMajor",
+              "input",
+              "projection",
+              "refresh"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "buildId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "directory": {
+              "type": "string",
+              "minLength": 1
+            },
+            "entry": {
+              "type": "string",
+              "minLength": 1
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "thumbnail": {
+              "type": "string",
+              "minLength": 1
+            },
+            "preview": {
+              "type": "object",
+              "properties": {
+                "screenshotPath": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reportPath": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "width": {
+                  "type": "number"
+                },
+                "height": {
+                  "type": "number"
+                },
+                "capturedAt": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "screenshotPath",
+                "reportPath"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "buildId",
+            "directory",
+            "entry",
+            "files"
+          ],
+          "additionalProperties": false
+        },
+        "createdAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceComponentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "initialData": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bindingId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "datasetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "enum": [
+                  "ready",
+                  "failed",
+                  "unavailable",
+                  "empty"
+                ]
+              }
+            },
+            "required": [
+              "bindingId",
+              "datasetId",
+              "status"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "viewId",
+        "ownerSessionId",
+        "title",
+        "design",
+        "bindings",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.actions.candidates",
+    "description": "已登记接口 ozonActionCandidatesList；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "response": {},
+        "httpStatus": {
+          "type": "integer"
+        },
+        "outcome": {
+          "enum": [
+            "pending",
+            "response_received",
+            "outcome_unknown"
+          ]
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "response"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.actions.list",
+    "description": "已登记接口 ozonActionsList；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "response": {},
+        "httpStatus": {
+          "type": "integer"
+        },
+        "outcome": {
+          "enum": [
+            "pending",
+            "response_received",
+            "outcome_unknown"
+          ]
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "response"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.actions.products",
+    "description": "已登记接口 ozonActionProductsList；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "response": {},
+        "httpStatus": {
+          "type": "integer"
+        },
+        "outcome": {
+          "enum": [
+            "pending",
+            "response_received",
+            "outcome_unknown"
+          ]
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "response"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.category.read",
+    "description": "已登记接口 hallmarkCategoryRead；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "用户明确指定的店铺 ID"
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "名称/别名，匹配不唯一须澄清"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "search",
+            "show",
+            "template",
+            "values",
+            "validate_value",
+            "sync"
+          ]
+        },
+        "q": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "search必填；values可选；最多200个Unicode字符，不允许*"
+        },
+        "descriptionCategoryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "规范正整数类目ID"
+        },
+        "typeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "规范正整数typeId"
+        },
+        "attributeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "规范正整数属性ID"
+        },
+        "valueId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "规范正整数字典值ID"
+        },
+        "dictionaryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "规范正整数字典ID"
+        },
+        "aspects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "maxItems": 10
+        },
+        "requireAspects": {
+          "type": "boolean"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "datasetKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "tool": {
+              "const": "hallmark_get_category_data"
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "tool",
+            "params"
+          ],
+          "additionalProperties": false
+        },
+        "raw": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "datasetKey",
+        "query"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "raw"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.collected_item.raw",
+    "description": "已登记接口 hallmarkCollectedItemRawRead；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "itemId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "itemId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "id",
+            "content",
+            "truncated"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.products.attributes",
+    "description": "已登记接口 ozonProductsAttributesRead；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "response": {},
+        "httpStatus": {
+          "type": "integer"
+        },
+        "outcome": {
+          "enum": [
+            "pending",
+            "response_received",
+            "outcome_unknown"
+          ]
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "response"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.products.import_inspect",
+    "description": "已登记接口 ozonProductImportInspect；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "response": {},
+        "httpStatus": {
+          "type": "integer"
+        },
+        "outcome": {
+          "enum": [
+            "pending",
+            "response_received",
+            "outcome_unknown"
+          ]
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "response"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.products.info",
+    "description": "已登记接口 ozonProductsInfoRead；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "response": {},
+        "httpStatus": {
+          "type": "integer"
+        },
+        "outcome": {
+          "enum": [
+            "pending",
+            "response_received",
+            "outcome_unknown"
+          ]
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "response"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.products.prices",
+    "description": "已登记接口 ozonProductsPricesRead；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "response": {},
+        "httpStatus": {
+          "type": "integer"
+        },
+        "outcome": {
+          "enum": [
+            "pending",
+            "response_received",
+            "outcome_unknown"
+          ]
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "response"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.products.stocks",
+    "description": "已登记接口 ozonProductStocksRead；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "response": {},
+        "httpStatus": {
+          "type": "integer"
+        },
+        "outcome": {
+          "enum": [
+            "pending",
+            "response_received",
+            "outcome_unknown"
+          ]
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "response"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.products.update_price",
+    "description": "已登记的 Hallmark 普通调价适配操作，委托既有 WriteOperations 的输入核实、操作账本和只读 inspect；不是固定 URL 的直接调用。有已核实店铺任务时使用 task platform 调价并按同一商品、币种和金额回读；仅 TASK_CONTEXT_REQUIRED、CNY、无 actionId/oldPrice 且适配器具备普通 CNY 提交/读取/核实接口时，沿既有严格两位小数 CNY fallback。该 fallback 核实历史 price-state，不宣称实时平台回读。结果保留原请求编号、原始响应和 readback；unknown 仅查询原操作，不重发。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "用户明确指定的店铺 ID"
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "名称/别名，匹配不唯一须澄清"
+        },
+        "offerIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 1,
+          "maxItems": 200
+        },
+        "productIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 1,
+          "maxItems": 200
+        },
+        "valueSource": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "user 或 rule:规则名，不允许猜测数值"
+        },
+        "clientOperationKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "同一逻辑修改必须复用；未知结果先查询操作"
+        },
+        "userRequest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "本轮用户明确修改指令原话"
+        },
+        "scopeConfirmed": {
+          "type": "boolean"
+        },
+        "price": {
+          "type": "number",
+          "minimum": 0.01
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "oldPrice": {
+          "type": "number"
+        },
+        "actionId": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storeId": {
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "running",
+            "succeeded",
+            "failed",
+            "partial",
+            "unknown"
+          ]
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "operationId",
+        "kind",
+        "storeId",
+        "state",
+        "targets",
+        "input",
+        "items"
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.store_products.read",
+    "description": "已登记接口 hallmarkStoreProductsRead；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "products": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "stores": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "products",
+            "stores"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.store_products.sync",
+    "description": "已登记接口 hallmarkStoreProductsSync；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.stores.list",
+    "description": "已登记接口 hallmarkStoresList；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "storeId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "store_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "id"
+            ]
+          },
+          {
+            "required": [
+              "storeId"
+            ]
+          },
+          {
+            "required": [
+              "store_id"
+            ]
+          }
+        ],
+        "additionalProperties": true
+      }
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.target_margin.read",
+    "description": "已登记接口 hallmarkTargetMarginRead；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.api.warehouses.list",
+    "description": "已登记接口 ozonWarehousesList；使用 Hallmark 原实现并保留请求/响应证据",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "response": {},
+        "httpStatus": {
+          "type": "integer"
+        },
+        "outcome": {
+          "enum": [
+            "pending",
+            "response_received",
+            "outcome_unknown"
+          ]
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "response"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.app.info",
+    "description": "说明应用能力、边界、来源、保存规则与后端状态",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "appId": {
+          "const": "hallmark"
+        },
+        "instructions": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "name",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "boundaries": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "appId",
+        "instructions",
+        "tools",
+        "boundaries"
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.categories.read",
+    "description": "读取明确店铺的类目。search必填q，limit默认10且不超过20；show/template必填descriptionCategoryId+typeId；values另需attributeId，limit默认50且不超过100，可选q至少2字；validate_value另需attributeId+valueId+dictionaryId；sync只传店铺和mode，同步只读类目缓存。禁止模式外字段。返回datasetKey和raw（过大则spill），快照payload为原文；ok仅代表读取成功，须保留partial/stale与未核实候选，不将候选当允许值",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "用户明确指定的店铺 ID"
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "名称/别名，匹配不唯一须澄清"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "search",
+            "show",
+            "template",
+            "values",
+            "validate_value",
+            "sync"
+          ]
+        },
+        "q": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "search必填；values可选；最多200个Unicode字符，不允许*"
+        },
+        "descriptionCategoryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "规范正整数类目ID"
+        },
+        "typeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "规范正整数typeId"
+        },
+        "attributeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "规范正整数属性ID"
+        },
+        "valueId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "规范正整数字典值ID"
+        },
+        "dictionaryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "规范正整数字典ID"
+        },
+        "aspects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "maxItems": 10
+        },
+        "requireAspects": {
+          "type": "boolean"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "datasetKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "tool": {
+              "const": "hallmark_get_category_data"
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "tool",
+            "params"
+          ],
+          "additionalProperties": false
+        },
+        "raw": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "datasetKey",
+        "query"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "raw"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.collected.get",
+    "description": "获取单个采集商品完整原始字段",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "itemId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "itemId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "id",
+            "content",
+            "truncated"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.collected.search",
+    "description": "搜索浏览器扩展已有采集摘要，不触发采集。返回items、分页cursor及可直接绑定组件的datasetKey；保留源返回顺序，不保证按采集时间排序；没有时间证据不声称最近。已保存组件可按同一查询与分页范围只读刷新",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "datasetKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "datasetKey",
+            "items",
+            "total"
+          ],
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "properties": {
+            "datasetKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "spill": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "summary": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "cursor": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "bytes",
+                "summary",
+                "cursor"
+              ],
+              "additionalProperties": true
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cursor": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "datasetKey",
+            "spill",
+            "total",
+            "cursor",
+            "limit"
+          ],
+          "additionalProperties": true
+        }
+      ]
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.datasets.refresh",
+    "description": "只读同步并更新快照，不上品/调价/改库存或触发扩展采集",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "datasetKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "storeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "用户明确指定的店铺 ID"
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "名称/别名，匹配不唯一须澄清"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "datasetKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "snapshot": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "required": [
+        "datasetKey",
+        "snapshot",
+        "counts"
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.datasets.status",
+    "description": "查询数据集上次成功时间、刷新状态与错误",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "datasetKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "storeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "用户明确指定的店铺 ID"
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "名称/别名，匹配不唯一须澄清"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "datasetKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lastSuccessAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastError": {}
+      },
+      "required": [
+        "datasetKey",
+        "state",
+        "lastSuccessAt",
+        "lastError"
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.operations.get",
+    "description": "读取写入/刷新状态；unknown 时必须先查询，禁止自动重写",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "operationId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storeId": {
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "running",
+            "succeeded",
+            "failed",
+            "partial",
+            "unknown"
+          ]
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "operationId",
+        "kind",
+        "storeId",
+        "state",
+        "targets",
+        "input",
+        "items"
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.operations.list",
+    "description": "按当前会话、店铺和时间读取操作记录",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "since": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "storeId": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "running",
+              "succeeded",
+              "failed",
+              "partial",
+              "unknown"
+            ]
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "input": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "operationId",
+          "kind",
+          "storeId",
+          "state",
+          "targets",
+          "input",
+          "items"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.platform.read",
+    "description": "仅对白名单只读平台端点调用，自动关联内部任务",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "用户明确指定的店铺 ID"
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "名称/别名，匹配不唯一须澄清"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST"
+          ]
+        },
+        "body": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "response": {},
+        "httpStatus": {
+          "type": "integer"
+        },
+        "outcome": {
+          "enum": [
+            "pending",
+            "response_received",
+            "outcome_unknown"
+          ]
+        },
+        "spill": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "cursor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "bytes",
+            "summary",
+            "cursor"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "response"
+          ]
+        },
+        {
+          "required": [
+            "spill"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.products.filter",
+    "description": "按参考利润率/价格/库存筛选，缺成本无法判断；结果集保留 24h",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "用户明确指定的店铺 ID"
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "名称/别名，匹配不唯一须澄清"
+        },
+        "minMargin": {
+          "type": "number"
+        },
+        "maxMargin": {
+          "type": "number"
+        },
+        "minPrice": {
+          "type": "number"
+        },
+        "maxPrice": {
+          "type": "number"
+        },
+        "minStock": {
+          "type": "number"
+        },
+        "maxStock": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "resultSetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "resultSetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "products": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "unable": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "matchedCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unableCount": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "total"
+          ],
+          "anyOf": [
+            {
+              "required": [
+                "products",
+                "unable"
+              ]
+            },
+            {
+              "required": [
+                "matchedCount",
+                "unableCount"
+              ]
+            }
+          ],
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "resultSetId",
+        "storeId",
+        "expiresAt",
+        "payload"
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.products.list",
+    "description": "读取店铺商品最近快照，保留原始源字段与时间",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "用户明确指定的店铺 ID"
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "名称/别名，匹配不唯一须澄清"
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "products": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "products",
+            "total"
+          ],
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "properties": {
+            "spill": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "summary": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "cursor": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "bytes",
+                "summary",
+                "cursor"
+              ],
+              "additionalProperties": true
+            },
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "spill",
+            "storeId",
+            "total"
+          ],
+          "additionalProperties": true
+        }
+      ]
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.products.list_product",
+    "description": "仅上品用户指定的已有采集商品和 SKU 范围，不隐式全采集箱。仅在用户本轮明确要求修改时调用；缺信息必须澄清；unknown 禁止再次写入，先查询操作。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "用户明确指定的店铺 ID"
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "名称/别名，匹配不唯一须澄清"
+        },
+        "offerIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 1,
+          "maxItems": 200
+        },
+        "productIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 1,
+          "maxItems": 200
+        },
+        "valueSource": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "user 或 rule:规则名，不允许猜测数值"
+        },
+        "clientOperationKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "同一逻辑修改必须复用；未知结果先查询操作"
+        },
+        "userRequest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "本轮用户明确修改指令原话"
+        },
+        "scopeConfirmed": {
+          "type": "boolean"
+        },
+        "collectedItemId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "skuScope": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 1,
+          "maxItems": 200
+        },
+        "importItems": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "minItems": 1,
+          "maxItems": 100
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storeId": {
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "running",
+            "succeeded",
+            "failed",
+            "partial",
+            "unknown"
+          ]
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "operationId",
+        "kind",
+        "storeId",
+        "state",
+        "targets",
+        "input",
+        "items"
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.products.update_price",
+    "description": "修改显式商品清单的价格并只读核实。仅在用户本轮明确要求修改时调用；缺信息必须澄清；unknown 禁止再次写入，先查询操作。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "用户明确指定的店铺 ID"
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "名称/别名，匹配不唯一须澄清"
+        },
+        "offerIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 1,
+          "maxItems": 200
+        },
+        "productIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 1,
+          "maxItems": 200
+        },
+        "valueSource": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "user 或 rule:规则名，不允许猜测数值"
+        },
+        "clientOperationKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "同一逻辑修改必须复用；未知结果先查询操作"
+        },
+        "userRequest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "本轮用户明确修改指令原话"
+        },
+        "scopeConfirmed": {
+          "type": "boolean"
+        },
+        "price": {
+          "type": "number",
+          "minimum": 0.01
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "oldPrice": {
+          "type": "number"
+        },
+        "actionId": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storeId": {
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "running",
+            "succeeded",
+            "failed",
+            "partial",
+            "unknown"
+          ]
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "operationId",
+        "kind",
+        "storeId",
+        "state",
+        "targets",
+        "input",
+        "items"
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.products.update_stock",
+    "description": "修改显式商品清单在指定仓库的库存并只读核实。仅在用户本轮明确要求修改时调用；缺信息必须澄清；unknown 禁止再次写入，先查询操作。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "用户明确指定的店铺 ID"
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "名称/别名，匹配不唯一须澄清"
+        },
+        "offerIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 1,
+          "maxItems": 200
+        },
+        "productIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 1,
+          "maxItems": 200
+        },
+        "valueSource": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "user 或 rule:规则名，不允许猜测数值"
+        },
+        "clientOperationKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "同一逻辑修改必须复用；未知结果先查询操作"
+        },
+        "userRequest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "本轮用户明确修改指令原话"
+        },
+        "scopeConfirmed": {
+          "type": "boolean"
+        },
+        "stock": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "warehouseId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storeId": {
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "running",
+            "succeeded",
+            "failed",
+            "partial",
+            "unknown"
+          ]
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "operationId",
+        "kind",
+        "storeId",
+        "state",
+        "targets",
+        "input",
+        "items"
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.profit.compute",
+    "description": "调用 Hallmark 参考利润计算；并非实际结算，缺成本单列",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "用户明确指定的店铺 ID"
+        },
+        "store": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "名称/别名，匹配不唯一须澄清"
+        },
+        "offerIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 1,
+          "maxItems": 200
+        },
+        "productIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 1,
+          "maxItems": 200
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "products": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "products",
+            "total"
+          ],
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "properties": {
+            "spill": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "summary": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "cursor": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "bytes",
+                "summary",
+                "cursor"
+              ],
+              "additionalProperties": true
+            },
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "spill",
+            "storeId",
+            "total"
+          ],
+          "additionalProperties": true
+        }
+      ]
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.stores.list",
+    "description": "列出已配置店铺，保留原始字段",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "storeId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "store_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "id"
+            ]
+          },
+          {
+            "required": [
+              "storeId"
+            ]
+          },
+          {
+            "required": [
+              "store_id"
+            ]
+          }
+        ],
+        "additionalProperties": true
+      }
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.stores.resolve",
+    "description": "唯一解析店铺；多个返回候选",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "id"
+          ]
+        },
+        {
+          "required": [
+            "storeId"
+          ]
+        },
+        {
+          "required": [
+            "store_id"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "notes.notes.create",
+    "description": "create 本地 Notes 原始笔记；按精确连接与资源身份执行。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 1000000
+        }
+      },
+      "required": [
+        "title",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "note": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "content": {
+              "type": "string",
+              "maxLength": 1000000
+            },
+            "revision": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "content",
+            "revision",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "appId": {
+              "const": "notes"
+            },
+            "connectionId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "resourceType": {
+              "const": "note"
+            },
+            "resourceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            }
+          },
+          "required": [
+            "appId",
+            "connectionId",
+            "resourceType",
+            "resourceId",
+            "revision"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "note",
+        "resource"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "notes.notes.get",
+    "description": "get 本地 Notes 原始笔记；按精确连接与资源身份执行。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "note": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "content": {
+              "type": "string",
+              "maxLength": 1000000
+            },
+            "revision": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "content",
+            "revision",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "appId": {
+              "const": "notes"
+            },
+            "connectionId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "resourceType": {
+              "const": "note"
+            },
+            "resourceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            }
+          },
+          "required": [
+            "appId",
+            "connectionId",
+            "resourceType",
+            "resourceId",
+            "revision"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "note",
+        "resource"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "notes.notes.list",
+    "description": "list 本地 Notes 原始笔记；按精确连接与资源身份执行。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "cursor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "note": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "content": {
+                    "type": "string",
+                    "maxLength": 1000000
+                  },
+                  "revision": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]*$"
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "content",
+                  "revision",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "additionalProperties": false
+              },
+              "resource": {
+                "type": "object",
+                "properties": {
+                  "appId": {
+                    "const": "notes"
+                  },
+                  "connectionId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "resourceType": {
+                    "const": "note"
+                  },
+                  "resourceId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "revision": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  }
+                },
+                "required": [
+                  "appId",
+                  "connectionId",
+                  "resourceType",
+                  "resourceId",
+                  "revision"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "note",
+              "resource"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "returned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nextCursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "completeness": {
+          "enum": [
+            "complete",
+            "partial"
+          ]
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "returned",
+        "nextCursor",
+        "completeness"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "notes.notes.update",
+    "description": "update 本地 Notes 原始笔记；按精确连接与资源身份执行。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 1000000
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "title"
+          ]
+        },
+        {
+          "required": [
+            "content"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "note": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "content": {
+              "type": "string",
+              "maxLength": 1000000
+            },
+            "revision": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "content",
+            "revision",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "appId": {
+              "const": "notes"
+            },
+            "connectionId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "resourceType": {
+              "const": "note"
+            },
+            "resourceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            }
+          },
+          "required": [
+            "appId",
+            "connectionId",
+            "resourceType",
+            "resourceId",
+            "revision"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "note",
+        "resource"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  }
+]

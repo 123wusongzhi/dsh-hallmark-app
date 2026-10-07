@@ -1,0 +1,23 @@
+{
+  "scope": "Documentation SVG rasterization only. No DSH UI, Runtime, provider, or model verification.",
+  "checkedAt": "2026-10-07T04:47:33.230Z",
+  "browser": "Local Chrome, headless",
+  "results": [
+    {
+      "name": "FIG-13",
+      "width": 1720,
+      "height": 1230,
+      "png": "FIG-13.png",
+      "svg": "FIG-13.svg",
+      "pageErrors": []
+    },
+    {
+      "name": "FIG-14",
+      "width": 1870,
+      "height": 1950,
+      "png": "FIG-14.png",
+      "svg": "FIG-14.svg",
+      "pageErrors": []
+    }
+  ]
+}

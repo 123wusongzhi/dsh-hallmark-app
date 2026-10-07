@@ -50,7 +50,7 @@ export class WriteOperations {
     if(blocked.sessionId!==context.sessionId)return failed('OPERATION_UNRESOLVED','目标暂不能修改；请等待既有修改核实，不得换键重写。');
     return {...operationResult(blocked),error:{code:'OPERATION_UNRESOLVED',message:'目标存在未核实的修改。先查询操作，不得换键重写。',retryable:false}};
    }
-   const id=randomUUID(),timestamp=now();const op:Operation={operationId:id,kind,sessionId:context.sessionId,clientKey:args.clientOperationKey,storeId,targets,input:{...input,fingerprint},state:'pending',hallmarkRefs:[],items:[],createdAt:timestamp,updatedAt:timestamp};
+   const id=context.operationId??randomUUID(),timestamp=now();const op:Operation={operationId:id,kind,sessionId:context.sessionId,clientKey:args.clientOperationKey,storeId,targets,input:{...input,fingerprint},state:'pending',hallmarkRefs:[],items:[],createdAt:timestamp,updatedAt:timestamp};
    this.options.store.put('operations',id,op);projectOperationReceipt(this.options.store,id);return op;
   });
   if('status' in reserved)return reserved as ToolResult;

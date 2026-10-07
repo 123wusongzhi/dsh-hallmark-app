@@ -1,10 +1,44 @@
 # Hallmark × DSH 应用接入
 
-当前版本 **0.3.0**：支持 Agent 编写普通 React/TSX/CSS 源码组件、预览与截图反馈、源码模板复用、保存版本与恢复，以及将勾选商品作为原生附件加入聊天输入框。包含蓝白商品模板、独立能力服务和 DSH 原生插件。详见[源码组件作者指南](docs/source-component-authoring.md)和[0.3.0 交付记录](docs/release-0.3.0.md)。该版本已通过 440 项测试、类型检查和构建；原生 GUI 完整点击验收仍待完成。
+本项目在原 Hallmark 插件项目上覆盖更新。Apps V1 当前候选 bundle/Host 为 **`1.0.0-candidate.6`**，Runtime 为 `1.0.0-candidate.4`；包含多应用 Runtime、Hallmark/Notes Provider、共享组件、SDK、离线迁移和组合 bundle。全仓 570 项测试、类型检查、构建及实际桌面源码组件显示已通过；经官方管理器替换原插件后保留新版。完整实施、版本矩阵与验收边界见[候选实现说明](docs/apps-v1-candidate.md)和[公开验证摘要](docs/apps-publication-validation-20261007.md)。真实外部模型、Hallmark 调价/库存写入和原业务数据库切换仍未验收。
+
+2026-10-07 新增了**原聊天中由 Agent 创建和编辑组件**的架构 A.1、生图说明与可交互 HTML。目标是任意已有 DSH 会话在原输入框 `@` 选择应用，继续使用原 Agent、原消息和原发送；只改应用工作台、右侧组件与必要输入扩展，不新增独立聊天标签，不重做整个 DSH UI。这一轮完成的是设计与可体验原型，原生 `@` 绑定、会话/附件桥和 v2 真实预览反馈仍需接线验收。
+
+## 最新文档与体验入口
+
+| 内容 | 入口 | 完成范围 |
+|---|---|---|
+| Apps V1 候选实现 | [候选说明](docs/apps-v1-candidate.md)、[架构决策](docs/apps-architecture-decisions.md)、[迁移与回退](docs/apps-migration-runbook.md) | 现有实现与候选验收；不等于新增前端流程已实现 |
+| 需求、架构与逐项追踪 | [TODO](docs/requirements/01_TODO.md)、[规格](docs/requirements/02_SPEC.md)、[架构 A.1](docs/requirements/03_ARCHITECTURE.md)、[traceability.csv](docs/requirements/traceability.csv) | 同仓库保存的需求基线与最新架构补充 |
+| 最新桌面交互要求 | [需求整理](docs/apps-product-requirements-20261007.md)、[视觉范围](docs/apps-ui-design-reference.md) | 原聊天 `@` 引用、局部 UI 更新、明确保存与会话隔离 |
+| 聊天组件创作评审 | [架构与体验说明](docs/chat-component-authoring-review.md)、[FIG-13 / FIG-14 图源](docs/architecture/chat-component-authoring/README.md) | 新建、编辑、真实预览、保存及失败处理的目标契约 |
+| 可交互 HTML | [下载单文件原型](docs/prototypes/chat-component-authoring.html)、[使用说明](docs/prototypes/README.md)、[实际画面](docs/prototypes/chat-component-authoring-browser.jpg) | 离线示例数据与状态模拟；不连接 DSH、模型或真实店铺 |
+| 生图说明 | [闭环图](docs/design-reference/20261007-chat-authoring-architecture-generated.png)、[完整提示词](docs/design-reference/imagegen-prompts-chat-authoring-20261007.md) | 辅助理解；工程关系以架构正文和 FIG-13 / FIG-14 为准 |
+
+在 GitHub 的 HTML 文件页面选择 **Download raw file**，保存后双击用浏览器打开；也可以 clone 仓库后打开 `docs/prototypes/chat-component-authoring.html`。无须启动服务。先输入 `@` 选择 Hallmark 并手动发送要求，再体验继续聊天修改、商品搜索/勾选、附加 JSON 后手动发送、明确保存和版本冲突。“查看架构流程”可观察身份与失败保留。浏览器交互检查通过，仅证明这份原型的流程与显示，详见[检查记录](docs/prototypes/chat-component-authoring-browser-check.json)。
+
+## Apps V1 开发与验证
+
+使用 Node ≥22.18，在仓库根目录执行。组合 bundle 的版本测试需要读取本机生成的 Host、Client 与 Runtime，因此先构建再测试；编译结果和安装归档由命令生成，不提交到 Git。
+
+```powershell
+pnpm install --ignore-scripts
+pnpm run generate:apps-sdk
+pnpm run build:apps
+pnpm run typecheck
+pnpm test
+node scripts/smoke-apps-bundle.mjs
+```
+
+这组命令生成候选包并做隔离验证，不安装到正在运行的 DSH。连接配置、实际插件安装、原生宿主验收及数据迁移见[候选说明](docs/apps-v1-candidate.md)与[迁移运行手册](docs/apps-migration-runbook.md)。
+
+## 历次 Hallmark 交付背景
+
+**0.3.0 历史版本**支持 Agent 编写普通 React/TSX/CSS 源码组件、预览与截图反馈、源码模板复用、保存版本与恢复，以及将勾选商品作为原生附件加入聊天输入框。包含蓝白商品模板、独立能力服务和 DSH 原生插件。详见[源码组件作者指南](docs/source-component-authoring.md)和[0.3.0 交付记录](docs/release-0.3.0.md)。该版本当时通过 440 项测试、类型检查和构建；其交付记录中的待验收项保留当时语境，当前候选状态以上方 Apps V1 说明为准。
 
 新增源码示例：[helen 店铺利润率组件](component-workspace/helen-margin/DESIGN.md)。Agent 与组件的交互流程见[说明文档](docs/agent-component-interaction.md)或[交互 HTML](docs/agent-component-interaction.html)（下载后用浏览器打开）。示例构建通过；真实数据和本地截图不随源码上传。
 
-仓库仅保存开发代码、测试、技能、模板及文档。本地业务数据库、凭据、浏览器配置、构建归档和运行证据不纳入 Git；历史文档中的 `artifacts/` 链接指向本地验收材料。`scripts/install-desktop-*`、`reload-local-service-*` 是原开发机的版本部署记录，其他机器应先配置实际路径和进程信息。
+仓库仅保存开发代码、测试、技能、模板及文档。本地业务数据库、凭据、浏览器配置、构建归档和原始运行证据不纳入 Git；`evidence/` 仅保留在本机归档，公开仓库使用[验证摘要](docs/apps-publication-validation-20261007.md)。历史文档中的 `artifacts/` 路径指向本地验收材料。原型的示例检查记录随评审文档发布。`scripts/install-desktop-*`、`reload-local-service-*` 是原开发机的版本部署记录，其他机器应先配置实际路径和进程信息。
 
 以下为历次交付背景；旧版本号、工具数量及现场数据描述保留其当时语境。
 
@@ -16,7 +50,9 @@
 
 独立、本机优先的 Hallmark 能力服务 + Cordis 原生插件。使用 DSH 原有聊天，不复制业务数据库、平台凭据或原看板，不改 DSH 核心。
 
-## 当前边界
+## Hallmark 0.3.0 接入边界（历史）
+
+以下描述原 Hallmark 单应用服务与历史交互。Apps V1 的四个网关、连接与运行方式以[候选说明](docs/apps-v1-candidate.md)为准；新的原聊天 `@` 创作体验以[架构与体验评审](docs/chat-component-authoring-review.md)为准。
 
 - 25 个统一 Schema 工具：源数据读取、参考利润/筛选、普通价与仓库库存修改、已有采集商品的受控导入、操作查询、刷新、组件/模板/入口管理。
 - 上品输入必须完整且可追溯：明确采集商品与 SKU、Ozon 类目/属性、素材来源、价格和尺寸重量。不会自动猜类目、制作资产或上品整个采集箱。平台 `imported` 不是 `on_sale`；原四工具的 WorkPlan/资产交付流程未移植。
@@ -76,7 +112,9 @@ npm run backup -- --output "E:\\backups\\hallmark-app.json"
 
 输出必须是新的 JSON 文件；命令以只读事务读取应用库，不创建/迁移数据库、不覆盖已有输出、不备份共享密钥文件。
 
-## 安装与使用
+## Hallmark 0.x 历史安装与交互
+
+下述 0.2.3 归档命令、应用双击激活与旧工作区标签是历史部署记录，不是当前候选包的安装命令，也不代表最新 `@` 交互目标。安装 Apps V1 应先阅读[候选说明](docs/apps-v1-candidate.md)与[迁移手册](docs/apps-migration-runbook.md)，构建并使用其确切版本的组合 bundle；卸载/更新后需重开桌面核对实际注册。
 
 正式包由构建命令生成预构建 Host/Client 后，以唯一版本归档通过 DSH 官方插件管理器安装。重复使用同一目录 spec 可能被 pnpm 旧元数据缓存，管理器返回 `ambiguous-install`；不要盲目重复写 profile：
 
@@ -115,7 +153,7 @@ install_bundle target=file:E:/project/deepseek_h/dsh-hallmark-app/artifacts/dsh-
 
 ## 架构与证据
 
-- [原始规格](<../DSH应用插件_spec_doc.md>)、[需求稿](<../DSH应用插件需求稿.md>)。
+- [需求规格](docs/requirements/02_SPEC.md)、[TODO](docs/requirements/01_TODO.md)、[架构 A.1](docs/requirements/03_ARCHITECTURE.md)、[逐项追踪](docs/requirements/traceability.csv)。
 - [M0 接入决策](<docs/decisions/0001-接入决策.md>)、[Hallmark 实际契约](<docs/hallmark-contracts.md>)。
 - [统一工具契约](<packages/contracts/src/index.ts>) → [业务能力](<packages/core/src/index.ts>) → [本机服务](<packages/service/src/main.ts>)。
 - [SQLite 存储](<packages/store/index.ts>)、[展示管理](<packages/presentation/src/index.ts>)。

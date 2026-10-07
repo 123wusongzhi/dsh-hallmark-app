@@ -1,0 +1,9 @@
+# Candidate additive layer. Configure an isolated Runtime; official manager owns installation.
+# The old dsh-plugin-hallmark layer must not be active simultaneously (duplicate legacy tools/entry).
+- insert:
+    - id: dsh-apps
+      name: dsh-plugin-apps-bundle
+      config:
+        serviceUrl: http://127.0.0.1:4181
+        dataDirectory: ''
+        legacyToolProjection: false

@@ -1,0 +1,38 @@
+sequenceDiagram
+  autonumber
+  participant U as 用户
+  participant N as 原输入框 / Host
+  participant A as 原 DSH Agent
+  participant W as 工程 / 真实预览
+  participant R as P2 Runtime
+  participant V as 组件 frame / Client
+  U->>N: @ 选择应用：保留原会话 / 正文 / 附件
+  N->>R: 核实真实 sessionId，绑定 appId + connectionId
+  R-->>N: 真实绑定结果；失败或多连接时明确说明
+  U->>N: 用户手动发送创建 / 编辑要求
+  N->>A: DSH 正式输入：正文 / 应用引用 / 原附件
+  opt 打开保存组件以继续编辑
+  A->>R: 可选：open_component(componentId, revision?)
+  R-->>A: 本会话新 view 与独立 checkout 目录
+  end
+  loop 工作副本创作：直到验证通过或用户取消
+  A->>W: 新建 / 修改 TSX、CSS、绑定与依赖；实际构建
+  W-->>A: 同份 dist 的截图、运行错误与交互报告
+  opt 验证不合格且用户未取消
+  A->>W: 不合格：继续修改、构建和预览；取消则停止
+  end
+  end
+  opt 本轮验证通过且未取消
+  A->>R: 通过：open_source_component(directory, viewId?)
+  R-->>N: capture 成功后事务更新 build / view / 引用
+  N->>V: 当前 session + view + build + 新 frame 握手加载
+  V-->>N: 实际展示检查：显示成功或保留最后可用版
+  end
+  U->>N: 原聊天继续反馈；或明确“保存到组件库”
+  N->>A: 消费下一次原手动发送；修改回到步骤 8
+  opt 用户明确保存而非仅修改 / 展示
+  A->>R: 仅明确保存：save_as 或 update + expectedRevision
+  R-->>A: 新 componentId / revision；或 COMPONENT_CONFLICT
+  end
+  Note over U,V: 新建/编辑是原手动聊天；取消/失败保留旧视图；明确保存才进入组件库。
+  Note over A,R: expectedRevision 只用于保存 CAS；datasetRevision/contextRevision/buildId 不是同一个版本。

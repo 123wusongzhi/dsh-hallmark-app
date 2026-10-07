@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-07",
+  "scope": "仅本地 HTML 原型与评审文档，不是 DSH 桌面功能验收",
+  "method": "通过 Codex In-app Browser 的 CUA 界面操作、可见 DOM/无障碍状态与截图检查；源码边界检查另见 README",
+  "url": "http://127.0.0.1:41908/prototypes/chat-component-authoring.html",
+  "html_sha256": "946b84ae2031bc42bb4c06d417a98003ed12fb693a7b45a0aea5d0ebbaac5d17",
+  "screenshot": "chat-component-authoring-browser.jpg",
+  "screenshot_sha256": "146d439c505755141075ae9aa590d411b6fc2db41649c3c8e4585896b76b249d",
+  "screenshot_size": [
+    1028,
+    1149
+  ],
+  "checks": [
+    {
+      "id": "native-chat-entry",
+      "status": "PASS",
+      "observation": "原输入框 @ 候选、Enter 选择保留正文；选择本身不发送"
+    },
+    {
+      "id": "manual-attachment-send",
+      "status": "PASS",
+      "observation": "商品 JSON 附加后保留正文和右侧组件；重复点击去重；用户发送后才出现所选商品回复"
+    },
+    {
+      "id": "session-isolation",
+      "status": "PASS",
+      "observation": "切换补货会话不带入利润会话正文、附件、组件；切回恢复草稿"
+    },
+    {
+      "id": "create-component",
+      "status": "PASS",
+      "observation": "另一原会话手动发送创建要求；首次创建有空态，验证阶段完成后打开未保存组件"
+    },
+    {
+      "id": "edit-component",
+      "status": "PASS",
+      "observation": "示例指令触发阶段模拟；原输入草稿和附件保留"
+    },
+    {
+      "id": "explicit-save-versions",
+      "status": "PASS",
+      "observation": "明确确认名称保存 v1，继续编辑再确认保存 v2；组件库显示历史版本"
+    },
+    {
+      "id": "build-failure",
+      "status": "PASS",
+      "observation": "模拟构建失败保留旧可用展示，错误尝试不能保存；继续编辑可恢复"
+    },
+    {
+      "id": "save-conflict",
+      "status": "PASS",
+      "observation": "模拟并发 v3 后拒绝 v2 基线保存；保留草稿并打开最新版本"
+    },
+    {
+      "id": "history-baseline",
+      "status": "PASS",
+      "observation": "打开历史源码 v1 时更新基线为最新 v3，界面分别显示"
+    },
+    {
+      "id": "stable-view-id",
+      "status": "PASS",
+      "observation": "历史副本编辑前后均 view-session-bill-0033，构建身份变化"
+    },
+    {
+      "id": "refresh-and-local-controls",
+      "status": "PASS",
+      "observation": "刷新示例快照保持设计；商品搜索、库存排序、低库存筛选正常"
+    },
+    {
+      "id": "final-render",
+      "status": "PASS",
+      "observation": "最终重新加载无横向页面溢出；架构图标可见；无控制台 error"
+    }
+  ],
+  "console_errors": [],
+  "not_checked": [
+    "真实 DSH @ 扩展与 Runtime 绑定",
+    "真实 Agent 调用及 React 源码构建/视觉预览",
+    "真实店铺读取或业务写入",
+    "同会话多应用并用与多连接澄清"
+  ],
+  "end_state": "仅重置该原型自有示例数据，保留初始蓝白组件和已打开的交互页面"
+}

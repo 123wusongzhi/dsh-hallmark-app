@@ -5,6 +5,6 @@
     "verbatimModuleSyntax": true, "erasableSyntaxOnly": true,
     "skipLibCheck": true, "lib": ["ES2023", "DOM"], "types": ["node"], "jsx": "react-jsx"
   },
-  "include": ["packages/contracts/**/*.ts", "packages/hallmark-adapter/**/*.ts", "packages/core/**/*.ts", "packages/store/**/*.ts", "packages/presentation/**/*.ts", "packages/service/**/*.ts", "packages/dsh-plugin/**/*.ts", "packages/dsh-plugin/**/*.tsx", "test/**/*.ts"],
-  "exclude": ["test/spike", "packages/dsh-plugin/lib"]
+  "include": ["packages/**/*.ts", "packages/**/*.tsx", "test/**/*.ts"],
+  "exclude": ["test/spike", "packages/*/lib", "packages/*/dist"]
 }
