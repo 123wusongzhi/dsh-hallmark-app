@@ -184,13 +184,25 @@ export class WriteOperations {
    const response=await this.options.client.platformRead(item.taskId,{requestId:this.options.broker.requestId('verify',op.operationId,readSequence),agentId:AGENT,path,method:'POST',body});item.readback=clean(response);
    if(response.status!=='ok')return;
    const payload=response.raw?.response??response.raw;
-   const rows=payload?.result?.items??payload?.result??payload?.items;
+   const rows=isStock?(payload?.products??payload?.result?.products??payload?.result?.items??payload?.result??payload?.items):(payload?.result?.items??payload?.result??payload?.items);
    if(!Array.isArray(rows))return;
-   const matchedRows=rows.filter((row:RecordData)=>isStock?((typeof item.resolvedOfferId==='string'&&String(row.offer_id??row.offerId)===item.resolvedOfferId)||row.sku===item.platformSku)&&(row.warehouse_id==null||String(row.warehouse_id)===String(a.warehouseId)):matchesIdentity(row));
+   const matchesStockIdentity=(row:RecordData,required:boolean)=>{
+    const offers=[row.offer_id,row.offerId].filter(offer=>offer!=null),sku=row.sku;
+    return (!required||offers.length>0||sku!=null)&&offers.every(offer=>typeof item.resolvedOfferId==='string'&&String(offer)===item.resolvedOfferId)&&(sku==null||sku===item.platformSku);
+   };
+   const matchesStockWarehouse=(row:RecordData,required:boolean)=>{
+    const warehouses=[row.warehouse_id,row.warehouseId].filter(warehouse=>warehouse!=null);
+    return (!required||warehouses.length>0)&&warehouses.every(warehouse=>String(warehouse)===String(a.warehouseId));
+   };
+   const matchedRows=rows.filter((row:RecordData)=>{
+    if(!isStock)return matchesIdentity(row);
+    // A matching offer never excuses a conflicting SKU, or vice versa.
+    return matchesStockIdentity(row,true)&&matchesStockWarehouse(row,false);
+   });
    const row=matchedRows.length===1?matchedRows[0]:undefined;
    if(!row)return;
    let observed:any;
-   if(isStock){const stocks=row.stocks??row.warehouses??[row];const warehouse=stocks.find((s:RecordData)=>String(s.warehouse_id??s.warehouseId)===String(a.warehouseId));observed=warehouse?.present??warehouse?.stock;}
+   if(isStock){const stocks=row.stocks??row.warehouses??[row];if(!Array.isArray(stocks))return;const warehouses=stocks.filter((s:RecordData)=>[s.warehouse_id,s.warehouseId].some(id=>id!=null&&String(id)===String(a.warehouseId)));const warehouse=warehouses.length===1?warehouses[0]:undefined;if(!warehouse||!matchesStockIdentity(warehouse,false)||!matchesStockWarehouse(warehouse,true))return;observed=warehouse.present??warehouse.stock;}
    else observed=row.price?.price??row.price;
    const currency=row.price?.currency_code??row.currency_code;
    item.observed=observed??null;

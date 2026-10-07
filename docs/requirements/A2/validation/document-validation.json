@@ -1,0 +1,31 @@
+{
+  "scope": "DOCUMENT_PACKAGE_ONLY",
+  "status": "PASS",
+  "requirements": 80,
+  "newTasks": 24,
+  "auditItems": 20,
+  "productTestRuns": 0,
+  "date": "2026-10-07",
+  "auditCommit": "caea8175b5c7507bf942b2e752a7327063bfdd43",
+  "pdfPages": {
+    "00_AUDIT": 18,
+    "01_TODO": 20,
+    "02_SPEC": 32,
+    "03_ACCEPTANCE": 43,
+    "04_ARCHITECTURE": 15
+  },
+  "totalPdfPages": 128,
+  "localHtmlLinks": "PASS",
+  "jsonSchemaDefinitions": [
+    {
+      "path": "templates/build-receipt.schema.json",
+      "structuralSchemaCheck": "PASS",
+      "runtimeReceiptValidation": "NOT_RUN"
+    },
+    {
+      "path": "templates/preview-receipt.schema.json",
+      "structuralSchemaCheck": "PASS",
+      "runtimeReceiptValidation": "NOT_RUN"
+    }
+  ]
+}

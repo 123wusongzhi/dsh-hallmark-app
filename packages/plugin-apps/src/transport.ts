@@ -1,11 +1,14 @@
 import {HttpRuntimeTransport, type RuntimeTransport} from '../../app-sdk/src/index.ts';
-import type {AppManifest, BridgeRequest, CapabilityDescriptor, ComponentAgentIntent, ComponentContextSnapshot, JsonValue, SessionAppBinding} from '../../app-contracts/src/index.ts';
+import type {AppManifest, BridgeRequest, CapabilityDescriptor, CapabilityResult, ComponentAgentIntent, ComponentContextSnapshot, InvocationRequest, JsonValue, SessionAppBinding} from '../../app-contracts/src/index.ts';
 import type {ToolResult} from '../../contracts/src/index.ts';
+import type {NativeBindingRequest,NativeBindingReceipt} from '../client/native-apps.ts';
+import type {ComponentExtensionRequest} from '../../component-runtime/src/host.ts';
 export interface RuntimeApp extends AppManifest {providerState: string}
 export interface RuntimeConnection {appId: string; connectionId: string; displayName: string; enabled: boolean}
 export interface CapabilitySummary {appId: string; capabilityId: string; version: string; title: string; effect: CapabilityDescriptor['effect']; description: string}
 export interface DiscoveryPage {items: CapabilitySummary[]; total: number; returned: number; nextCursor: string | null; catalogDigest: string}
 export interface ModelProjection {content: string;fullResultRef?: JsonValue}
+export interface PresentationInvocation {invocationId:string;request:InvocationRequest;state:'received'|'dispatching'|'settled';result?:CapabilityResult}
 export interface InvocationDiagnostic {invocationId: string;traceId: string;operationId: string | null;runId: string | null;appId: string;connectionId: string;capabilityId: string;capabilityVersion: string;status: string;durationMs: number | null}
 export interface AppsHostTransport extends RuntimeTransport {
   listApps(signal?: AbortSignal): Promise<RuntimeApp[]>;
@@ -20,8 +23,18 @@ export interface AppsHostTransport extends RuntimeTransport {
   agentIntent?(sessionId: string,requestId: string,signal?: AbortSignal): Promise<ComponentAgentIntent>;
   dispatchAgent?(sessionId: string,requestId: string,requestHash: string,signal?: AbortSignal): Promise<{dispatchGranted: boolean;intent: ComponentAgentIntent}>;
   agentReceipt?(sessionId: string,requestId: string,requestHash: string,state: 'accepted'|'unknown'|'failed',receipt?: JsonValue,error?: JsonValue,signal?: AbortSignal): Promise<ComponentAgentIntent>;
-  view?(sessionId: string, viewId: string, signal?: AbortSignal): Promise<JsonValue>;
+  view?(sessionId: string, viewId: string, signal?: AbortSignal,version?:{buildId?:string;viewRevision?:number;publicationId?:string}): Promise<JsonValue>;
   viewData?(sessionId: string, viewId: string, signal?: AbortSignal): Promise<JsonValue>;
+  nativeBinding?(input:NativeBindingRequest,signal?:AbortSignal):Promise<NativeBindingReceipt>;
+  inspectNativeBinding?(sessionId:string,bindRequestId:string,referenceId:string,signal?:AbortSignal):Promise<NativeBindingReceipt|null>;
+  serializeNativeReference?(referenceId:string,sessionId:string,signal?:AbortSignal):Promise<{text:string}>;
+  componentFeatures?(signal?:AbortSignal):Promise<{features:string[]}>;
+  componentExtension?(request:ComponentExtensionRequest,signal?:AbortSignal):Promise<JsonValue>;
+  authoringAction?(operation:string,sessionId:string,params:JsonValue,signal?:AbortSignal):Promise<JsonValue>;
+  presentationAction?(input:{sessionId:string;capabilityId:string;input:JsonValue;requestId:string},signal?:AbortSignal):Promise<JsonValue>;
+  presentationRequest?(requestId:string,signal?:AbortSignal):Promise<PresentationInvocation|null>;
+  views?(sessionId:string,signal?:AbortSignal):Promise<JsonValue>;
+  saved?(signal?:AbortSignal):Promise<JsonValue>;
   legacyInvoke(input: {name: string;arguments: JsonValue;sessionId: string;invocationId: string;traceId: string;deadlineAt: string}, signal?: AbortSignal): Promise<ToolResult>;
 }
 /** Adds project catalogue/binding endpoints to the shared SDK transport, with no business dispatch implementation. */
@@ -49,7 +62,17 @@ export class HttpAppsHostTransport extends HttpRuntimeTransport implements AppsH
   async agentIntent(sessionId: string,requestId: string,signal?: AbortSignal) {return await this.request(`/v1/agent-requests/${encodeURIComponent(requestId)}?sessionId=${encodeURIComponent(sessionId)}`,undefined,signal) as ComponentAgentIntent;}
   async dispatchAgent(sessionId: string,requestId: string,requestHash: string,signal?: AbortSignal) {return await this.request(`/v1/agent-requests/${encodeURIComponent(requestId)}/dispatch`,{sessionId,requestHash},signal) as {dispatchGranted: boolean;intent: ComponentAgentIntent};}
   async agentReceipt(sessionId: string,requestId: string,requestHash: string,state: 'accepted'|'unknown'|'failed',receipt?: JsonValue,error?: JsonValue,signal?: AbortSignal) {return await this.request(`/v1/agent-requests/${encodeURIComponent(requestId)}/receipt`,{sessionId,requestHash,state,...(receipt===undefined?{}:{receipt}),...(error===undefined?{}:{error})},signal) as ComponentAgentIntent;}
-  async view(sessionId: string, viewId: string, signal?: AbortSignal) {return await this.request(`/v1/views/${encodeURIComponent(viewId)}?sessionId=${encodeURIComponent(sessionId)}`, undefined, signal) as JsonValue;}
+  async view(sessionId: string, viewId: string, signal?: AbortSignal,version?:{buildId?:string;viewRevision?:number;publicationId?:string}) {const query=new URLSearchParams({sessionId,...(version?.publicationId?{publicationId:version.publicationId}:{}),...(version?.buildId?{buildId:version.buildId}:{}),...(version?.viewRevision!==undefined?{viewRevision:String(version.viewRevision)}:{})});return await this.request(`/v1/views/${encodeURIComponent(viewId)}?${query}`, undefined, signal) as JsonValue;}
   async viewData(sessionId: string, viewId: string, signal?: AbortSignal) {return await this.request(`/v1/views/${encodeURIComponent(viewId)}/data?sessionId=${encodeURIComponent(sessionId)}`, undefined, signal) as JsonValue;}
+  async nativeBinding(input:NativeBindingRequest,signal?:AbortSignal){return await this.request('/v1/native-bindings',input,signal) as NativeBindingReceipt;}
+  async inspectNativeBinding(sessionId:string,bindRequestId:string,referenceId:string,signal?:AbortSignal){return await this.request(`/v1/native-bindings?${new URLSearchParams({sessionId,bindRequestId,referenceId})}`,undefined,signal) as NativeBindingReceipt|null;}
+  async serializeNativeReference(referenceId:string,sessionId:string,signal?:AbortSignal){return await this.request('/v1/native-references/serialize',{referenceId,sessionId},signal) as {text:string};}
+  async componentFeatures(signal?:AbortSignal){return await this.request('/v1/authoring/features',undefined,signal) as {features:string[]};}
+  async componentExtension(request:ComponentExtensionRequest,signal?:AbortSignal){return await this.request('/v1/component-extension',request,signal) as JsonValue;}
+  async authoringAction(operation:string,sessionId:string,params:JsonValue,signal?:AbortSignal){return await this.request(`/v1/authoring/${encodeURIComponent(operation)}`,{sessionId,params},signal) as JsonValue;}
+  async presentationAction(input:{sessionId:string;capabilityId:string;input:JsonValue;requestId:string},signal?:AbortSignal){return await this.request('/v1/presentation-actions',input,signal) as JsonValue;}
+  async presentationRequest(requestId:string,signal?:AbortSignal){try{return await this.request(`/v1/invocations/${encodeURIComponent(requestId)}`,undefined,signal) as PresentationInvocation;}catch(error){if((error as {statusCode?:number}).statusCode===404)return null;throw error;}}
+  async views(sessionId:string,signal?:AbortSignal){return await this.request(`/v1/views?sessionId=${encodeURIComponent(sessionId)}`,undefined,signal) as JsonValue;}
+  async saved(signal?:AbortSignal){return await this.request('/v1/saved',undefined,signal) as JsonValue;}
   async legacyInvoke(input: {name: string;arguments: JsonValue;sessionId: string;invocationId: string;traceId: string;deadlineAt: string}, signal?: AbortSignal) {return await this.request('/v1/legacy-invocations', input, signal) as ToolResult;}
 }

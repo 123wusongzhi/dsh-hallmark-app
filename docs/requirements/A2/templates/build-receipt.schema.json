@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dsh-apps:proposed:build-receipt:1",
+  "title": "拟新增 BuildReceipt（不是现有运行接口）",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "receiptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attemptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceRevision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sourceInputDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "lockfileDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "command": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "cwd": {
+      "type": "string",
+      "minLength": 1
+    },
+    "toolchain": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "exitCode": {
+      "type": "integer"
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finishedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "logRef": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "bytes"
+      ],
+      "additionalProperties": false
+    },
+    "distDigest": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "archiveBuildId": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "fileManifestRef": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "path",
+            "sha256",
+            "bytes"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "inputUnchanged": {
+      "type": "boolean"
+    },
+    "verdict": {
+      "enum": [
+        "PASS",
+        "FAIL"
+      ]
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "receiptId",
+    "attemptId",
+    "sourceRevision",
+    "sourceInputDigest",
+    "lockfileDigest",
+    "command",
+    "cwd",
+    "toolchain",
+    "exitCode",
+    "startedAt",
+    "finishedAt",
+    "logRef",
+    "distDigest",
+    "archiveBuildId",
+    "fileManifestRef",
+    "inputUnchanged",
+    "verdict"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "PASS"
+          }
+        },
+        "required": [
+          "verdict"
+        ]
+      },
+      "then": {
+        "properties": {
+          "exitCode": {
+            "const": 0
+          },
+          "inputUnchanged": {
+            "const": true
+          },
+          "distDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "archiveBuildId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "fileManifestRef": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "path",
+              "sha256",
+              "bytes"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    }
+  ]
+}

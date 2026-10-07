@@ -1,0 +1,11 @@
+{
+  "repository": "123wusongzhi/dsh-hallmark-app",
+  "visibility": "private",
+  "initialMain": "caea8175b5c7507bf942b2e752a7327063bfdd43",
+  "finalMain": "caea8175b5c7507bf942b2e752a7327063bfdd43",
+  "unchangedDuringAudit": true,
+  "baseTargetCommit": "cb871b4086508988485dc4a0a5d6aa5440901267",
+  "sourceReadMethod": "GitHub connector: selected source files and fixed commit",
+  "fullCheckoutExecuted": false,
+  "note": "不包含未提交工作区修改或用户当前进程的运行状态"
+}

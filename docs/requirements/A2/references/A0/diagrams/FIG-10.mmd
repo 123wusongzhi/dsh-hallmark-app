@@ -1,0 +1,15 @@
+flowchart TB
+  %% FIG-10: 迁移切换：先冻结，再验证，再开放 | 目标 / PROC-MIG-01
+  old["旧 app.db + 源码构建目录<br/>基线 v2"]
+  freeze["1 停止新入口 + 排空<br/>盘点 pending / unknown"]
+  backup["2 一致备份与完整 manifest<br/>数据库 + 构建 + 配置映射"]
+  dry["3 离线副本迁移<br/>逐表计数 / 旧新 ID 映射"]
+  gate{"4 校验通过？"}
+  new["5 新 apps.db 唯一写入<br/>原库只读保留"]
+  stop["停止切换<br/>保留旧系统状态与失败证据"]
+  old -->|"冻结"| freeze
+  freeze -->|"备份"| backup
+  backup -->|"dry-run"| dry
+  dry -->|"校验"| gate
+  gate -->|"通过"| new
+  gate -->|"失败"| stop

@@ -1,0 +1,68 @@
+{
+  "00_AUDIT": {
+    "pages": 18,
+    "bytes": 525679,
+    "pageSizePt": [
+      595.2755737304688,
+      841.8897705078125
+    ],
+    "lowTextPages": [],
+    "offPageSpans": [],
+    "replacementCharacterCount": 0
+  },
+  "01_TODO": {
+    "pages": 20,
+    "bytes": 502762,
+    "pageSizePt": [
+      595.2755737304688,
+      841.8897705078125
+    ],
+    "lowTextPages": [],
+    "offPageSpans": [],
+    "replacementCharacterCount": 0
+  },
+  "02_SPEC": {
+    "pages": 32,
+    "bytes": 585674,
+    "pageSizePt": [
+      595.2755737304688,
+      841.8897705078125
+    ],
+    "lowTextPages": [],
+    "offPageSpans": [],
+    "replacementCharacterCount": 0
+  },
+  "03_ACCEPTANCE": {
+    "pages": 43,
+    "bytes": 600727,
+    "pageSizePt": [
+      595.2755737304688,
+      841.8897705078125
+    ],
+    "lowTextPages": [],
+    "offPageSpans": [],
+    "replacementCharacterCount": 0
+  },
+  "04_ARCHITECTURE": {
+    "pages": 15,
+    "bytes": 524421,
+    "pageSizePt": [
+      841.8897705078125,
+      1190.5511474609375
+    ],
+    "lowTextPages": [],
+    "offPageSpans": [],
+    "replacementCharacterCount": 0
+  },
+  "totalPages": 128,
+  "scope": "DOCUMENT_LAYOUT_ONLY",
+  "renderedAllPages": true,
+  "contactSheetsVisuallyReviewed": true,
+  "representativeFullSizePagesReviewed": [
+    "02_SPEC page17",
+    "04_ARCHITECTURE page7"
+  ],
+  "finalAcceptanceIntroReflowReviewed": true,
+  "productAcceptance": "NOT_RUN",
+  "note": "页面数量、文字边界和渲染检查仅针对生成文档；不是DSH或原型交互验收。"
+}

@@ -1,0 +1,42 @@
+{
+  "recordKind": "EMPTY_ACCEPTANCE_TEMPLATE",
+  "testId": "TST-049",
+  "requirementIds": [
+    "REQ-049"
+  ],
+  "runId": null,
+  "releaseId": null,
+  "targetCommit": "caea8175b5c7507bf942b2e752a7327063bfdd43",
+  "executedCommit": null,
+  "scope": null,
+  "status": "NOT_RUN",
+  "environment": {
+    "node": null,
+    "pnpm": null,
+    "os": null,
+    "timezone": null,
+    "browser": null
+  },
+  "versions": {
+    "bundle": null,
+    "host": null,
+    "clientDigest": null,
+    "runtime": null,
+    "databaseSchema": null,
+    "transportMajor": null,
+    "catalogSchemaVersion": null,
+    "bridgeProtocol": null,
+    "dshHost": null,
+    "externalModel": null
+  },
+  "fixtureRefs": [],
+  "steps": [],
+  "assertions": [],
+  "artifactRefs": [],
+  "limitations": [],
+  "startedAt": null,
+  "finishedAt": null,
+  "executor": null,
+  "reviewer": null,
+  "note": "模板本身不是执行证据；PASS必须有全部适用断言与真实文件。"
+}

@@ -25,6 +25,15 @@ export interface AppsView {
   updatedAt:string;
   sourceComponentId?:string;
   baseRevision?:number;
+  /** Metadata revision at open is independent of the selected historical source revision. */
+  baseRevisionAtOpen?:number;
+  selectedSourceRevision?:number;
+  viewRevision?:number;
+  activeBuildId?:string|null;
+  lastGoodBuildId?:string|null;
+  previousGoodBuildId?:string|null;
+  pendingPublicationId?:string|null;
+  validationStatus?:'draft_unpublished'|'legacy_unverified'|'verified'|'failed';
 }
 export interface AppsComponent {
   componentId:string;
@@ -74,4 +83,5 @@ export interface AppsPresentationOptions {
   /** Provider-owned resolver; no domain field assumptions are made by the shared service. */
   resources?:(binding:DatasetBinding,result:CapabilityResult)=>ResourceRef[];
   attachSelection?:(identity:BridgeIdentity,selection:SelectionEnvelope)=>Promise<JsonValue>|JsonValue;
+  scheduledBinding?:(binding:DatasetBinding)=>void;
 }

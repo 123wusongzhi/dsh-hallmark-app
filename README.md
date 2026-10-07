@@ -1,13 +1,17 @@
 # Hallmark × DSH 应用接入
 
-本项目在原 Hallmark 插件项目上覆盖更新。Apps V1 当前候选 bundle/Host 为 **`1.0.0-candidate.6`**，Runtime 为 `1.0.0-candidate.4`；包含多应用 Runtime、Hallmark/Notes Provider、共享组件、SDK、离线迁移和组合 bundle。全仓 570 项测试、类型检查、构建及实际桌面源码组件显示已通过；经官方管理器替换原插件后保留新版。完整实施、版本矩阵与验收边界见[候选实现说明](docs/apps-v1-candidate.md)和[公开验证摘要](docs/apps-publication-validation-20261007.md)。真实外部模型、Hallmark 调价/库存写入和原业务数据库切换仍未验收。
+本项目在原 Hallmark 插件项目上覆盖更新。本轮 A.2 **`1.0.0-candidate.10` 已打包并通过706项全仓测试、类型检查、26条生产React隔离视觉检查、包内实际构建/双视口10项断言及只读Runtime smoke，尚未安装。** Host candidate.10、Runtime candidate.7、DB schema4；143个打包源输入已核对，无差异。它补齐原会话可见候选发现与正式右侧渲染，重排局部应用目录/组件库；实际桌面仍为candidate.9，已请求用户正常退出后覆盖更新。candidate.9真实原Agent组件请求已结束：源码、实际构建/预览、读图反馈迭代有证据，原生挂载失败，未验收显示、原输入附加或保存。价格54.80→54.79、库存201→200的四个授权写入已succeeded并独立读回确认恢复；迁移、备份/恢复和唯一writer有记录。桌面视觉、原附件体验、卸载重开、上品和正式逐项验收仍未完成，四门禁未放行。当前范围见 [A.2 实施与验收记录](docs/apps-a2-execution.md)；前轮记录保留在[历史候选说明](docs/apps-v1-candidate.md)和[历史验证摘要](docs/apps-publication-validation-20261007.md)，不代签本轮。
 
-2026-10-07 新增了**原聊天中由 Agent 创建和编辑组件**的架构 A.1、生图说明与可交互 HTML。目标是任意已有 DSH 会话在原输入框 `@` 选择应用，继续使用原 Agent、原消息和原发送；只改应用工作台、右侧组件与必要输入扩展，不新增独立聊天标签，不重做整个 DSH UI。这一轮完成的是设计与可体验原型，原生 `@` 绑定、会话/附件桥和 v2 真实预览反馈仍需接线验收。
+2026-10-07 的架构 A.1、生图说明与可交互 HTML 明确了**原聊天中由 Agent 创建和编辑组件**的体验：任意已有 DSH 会话在原输入框 `@` 选择应用，使用原 Agent、原消息和原发送；只改应用工作台、组件区与必要输入扩展，不新增独立聊天标签，不重做整个 DSH UI。前一阶段交付设计和原型；本轮 A.2 已补创作记录、真实构建/预览回执、候选就绪、明确保存、原输入引用及库管理实现，原生桌面与真实模型整链按范围另验。
 
 ## 最新文档与体验入口
 
+本轮进度见 [A.2 实施与验收记录](docs/apps-a2-execution.md)、[24 项任务](docs/apps-a2-tasks.md)和 [80 项对照 CSV](docs/apps-a2-progress.csv)。[用户交付的 A.2 输入包](docs/requirements/A2/README.md)保留原始状态。下表中的 Apps V1 说明和 HTML 原型保留前一阶段范围，以本轮执行记录判断最新实现与放行结果。
+
 | 内容 | 入口 | 完成范围 |
 |---|---|---|
+| A.2 当前实施与逐项进度 | [执行记录](docs/apps-a2-execution.md)、[24 项任务](docs/apps-a2-tasks.md)、[80 项对照](docs/apps-a2-progress.csv) | candidate.10打包/706项检查/26条视觉fixture/实际CLI双视口通过，待安装；candidate.9现场与真实Agent挂载失败历史保留，价格/库存已恢复，四门禁分开 |
+| A.2 创作与维护操作 | [源码创作](docs/source-component-authoring.md)、[升级/备份恢复](docs/apps-migration-runbook.md)、[技能安装](docs/design-skills-install.md) | 包内命令/签名回执/v2/明确保存；仓库维护工具与恢复依赖规则，保留旧版本历史 |
 | Apps V1 候选实现 | [候选说明](docs/apps-v1-candidate.md)、[架构决策](docs/apps-architecture-decisions.md)、[迁移与回退](docs/apps-migration-runbook.md) | 现有实现与候选验收；不等于新增前端流程已实现 |
 | 需求、架构与逐项追踪 | [TODO](docs/requirements/01_TODO.md)、[规格](docs/requirements/02_SPEC.md)、[架构 A.1](docs/requirements/03_ARCHITECTURE.md)、[traceability.csv](docs/requirements/traceability.csv) | 同仓库保存的需求基线与最新架构补充 |
 | 最新桌面交互要求 | [需求整理](docs/apps-product-requirements-20261007.md)、[视觉范围](docs/apps-ui-design-reference.md) | 原聊天 `@` 引用、局部 UI 更新、明确保存与会话隔离 |

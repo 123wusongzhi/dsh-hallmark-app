@@ -1,0 +1,22 @@
+digraph G {
+ graph [bgcolor="white", rankdir=TB, pad=0.18, nodesep=0.35, ranksep=0.48, splines=polyline, fontname="Noto Sans CJK SC", fontsize=12, color="#8090a0"];
+ node [shape=box, style="rounded,filled", fillcolor="#f5f7fa", color="#34506b", fontname="Noto Sans CJK SC", fontsize=11, margin="0.16,0.10", penwidth=1.2];
+ edge [color="#34506b", fontname="Noto Sans CJK SC", fontsize=9, arrowsize=0.7];
+
+ q[label="queued
+已落账，未分发"];
+ d[label="dispatching
+已越过分发屏障"];
+ p[label="pending
+上游接受，业务待完成"];
+ u[label="unknown
+是否完成无法证明",fillcolor="#fff4df"];
+ ok[label="succeeded
+完成证据充分",fillcolor="#eaf3ee"];
+ fail[label="failed / partial
+已知终态"];
+ can[label="cancelled
+仅能证明尚未产生业务效果"];
+ q->d[label="持久化分发意图"];q->can[label="发送前取消"];d->p[label="接受回执"];d->ok[label="同步完成证据"];d->fail[label="明确结果"];d->u[label="丢响应 / 发送后取消"];p->ok[label="只读核实"];p->fail[label="只读核实"];p->u[label="状态不可确认"];u->ok[label="inspect 证实"];u->fail[label="inspect 证实"];
+
+}

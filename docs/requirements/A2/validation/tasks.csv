@@ -1,0 +1,25 @@
+﻿taskId,title,phase,ownerRole,dependencies,requirements,status,completionCriteria,stopCondition
+TODO-027,冻结差异基线并批准语义变更,R0,A / V,,REQ-049;REQ-072;REQ-077,TODO,A/V确认每个新任务能追溯输入或代码，不把已实现基础重新列为缺失。,任何冲突未经确认不得按图片位置自行推导。
+TODO-028,现场核实原生输入与会话扩展契约,R0,I / V,TODO-027,REQ-049;REQ-050,TODO,原UI不被替换；缺能力有明确降级；探针卸载零注册残留。,拿不到当前宿主/不匹配则对应能力BLOCKED。
+TODO-029,实现 @ 目录候选与原引用生命周期,R1,I / V,TODO-028,REQ-050;REQ-051,TODO,TST050通过；选择不发消息/不跳转/不丢附件。,发现正文变化或选中自动发送立即停用新source。
+TODO-030,实现引用与多连接绑定状态机,R1,I / V,TODO-029,REQ-051;REQ-052,TODO,TST051/052；A响应不写B，focus不撤其他binding。,多连接无法唯一定位时零下游分发。
+TODO-031,建立多组件编辑定位与消息引用,R1,I / V,TODO-030,REQ-052;REQ-053,TODO,TST053；旧生产appsToolViewReference的显式身份保证不退化。,目标目录不属于当前view时停止编辑。
+TODO-032,新增轻量草稿与创作 attempt 持久模型,R2,I / A / V,TODO-027;TODO-031,REQ-054;REQ-063,TODO,TST054/063；同模板跨会话工作副本互不覆盖。,迁移存在未知记录或来源不明目录时停在dry-run。
+TODO-033,记录真实构建并关联不可变存档,R2,I / V,TODO-032,REQ-055;REQ-056,TODO,TST055/056；使用正常React依赖，不重新限制成固定widget。,构建失败或输入变化不允许发布。
+TODO-034,接通 v2 同份 dist 预览载体,R2,I / V,TODO-033,REQ-057,TODO,TST057；新SDK不在旧协议超时或使用假数据替代。,待展示字节与预览manifest不一致停止。
+TODO-035,生成真实视觉/交互报告并供原 Agent 读取,R2,I / V,TODO-034,REQ-058,TODO,TST058；失效截图/空白页/运行错不会进可发布状态。,缺浏览器环境或图像读取能力按范围BLOCKED，不生成假截图。
+TODO-036,实现候选发布与同 view 事务 CAS,R3,I / A / V,TODO-033;TODO-035,REQ-059;REQ-060,TODO,TST059/060；同view更新只换build引用，不自动save。,任一门禁缺失，旧active保持不变。
+TODO-037,新增 frame 就绪与最后可用界面恢复,R3,I / V,TODO-036,REQ-061,TODO,TST061；onLoad不等于成功，无旧构建有真实空态。,失败时不销毁唯一last-good；不循环自动发布坏构建。
+TODO-038,处理取消、重启和迟到创作结果,R3,I / V,TODO-032;TODO-036;TODO-037,REQ-062;REQ-063,TODO,TST062/063；已发布不假称撤销，未发布不会晚到覆盖。,原业务操作unknown与创作取消分开处理，不用UI取消去撤业务。
+TODO-039,增加声明式 UI 状态恢复契约,R3,I / V,TODO-037,REQ-064;REQ-074,TODO,TST064/074；承诺保留的字段逐一对账，失效选择不猜行号。,不兼容时保留旧快照并提示，不能静默恢复错误选择。
+TODO-040,完善现有选择附件桥的生产边界,R4,I / V,TODO-030;TODO-037,REQ-065,TODO,TST065；不存在直接清空输入或validated当attached。,原生API不可用时显示原因，保留选择，不偷偷发送文本替代。
+TODO-041,区分手动发送与可选主动请求 Agent,R4,I / V,TODO-040,REQ-066;REQ-068,TODO,TST066/068；附加/本地交互零额外模型步。,未取得正式回执不显示已发送；超时先只读查原请求。
+TODO-042,跑真实原 Agent 的创作与迭代整链,R4,V / I,TODO-031;TODO-035;TODO-038;TODO-039;TODO-041;TODO-044,REQ-058;REQ-067;REQ-068,TODO,TST067与AC-13整链映射通过；失败如实记录。,外部模型不可用则仅fixture/local_model保留结果，整链NOT_ACCEPTED。
+TODO-043,落地局部工作台、组件库与交互状态,R4,I / V,TODO-031;TODO-039,REQ-049;REQ-069;REQ-070,TODO,TST049/069/070；无独立聊天页，无第二组件库。,原型外壳或singleactiveApp被复制进入生产时停止评审。
+TODO-044,完成明确保存、历史回退和 CAS 冲突 UI,R4,I / V,TODO-036;TODO-043,REQ-070;REQ-071;REQ-072,TODO,TST070/071/072；不错不保存、冲突不自动换revision。,无法证明保存的view是已验证候选时拒绝新正式发布保存。
+TODO-045,统一副本、删除、历史及引用清理,R5,I / V,TODO-032;TODO-038;TODO-044,REQ-056;REQ-063;REQ-072;REQ-073,TODO,TST056/063/072/073；活引用零误删。,原型delete与生产历史保留冲突未解决则不提供永久删除。
+TODO-046,补齐后台刷新和多绑定数据状态,R5,I / V,TODO-030;TODO-039,REQ-074;REQ-075,TODO,TST074/075；关UI仍执行后台读，失败不清空快照。,无法证明worker已装配时禁止显示计划已运行。
+TODO-047,明确连接配置更新及缓存失效,R5,I / A / V,TODO-030,REQ-076,TODO,TST076；地址显示与实际请求一致；在途不迁移。,未决业务操作或无法排空时停止该连接切换。
+TODO-048,分开演练业务写、schema升级和真实切换,R5,V / R / I,TODO-045;TODO-046;TODO-047;TODO-049,REQ-073;REQ-078;REQ-079,TODO,TST078/079；查询通过不代签写；插件升级不代签切库。,任一前提缺失保持对应范围BLOCKED，不影响可独立审查的创作候选。
+TODO-049,重跑原 48 项架构回归与兼容分发,R5,V / I,TODO-033;TODO-034;TODO-036;TODO-040,REQ-077;REQ-080,TODO,原功能没有因新闭环回归；据范围和版本判定，不按总测试数代替。,新代码与执行版本不同则结果不可用于当前发布。
+TODO-050,整个架构按范围验收并形成发布包,R6,V / R / A,TODO-042;TODO-043;TODO-044;TODO-045;TODO-046;TODO-047;TODO-048;TODO-049,REQ-077;REQ-079;REQ-080,TODO,TST077/080；任何未验范围明确NOT_ACCEPTED；不以文档完成代签。,范围内任一强制项FAIL/BLOCKED/NOT_RUN或证据缺失就不放行该范围。

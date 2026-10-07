@@ -1,0 +1,32 @@
+digraph G {
+graph [rankdir=TB, bgcolor="white", pad="0.20", nodesep="0.30", ranksep="0.40", splines=polyline, outputorder=edgesfirst];
+node [shape=box, style="rounded,filled", fontname="Noto Sans CJK SC", fontsize=14, margin="0.15,0.10", penwidth=1.3];
+edge [fontname="Noto Sans CJK SC", fontsize=10, color="#5B7292", arrowsize=0.7, penwidth=1.2];
+edit [label="原 Agent / 文件工具\n修改独立源码工作副本", fillcolor="#EAF3FF", color="#3265A3"];
+build [label="执行真实 build 命令\n输入前后摘要 + exitCode", fillcolor="#FFF3DF", color="#C47724"];
+freeze [label="归档候选 / BuildReceipt\n不改变当前 view", fillcolor="#FFF3DF", color="#C47724"];
+pv [label="真实 v2 预览\n同份 dist / 两视口 / 控件", fillcolor="#FFF3DF", color="#C47724"];
+pass [label="预览证据完整\n且断言 PASS？", fillcolor="#FFF7E8", color="#A87527", shape=diamond];
+mount [label="mounting 候选 frame\npublicationId / expectedViewRevision", fillcolor="#FFF3DF", color="#C47724"];
+ready [label="同身份 renderReady\n且当前 attempt 未取消？", fillcolor="#FFF7E8", color="#A87527", shape=diamond];
+cas [label="P2 事务 CAS 确认\nowner / epoch / viewRevision", fillcolor="#FFF3DF", color="#C47724"];
+active [label="当前会话已确认展示\nactive / lastGood / viewRevision+1", fillcolor="#FFF3DF", color="#C47724"];
+old [label="保留旧可用界面\n失败、取消或冲突如实报告", fillcolor="#FDEEEA", color="#B05243"];
+feedback [label="原 Agent 读取错误 / 截图\n继续修正同一目标", fillcolor="#EAF3FF", color="#3265A3"];
+saved [label="组件库保持不变\n本图没有明确保存动作", fillcolor="#F3F5F8", color="#6A778C"];
+edit -> build [label="E01"];
+build -> freeze [label="E02"];
+build -> old [label="E03"];
+freeze -> pv [label="E04"];
+pv -> pass [label="E05"];
+pass -> mount [label="E06 是"];
+pass -> old [label="E07 否"];
+mount -> ready [label="E08"];
+ready -> cas [label="E09 是"];
+ready -> old [label="E10 否"];
+cas -> active [label="E11 成功"];
+cas -> old [label="E12 冲突"];
+old -> feedback [label="E13"];
+feedback -> edit [label="E14"];
+active -> saved [label="E15"];
+}

@@ -1,0 +1,17 @@
+flowchart TB
+  %% FIG-02: 目标逻辑：一个外壳 + N 个原生接入 | 目标 / G2 后
+  h["DSH 已有能力<br/>Agent · tools · sessions · slots"]
+  shell["plugin-apps<br/>唯一 Apps 外壳 + AppsHost 门面"]
+  ph["plugin-hallmark<br/>原生投影 / 旧工具兼容"]
+  pn["plugin-notes<br/>原生投影"]
+  rt["P2 App Runtime<br/>唯一能力目录 + invoke + 共享展示"]
+  hp["Hallmark Provider<br/>业务适配实现"]
+  np["Notes Provider<br/>业务适配实现"]
+  h -->|"宿主扩展"| shell
+  h -->|"装载"| ph
+  h -->|"装载"| pn
+  ph -->|"attachApp"| shell
+  pn -->|"attachApp"| shell
+  shell -->|"目录 / 调用"| rt
+  rt -->|"execute / inspect"| hp
+  rt -->|"execute / inspect"| np

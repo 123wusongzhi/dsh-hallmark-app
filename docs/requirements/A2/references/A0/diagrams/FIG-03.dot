@@ -1,0 +1,15 @@
+digraph G {
+ graph [bgcolor="white", rankdir=TB, pad=0.18, nodesep=0.35, ranksep=0.48, splines=polyline, fontname="Noto Sans CJK SC", fontsize=12, color="#8090a0"];
+ node [shape=box, style="rounded,filled", fillcolor="#f5f7fa", color="#34506b", fontname="Noto Sans CJK SC", fontsize=11, margin="0.16,0.10", penwidth=1.2];
+ edge [color="#34506b", fontname="Noto Sans CJK SC", fontsize=9, arrowsize=0.7];
+
+ subgraph cluster_p1 {label="P1 | DSH Host 进程"; p1[label="plugin-apps + N 个插件
+dsh-compat / Native tools"];}
+ subgraph cluster_p2 {label="P2 | 一个本机 Apps Runtime 进程"; r[label="Registry / Invocation / Presentation"];p[label="Hallmark + Notes Provider 模块"];s[label="apps.db + 构建归档
+仅 Runtime 写入"];r->p[label="进程内调用"];r->s[label="持久化"];}
+ subgraph cluster_p3 {label="P3 | DSH Client / 浏览器渲染上下文"; ui[label="Apps UI / SourceFrame"];f[label="源码组件 iframe"];f->ui[label="bridge v2 / v1 适配"];}
+ subgraph cluster_p4 {label="P4 | 原应用服务 / 受管业务系统"; orig[label="Hallmark 原后端
+Notes 数据源"];}
+ p1->r[label="本机 HTTP / protocol 1"]; ui->p1[label="DSH 已有连接代理"];p->orig[label="原 API / SDK"];
+
+}

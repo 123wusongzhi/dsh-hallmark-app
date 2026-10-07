@@ -16,9 +16,9 @@ test('generated starter renders SDK hooks with the project React even when the S
   const reactDom=dirname(require.resolve('react-dom/package.json'));
   try {
     await mkdir(sdk);
-    await writeFile(join(sdk,'package.json'),JSON.stringify({name:'@dsh/apps-component-runtime',type:'module',exports:{'./react':'./react.js'},peerDependencies:{react:'>=18'}}));
+    await writeFile(join(sdk,'package.json'),JSON.stringify({name:'@dsh/apps-component-runtime',type:'module',exports:{'./apps/react':'./apps-react.js'},peerDependencies:{react:'>=18'}}));
     // The published SDK deliberately leaves React external. The physical peer copies reproduce npm file links.
-    await build({entryPoints:[resolve('packages/component-runtime/src/react.tsx')],outfile:join(sdk,'react.js'),bundle:true,platform:'browser',format:'esm',target:'es2022',external:['react']});
+    await build({entryPoints:[resolve('packages/component-runtime/src/apps-react.tsx')],outfile:join(sdk,'apps-react.js'),bundle:true,platform:'browser',format:'esm',target:'es2022',external:['react','react/jsx-runtime']});
     await cp(react,join(directory,'node_modules/react'),{recursive:true});
     const {createAppsSource}=await import(pathToFileURL(resolve('scripts/create-apps-source.mjs')).href);
     await createAppsSource({directory:project,sdkDirectory:sdk});

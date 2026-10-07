@@ -1,0 +1,22 @@
+digraph G {
+ graph [bgcolor="white", rankdir=TB, pad=0.18, nodesep=0.35, ranksep=0.48, splines=polyline, fontname="Noto Sans CJK SC", fontsize=12, color="#8090a0"];
+ node [shape=box, style="rounded,filled", fillcolor="#f5f7fa", color="#34506b", fontname="Noto Sans CJK SC", fontsize=11, margin="0.16,0.10", penwidth=1.2];
+ edge [color="#34506b", fontname="Noto Sans CJK SC", fontsize=9, arrowsize=0.7];
+
+ click[label="用户在组件中操作"];
+ classify[label="交互类型",shape=diamond];
+ local[label="本地 UI
+排序 / 筛选 / 选中"];
+ invoke[label="invokeCapability
+明确业务动作 → Runtime"];
+ context[label="updateContext
+保存结构化状态，不唤醒模型"];
+ agent[label="requestAgent
+原生会话任务输入"];
+ log[label="DSH 正式持久会话机制
+消费时可重建模型输入"];
+ fallback[label="宿主不支持：明确报错
+可附加到输入框，由用户发送",fillcolor="#fff4df"];
+ click->classify;classify->local[label="显示状态"];classify->invoke[label="应用动作"];classify->context[label="后续上下文"];classify->agent[label="请求推理任务"];context->log[label="后续被消费时记录"];agent->log[label="支持且已提交"];agent->fallback[label="探针不支持"];
+
+}

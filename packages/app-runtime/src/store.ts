@@ -3,9 +3,12 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { InvocationRequest, CapabilityResult, OperationState, JsonValue } from '../../app-contracts/src/index.ts';
 
-export const DATABASE_SCHEMA_VERSION = 3;
-export const RUNTIME_COLLECTIONS = ['connections', 'session_app_bindings', 'invocations', 'operations', 'invocation_operations', 'operation_events', 'runs', 'run_steps', 'datasets', 'builds', 'views', 'components', 'component_versions', 'component_contexts', 'saved_assets', 'provider_records', 'legacy_aliases', 'artifact_refs', 'migration_records'] as const;
+export const DATABASE_SCHEMA_VERSION = 4;
+export const RUNTIME_V3_COLLECTIONS = ['connections', 'session_app_bindings', 'invocations', 'operations', 'invocation_operations', 'operation_events', 'runs', 'run_steps', 'datasets', 'builds', 'views', 'components', 'component_versions', 'component_contexts', 'saved_assets', 'provider_records', 'legacy_aliases', 'artifact_refs', 'migration_records'] as const;
+export const AUTHORING_COLLECTIONS = ['authoring_drafts', 'authoring_attempts', 'build_receipts', 'preview_receipts', 'view_publications', 'view_ui_states'] as const;
+export const RUNTIME_COLLECTIONS = [...RUNTIME_V3_COLLECTIONS, ...AUTHORING_COLLECTIONS] as const;
 export interface RuntimeOperation {
+  configRevision?: number;
   operationId: string;
   appId: string;
   connectionId: string;
@@ -20,6 +23,7 @@ export interface RuntimeOperation {
   updatedAt: string;
 }
 export interface InvocationRecord {
+  configRevision?: number;
   invocationId: string;
   requestHash: string;
   request: InvocationRequest;
@@ -49,32 +53,36 @@ function assertJSON(value: unknown, seen = new Set<object>()): void {
   seen.delete(value);
 }
 
-/** Only opens an empty target or an existing schema-3 Runtime database. Never upgrades app.db in place. */
+/** Normal Runtime opens schema 4. The explicit schema-3 mode is only for offline legacy migration. */
 export class RuntimeStore {
   readonly db: DatabaseSync;
+  readonly schemaVersion: 3 | 4;
+  readonly collections: readonly string[];
   #depth = 0;
   #closed = false;
-  constructor(path: string) {
+  constructor(path: string, options: {schemaVersion?: 3 | 4} = {}) {
+    this.schemaVersion = options.schemaVersion ?? DATABASE_SCHEMA_VERSION;
+    this.collections = this.schemaVersion === 3 ? RUNTIME_V3_COLLECTIONS : RUNTIME_COLLECTIONS;
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
     this.db = new DatabaseSync(path);
     const version = Number(this.db.prepare('PRAGMA user_version').get()?.user_version);
-    if (version !== 0 && version !== DATABASE_SCHEMA_VERSION) { this.db.close(); throw new Error('OFFLINE_MIGRATION_REQUIRED'); }
+    if (version !== 0 && version !== this.schemaVersion) { this.db.close(); throw new Error('OFFLINE_MIGRATION_REQUIRED'); }
     this.db.exec('PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;');
     this.transaction(() => {
-      for (const table of RUNTIME_COLLECTIONS) this.db.exec(`CREATE TABLE IF NOT EXISTS ${table} (id TEXT PRIMARY KEY, value_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`);
+      for (const table of this.collections) this.db.exec(`CREATE TABLE IF NOT EXISTS ${table} (id TEXT PRIMARY KEY, value_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`);
       if (!version) {
         this.db.exec(`ALTER TABLE operations ADD COLUMN app_id TEXT NOT NULL DEFAULT '';
           ALTER TABLE operations ADD COLUMN connection_id TEXT NOT NULL DEFAULT '';
           ALTER TABLE operations ADD COLUMN capability_id TEXT NOT NULL DEFAULT '';
           ALTER TABLE operations ADD COLUMN idempotency_key TEXT NOT NULL DEFAULT '';
           CREATE UNIQUE INDEX operation_intent ON operations(app_id,connection_id,capability_id,idempotency_key);
-          PRAGMA user_version=3;`);
+          PRAGMA user_version=${this.schemaVersion};`);
       }
     });
   }
   private table(collection: string): string {
     if (this.#closed) throw new Error('STORE_CLOSED');
-    if (!(RUNTIME_COLLECTIONS as readonly string[]).includes(collection)) throw new Error(`UNKNOWN_RUNTIME_COLLECTION: ${collection}`);
+    if (!this.collections.includes(collection)) throw new Error(`UNKNOWN_RUNTIME_COLLECTION: ${collection}`);
     return collection;
   }
   get<T = Record<string, JsonValue>>(collection: string, id: string): T | undefined {
@@ -90,7 +98,7 @@ export class RuntimeStore {
     if (!id || typeof id !== 'string') throw new Error('ID_REQUIRED');
     assertJSON(value);
     const now = new Date().toISOString();
-    if ((['operation_events','component_versions'].includes(table) || table==='component_contexts'&&id.startsWith('snapshot:')) && this.get(table,id)) throw new Error('IMMUTABLE_EVIDENCE');
+    if ((['operation_events','component_versions','build_receipts','preview_receipts'].includes(table) || table==='component_contexts'&&id.startsWith('snapshot:') || table==='provider_records'&&id.startsWith('view-revision:')) && this.get(table,id)) throw new Error('IMMUTABLE_EVIDENCE');
     if (table === 'operations') {
       const operation = value as RuntimeOperation;
       const previous = this.get<RuntimeOperation>(table, id);
@@ -104,7 +112,8 @@ export class RuntimeStore {
   }
   delete(collection: string, id: string): boolean {
     if(collection==='component_contexts'&&(id.startsWith('snapshot:')||id.startsWith('agent:')))throw new Error('EVIDENCE_DELETE_FORBIDDEN');
-    if (['operation_events','operations','invocations','component_versions'].includes(collection)) throw new Error('EVIDENCE_DELETE_FORBIDDEN');
+    if(collection==='provider_records'&&id.startsWith('view-revision:'))throw new Error('EVIDENCE_DELETE_FORBIDDEN');
+    if (['operation_events','operations','invocations','component_versions','build_receipts','preview_receipts'].includes(collection)) throw new Error('EVIDENCE_DELETE_FORBIDDEN');
     return Number(this.db.prepare(`DELETE FROM ${this.table(collection)} WHERE id=?`).run(id).changes) > 0;
   }
   transaction<T>(fn: (store: RuntimeStore) => T): T {

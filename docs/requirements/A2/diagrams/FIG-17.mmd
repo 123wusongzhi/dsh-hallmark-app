@@ -1,0 +1,38 @@
+flowchart TD
+  c["组件库 C / revision r<br/>不可变历史源版本"]
+  oa["在会话 A 明确打开 r<br/>base = 打开时库最新版本"]
+  ob["在会话 B 明确打开 r<br/>base 独立记录"]
+  wa["A 独立 workspace / draft<br/>可编辑源码"]
+  wb["B 独立 workspace / draft<br/>可编辑源码"]
+  arch["不可变 archive buildId<br/>多个 view 可以引用"]
+  va["A 的 viewId + viewRevision<br/>编辑保持 viewId"]
+  vb["B 的 viewId + viewRevision<br/>owner 与 A 不同"]
+  intent{"用户明确保存？<br/>原话或按钮"}
+  mode["save_as 或 update<br/>update 比较 expectedRevision"]
+  next["组件库新 revision<br/>或新的 componentId"]
+  conf["冲突：保留当前副本<br/>查看最新 / 另存"]
+  unsaved["没有明确保存<br/>只有草稿和展示"]
+  c -->|E01| oa
+  c -->|E02| ob
+  oa -->|E03| wa
+  ob -->|E04| wb
+  wa -->|E05| arch
+  wb -->|E06| arch
+  arch -->|E07| va
+  arch -->|E08| vb
+  va -->|E09| intent
+  intent -->|E10| mode
+  intent -->|E11| unsaved
+  mode -->|E12| next
+  mode -->|E13| conf
+  next -->|E14| c
+  classDef existing fill:#EAF3FF,stroke:#3265A3,color:#17283F
+  class c,oa,ob,wa,wb,arch,next existing
+  classDef new fill:#FFF3DF,stroke:#C47724,color:#17283F
+  class va,vb,mode new
+  classDef external fill:#F3F5F8,stroke:#6A778C,color:#17283F
+  class unsaved external
+  classDef stop fill:#FDEEEA,stroke:#B05243,color:#17283F
+  class conf stop
+  classDef decision fill:#FFF7E8,stroke:#A87527,color:#17283F
+  class intent decision

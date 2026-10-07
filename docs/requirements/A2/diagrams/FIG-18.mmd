@@ -1,0 +1,34 @@
+flowchart TD
+  ui["组件交互入口<br/>当前 session / view / build"]
+  local["排序 / 筛选 / 勾选<br/>React 本地状态"]
+  state["协商 UI 状态快照<br/>按 view 恢复 / 选择重验"]
+  attach["附加选择<br/>ResourceRef + datasetRevision"]
+  check["Runtime 校验 + 去重<br/>同会话 / 同快照"]
+  draft["原 DSH 输入附件区<br/>正文与旧附件保留"]
+  send["用户手动原发送"]
+  agent["原 Agent 消费实际 JSON<br/>然后处理本条自然语言"]
+  call["明确应用动作<br/>Runtime统一 invoke"]
+  ctx["可选 updateContext / requestAgent<br/>正式原生投影 / 队列"]
+  refresh["手动或实际 worker 刷新<br/>仅 query / compute"]
+  data["每个 binding 独立快照<br/>失败保旧 / 真实来源时间"]
+  identity["设计 / build / 保存 revision 不变<br/>失效选择不得按行号迁移"]
+  ui -->|E01| local
+  local -->|E02| state
+  ui -->|E03| attach
+  attach -->|E04| check
+  check -->|E05| draft
+  draft -->|E06| send
+  send -->|E07| agent
+  ui -->|E08| call
+  ui -->|E09| ctx
+  ctx -->|E10| agent
+  ui -->|E11| refresh
+  refresh -->|E12| data
+  data -->|E13| local
+  data -->|E14| identity
+  classDef existing fill:#EAF3FF,stroke:#3265A3,color:#17283F
+  class ui,local,attach,draft,call,ctx,data existing
+  classDef new fill:#FFF3DF,stroke:#C47724,color:#17283F
+  class state,check,refresh new
+  classDef external fill:#F3F5F8,stroke:#6A778C,color:#17283F
+  class send,agent,identity external

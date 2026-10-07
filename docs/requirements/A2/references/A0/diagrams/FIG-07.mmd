@@ -1,0 +1,14 @@
+flowchart TB
+  %% FIG-07: 源码资产：工程、构建、视图与组件版本 | 目标 / 保留现有源码路线
+  w["可编辑工程 directory<br/>TSX / CSS / lockfile"]
+  build["构建命令<br/>DSH 文件与命令工具执行"]
+  bid["buildId<br/>不可变源码+dist 清单"]
+  view["viewId<br/>会话草稿 / 引用构建与绑定"]
+  saved["componentId + revision<br/>显式保存的资产版本"]
+  copy["新工作副本<br/>旧版本仍保持不变"]
+  w -->|"编译"| build
+  build -->|"登记"| bid
+  bid -->|"打开"| view
+  view -->|"显式保存"| saved
+  saved -->|"checkout"| copy
+  copy -->|"新副本"| w

@@ -1,0 +1,963 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DSH Apps · 最新实现、原型与目标架构差距审计</title><style>
+* {box-sizing:border-box;}
+body {font-family:ManualCJK,"Noto Sans CJK SC","Microsoft YaHei","PingFang SC",sans-serif;color:#213047;font-size:10pt;line-height:1.65;margin:0;}
+h1,h2,h3,h4 {color:#153C6A;font-weight:700;}
+h1 {font-size:27pt;line-height:1.4;} h2 {font-size:17pt;line-height:1.45;border-bottom:1.4pt solid #3D77B4;padding-bottom:7pt;margin:15pt 0 11pt;break-after:avoid;break-before:page;}
+h3 {font-size:12.5pt;line-height:1.5;margin:17pt 0 8pt;break-after:avoid;padding:5pt 8pt;background:#EDF4FB;border-left:3pt solid #4C86BD;}
+h4 {font-size:11pt;break-after:avoid;}
+p {margin:6pt 0 9pt;widows:3;orphans:3;} li{margin:4pt 0;widows:2;orphans:2;} ol,ul{padding-left:20pt;margin:8pt 0;}
+strong {font-weight:700;color:#203F60;}
+a {color:#246CB0;text-decoration:none;overflow-wrap:anywhere;}
+code {font-family:"DejaVu Sans Mono",ManualCJK,monospace;font-size:8.6pt;line-height:1.55;overflow-wrap:anywhere;background:#F4F6F8;padding:0 1.5pt;}
+pre {white-space:pre-wrap;overflow-wrap:anywhere;background:#F3F6FA;border:0.6pt solid #D7E2EE;padding:10pt;line-height:1.5;margin:9pt 0;break-inside:avoid;} pre code {font-size:8.4pt;background:none;padding:0;}
+table {width:100%;border-collapse:collapse;table-layout:fixed;font-size:8.8pt;line-height:1.55;margin:10pt 0 13pt;}
+th,td {padding:6pt 7pt;border:0.6pt solid #D4DFEB;vertical-align:top;overflow-wrap:anywhere;}
+th {background:#1F4D7B;color:white;font-weight:700;text-align:left;}
+th strong{color:white;}tr{break-inside:avoid;}thead{display:table-header-group;}tbody tr:nth-child(even){background:#F6F9FC;}
+td code {font-size:8pt;background:none;padding:0;}
+blockquote {border-left:4pt solid #CC832B;background:#FFF5E7;padding:9pt 12pt;margin:13pt 0;color:#694C29;break-inside:avoid;}
+blockquote p{margin:0;}
+img {max-width:100%;height:auto;}
+.figure {text-align:center;break-inside:avoid;margin:15pt 0;}
+.figure img{max-height:230mm;max-width:100%;}
+.cover {height:245mm;position:relative;break-after:page;padding:12mm 0 0;}
+.cover .eyebrow{font-size:11pt;letter-spacing:1.4pt;color:#477BA8;border-top:4pt solid #195589;padding-top:13pt;}
+.cover .brand {font-size:44pt;font-weight:700;color:#123F6C;margin:22mm 0 4mm;line-height:1.05;}
+.cover .kind{font-size:26pt;color:#163D68;line-height:1.5;font-weight:700;}
+.cover .summary{font-size:13pt;color:#57718B;margin:12mm 0 4mm;}
+.cover .metric{font-size:19pt;font-weight:700;color:#1963A5;padding:13pt 0;border-top:0.7pt solid #C3D4E3;border-bottom:0.7pt solid #C3D4E3;margin:8mm 0;}
+.cover .meta{font-size:10pt;line-height:2;color:#4C6580;}
+.cover .warning{position:absolute;bottom:8mm;left:0;right:0;border-top:0.6pt solid #B9CBDD;padding-top:10pt;font-size:9.3pt;color:#926328;}
+.toc {break-after:page;}
+.toc h2{break-before:auto;}
+.toc ul {list-style:none;padding:0;}
+.toc li {margin:0;border-bottom:0.4pt solid #E2EAF2;padding:6pt 0;font-size:10.5pt;}
+.toc a::after {content:target-counter(attr(href),page);float:right;color:#6A8198;}
+.paper-id {color:#8394A6;font-size:8pt;}
+.compact-table{font-size:8.4pt;line-height:1.4;} .compact-table th,.compact-table td{padding:4.5pt 6pt;}
+.card-unit {break-inside:avoid; margin-bottom:9pt;} .card-unit p {margin:4pt 0 6pt;} .card-unit h3 {margin-top:12pt;}
+.screen-nav {padding:10px 0;font-size:12px;display:none;}
+@media screen {body{max-width:1000px;margin:25px auto;background:#fff;padding:0 25px;} .screen-nav{display:block;} .cover{height:auto;padding-bottom:60px;} .cover .warning{position:static;margin-top:30px;} .toc a::after{content:none;} h2{margin-top:45px;} .figure img{max-height:1100px;} }
+
+@page {size:A4 portrait; margin:17mm 17mm 18mm;
+@top-left {content:"DSH-APPS-AUDIT-002  /  A.2";font-family:ManualCJK;font-size:8pt;color:#70849B;}
+@top-right {content:"BASE caea817  ·  2026-10-07";font-family:ManualCJK;font-size:8pt;color:#70849B;}
+@bottom-left {content:"设计评审稿 · 未批准生产放行";font-family:ManualCJK;font-size:8pt;color:#7C8999;}
+@bottom-right {content:counter(page) " / " counter(pages);font-family:ManualCJK;font-size:8pt;color:#55728F;}
+}
+@page:first {@top-left{content:none;}@top-right{content:none;}}
+ h2{break-before:auto;} </style></head><body><nav class="screen-nav"><a href="../index.html">返回文档包首页</a> · <a href="../docs/00_AUDIT.md">Markdown 源文件</a> · <a href="../pdf/00_AUDIT.pdf">PDF 阅读版</a></nav><section class="cover"><div class="eyebrow">ENGINEERING REVIEW / CONTROLLED DOCUMENT</div><div class="brand">DSH APPS</div><div class="kind">审计报告</div><div class="summary">实现、原型、目标与证据分开判定</div><div class="metric">20 项审计条目</div><div class="meta">文件编号　DSH-APPS-AUDIT-002<br>修订版本　A.2 · 2026-10-07<br>代码基线　caea8175b5c7507bf942b2e752a7327063bfdd43<br>目标基线　A.0 + 仓库 A.1 + 本次图示与 HTML</div><div class="warning">本文件区分代码实现、原型演示与执行证据。<br>新工作包为 TODO；产品新一轮验收为 NOT_RUN。<br>静态审计完成不等于应用、业务写或数据切换已经放行。</div></section><section class="toc"><h2>阅读目录</h2><ul><li><a href="#section-00">00 结论与审计边界</a></li><li><a href="#section-01">01 材料身份与本次实际检查</a></li><li><a href="#section-02">02 已完成基础：保留并复核，不重新开工</a></li><li><a href="#section-03">03 三张图与 HTML 的逐项审计</a></li><li><a href="#section-04">04 差距总表</a></li><li><a href="#section-05">05 逐项发现、证据与整改界限</a></li><li><a href="#section-06">06 原 48 项：原报告状态与本次审计分栏</a></li><li><a href="#section-07">07 推进顺序与停止边界</a></li><li><a href="#section-08">90 来源索引与复核覆盖</a></li></ul><p class="paper-id">编号对象可使用 PDF 搜索或 HTML 页内搜索定位；规格、工作包和测试保持统一编号。</p></section>
+<p><strong>文件编号：DSH-APPS-AUDIT-002　｜　修订：A.2　｜　日期：2026-10-07</strong></p>
+<p><strong>状态：审计后续实施评审稿，未批准生产放行。</strong> 新任务均为 TODO，新一轮产品验收均为 NOT_RUN。历史候选记录保留原标签，不由本次文件代签。</p>
+<table><colgroup><col style="width:23%"/><col style="width:77%"/></colgroup>
+<thead>
+<tr>
+<th>控制项</th>
+<th>规定</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>审计快照</td>
+<td><code>caea8175b5c7507bf942​b2e752a7327063bfdd43</code>（main 读取时的固定提交）</td>
+</tr>
+<tr>
+<td>原始目标基线</td>
+<td>A.0 / <code>cb871b4086508988485d​c4a0a5d6aa5440901267</code>；仓库 A.1 增加原聊天创作要求</td>
+</tr>
+<tr>
+<td>已读版本</td>
+<td>bundle/Host candidate.6；Runtime candidate.4；DB 3；HTTP/目录 1；bridge 2.0。根 package.json 仍为 0.3.0，不代表整个运行系统版本。</td>
+</tr>
+<tr>
+<td>文档体系</td>
+<td>AUDIT 说明证据与差距；TODO 规定工作包；SPEC 规定目标；ACCEPTANCE 规定验证；ARCH 规定图面关系</td>
+</tr>
+<tr>
+<td>适用范围</td>
+<td>本机优先；一个 Apps 入口、1+N 逻辑插件、原 DSH Agent/会话、一个 P2 Runtime；不重建 DSH 聊天或插件管理器</td>
+</tr>
+<tr>
+<td>规范词</td>
+<td>必须＝放行条件；不得＝禁止；应＝偏离须登记理由；可＝可选；“已实现”仅指本次见到的代码路径</td>
+</tr>
+<tr>
+<td>角色</td>
+<td>A 架构责任人；I 实施人；V 验证人；R 发布责任人。姓名/日期/签认在执行时填写，不预先代填。</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>使用前检查：</strong> SHA、实际进程/包版本和宿主契约与本文件不一致时，先生成差异表。不得将拟新增项目接口当作现有 DSH 服务。不得将文档检查、语法检查或原型演示计为生产验收。</p>
+</blockquote>
+<h2 id="section-00">00 结论与审计边界</h2>
+<p><strong>结论：底座已经从 Hallmark 单应用推进到 Apps V1 候选，不需要重新做一遍 A.0 的架构拆分；尚不能称“原聊天创建/编辑组件的整个产品闭环已验收”。</strong> 后续应把投入集中到原生入口、真实创作证据、候选发布、界面状态、组件管理与分范围验收。</p>
+<p>本报告是固定提交下关键调用链的静态审计与需求比对，不是逐行覆盖全仓的漏洞审计，也没有对用户桌面进行远程运行验收。“GAP”指在已核对链路中缺少满足目标的步骤；“STATIC_RISK”指可由代码推导但仍应复现的风险；“EVIDENCE_GAP”指有实现或声明，却没有当前范围可直接核验的运行证据。</p>
+<p>优先级P0表示阻止相应承诺范围放行，不表示本次发生安全事故。真实业务写或数据切库未通过，不必阻止一个<strong>明确只包含创作/只读能力</strong>的候选发布；但不得将该候选称为全部业务完成。</p>
+<p><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-v1-candidate.md">S02</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-publication-validation-20261007.md">S03</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/03_ARCHITECTURE.md">S05</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-runtime/src/index.ts">S08</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/service/src/apps-main.ts">S09</a></p>
+<h2 id="section-01">01 材料身份与本次实际检查</h2>
+<table><colgroup><col style="width:29%"/><col style="width:71%"/></colgroup>
+<thead>
+<tr>
+<th>对象</th>
+<th>固定身份 / 本次结论</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>代码</td>
+<td>caea8175b5c7507bf942b2e752a7327063bfdd43；旧比较基线 cb871b4086508988485dc4a0a5d6aa5440901267</td>
+</tr>
+<tr>
+<td>安装/运行版本</td>
+<td>未连接用户当前DSH进程；只能核对源码与仓库版本声明，不把磁盘/根package版本当运行版本。</td>
+</tr>
+<tr>
+<td>上传HTML与仓库原型</td>
+<td>本地按Git blob算法计算为699650d19f2bdcb66029e5b31780ff4b61f6c903，与仓库原型blob相同；可确认本次上传对应同一文件内容。</td>
+</tr>
+<tr>
+<td>原型语法</td>
+<td>提取script后执行node --check，exitCode=0；仅证明JavaScript语法可解析。</td>
+</tr>
+<tr>
+<td>原型浏览器</td>
+<td>file URL和隔离127.0.0.1 HTTP两次均在导航时被环境策略拒绝；执行UI断言0条，状态BLOCKED_ENV。</td>
+</tr>
+<tr>
+<td>仓库测试</td>
+<td>本次NOT_RUN；完整checkout/依赖/DSH不在本审计环境，Node22.16低于仓库声明&gt;=22.18。</td>
+</tr>
+<tr>
+<td>外部效果</td>
+<td>本次未写GitHub、未安装/重启用户服务、未迁移数据库、未执行真实业务修改。</td>
+</tr>
+</tbody>
+</table>
+<p>本次环境与输入校验结果见 <code>evidence/environment-report.json</code> 和 <code>evidence/input-manifest.json</code>；原型源码副本与三图在 <code>references/inputs/</code>。哈希相同不是运行通过。<a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/package.json">S27</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/prototypes/chat-component-authoring.html">S28</a> <a href="../references/inputs/chat-component-authoring.html">U01</a></p>
+<h2 id="section-02">02 已完成基础：保留并复核，不重新开工</h2>
+<table>
+<thead>
+<tr>
+<th>架构能力</th>
+<th>本次所见</th>
+<th>后续动作</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1+N与唯一P2</td>
+<td>apps-main组装Hallmark/Notes/共享展示；bundle装配Apps及应用投影。</td>
+<td>保留组合根；不要求一个应用一个进程。</td>
+</tr>
+<tr>
+<td>目录/连接/会话集合</td>
+<td>AppsRuntime有注册、Schema、发现、连接和tuple绑定；UI焦点独立。</td>
+<td>接@与管理UI，不再维护另一份目录。</td>
+</tr>
+<tr>
+<td>三入口单实现</td>
+<td>Runtime、Hallmark原业务适配、生成SDK、组件代理已连接。</td>
+<td>回归语义一致/幂等；不是再写三套HTTP。</td>
+</tr>
+<tr>
+<td>异构Notes</td>
+<td>真正list/get/create/update及revision、操作证据，不只是占位名称。</td>
+<td>做真实多绑定展示与脚本回归。</td>
+</tr>
+<tr>
+<td>执行可靠性</td>
+<td>分发前记账、unknown inspect、连接锁、取消后等待Provider归静止。</td>
+<td>按实际新版本复验；不因不考虑安全而删除正确性。</td>
+</tr>
+<tr>
+<td>源码/保存</td>
+<td>capture/checkout、manifest校验、历史版本和save CAS已存在。</td>
+<td>增加构建因果、预览和发布门禁；不回退为固定widget。</td>
+</tr>
+<tr>
+<td>v2桥和附件</td>
+<td>完整frame身份、nonce、能力调用、真实原inputActions链已存在。</td>
+<td>补生产入口、状态恢复、端到端证据，不从零重建。</td>
+</tr>
+<tr>
+<td>兼容发现</td>
+<td>四固定网关、可选26旧Schema、旧HTTP/alias/v1兼容。</td>
+<td>属于A.0允许的降级与迁移策略；不强制动态加载。</td>
+</tr>
+<tr>
+<td>迁移维护</td>
+<td>仓库提供离线迁移/回退/GC手册与夹具范围说明。</td>
+<td>其真实切库证据仍独立；本次新增状态还须纳入。</td>
+</tr>
+</tbody>
+</table>
+<p><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-runtime/src/index.ts">S08</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/service/src/apps-main.ts">S09</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/bundles/apps/server/index.ts">S10</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-hallmark/src/index.ts">S13</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-notes/src/index.ts">S14</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-sdk/src/index.ts">S15</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-presentation/src/index.ts">S16</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/dsh-plugin/client/component-frame.tsx">S20</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/component-handlers.ts">S23</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-migration-runbook.md">S26</a></p>
+<h2 id="section-03">03 三张图与 HTML 的逐项审计</h2>
+<p>三张图片没有给出替代关系，因此本次不擅自指定“最后一张一定是最终版”。三者共同的原聊天/普通源码/真实构建/明确保存/刷新分离原则被保留；有歧义的连线通过A.2编号关系确定。</p>
+<table>
+<thead>
+<tr>
+<th>材料 / 位置</th>
+<th>支持的目标</th>
+<th>不得推导的结论 / 后续处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>图1 / 绿色重开与保存路径</td>
+<td>工作副本与组件库可循环复用。</td>
+<td>分叉线没有触发/对象标注；不能当自动保存。以FIG-17中的SAVE边为准。</td>
+</tr>
+<tr>
+<td>图2 / 当前会话展示→组件库</td>
+<td>展示结果可以成为保存来源。</td>
+<td>直达箭头缺少显式保存门禁；在工程图中插入用户保存条件。</td>
+</tr>
+<tr>
+<td>图3 / 绿色重开线</td>
+<td>有“重新打开并编辑”的意图。</td>
+<td>线段未明确接到库节点，不能据此确定数据所有者。工程图明确从componentId/revision到新workspace/view。</td>
+</tr>
+<tr>
+<td>三图 / buildId→viewId</td>
+<td>展示引用某个已构建产物。</td>
+<td>不是一对一关系；多view可复用同build，同view编辑可切build。</td>
+</tr>
+<tr>
+<td>三图 / 根据真实反馈修改</td>
+<td>原Agent读实际预览继续改源码。</td>
+<td>截图图标不是已执行截图证据；不能用另画的商品页替代实际dist。</td>
+</tr>
+<tr>
+<td>HTML / L55, L185–215</td>
+<td>交互流程可以离线演示。</td>
+<td>无网络、无原DSH/真实模型；关键词+sleep模拟，不是生产编译器。</td>
+</tr>
+<tr>
+<td>HTML / L183, L256</td>
+<td>可选择应用并打开组件。</td>
+<td>activeApp单值、单component是原型限制，不能覆盖真实多应用集合。</td>
+</tr>
+<tr>
+<td>HTML / L149, L291</td>
+<td>消息中能打开组件区。</td>
+<td>旧消息仅open-pane指向当前component，是原型风险；生产必须保留消息自己的viewId。</td>
+</tr>
+<tr>
+<td>HTML / L242–256</td>
+<td>版本冲突、历史源版本和更新基线有清楚演示。</td>
+<td>localStorage CAS不证明真实SQLite/双会话并发已验证。</td>
+</tr>
+<tr>
+<td>HTML / L251</td>
+<td>可以重命名。</td>
+<td>没有增加revision；与生产manageSaved不同，按CR-02确认生产规则。</td>
+</tr>
+<tr>
+<td>HTML / L179, L185</td>
+<td>模拟构建时暂时限制示例操作。</td>
+<td>不得复制为禁用整个原聊天发送；原DSH的输入/队列语义仍由宿主拥有。</td>
+</tr>
+<tr>
+<td>HTML / L217–232</td>
+<td>刷新不改设计，附加不自动发送。</td>
+<td>数字在本地被改动；没有真实快照读取/文件上传/模型消费证据。</td>
+</tr>
+</tbody>
+</table>
+<p><a href="../references/inputs/chat-component-authoring.html">U01</a> <a href="../references/inputs/image-044804.png">U02</a> <a href="../references/inputs/image-044809.png">U03</a> <a href="../references/inputs/image-044814.png">U04</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/03_ARCHITECTURE.md">S05</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-presentation/src/index.ts">S16</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/view.tsx">S21</a></p>
+<h2 id="section-04">04 差距总表</h2>
+<table class="compact-table"><colgroup><col style="width:10%"/><col style="width:22%"/><col style="width:42%"/><col style="width:26%"/></colgroup>
+<thead>
+<tr>
+<th>编号</th>
+<th>优先级 / 状态</th>
+<th>差距</th>
+<th>工作包</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GAP-01</td>
+<td>P0 / GAP</td>
+<td>原生 @ 尚未与 Runtime 绑定形成生产入口</td>
+<td>TODO-028, TODO-029, TODO-030</td>
+</tr>
+<tr>
+<td>GAP-02</td>
+<td>P0 / GAP</td>
+<td>预览载体 v1 与新源码 SDK v2 不一致</td>
+<td>TODO-034, TODO-035</td>
+</tr>
+<tr>
+<td>GAP-03</td>
+<td>P0 / GAP</td>
+<td>内容地址存档不能证明源码确实构建成当前 dist</td>
+<td>TODO-032, TODO-033</td>
+</tr>
+<tr>
+<td>GAP-04</td>
+<td>P0 / GAP</td>
+<td>openSource 没有强制预览通过门禁</td>
+<td>TODO-035, TODO-036</td>
+</tr>
+<tr>
+<td>GAP-05</td>
+<td>P0 / PARTIAL</td>
+<td>frame 握手及 iframe onLoad 不是应用可用回执</td>
+<td>TODO-036, TODO-037</td>
+</tr>
+<tr>
+<td>GAP-06</td>
+<td>P0 / PARTIAL</td>
+<td>创作 attempt、取消和迟到发布缺少专门代际约束</td>
+<td>TODO-032, TODO-036, TODO-038</td>
+</tr>
+<tr>
+<td>GAP-07</td>
+<td>P1 / GAP</td>
+<td>新 frame 会重建 React 本地状态，恢复契约尚缺</td>
+<td>TODO-039</td>
+</tr>
+<tr>
+<td>GAP-08</td>
+<td>P1 / PARTIAL</td>
+<td>Agent 修改对象和预览反馈需要可追踪的正式上下文</td>
+<td>TODO-031, TODO-035, TODO-042</td>
+</tr>
+<tr>
+<td>GAP-09</td>
+<td>P0 / PARTIAL / EVIDENCE_GAP</td>
+<td>原生附件桥已有代码，但整链生产验收仍欠缺</td>
+<td>TODO-040, TODO-041, TODO-042</td>
+</tr>
+<tr>
+<td>GAP-10</td>
+<td>P1 / PARTIAL</td>
+<td>应用工作台和组件库后端成熟度高于当前前端</td>
+<td>TODO-043, TODO-044, TODO-045</td>
+</tr>
+<tr>
+<td>GAP-11</td>
+<td>P1 / CONFLICT</td>
+<td>保存、重命名和删除语义需要显式对齐</td>
+<td>TODO-027, TODO-044, TODO-045</td>
+</tr>
+<tr>
+<td>GAP-12</td>
+<td>P1 / PROTOTYPE_LIMIT</td>
+<td>单应用/单组件原型不代表目标多应用模型</td>
+<td>TODO-030, TODO-031, TODO-043</td>
+</tr>
+<tr>
+<td>GAP-13</td>
+<td>P1 / AMBIGUOUS_INPUT</td>
+<td>图中保存/重开箭头有歧义，不能直接作为代码流程</td>
+<td>TODO-027, TODO-043</td>
+</tr>
+<tr>
+<td>GAP-14</td>
+<td>P1 / EVIDENCE_GAP</td>
+<td>后台刷新只有配置并不足以证明可调度</td>
+<td>TODO-046</td>
+</tr>
+<tr>
+<td>GAP-15</td>
+<td>P1 / STATIC_RISK</td>
+<td>连接配置更新的权威来源和缓存失效不明确</td>
+<td>TODO-047</td>
+</tr>
+<tr>
+<td>GAP-16</td>
+<td>P0 / EVIDENCE_GAP</td>
+<td>历史 VERIFIED/PASS 不能直接汇总为整体验收通过</td>
+<td>TODO-027, TODO-049, TODO-050</td>
+</tr>
+<tr>
+<td>GAP-17</td>
+<td>P0 / EVIDENCE_GAP</td>
+<td>真实外部模型、业务写和切库仍是独立验收范围</td>
+<td>TODO-042, TODO-048, TODO-050</td>
+</tr>
+<tr>
+<td>GAP-18</td>
+<td>P2 / PRESERVE</td>
+<td>不应重建已有基础或把合法兼容层当作缺陷</td>
+<td>TODO-049</td>
+</tr>
+<tr>
+<td>GAP-19</td>
+<td>P2 / DOC_GAP</td>
+<td>A.0 工程图原件可恢复，仓库文档还缺统一入口</td>
+<td>TODO-027, TODO-049, TODO-050</td>
+</tr>
+<tr>
+<td>GAP-20</td>
+<td>P2 / LIMIT</td>
+<td>当前审计不是完整执行性或所有文件漏洞审查</td>
+<td>TODO-027, TODO-050</td>
+</tr>
+</tbody>
+</table>
+<h2 id="section-05">05 逐项发现、证据与整改界限</h2>
+<div class="card-unit"><h3 id="GAP-01">GAP-01 · 原生 @ 尚未与 Runtime 绑定形成生产入口</h3>
+<p><strong>优先级：</strong> P0。<strong>审计分类：</strong> GAP。</p>
+<p><strong>已读事实：</strong> Client 装配已有原输入附件与会话组件插槽，但没有 Apps inputTriggers 注册；当前绑定入口仍是 AppsDirectory 的按钮。A.1 明确把 @ 接线列为待完成。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/dsh-plugin/client/plugin.ts">S22</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/directory.tsx">S24</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/03_ARCHITECTURE.md">S05</a></p>
+<p><strong>影响：</strong> 用户在任意原会话直接 @ 应用的主入口不可据现有目录按钮视为完成；失败、取消、重复引用与切会话还没有闭环证据。</p>
+<p><strong>整改边界：</strong> 使用现场核实的原生 @ source；候选只带稳定 appId，Host 确认 sessionId 与明确 connectionId 后再显示已绑定。</p>
+<p><strong>追踪：</strong> REQ-049、REQ-050、REQ-051、REQ-052；TODO-028、TODO-029、TODO-030。</p>
+</div><div class="card-unit"><h3 id="GAP-02">GAP-02 · 预览载体 v1 与新源码 SDK v2 不一致</h3>
+<p><strong>优先级：</strong> P0。<strong>审计分类：</strong> GAP。</p>
+<p><strong>已读事实：</strong> source-preview.mjs 的 hostHTML 只处理 hallmark.source.v1；apps-client.ts 主协议是 dsh.apps.component.v2。现有 readDist 冻结同份 dist 的实现应复用。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/scripts/source-preview.mjs">S18</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/component-runtime/src/apps-client.ts">S19</a></p>
+<p><strong>影响：</strong> 新 SDK 工程不能把旧预览页中一张截图当作完成 v2 数据、握手、选择与交互验证。</p>
+<p><strong>整改边界：</strong> 添加 v2 预览 Host 和明确 legacy v1 分支；同一冻结 dist 在预览与正式宿主加载，报告真实支持的方法与失败。</p>
+<p><strong>追踪：</strong> REQ-057、REQ-058；TODO-034、TODO-035。</p>
+</div><div class="card-unit"><h3 id="GAP-03">GAP-03 · 内容地址存档不能证明源码确实构建成当前 dist</h3>
+<p><strong>优先级：</strong> P0。<strong>审计分类：</strong> GAP。</p>
+<p><strong>已读事实：</strong> projectSnapshot 要求 dist/index.html 存在，并对源码与 dist 联合取哈希；它没有构建命令成功、构建前输入摘要和输出摘要的强制回执。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/source-components/src/index.ts">S17</a></p>
+<p><strong>影响：</strong> 静态机制允许“改过源码但仍带上次 dist”的目录被 capture；哈希一致只能证明存档完整，不能证明因果关系。此场景需夹具复现。</p>
+<p><strong>整改边界：</strong> 给新创作链增加 BuildReceipt；构建输入冻结、真实命令退出码、工具链/锁文件、输出摘要和最终 buildId 必须关联。</p>
+<p><strong>追踪：</strong> REQ-054、REQ-055、REQ-056；TODO-032、TODO-033。</p>
+</div><div class="card-unit"><h3 id="GAP-04">GAP-04 · openSource 没有强制预览通过门禁</h3>
+<p><strong>优先级：</strong> P0。<strong>审计分类：</strong> GAP。</p>
+<p><strong>已读事实：</strong> openSource 在 capture 成功后直接事务更新 view.source；capturePreview 可缺失，已有报告只要求 buildId 相同，未把通过状态、运行错误或交互断言作为发布前提。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-presentation/src/index.ts">S16</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/source-components/src/index.ts">S17</a></p>
+<p><strong>影响：</strong> “文件已登记”与“预览/交互通过”仍可混淆；未通过的新构建可能成为当前会话引用。</p>
+<p><strong>整改边界：</strong> 分开归档候选与发布视图；新建/编辑的正常发布要求匹配、成功的 PreviewReceipt，旧历史构建继续兼容只读打开并标验证状态。</p>
+<p><strong>追踪：</strong> REQ-058、REQ-059、REQ-060；TODO-035、TODO-036。</p>
+</div><div class="card-unit"><h3 id="GAP-05">GAP-05 · frame 握手及 iframe onLoad 不是应用可用回执</h3>
+<p><strong>优先级：</strong> P0。<strong>审计分类：</strong> PARTIAL。</p>
+<p><strong>已读事实：</strong> 现有 frame 身份和 nonce 校验已实现；AppsSourceFrame 仅用 onLoad 清除错误，onError 显示装载失败，未见组件首屏可用确认或旧可用构建恢复状态机。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/dsh-plugin/client/component-frame.tsx">S20</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/view.tsx">S21</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/03_ARCHITECTURE.md">S05</a></p>
+<p><strong>影响：</strong> JS 运行错误、白屏、握手后数据失败不能仅依赖 HTML load 事件发现；A.1 的“失败保留旧可用界面”没有完整落实。</p>
+<p><strong>整改边界：</strong> 为候选 frame 增加可协商 readiness，确认首屏/关键数据/错误状态后完成展示确认；失败恢复 last-good，第一版无旧构建则显示明确失败空态。</p>
+<p><strong>追踪：</strong> REQ-060、REQ-061；TODO-036、TODO-037。</p>
+</div><div class="card-unit"><h3 id="GAP-06">GAP-06 · 创作 attempt、取消和迟到发布缺少专门代际约束</h3>
+<p><strong>优先级：</strong> P0。<strong>审计分类：</strong> PARTIAL。</p>
+<p><strong>已读事实：</strong> Runtime 已有 invocation 和业务 operation；presentation 的源码替换主要按 ownerSessionId/viewId，尚未见 authoring attempt 与 expectedViewRevision 的发布 CAS。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-runtime/src/index.ts">S08</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-presentation/src/index.ts">S16</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/dsh-plugin/client/component-frame.tsx">S20</a></p>
+<p><strong>影响：</strong> 业务幂等不能替代源码发布竞争控制；较早构建迟到、取消后返回、同一 view 同时编辑可能覆盖较新的展示。</p>
+<p><strong>整改边界：</strong> 在 P2 添加轻量创作状态，不建立第二 Agent Loop；attemptId/sourceRevision/epoch 与 viewRevision 检查必须在发布事务内完成。</p>
+<p><strong>追踪：</strong> REQ-054、REQ-059、REQ-062、REQ-063；TODO-032、TODO-036、TODO-038。</p>
+</div><div class="card-unit"><h3 id="GAP-07">GAP-07 · 新 frame 会重建 React 本地状态，恢复契约尚缺</h3>
+<p><strong>优先级：</strong> P1。<strong>审计分类：</strong> GAP。</p>
+<p><strong>已读事实：</strong> iframe key 包含 sessionId、viewId、buildId；换 build 必定重新挂载。现有方法清单无 UI 状态导出/恢复，不能假设筛选、页码、选择自动保存。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/dsh-plugin/client/component-frame.tsx">S20</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/component-runtime/src/apps-client.ts">S19</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/03_ARCHITECTURE.md">S05</a></p>
+<p><strong>影响：</strong> 编辑成功、侧栏/工作台切换后会有状态丢失风险；原型“保留筛选与选择”不是生产保证。</p>
+<p><strong>整改边界：</strong> 增加组件声明的 uiStateSchemaVersion、可序列化快照和迁移函数；按 view 保存，恢复选择必须重新验证 ResourceRef 与 datasetRevision。</p>
+<p><strong>追踪：</strong> REQ-064；TODO-039。</p>
+</div><div class="card-unit"><h3 id="GAP-08">GAP-08 · Agent 修改对象和预览反馈需要可追踪的正式上下文</h3>
+<p><strong>优先级：</strong> P1。<strong>审计分类：</strong> PARTIAL。</p>
+<p><strong>已读事实：</strong> 已有工具结果显式 view 元数据、原生上下文 hook 和可选 requestAgent；但新创作从目标定位、工作目录、构建错误、截图到下一次修改的完整模型输入证据未提供。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/src/index.ts">S12</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/view.tsx">S21</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/03_ARCHITECTURE.md">S05</a></p>
+<p><strong>影响：</strong> “改这个组件”可能指向错误 view；不能将 iframe 状态或预览文件落盘等同模型已读取。</p>
+<p><strong>整改边界：</strong> 输出稳定创作定位包；多个 view 有歧义时才澄清；实际截图/报告通过原工具输出或原生附件进入原 Agent 的记录。</p>
+<p><strong>追踪：</strong> REQ-053、REQ-058、REQ-068；TODO-031、TODO-035、TODO-042。</p>
+</div><div class="card-unit"><h3 id="GAP-09">GAP-09 · 原生附件桥已有代码，但整链生产验收仍欠缺</h3>
+<p><strong>优先级：</strong> P0。<strong>审计分类：</strong> PARTIAL / EVIDENCE_GAP。</p>
+<p><strong>已读事实：</strong> createAppsComponentHandlers 已校验选择并调用 selectionInputBridge.attachResources；原输入 actions 接线也存在。不能说附件能力从零缺失。候选说明只单列 fixture collector 的证明范围。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/component-handlers.ts">S23</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/dsh-plugin/client/plugin.ts">S22</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-v1-candidate.md">S02</a></p>
+<p><strong>影响：</strong> 仍需证明真正原输入的正文/旧附件保留、重复附加去重、移除、上传、手动发送与模型读取原 JSON；不能用返回 attached 代替。</p>
+<p><strong>整改边界：</strong> 优先复用现有桥；补双会话/刷新竞态/附件失败/人工发送的桌面回归及真实模型消费记录。</p>
+<p><strong>追踪：</strong> REQ-065、REQ-066、REQ-067；TODO-040、TODO-041、TODO-042。</p>
+</div><div class="card-unit"><h3 id="GAP-10">GAP-10 · 应用工作台和组件库后端成熟度高于当前前端</h3>
+<p><strong>优先级：</strong> P1。<strong>审计分类：</strong> PARTIAL。</p>
+<p><strong>已读事实：</strong> AppsDirectory 主要展示应用按钮、连接和诊断；AppsWorkspace 展示目录或单一打开的 view。共享后端已有 list_saved、保存、历史、管理等能力。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/directory.tsx">S24</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/workspace.tsx">S25</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-presentation/src/index.ts">S16</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-product-requirements-20261007.md">S06</a></p>
+<p><strong>影响：</strong> 用户要求的常驻应用列表、可搜索组件库、历史打开/恢复、另存、保存冲突和未保存副本入口尚不能由当前 UI 证实。</p>
+<p><strong>整改边界：</strong> 只重做插件区域并接已有后端；不得再建一套组件库，更不得将 HTML 中整个 DSH 外壳搬入生产。</p>
+<p><strong>追踪：</strong> REQ-069、REQ-070、REQ-071、REQ-072；TODO-043、TODO-044、TODO-045。</p>
+</div><div class="card-unit"><h3 id="GAP-11">GAP-11 · 保存、重命名和删除语义需要显式对齐</h3>
+<p><strong>优先级：</strong> P1。<strong>审计分类：</strong> CONFLICT。</p>
+<p><strong>已读事实：</strong> 生产 saveComponent 已有 CAS/版本；生产 manageSaved 重命名会增加 revision，删除保留历史记录。HTML rename 只改名称，delete 删除原型资产及其版本。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-presentation/src/index.ts">S16</a> <a href="../references/inputs/chat-component-authoring.html">U01</a></p>
+<p><strong>影响：</strong> 把原型直接移植会改变现有版本含义、冲突触发和历史保留策略；不同文档给实施者不同答案。</p>
+<p><strong>整改边界：</strong> 本次建议保留生产规则：重命名形成元数据新 revision；删除是从库目录移除，历史保留并受 GC 引用保护。以 CR 确认，UI 文案对应真实含义。</p>
+<p><strong>追踪：</strong> REQ-071、REQ-072、REQ-073；TODO-027、TODO-044、TODO-045。</p>
+</div><div class="card-unit"><h3 id="GAP-12">GAP-12 · 单应用/单组件原型不代表目标多应用模型</h3>
+<p><strong>优先级：</strong> P1。<strong>审计分类：</strong> PROTOTYPE_LIMIT。</p>
+<p><strong>已读事实：</strong> HTML 使用一个 activeApp 和一个 component；选择 Notes 替换 Hallmark，消息入口 open-pane 指向当前 component。实际 Runtime 已支持会话多绑定。 <a href="../references/inputs/chat-component-authoring.html">U01</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-runtime/src/index.ts">S08</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/view.tsx">S21</a></p>
+<p><strong>影响：</strong> 照搬原型会让多应用能力退化；旧消息可能打开另一新组件。后者是原型静态风险，不能归因于生产 AppsToolView。</p>
+<p><strong>整改边界：</strong> 保留真实多绑定集合；明确当前编辑目标和每条消息 view 引用；原型作为视觉样例，不作为业务状态代码。</p>
+<p><strong>追踪：</strong> REQ-052、REQ-053、REQ-069；TODO-030、TODO-031、TODO-043。</p>
+</div><div class="card-unit"><h3 id="GAP-13">GAP-13 · 图中保存/重开箭头有歧义，不能直接作为代码流程</h3>
+<p><strong>优先级：</strong> P1。<strong>审计分类：</strong> AMBIGUOUS_INPUT。</p>
+<p><strong>已读事实：</strong> 三图共识一致，但图二从会话展示直接连组件库未显式画保存条件，图三重开线接点不完整，图一也未标对象与触发。用户未指定三图中哪张取代其余。 <a href="../references/inputs/image-044804.png">U02</a> <a href="../references/inputs/image-044809.png">U03</a> <a href="../references/inputs/image-044814.png">U04</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/03_ARCHITECTURE.md">S05</a></p>
+<p><strong>影响：</strong> 无法据一条无条件箭头推导“显示即保存”或“返回即发布”；buildId 到 viewId 也不是一一对应。</p>
+<p><strong>整改边界：</strong> 用 FIG-15..19 与编号关系表重画，显式保存门禁；保留三张原图作为输入，不修改原件，冲突规则登记 CR-01。</p>
+<p><strong>追踪：</strong> REQ-049、REQ-070；TODO-027、TODO-043。</p>
+</div><div class="card-unit"><h3 id="GAP-14">GAP-14 · 后台刷新只有配置并不足以证明可调度</h3>
+<p><strong>优先级：</strong> P1。<strong>审计分类：</strong> EVIDENCE_GAP。</p>
+<p><strong>已读事实：</strong> 共享 binding 接受 scheduled/scheduleId；本次已读 apps-main 启动链仅见 server 和 recover，未见调度 worker 装配。不能由字段推断定时刷新已经运行。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-presentation/src/index.ts">S16</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/service/src/apps-main.ts">S09</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-product-requirements-20261007.md">S06</a></p>
+<p><strong>影响：</strong> PR-21 的“后台更新独立于打开”需端到端证明；也不能以 approx 半天容忍擅定 12 小时硬保证。</p>
+<p><strong>整改边界：</strong> 核实实际 worker；未装配则完成持久计划/时区/错过执行/去重/停用规则。无 worker 时不宣称 scheduled 可用。</p>
+<p><strong>追踪：</strong> REQ-075；TODO-046。</p>
+</div><div class="card-unit"><h3 id="GAP-15">GAP-15 · 连接配置更新的权威来源和缓存失效不明确</h3>
+<p><strong>优先级：</strong> P1。<strong>审计分类：</strong> STATIC_RISK。</p>
+<p><strong>已读事实：</strong> composeAppsRuntime 对已存在连接跳过配置文件导入；clientFor 按 connectionId 缓存客户端，不按 configRevision。Runtime 本身又允许 addConnection 提高 revision。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/service/src/apps-main.ts">S09</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-runtime/src/index.ts">S08</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-hallmark/src/index.ts">S13</a></p>
+<p><strong>影响：</strong> 编辑配置文件不一定改变数据库；更新数据库也不一定替换已缓存后端。此为已读路径风险，未声称实际误连店铺。</p>
+<p><strong>整改边界：</strong> 明确 DB 为活动配置、文件仅初次播种；受控配置更新先排空该连接，再递增 revision 并失效 client/broker/domain 缓存，记录新请求使用的配置版本。</p>
+<p><strong>追踪：</strong> REQ-076；TODO-047。</p>
+</div><div class="card-unit"><h3 id="GAP-16">GAP-16 · 历史 VERIFIED/PASS 不能直接汇总为整体验收通过</h3>
+<p><strong>优先级：</strong> P0。<strong>审计分类：</strong> EVIDENCE_GAP。</p>
+<p><strong>已读事实：</strong> 追踪 CSV 48 行全部 VERIFIED/PASS，同时 42 行 remainingRealStatus=NOT_RUN；6 行 PASS 也仍须看实际执行范围和版本。原始 evidence 不在仓库，发布摘要区分了 deterministic model、原型与外部模型。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/traceability.csv">S04</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-publication-validation-20261007.md">S03</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-v1-candidate.md">S02</a></p>
+<p><strong>影响：</strong> 把 fixture、旧 candidate、桌面显示、真实业务四层混合，可能错误放行 A.1 新体验和未做的业务写/切库。</p>
+<p><strong>整改边界：</strong> 保留原记录列，新增本次审计结论、executedCommit、版本、scope、原始证据可访问性、当前运行状态与签认；不覆盖历史。</p>
+<p><strong>追踪：</strong> REQ-077、REQ-079、REQ-080；TODO-027、TODO-049、TODO-050。</p>
+</div><div class="card-unit"><h3 id="GAP-17">GAP-17 · 真实外部模型、业务写和切库仍是独立验收范围</h3>
+<p><strong>优先级：</strong> P0。<strong>审计分类：</strong> EVIDENCE_GAP。</p>
+<p><strong>已读事实：</strong> 候选说明公开承认真实外部模型、真实 Hallmark 调价/库存、原业务库切换未完成；候选5本地确定性模型证据不自动升级为候选6外部模型通过。已读公开低层目录为15个只读API操作和1个调价操作，不等于原应用全部API；采购价、归档、促销写、素材交付未在该已读目录登记。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-v1-candidate.md">S02</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-publication-validation-20261007.md">S03</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-product-requirements-20261007.md">S06</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-hallmark/src/index.ts">S13</a></p>
+<p><strong>影响：</strong> 可以发布有范围的候选，但不能宣称完整自然语言办业务、上品、写入和生产迁移已经验收。</p>
+<p><strong>整改边界：</strong> 分别建 AUTHORING、BUSINESS-WRITE、DATA-CUTOVER 放行记录；真实写入只针对用户指定测试对象和参数，读取前后领域证据；不以模拟写代签。</p>
+<p><strong>追踪：</strong> REQ-067、REQ-078、REQ-079、REQ-080；TODO-042、TODO-048、TODO-050。</p>
+</div><div class="card-unit"><h3 id="GAP-18">GAP-18 · 不应重建已有基础或把合法兼容层当作缺陷</h3>
+<p><strong>优先级：</strong> P2。<strong>审计分类：</strong> PRESERVE。</p>
+<p><strong>已读事实：</strong> Runtime、Notes CRUD、通用资源、生成 SDK、四网关、操作恢复、版本保存、v1 兼容均有代码；bundle 引用旧 Host 以复用资源路由是明确兼容装配。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-runtime/src/index.ts">S08</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/service/src/apps-main.ts">S09</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/bundles/apps/server/index.ts">S10</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-hallmark/src/index.ts">S13</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-notes/src/index.ts">S14</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-sdk/src/index.ts">S15</a> <a href="../references/A0/02_SPEC.md">B00</a></p>
+<p><strong>影响：</strong> 重复实现、全面改名或提前拆多个服务反而增加维护成本；固定发现网关是 A.0 允许的降级，不是必须改掉的缺口。</p>
+<p><strong>整改边界：</strong> 本次 TODO 从 027 追加；旧工作包做回归复核，不重新开工。逐步把通用 frame/selection 移到中性包可单列后续重构，不阻塞本期闭环。</p>
+<p><strong>追踪：</strong> REQ-077；TODO-049。</p>
+</div><div class="card-unit"><h3 id="GAP-19">GAP-19 · A.0 工程图原件可恢复，仓库文档还缺统一入口</h3>
+<p><strong>优先级：</strong> P2。<strong>审计分类：</strong> DOC_GAP。</p>
+<p><strong>已读事实：</strong> 仓库 A.1 说明 FIG-01..12 图源未随材料提供；本会话上一版 ZIP 实际包含这些 SVG/DOT/Mermaid/PNG。本交付按原件保留，不当作最新实现图。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/03_ARCHITECTURE.md">S05</a> <a href="../references/A0/02_SPEC.md">B00</a></p>
+<p><strong>影响：</strong> 仅剩历史文字与不同版本图会使维护者错认基线；新任务和新 AC 缺少统一机器追踪。</p>
+<p><strong>整改边界：</strong> 恢复历史图到 references/A0；新图从 FIG-15 续号；清楚标注现状、目标、来源和替代范围，并提供交叉索引。</p>
+<p><strong>追踪：</strong> REQ-077、REQ-080；TODO-027、TODO-049、TODO-050。</p>
+</div><div class="card-unit"><h3 id="GAP-20">GAP-20 · 当前审计不是完整执行性或所有文件漏洞审查</h3>
+<p><strong>优先级：</strong> P2。<strong>审计分类：</strong> LIMIT。</p>
+<p><strong>已读事实：</strong> 本次读取固定提交下关键链路、目标文档及上传原型；未取得完整可执行 checkout。容器 Node 22.16 低于仓库要求；浏览器两次在导航前被环境策略阻断。 <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/package.json">S27</a> <a href="../references/inputs/chat-component-authoring.html">U01</a></p>
+<p><strong>影响：</strong> 不能报告570项重跑通过，不能把原型浏览器未运行写成产品失败；静态未见也不证明整个仓库完全不存在某功能。</p>
+<p><strong>整改边界：</strong> 记录源码覆盖清单、HTML语法检查与同仓blob对照；产品测试均等待匹配环境执行，并保留本次 BLOCKED_ENV。</p>
+<p><strong>追踪：</strong> REQ-077、REQ-080；TODO-027、TODO-050。</p>
+</div><h2 id="section-06">06 原 48 项：原报告状态与本次审计分栏</h2>
+<p>原CSV共48行；48行implementationStatus=VERIFIED、testStatus=PASS、fixtureStatus=PASS。remainingRealStatus仅6行PASS，其他42行NOT_RUN。下面保留原标签，不认定其错误，也不把这些标签改成“本次重跑通过”。即便原remainingReal=PASS，仍要检查scope：例如旧候选本地确定性模型不等于新候选真实外部模型。</p>
+<p>全部新运行状态为NOT_RUN。源代码可见也仅说明存在相应路径；本次未提供原始现场证据的记录统一标EVIDENCE_GAP。机器表 <code>validation/baseline_48.csv</code> 保留全部列。</p>
+<p><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/traceability.csv">S04</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-publication-validation-20261007.md">S03</a></p>
+<table class="compact-table"><colgroup><col style="width:46%"/><col style="width:15%"/><col style="width:39%"/></colgroup>
+<thead>
+<tr>
+<th>REQ / 名称</th>
+<th>原现场状态</th>
+<th>本次源码观察</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>REQ-001 不修改 DSH 核心</td>
+<td>PASS</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-002 一个外壳与 N 个接入</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-003 一个业务事实来源</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-004 一个能力执行实现</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-005 唯一运行时目录</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-006 生命周期与卸载</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-007 连接独立于应用</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-008 会话应用集合与焦点分离</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-009 显式路由与歧义处理</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-010 按需工具发现</td>
+<td>PASS</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-011 兼容性握手</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-012 输入输出同时声明</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-013 底层 API 不是第二套业务</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-014 未知写接口显式分类</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-015 生成 SDK 与调用语义</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-016 数据来源时间口径</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-017 幂等身份与请求哈希</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-018 状态与业务核实</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-019 取消不等于撤销</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-020 并发与冲突域</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-021 脚本子调用日志</td>
+<td>NOT_RUN</td>
+<td>REPORTED_ONLY / 需原始证据</td>
+</tr>
+<tr>
+<td>REQ-022 跨应用不假装事务</td>
+<td>NOT_RUN</td>
+<td>REPORTED_ONLY / 需原始证据</td>
+</tr>
+<tr>
+<td>REQ-023 模型预算与数据句柄</td>
+<td>NOT_RUN</td>
+<td>REPORTED_ONLY / 需原始证据</td>
+</tr>
+<tr>
+<td>REQ-024 稳定错误契约</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-025 普通源码为主路径</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-026 构建与保存分离</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-027 桥接握手与协议</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-028 通用资源选择</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-029 本地动作不经过模型</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-030 上下文与消息分开</td>
+<td>PASS</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-031 确定性会话投影</td>
+<td>PASS</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-032 多应用绑定</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-033 离线与版本冲突</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-034 明确状态所有者</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-035 确定性数据集身份</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-036 历史数据可追溯迁移</td>
+<td>NOT_RUN</td>
+<td>REPORTED_ONLY / 需原始证据</td>
+</tr>
+<tr>
+<td>REQ-037 禁止双写切换</td>
+<td>NOT_RUN</td>
+<td>REPORTED_ONLY / 需原始证据</td>
+</tr>
+<tr>
+<td>REQ-038 有条件回退</td>
+<td>NOT_RUN</td>
+<td>REPORTED_ONLY / 需原始证据</td>
+</tr>
+<tr>
+<td>REQ-039 引用驱动清理</td>
+<td>NOT_RUN</td>
+<td>REPORTED_ONLY / 需原始证据</td>
+</tr>
+<tr>
+<td>REQ-040 保留旧工具与协议入口</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-041 DSH 兼容探针</td>
+<td>PASS</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-042 统一分发但独立版本</td>
+<td>PASS</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-043 异构应用验证</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-044 可定位观测记录</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+<tr>
+<td>REQ-045 自动化故障矩阵</td>
+<td>NOT_RUN</td>
+<td>REPORTED_ONLY / 需原始证据</td>
+</tr>
+<tr>
+<td>REQ-046 性能与上下文基准</td>
+<td>NOT_RUN</td>
+<td>REPORTED_ONLY / 需原始证据</td>
+</tr>
+<tr>
+<td>REQ-047 可复现交付证据</td>
+<td>NOT_RUN</td>
+<td>REPORTED_ONLY / 需原始证据</td>
+</tr>
+<tr>
+<td>REQ-048 不扩张本期目标</td>
+<td>NOT_RUN</td>
+<td>CODE_PRESENT / 不等于整体验收</td>
+</tr>
+</tbody>
+</table>
+<h2 id="section-07">07 推进顺序与停止边界</h2>
+<p><strong>第一批：入口与创作证据。</strong> 完成TODO-027..035；能在原聊天明确引用、定位副本，并生成真实构建及v2预览证据。不要先装修整个应用页。</p>
+<p><strong>第二批：发布与恢复。</strong> 完成TODO-036..039；把“可用构建”与“尝试中的候选”分开，防止错误构建覆盖旧显示；完成取消、重启与UI状态。</p>
+<p><strong>第三批：日常可用产品。</strong> 完成TODO-040..047：附件/原发送、真实Agent迭代、组件库/保存历史、计划与连接配置一致性。</p>
+<p><strong>第四批：复核和发布。</strong> TODO-048..050；原48项回归与新增32项共同组成验收。真实写和正式切库各自签认；在缺前提时只发布明确范围的候选。</p>
+<p>不建议新增微服务集群、通用工作流引擎、插件市场、第二套Agent或“全能HTTP工具即平台”。新增创作账本只记录原Agent发起的文件/构建/预览过程，不接管其思考或任务队列。</p>
+<h2 id="section-08">90 来源索引与复核覆盖</h2>
+<p>已读的文件/符号见下表。代码URL全部固定到本次commit；文档内本机evidence路径仅是定位，不是本包已附的证据。原型行号对应上传HTML；GitHub代码按文件与符号定位，不把外层工具输出行号冒充源码行号。</p>
+<table><colgroup><col style="width:10%"/><col style="width:65%"/><col style="width:25%"/></colgroup>
+<thead>
+<tr>
+<th>ID</th>
+<th>文件 / 符号</th>
+<th>证据类别</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S01</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/README.md">最新仓库说明</a><br/><code>README.md</code><br/>Apps V1 / 最新文档与体验入口</td>
+<td>仓库声明</td>
+</tr>
+<tr>
+<td>S02</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-v1-candidate.md">候选版范围和版本矩阵</a><br/><code>docs/apps-v1-candidate.md</code><br/>运行与边界 / 插件、SDK 与源码组件</td>
+<td>仓库声明</td>
+</tr>
+<tr>
+<td>S03</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-publication-validation-20261007.md">发布验证摘要</a><br/><code>docs/apps-publicatio​n-validation-2026100​7.md</code><br/>历史候选验证与新增设计分别记录</td>
+<td>仓库声明；未提供原始运行档案</td>
+</tr>
+<tr>
+<td>S04</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/traceability.csv">现有需求追踪</a><br/><code>docs/requirements/tr​aceability.csv</code><br/>REQ-001..048；implementationStatus / remainingRealStatus</td>
+<td>仓库记录</td>
+</tr>
+<tr>
+<td>S05</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/03_ARCHITECTURE.md">A.1 架构</a><br/><code>docs/requirements/03​_ARCHITECTURE.md</code><br/>FIG-13 / FIG-14 / AC-13-01..09</td>
+<td>目标规范</td>
+</tr>
+<tr>
+<td>S06</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-product-requirements-20261007.md">当前桌面产品要求</a><br/><code>docs/apps-product-re​quirements-20261007.​md</code><br/>PR-01..24</td>
+<td>目标规范</td>
+</tr>
+<tr>
+<td>S07</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/chat-component-authoring-review.md">原聊天创作评审</a><br/><code>docs/chat-component-​authoring-review.md</code><br/>完成范围与后续接线</td>
+<td>目标规范与边界声明</td>
+</tr>
+<tr>
+<td>S08</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-runtime/src/index.ts">唯一 Runtime 目录及调用</a><br/><code>packages/app-runtime/src/index.ts</code><br/>AppsRuntime：目录、绑定、调用、核实与恢复的已读路径</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S09</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/service/src/apps-main.ts">P2 组合根</a><br/><code>packages/service/src/apps-main.ts</code><br/>composeAppsRuntime / clientFor / main</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S10</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/bundles/apps/server/index.ts">组合 bundle Host</a><br/><code>bundles/apps/server/index.ts</code><br/>Config / bundle装配 / legacy资源路由兼容</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S11</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/bundles/apps/client/index.tsx">组合 bundle Client</a><br/><code>bundles/apps/client/index.tsx</code><br/>createClientPlugin 实参 / AppsWorkspace / AppsToolView</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S12</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/src/index.ts">DSH Host 门面</a><br/><code>packages/plugin-apps/src/index.ts</code><br/>gatewaySchemas / AppsHost / installNativeContextHook</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S13</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-hallmark/src/index.ts">Hallmark Provider</a><br/><code>packages/app-hallmar​k/src/index.ts</code><br/>HALLMARK_DESCRIPTORS / HALLMARK_API_OPERATIONS / execute</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S14</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-notes/src/index.ts">Notes Provider</a><br/><code>packages/app-notes/src/index.ts</code><br/>NOTES_DESCRIPTORS / NotesProvider.execute/inspect</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S15</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-sdk/src/index.ts">SDK 与生成器</a><br/><code>packages/app-sdk/src/index.ts</code><br/>AppsClient / HttpRuntimeTransport / generateArtifacts</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S16</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-presentation/src/index.ts">共享展示与保存</a><br/><code>packages/app-present​ation/src/index.ts</code><br/>openSource / createView / saveComponent / openComponent / manageSaved</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S17</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/source-components/src/index.ts">源码构建存档</a><br/><code>packages/source-comp​onents/src/index.ts</code><br/>projectSnapshot / capture / capturePreview / verify / checkout</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S18</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/scripts/source-preview.mjs">当前预览载体</a><br/><code>scripts/source-preview.mjs</code><br/>readDist / hostHTML；hallmark.source.v1</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S19</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/component-runtime/src/apps-client.ts">v2 组件客户端</a><br/><code>packages/component-r​untime/src/apps-clie​nt.ts</code><br/>COMPONENT_CHANNEL / COMPONENT_METHODS / createAppsClient</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S20</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/dsh-plugin/client/component-frame.tsx">生产 frame 容器</a><br/><code>packages/dsh-plugin/​client/component-fra​me.tsx</code><br/>useComponentBridge / AppsSourceFrame</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S21</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/view.tsx">新组件显示投影</a><br/><code>packages/plugin-apps​/client/view.tsx</code><br/>appsToolViewReference / AppsNativeView / AppsToolView</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S22</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/dsh-plugin/client/plugin.ts">原生扩展装配</a><br/><code>packages/dsh-plugin/​client/plugin.ts</code><br/>ClientContext / createClientPlugin / bindNativeInput</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S23</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/component-handlers.ts">组件能力与附件接线</a><br/><code>packages/plugin-apps​/client/component-ha​ndlers.ts</code><br/>createAppsComponentHandlers / attachSelection</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S24</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/directory.tsx">当前应用目录</a><br/><code>packages/plugin-apps​/client/directory.ts​x</code><br/>AppsDirectory / bind</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S25</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/workspace.tsx">当前工作区</a><br/><code>packages/plugin-apps​/client/workspace.ts​x</code><br/>AppsWorkspace</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S26</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-migration-runbook.md">迁移和回退运行手册</a><br/><code>docs/apps-migration-runbook.md</code><br/>PROC-MIG-01 / PROC-RBK-01 / GC</td>
+<td>命令与夹具范围声明</td>
+</tr>
+<tr>
+<td>S27</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/package.json">开发脚本与 Node 要求</a><br/><code>package.json</code><br/>scripts / engines / version</td>
+<td>代码静态证据</td>
+</tr>
+<tr>
+<td>S28</td>
+<td><a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/prototypes/chat-component-authoring.html">仓库 HTML 原型</a><br/><code>docs/prototypes/chat​-component-authoring​.html</code><br/>schema 3 / sendCommand / runBuild / saveAsset</td>
+<td>离线交互原型</td>
+</tr>
+<tr>
+<td>U01</td>
+<td><a href="../references/inputs/chat-component-authoring.html">本次上传 HTML</a><br/><code>references/inputs/ch​at-component-authori​ng.html</code><br/>见 AUDIT 的原型逐项表</td>
+<td>用户原型；可静态复核</td>
+</tr>
+<tr>
+<td>U02</td>
+<td><a href="../references/inputs/image-044804.png">用户架构示意图 1</a><br/><code>references/inputs/im​age-044804.png</code><br/>整图与绿色保存/重开路径</td>
+<td>目标示意，不是工程验收</td>
+</tr>
+<tr>
+<td>U03</td>
+<td><a href="../references/inputs/image-044809.png">用户架构示意图 2</a><br/><code>references/inputs/im​age-044809.png</code><br/>整图与绿色保存/重开路径</td>
+<td>目标示意，不是工程验收</td>
+</tr>
+<tr>
+<td>U04</td>
+<td><a href="../references/inputs/image-044814.png">用户架构示意图 3</a><br/><code>references/inputs/im​age-044814.png</code><br/>整图与绿色保存/重开路径</td>
+<td>目标示意，不是工程验收</td>
+</tr>
+<tr>
+<td>B00</td>
+<td><a href="../references/A0/02_SPEC.md">上一轮 A.0 文档原件</a><br/><code>references/A0/02_SPEC.md</code><br/>REQ-001..048 / TST-001..048</td>
+<td>目标基线；不是执行证据</td>
+</tr>
+</tbody>
+</table>
+</body></html>

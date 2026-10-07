@@ -58,10 +58,13 @@ export class HallmarkClient {
   }
   private now(): Date { return this.options.now?.() ?? new Date(); }
   async health(force = false): Promise<AdapterResult<Record<string, unknown>>> {
-    if (!force && this.healthEntry && this.healthEntry.until > this.now().getTime()) return this.healthEntry.result;
     if (this.healthFlight) return this.healthFlight;
+    if (!force && this.healthEntry && this.healthEntry.until > this.now().getTime()) return this.healthEntry.result;
     this.healthFlight = this.request<Record<string, unknown>>('/api/health', 'GET', undefined, { health: true }).then(result => {
-      this.healthEntry = { result, until: this.now().getTime() + (this.options.healthCacheMs ?? 10_000) };
+      // Board shares its event loop with platform work. A transient probe failure must
+      // not prevent another check for the full successful-health cache interval.
+      const cacheMs = this.options.healthCacheMs ?? 10_000;
+      this.healthEntry = { result, until: this.now().getTime() + (result.status === 'ok' ? cacheMs : Math.min(cacheMs, 1000)) };
       return result;
     }).finally(() => { this.healthFlight = undefined; });
     return this.healthFlight;
@@ -69,7 +72,7 @@ export class HallmarkClient {
   private async request<T>(endpoint: string, method: 'GET' | 'POST', body?: unknown, config: { source?: Provenance['source']; platform?: boolean; writeRisk?: boolean; platformWork?: boolean; readOnly?: boolean; auth?: boolean; health?: boolean; storeId?: string; onDispatch?: () => void; onResponse?: (status: number) => void } = {}): Promise<AdapterResult<T>> {
     if (!config.health) {
       const health = await this.health();
-      if (health.status !== 'ok') return adapterFailure('HALLMARK_UNAVAILABLE', 'Hallmark Control 不可用，请启动原服务后重试', 'unavailable', true);
+      if (health.status !== 'ok') return adapterFailure(health.error?.code ?? 'HALLMARK_UNAVAILABLE', health.error?.message ?? 'Hallmark 健康检查未通过', health.status === 'failed' ? 'failed' : 'unavailable', health.error?.retryable ?? true, health.error?.retryAfterMs);
     }
     let token: string | undefined;
     if (config.auth) {
@@ -81,7 +84,7 @@ export class HallmarkClient {
       if (/\s/.test(token)) return adapterFailure('HUMAN_AUTH_INVALID', 'Hallmark 操作令牌格式无效');
     }
     const writeRisk = config.platform || config.writeRisk;
-    const timeout = config.health ? (this.options.healthTimeoutMs ?? 1500) : config.platform || config.platformWork ? (this.options.platformTimeoutMs ?? 70_000) : (this.options.readTimeoutMs ?? 30_000);
+    const timeout = config.health ? (this.options.healthTimeoutMs ?? 10_000) : config.platform || config.platformWork ? (this.options.platformTimeoutMs ?? 70_000) : (this.options.readTimeoutMs ?? 30_000);
     for (let attempt = 0; attempt < 2; attempt++) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeout);

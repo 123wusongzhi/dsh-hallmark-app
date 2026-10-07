@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 export * from './context.ts';
+export * from './authoring-ui.ts';
 
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 export type JsonSchema = { [key: string]: JsonValue };
@@ -19,7 +20,7 @@ export interface InvocationRequest extends AppRef {
  capabilityVersion: string; input: JsonValue; source: InvocationSource; deadlineAt: string;
  idempotencyKey?: string; expectedResourceRevision?: string;
 }
-export interface ExecutionContext { request: Readonly<InvocationRequest>; signal: AbortSignal; operationId?: string; parentRunId?: string }
+export interface ExecutionContext { request: Readonly<InvocationRequest>; signal: AbortSignal; operationId?: string; parentRunId?: string; configRevision?: number }
 export type OperationState = 'queued' | 'dispatching' | 'pending' | 'unknown' | 'succeeded' | 'failed' | 'partial' | 'cancelled';
 export interface OperationRef { operationId: string; state: OperationState }
 export type Freshness = 'fresh' | 'stale' | 'unknown';

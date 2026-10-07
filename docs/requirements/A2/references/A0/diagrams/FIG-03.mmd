@@ -1,0 +1,23 @@
+flowchart TB
+  %% FIG-03: 部署：四个执行边界与唯一写入者 | 目标 / V1 固定拓扑
+  subgraph P1["P1 | DSH Host"]
+    p1["plugin-apps + N 个插件<br/>dsh-compat / Native tools"]
+  end
+  subgraph P2["P2 | 一个本机 Runtime 进程"]
+    r["Registry / Invocation / Presentation"]
+    p["Hallmark + Notes Provider 模块"]
+    s["apps.db + 构建归档<br/>仅 Runtime 写入"]
+  end
+  subgraph P3["P3 | Client / iframe 上下文"]
+    ui["Apps UI / SourceFrame"]
+    f["源码组件 iframe"]
+  end
+  subgraph P4["P4 | 原应用服务"]
+    orig["Hallmark 原后端<br/>Notes 数据源"]
+  end
+  f -->|"bridge"| ui
+  ui -->|"宿主代理"| p1
+  p1 -->|"本机 HTTP"| r
+  r -->|"进程内"| p
+  r -->|"持久化"| s
+  p -->|"API"| orig

@@ -1,0 +1,38 @@
+flowchart TD
+  edit["原 Agent / 文件工具<br/>修改独立源码工作副本"]
+  build["执行真实 build 命令<br/>输入前后摘要 + exitCode"]
+  freeze["归档候选 / BuildReceipt<br/>不改变当前 view"]
+  pv["真实 v2 预览<br/>同份 dist / 两视口 / 控件"]
+  pass{"预览证据完整<br/>且断言 PASS？"}
+  mount["mounting 候选 frame<br/>publicationId / expectedViewRevision"]
+  ready{"同身份 renderReady<br/>且当前 attempt 未取消？"}
+  cas["P2 事务 CAS 确认<br/>owner / epoch / viewRevision"]
+  active["当前会话已确认展示<br/>active / lastGood / viewRevision+1"]
+  old["保留旧可用界面<br/>失败、取消或冲突如实报告"]
+  feedback["原 Agent 读取错误 / 截图<br/>继续修正同一目标"]
+  saved["组件库保持不变<br/>本图没有明确保存动作"]
+  edit -->|E01| build
+  build -->|E02| freeze
+  build -->|E03| old
+  freeze -->|E04| pv
+  pv -->|E05| pass
+  pass -->|E06| mount
+  pass -->|E07| old
+  mount -->|E08| ready
+  ready -->|E09| cas
+  ready -->|E10| old
+  cas -->|E11| active
+  cas -->|E12| old
+  old -->|E13| feedback
+  feedback -->|E14| edit
+  active -->|E15| saved
+  classDef existing fill:#EAF3FF,stroke:#3265A3,color:#17283F
+  class edit,feedback existing
+  classDef new fill:#FFF3DF,stroke:#C47724,color:#17283F
+  class build,freeze,pv,mount,cas,active new
+  classDef external fill:#F3F5F8,stroke:#6A778C,color:#17283F
+  class saved external
+  classDef stop fill:#FDEEEA,stroke:#B05243,color:#17283F
+  class old stop
+  classDef decision fill:#FFF7E8,stroke:#A87527,color:#17283F
+  class pass,ready decision

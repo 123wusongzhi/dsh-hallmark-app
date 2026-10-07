@@ -1,25 +1,29 @@
-import React,{useEffect,useMemo,useState} from 'react';
+import React,{useEffect,useMemo,useRef,useState} from 'react';
 import type {AppsView,AppsViewData} from '../../app-presentation/src/types.ts';
 import type {BindingData,ViewSpec} from '../../presentation/src/types.ts';
 import {validateViewSpec} from '../../presentation/src/validation.ts';
 import {AppsSourceFrame} from '../../dsh-plugin/client/component-frame.tsx';
-import {createAppsComponentHandlers} from './component-handlers.ts';
+import {createAppsPresentationHandlers} from './component-handlers.ts';
 import {EmptyView,ErrorView,LoadingView,RenderBoundary,ViewRenderer} from '../../dsh-plugin/client/renderer.tsx';
 import {STYLES} from '../../dsh-plugin/client/styles.ts';
 import {openSessionComponents} from '../../dsh-plugin/client/sidebar-contract.ts';
 import type {NativeSidebarRight} from '../../dsh-plugin/client/sidebar-contract.ts';
 import type {JsonValue} from '../../app-contracts/src/index.ts';
-import type {ComponentHostHandlers} from '../../component-runtime/src/host.ts';
+import type {ExtendedComponentHandlers} from '../../dsh-plugin/client/component-frame.tsx';
+import type {AuthoringView,ViewPublication} from '../../app-presentation/src/authoring-types.ts';
+import {AppsIcon,appsDisplayTime} from './ui.tsx';
+import {APPS_WORKSPACE_STYLES} from './styles.ts';
+import {useCandidateFrameLease} from './native-publication.tsx';
 
-interface AppsViewReference {sessionId:string;viewId:string;buildId?:string}
+interface AppsViewReference {sessionId:string;viewId:string;buildId?:string;viewRevision?:number;publicationId?:string}
 function object(value:unknown):Record<string,unknown> {return value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};}
 export function appsToolViewReference(props:{sessionId?:string;phase?:string;block?:{meta?:unknown}}):AppsViewReference|undefined {
   const meta=object(object(props.block?.meta).apps);
   if(props.phase!=='result'||!props.sessionId||meta.sessionId!==props.sessionId||typeof meta.viewId!=='string'||!meta.viewId)return;
-  return {sessionId:props.sessionId,viewId:meta.viewId,...(typeof meta.buildId==='string'?{buildId:meta.buildId}:{})};
+  return {sessionId:props.sessionId,viewId:meta.viewId,...(typeof meta.publicationId==='string'?{publicationId:meta.publicationId}:{}),...(typeof meta.buildId==='string'?{buildId:meta.buildId}:{}),...(Number.isSafeInteger(meta.viewRevision)?{viewRevision:Number(meta.viewRevision)}:{})};
 }
-async function read(resource:'view'|'viewData',sessionId:string,viewId:string,signal:AbortSignal):Promise<unknown> {
-  const query=new URLSearchParams({resource,sessionId,viewId}),response=await fetch(`/api/dsh-apps?${query}`,{credentials:'same-origin',signal});
+async function read(resource:'view'|'viewData',sessionId:string,viewId:string,signal:AbortSignal,version?:{buildId?:string;viewRevision?:number;publicationId?:string}):Promise<unknown> {
+  const query=new URLSearchParams({resource,sessionId,viewId,...(version?.publicationId?{publicationId:version.publicationId}:{}),...(version?.buildId?{buildId:version.buildId}:{}),...(version?.viewRevision!==undefined?{viewRevision:String(version.viewRevision)}:{})}),response=await fetch(`/api/dsh-apps?${query}`,{credentials:'same-origin',signal});
   const value:unknown=await response.json();if(!response.ok)throw new Error(String(object(object(value).error).message??'Apps component could not be read.'));return value;
 }
 function staticView(view:AppsView):ViewSpec|undefined {
@@ -27,28 +31,78 @@ function staticView(view:AppsView):ViewSpec|undefined {
   try{validateViewSpec(spec);return spec;}catch{return;}
 }
 /** Native Apps results use explicit presentation metadata; results are never searched for guessed view IDs. */
-export function AppsNativeView({sessionId,viewId,onOpenSidebar}:{sessionId:string;viewId:string;onOpenSidebar?:()=>void}) {
-  const [view,setView]=useState<AppsView>(),[data,setData]=useState<AppsViewData>(),[error,setError]=useState(''),[revision,setRevision]=useState(0);
-  const identity=JSON.stringify([sessionId,viewId]),[loadedOwner,setLoadedOwner]=useState<string>();
-  useEffect(()=>{const controller=new AbortController();setView(undefined);setData(undefined);setLoadedOwner(undefined);setError('');
-    Promise.all([read('view',sessionId,viewId,controller.signal),read('viewData',sessionId,viewId,controller.signal)]).then(([viewValue,dataValue])=>{
-      const current=viewValue as AppsView,payload=dataValue as AppsViewData;
+export function AppsNativeView({sessionId,viewId,expectedBuildId,expectedViewRevision,expectedPublicationId,onOpenSidebar,visibilitySignal}:{sessionId:string;viewId:string;expectedBuildId?:string;expectedViewRevision?:number;expectedPublicationId?:string;onOpenSidebar?:()=>void;visibilitySignal?:AbortSignal}) {
+  const [view,setView]=useState<AuthoringView>(),[data,setData]=useState<AppsViewData>(),[publication,setPublication]=useState<ViewPublication>(),[error,setError]=useState(''),[notice,setNotice]=useState(''),[revision,setRevision]=useState(0);
+  const identity=JSON.stringify([sessionId,viewId,expectedBuildId,expectedViewRevision,expectedPublicationId]),[loadedOwner,setLoadedOwner]=useState<string>();
+  const loadGeneration=useRef(0),live=useRef({identity,active:true,visibilitySignal,publicationId:publication?.publicationId,attemptEpoch:publication?.attemptEpoch});live.current={identity,active:true,visibilitySignal,publicationId:publication?.publicationId,attemptEpoch:publication?.attemptEpoch};
+  useEffect(()=>()=>{live.current.active=false;},[]);
+  const currentIdentity=()=>live.current.active&&live.current.identity===identity&&!live.current.visibilitySignal?.aborted;
+  const leaseKey=publication?.state==='mounting'?JSON.stringify([sessionId,viewId,publication.publicationId,publication.attemptId,publication.attemptEpoch,publication.candidateBuildId]):undefined;
+  const lease=useCandidateFrameLease(leaseKey,!visibilitySignal?.aborted);
+  useEffect(()=>{const generation=++loadGeneration.current,controller=new AbortController(),signal=visibilitySignal?AbortSignal.any([controller.signal,visibilitySignal]):controller.signal;setView(undefined);setData(undefined);setPublication(undefined);setLoadedOwner(undefined);setError('');setNotice('');
+    Promise.all([read('view',sessionId,viewId,signal,{buildId:expectedBuildId,viewRevision:expectedViewRevision,publicationId:expectedPublicationId}),read('viewData',sessionId,viewId,signal)]).then(async([viewValue,dataValue])=>{
+      const current=viewValue as AuthoringView,payload=dataValue as AppsViewData;
       if(current.viewId!==viewId||current.ownerSessionId!==sessionId||payload.viewId!==viewId||!Array.isArray(payload.bindings))throw new Error('Apps component owner or view identity does not match.');
-      if(!controller.signal.aborted){setView(current);setData(payload);setLoadedOwner(identity);}
-    }).catch(cause=>{if(!controller.signal.aborted)setError(cause instanceof Error?cause.message:String(cause));});return()=>controller.abort();
-  },[identity,revision]);
+      let pending:ViewPublication|undefined;const pinned=(current as AuthoringView&{publication?:ViewPublication}).publication;
+      if(expectedPublicationId){if(pinned?.publicationId!==expectedPublicationId||pinned.ownerSessionId!==sessionId||pinned.viewId!==viewId||!['mounting','mounted'].includes(pinned.state))throw new Error('原消息的发布身份不可重建，请检查原publication。');if(pinned.state==='mounting')pending=pinned;}
+      else if(current.pendingPublicationId){const fixed=await read('view',sessionId,viewId,signal,{publicationId:current.pendingPublicationId}) as AuthoringView&{publication?:ViewPublication};pending=fixed.publication;if(fixed.ownerSessionId!==sessionId||fixed.viewId!==viewId||pending?.ownerSessionId!==sessionId||pending?.viewId!==viewId||pending?.publicationId!==current.pendingPublicationId||pending.state!=='mounting')throw new Error('候选发布身份已变化，请检查原attempt。');}
+      if(expectedBuildId&&current.source?.buildId!==expectedBuildId&&pending?.candidateBuildId!==expectedBuildId)throw new Error('此历史消息的构建不可重建；不会用当前焦点组件替换。');
+      if(pending&&!(Date.parse(pending.readyDeadlineAt)>Date.now())){pending=undefined;if(!signal.aborted&&currentIdentity()&&loadGeneration.current===generation)setNotice('此候选的渲染确认时间已过。请在原聊天继续处理并发布新候选；上一成功构建仍保留。');}
+      if(!signal.aborted&&currentIdentity()&&loadGeneration.current===generation){setView(current);setData(payload);setPublication(pending);setLoadedOwner(identity);}
+    }).catch(cause=>{if(!signal.aborted&&currentIdentity()&&loadGeneration.current===generation)setError(cause instanceof Error?cause.message:String(cause));});return()=>{controller.abort();if(loadGeneration.current===generation)loadGeneration.current++;};
+  },[identity,revision,visibilitySignal]);
+  useEffect(()=>{
+    const receive=(event:Event)=>{const detail=(event as CustomEvent).detail;if(!publication||!currentIdentity()||detail?.sessionId!==sessionId||detail?.viewId!==viewId||detail?.publicationId!==publication.publicationId||detail?.buildId!==publication.candidateBuildId)return;
+      if(lease.owns()){setPublication(current=>current&&current.publicationId===detail.publicationId?{...current,state:'mounted'}:current);setNotice('候选已通过正式渲染检查并发布；尚未保存到组件库。');lease.settle();}
+      else setRevision(value=>value+1);
+    };
+    const discover=(event:Event)=>{const detail=(event as CustomEvent).detail;if(!expectedPublicationId&&currentIdentity()&&detail?.sessionId===sessionId&&detail?.viewId===viewId&&typeof detail.publicationId==='string'&&detail.publicationId!==publication?.publicationId){loadGeneration.current++;setRevision(value=>value+1);}};
+    const settled=(event:Event)=>{const detail=(event as CustomEvent).detail;if(currentIdentity()&&detail?.sessionId===sessionId&&detail?.viewId===viewId&&detail.publicationId===publication?.publicationId&&!lease.owns())setRevision(value=>value+1);};
+    window.addEventListener('apps-authoring-published',receive);window.addEventListener('apps-publication-discovered',discover);window.addEventListener('apps-authoring-settled',settled);
+    return()=>{window.removeEventListener('apps-authoring-published',receive);window.removeEventListener('apps-publication-discovered',discover);window.removeEventListener('apps-authoring-settled',settled);};
+  },[identity,publication?.publicationId,publication?.candidateBuildId,leaseKey]);
   const current=loadedOwner===identity?view:undefined,currentData=loadedOwner===identity?data:undefined;
-  const abort=useMemo(()=>new AbortController(),[identity,current?.source?.buildId]);useEffect(()=>()=>abort.abort(),[abort]);
-  const [preparedHandlers,setPreparedHandlers]=useState<{identity:string;buildId:string;handlers:ComponentHostHandlers}>();
-  useEffect(()=>{let active=true;setPreparedHandlers(undefined);if(current?.source){const buildId=current.source.buildId;Promise.resolve(createAppsComponentHandlers({sessionId,viewId,buildId},abort.signal)).then(handlers=>{if(active&&!abort.signal.aborted)setPreparedHandlers({identity,buildId,handlers});}).catch(cause=>{if(active&&!abort.signal.aborted)setError(cause instanceof Error?cause.message:String(cause));});}return()=>{active=false;};},[identity,current?.source?.buildId,abort]);
-  const handlers=preparedHandlers?.identity===identity&&preparedHandlers.buildId===current?.source?.buildId?preparedHandlers.handlers:undefined;
+  const source=publication?.source??current?.source;
+  const abort=useMemo(()=>new AbortController(),[identity,source?.buildId,visibilitySignal]);useEffect(()=>()=>abort.abort(),[abort]);
+  const frameSignal=useMemo(()=>visibilitySignal?AbortSignal.any([abort.signal,visibilitySignal]):abort.signal,[abort,visibilitySignal]);
+  const [preparedHandlers,setPreparedHandlers]=useState<{identity:string;buildId:string;handlers:ExtendedComponentHandlers}>();
+  useEffect(()=>{let active=true;setPreparedHandlers(undefined);if(source){const buildId=source.buildId;Promise.resolve(createAppsPresentationHandlers({sessionId,viewId,buildId},frameSignal,publication?{publicationId:publication.publicationId,attemptId:publication.attemptId,attemptEpoch:publication.attemptEpoch}:undefined)).then(handlers=>{if(active&&!frameSignal.aborted&&currentIdentity()){const authorize=handlers.authorizeFrame;setPreparedHandlers({identity,buildId,handlers:{...handlers,...(authorize?{authorizeFrame:async(...args:Parameters<NonNullable<ExtendedComponentHandlers['authorizeFrame']>>)=>{if(publication?.state==='mounting')lease.authorize();return authorize(...args);}}:{})}});}}).catch(cause=>{if(active&&!frameSignal.aborted&&currentIdentity())setError(cause instanceof Error?cause.message:String(cause));});}return()=>{active=false;};},[identity,source?.buildId,publication?.publicationId,frameSignal]);
+  const handlers=preparedHandlers?.identity===identity&&preparedHandlers.buildId===source?.buildId?preparedHandlers.handlers:undefined;
+  const failing=useRef<string>();
+  const failCandidate=async(reason:string)=>{
+    if(!publication||publication.state!=='mounting'||!lease.owns()||failing.current===publication.publicationId||!currentIdentity())return;
+    const candidate=publication,generation=loadGeneration.current;
+    const currentCandidate=()=>currentIdentity()&&!frameSignal.aborted&&loadGeneration.current===generation&&live.current.publicationId===candidate.publicationId&&live.current.attemptEpoch===candidate.attemptEpoch;
+    const signal=()=>AbortSignal.any([frameSignal,AbortSignal.timeout(5000)]);
+    const inspect=async()=>{const response=await fetch('/api/dsh-apps',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'authoring',operation:'inspect',sessionId,params:{publicationId:candidate.publicationId}}),signal:signal()}),state=object(object(await response.json()).publication);if(!response.ok||state.publicationId!==candidate.publicationId||state.ownerSessionId!==sessionId||state.viewId!==viewId)throw new Error('Publication inspection failed.');return state;};
+    const confirmed=()=>{if(!currentCandidate())return;setPublication(current=>current&&current.publicationId===candidate.publicationId?{...current,state:'mounted'}:current);lease.settle();setNotice('原候选发布已确认；加载失败回执不会撤销已完成发布。');};
+    failing.current=candidate.publicationId;
+    try{
+      let state=await inspect();if(!currentCandidate())return;
+      if(state.state==='mounted'){confirmed();return;}
+      if(state.state==='mounting'){
+        try{const failed=await fetch('/api/dsh-apps',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'authoring',operation:'failMount',sessionId,params:{publicationId:candidate.publicationId,reason}}),signal:signal()});if(!failed.ok)throw new Error('Mount failure receipt unavailable.');}
+        catch{if(!currentCandidate())return;state=await inspect();if(!currentCandidate())return;if(state.state==='mounted'){confirmed();return;}if(!['failed_mount','cancelled','interrupted'].includes(String(state.state)))throw new Error('Mount result remains unconfirmed.');}
+      }else if(!['failed_mount','cancelled','interrupted'].includes(String(state.state)))throw new Error('Publication result is not terminal.');
+      if(!currentCandidate())return;
+      const previous=await read('view',sessionId,viewId,signal()) as AuthoringView;
+      if(previous.ownerSessionId!==sessionId||previous.viewId!==viewId||previous.pendingPublicationId||previous.source?.buildId===candidate.candidateBuildId)throw new Error('Previous owned active build was not confirmed.');
+      if(currentCandidate()){lease.settle();setView(previous);setPublication(undefined);setNotice('候选加载失败，已重新读取此视图上一成功构建，工作副本继续保留。');window.dispatchEvent(new CustomEvent('apps-authoring-settled',{detail:{sessionId,viewId,publicationId:candidate.publicationId}}));}
+    }catch{if(currentCandidate())setNotice('候选加载失败，原发布结果尚未确认。请在原聊天检查原 publication；当前展示与工作副本继续保留。');}
+    finally{if(failing.current===candidate.publicationId)failing.current=undefined;}
+  };
+  useEffect(()=>{if(publication?.state!=='mounting'||!lease.allowed)return;const timeout=Math.max(0,Date.parse(publication.readyDeadlineAt)-Date.now())+25;const timer=setTimeout(()=>void failCandidate('Candidate render-ready deadline exceeded.'),Math.min(timeout,2147483647));return()=>clearTimeout(timer);},[publication?.publicationId,publication?.state,lease.allowed]);
   const spec=current&&!current.source?staticView(current):undefined;
   const bindings:BindingData[]=(currentData?.bindings??[]).map(binding=>({bindingId:binding.bindingId,datasetKey:binding.datasetId,payload:binding.payload,state:binding.state,lastSuccessAt:binding.lastSuccessAt??undefined,dataTime:binding.sourceDataTime??undefined,provenance:{source:'app_snapshot',endpoint:binding.provenance[0]?.sourceRef,freshness:binding.freshness},lastError:binding.error}));
-  return <section className="hm-root hm-view"><style>{STYLES}</style><header><h3>{current?.title??'Apps 组件'}</h3><button type="button" onClick={()=>setRevision(value=>value+1)}>重新读取</button>{onOpenSidebar?<button type="button" onClick={onOpenSidebar}>侧栏查看</button>:null}</header>{error?<ErrorView message={error}/>:!current||!currentData||current.source&&!handlers?<LoadingView/>:<RenderBoundary key={identity}>{current.source&&handlers?<AppsSourceFrame sessionId={sessionId} viewId={viewId} buildId={current.source.buildId} title={current.title} url={`/api/hallmark-source/${encodeURIComponent(current.source.buildId)}/${current.source.entry.split('/').map(encodeURIComponent).join('/')}`} data={currentData as unknown as JsonValue} context={{sessionId,viewId,buildId:current.source.buildId,contextRevision:0}} handlers={handlers}/>:spec?<ViewRenderer spec={spec} data={bindings}/>:<EmptyView message="组件设计尚无对应展示器" detail="源码组件可按原构建打开；请查看此调用的原生文字结果。"/>}</RenderBoundary>}</section>;
+  const sourceTimes=[...new Set((currentData?.bindings??[]).map(binding=>binding.sourceDataTime).filter((value):value is string=>!!value))];
+  const readTimes=[...new Set((currentData?.bindings??[]).map(binding=>binding.lastSuccessAt).filter((value):value is string=>!!value))];
+  return <section className="hm-root hm-view apps-component"><style>{STYLES}{APPS_WORKSPACE_STYLES}</style><header><div className="apps-component-heading"><span className="apps-component-mark"><AppsIcon name="component"/></span><div><h3>{current?.title??'应用组件'}</h3><p>{publication?.state==='mounted'?'已发布 · 尚未保存':current?.validationStatus==='verified'?'已通过预览 · 展示与保存分别执行':publication?.state==='mounting'?'正在检查新设计，上一成功展示继续保留':'当前聊天工作视图'}</p></div></div><div className="apps-component-actions"><button type="button" disabled={publication?.state==='mounting'} onClick={()=>setRevision(value=>value+1)}>重新读取</button>{onOpenSidebar?<button type="button" onClick={onOpenSidebar}>侧栏查看</button>:null}</div></header>{currentData?<div className="apps-component-times"><span>源数据时间：{sourceTimes.length?sourceTimes.map(time=>appsDisplayTime(time)).join(' / '):'暂无时间证据'}</span><span>读取成功：{readTimes.length?readTimes.map(time=>appsDisplayTime(time)).join(' / '):'暂无成功读取时间'}</span></div>:null}{publication&&!notice?<p role="status">候选正在验证原生渲染；上一成功构建保持有效。</p>:notice?<p role="status">{notice}</p>:null}{error?<ErrorView message={error}/>:!current||!currentData||source&&!handlers?<LoadingView/>:publication?.state==='mounting'&&!lease.allowed?<EmptyView message="此候选已在另一展示视图检查" detail="同一候选只授权一个原生文档。若原视图已关闭，请在原聊天检查原发布结果，再继续处理新候选。"/>:<RenderBoundary key={identity}>{source&&handlers?<AppsSourceFrame sessionId={sessionId} viewId={viewId} buildId={source.buildId} title={current.title} url={`/api/hallmark-source/${encodeURIComponent(source.buildId)}/${source.entry.split('/').map(encodeURIComponent).join('/')}`} data={currentData as unknown as JsonValue} context={{sessionId,viewId,buildId:source.buildId,contextRevision:0}} handlers={handlers} onLoadError={()=>void failCandidate('Candidate iframe load failed.')}/>:spec?<ViewRenderer spec={spec} data={bindings}/>:<EmptyView message="组件设计尚无对应展示器" detail="源码组件可按原构建打开；请查看此调用的原生文字结果。"/>}</RenderBoundary>}</section>;
 }
 export function AppsToolView(props:{sessionId?:string;phase?:string;block?:{meta?:unknown};sidebarRight?:NativeSidebarRight}) {
-  const reference=appsToolViewReference(props),[notice,setNotice]=useState('');
+  const reference=appsToolViewReference(props),[notice,setNotice]=useState(''),[title,setTitle]=useState('应用组件');
+  const fixed=JSON.stringify(reference);
   useEffect(()=>{if(reference)window.dispatchEvent(new CustomEvent('hallmark-view-updated',{detail:{sessionId:reference.sessionId,viewId:reference.viewId}}));},[reference?.sessionId,reference?.viewId]);
+  useEffect(()=>{setTitle('应用组件');setNotice('');if(!reference)return;const controller=new AbortController();read('view',reference.sessionId,reference.viewId,controller.signal,reference).then(value=>{const view=value as AppsView;if(view.ownerSessionId!==reference.sessionId||view.viewId!==reference.viewId)throw new Error('原消息的组件身份不一致。');if(!controller.signal.aborted)setTitle(view.title);}).catch(error=>{if(!controller.signal.aborted)setNotice(error instanceof Error?error.message:String(error));});return()=>controller.abort();},[fixed]);
   const open=()=>{if(!reference)return;const result=openSessionComponents(props.sidebarRight,reference.sessionId,reference.viewId);setNotice(result.ok?'':result.message??'Native sidebar is unavailable.');};
-  return <div className="hm-root">{notice?<p role="status">{notice}</p>:null}{props.phase!=='result'?<LoadingView/>:reference?<AppsNativeView sessionId={reference.sessionId} viewId={reference.viewId} onOpenSidebar={open}/>:<EmptyView message="此调用没有可展示的 Apps 组件" detail="请查看原生文字结果。"/>}</div>;
+  return <div className="hm-root apps-tool-result"><style>{STYLES}{APPS_WORKSPACE_STYLES}</style>{notice?<p role="status">{notice}</p>:null}{props.phase!=='result'?<LoadingView/>:reference?<section className="hm-root apps-component" data-view-id={reference.viewId} data-publication-id={reference.publicationId} data-build-id={reference.buildId} data-view-revision={reference.viewRevision}><header><div className="apps-component-heading"><span className="apps-component-mark"><AppsIcon name="component"/></span><div><h3>{title}</h3><p>打开此工作视图的当前版本；原发布记录保留</p></div></div><button type="button" title="打开此组件的当前工作视图；原消息的发布标识保持固定" onClick={open}>打开组件 ↗</button></header></section>:<EmptyView message="此调用没有可展示的 Apps 组件" detail="请查看原生文字结果。"/>}</div>;
 }

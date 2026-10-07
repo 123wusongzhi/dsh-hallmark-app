@@ -1,0 +1,23 @@
+digraph G {
+ graph [bgcolor="white", rankdir=TB, pad=0.18, nodesep=0.35, ranksep=0.48, splines=polyline, fontname="Noto Sans CJK SC", fontsize=12, color="#8090a0"];
+ node [shape=box, style="rounded,filled", fillcolor="#f5f7fa", color="#34506b", fontname="Noto Sans CJK SC", fontsize=11, margin="0.16,0.10", penwidth=1.2];
+ edge [color="#34506b", fontname="Noto Sans CJK SC", fontsize=9, arrowsize=0.7];
+
+ a[label="DSH 原生会话 / Agent"];
+ b[label="dsh-plugin Host / Client
+工具 + 应用目录 + SourceFrame"];
+ c[label="本机 Hallmark 能力服务
+service/main.ts"];
+ d[label="AppCore
+业务动作 + 组件管理混合分发"];
+ e[label="HallmarkClient / TaskBroker
+原后端适配"];
+ f[label="PresentationManager
+SourceComponentStore"];
+ g[label="AppStore / app.db
+SCHEMA_VERSION = 2"];
+ h[label="原 Hallmark 后端
+业务事实来源"];
+ a->b[label="原生工具 / 界面事件"]; b->c[label="HTTP 请求"]; c->d[label="invoke"]; d->e[label="业务调用"]; d->f[label="展示调用"]; d->g[label="读写状态"]; f->g[label="组件与绑定"]; e->h[label="已适配 API"];
+
+}

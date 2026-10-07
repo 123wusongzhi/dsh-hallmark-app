@@ -1,0 +1,21 @@
+digraph G {
+ graph [bgcolor="white", rankdir=TB, pad=0.18, nodesep=0.35, ranksep=0.48, splines=polyline, fontname="Noto Sans CJK SC", fontsize=12, color="#8090a0"];
+ node [shape=box, style="rounded,filled", fillcolor="#f5f7fa", color="#34506b", fontname="Noto Sans CJK SC", fontsize=11, margin="0.16,0.10", penwidth=1.2];
+ edge [color="#34506b", fontname="Noto Sans CJK SC", fontsize=9, arrowsize=0.7];
+
+ err[label="调用失败 / 超时 / 取消"];
+ known[label="是否能证明未分发？",shape=diamond];
+ nodispatch[label="能：failed / cancelled
+修正输入或恢复服务后新调用"];
+ effect[label="是否属于变更？",shape=diamond];
+ read[label="查询：按 read_retry 策略
+保留旧快照与时间"];
+ inspect[label="变更：unknown / pending
+保留原 operationId，只读核实",fillcolor="#fff4df"];
+ evidence[label="是否获得完成证据？",shape=diamond];
+ settle[label="按证据结算 succeeded / failed / partial"];
+ hold[label="保持未决；停止自动重发
+输出诊断 ID 和缺失证据"];
+ err->known;known->nodispatch[label="是"];known->effect[label="否"];effect->read[label="否"];effect->inspect[label="是"];inspect->evidence;evidence->settle[label="是"];evidence->hold[label="否"];
+
+}

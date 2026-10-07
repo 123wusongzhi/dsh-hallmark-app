@@ -1,0 +1,282 @@
+{
+  "date": "2026-10-07",
+  "auditCommit": "caea8175b5c7507bf942b2e752a7327063bfdd43",
+  "baseCommit": "cb871b4086508988485dc4a0a5d6aa5440901267",
+  "files": [
+    {
+      "path": "references/A0/01_TODO.md",
+      "bytes": 51458,
+      "sha256": "28d1993b5ef9f27ee4605f828197aaf10a15b7d63c596bd5ec3dbd62939bf407"
+    },
+    {
+      "path": "references/A0/02_SPEC.md",
+      "bytes": 94785,
+      "sha256": "a876502e77f4fb07bc5199218a0a2b883f0f13bc9d1ed173d292ddf2625137b5"
+    },
+    {
+      "path": "references/A0/03_ARCHITECTURE.md",
+      "bytes": 34149,
+      "sha256": "8540f414b2139225052c10aad708cf5e501aa7bc275fc606d6a3e8214e95250d"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-01.dot",
+      "bytes": 1087,
+      "sha256": "79feccbde42893ce1e2f17ac9e250aa0c7410d17114ae6422523f52165ab61ac"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-01.mmd",
+      "bytes": 697,
+      "sha256": "5f49f087bcb21aaf82561d87246f58997a841b8ac767bf85580f2ae2e098a037"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-01.png",
+      "bytes": 121484,
+      "sha256": "4aef40aa9e93dd68fa5b5edc85fd0e671f0bcfa6dafc92342c605be0a7f331ad"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-01.svg",
+      "bytes": 8646,
+      "sha256": "1daf531114e6eabb627aa2107fad851dcbecd083032bcd1fefc5a0aa2cacc727"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-02.dot",
+      "bytes": 1111,
+      "sha256": "67a0411a73dd60e2077c3695a159e258f86b058d762693bdd951227a67d67f1c"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-02.mmd",
+      "bytes": 710,
+      "sha256": "a5b35e90098d9ae6093ca434e44c6eec1d19d67c697dab2900e71a3de4f0c98b"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-02.png",
+      "bytes": 104247,
+      "sha256": "15050614984871319b7ad79fc839fcbd60d9647f62985942c4b3bc9412930a35"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-02.svg",
+      "bytes": 8371,
+      "sha256": "90ede8c1adbb27e799acfb0f6fe13c1cd66310b3b9fdbb1ea0da4225664543c5"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-03.dot",
+      "bytes": 1209,
+      "sha256": "40a9752582f024c465907b6b097df000c9ec4bdf0874cbd5bee48a87423b3213"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-03.mmd",
+      "bytes": 752,
+      "sha256": "a09bded4c7edd1645fcbded462d357a34cdbe2c95016bc6751457f8c4deda66d"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-03.png",
+      "bytes": 135566,
+      "sha256": "bb999a574a557017c2c3866182fdc67db5f376124b1cc14ca0a733e91ab013b1"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-03.svg",
+      "bytes": 8100,
+      "sha256": "625201f9f0d011f4424e81e8083bc76854cddcde0191052c2255c412f2b9bbd6"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-04.dot",
+      "bytes": 1035,
+      "sha256": "8a18150505d3f4c567a32cedc71cdf14474721693da173fcce3aca18f0705c69"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-04.mmd",
+      "bytes": 799,
+      "sha256": "c39ca00e12b6ff876821358f8fdf919023b6a21f4c8f7ca6c8042dac91c965c3"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-04.png",
+      "bytes": 91935,
+      "sha256": "6a0b9756aaa389e314351c10d0e51acd9d5e33def8f2dae43ff2b8d10d76d916"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-04.svg",
+      "bytes": 8299,
+      "sha256": "1f422625cd908be456fc6802912e3a8bff92ca0970de4c6697c450900be228de"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-05.dot",
+      "bytes": 1096,
+      "sha256": "ccade010bad69a656305db35c647b63335de0be3395d512f356b8324cdb726ba"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-05.mmd",
+      "bytes": 740,
+      "sha256": "d9488d6e1e789d7c14ff8d924b23d6e72093422aed20d3ab6336e74649c9edc4"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-05.png",
+      "bytes": 117174,
+      "sha256": "3268f8d47ab7470b642929a6381657ed4f9ed189846c8f6e6f0aef6a40ae4ba6"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-05.svg",
+      "bytes": 7346,
+      "sha256": "a4b257e5f93735830634bda392c3d1424d5909c1d5b51316901e642cb77c1105"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-06.dot",
+      "bytes": 1140,
+      "sha256": "a4b48cfe0b96e36e346bb792d5ca28e6727cd29e9d74e9891c340d68cf3d78a6"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-06.mmd",
+      "bytes": 709,
+      "sha256": "24f2ac7a0759d98598657e3073dfcc96c36288c9a44e840fe1ae1a34011d5aff"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-06.png",
+      "bytes": 131362,
+      "sha256": "e6829a28a9fa4aa75fcef7ed93af0f80216d4a8b78053e8de83cec2d7a4db6cf"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-06.svg",
+      "bytes": 9705,
+      "sha256": "d75fdc34ee7b588ce49e3120fb390dc06f8038a051b1cf0673b29845ae6cb762"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-07.dot",
+      "bytes": 1019,
+      "sha256": "1d88e31e4c1adb98ae2b082255b5055641b11ea5ad0c173af6e14cb47eb63f4b"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-07.mmd",
+      "bytes": 626,
+      "sha256": "bf8fb903646d08eb3d40c818e68efc806fce0aefbea96bf9487027d6716be3ab"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-07.png",
+      "bytes": 98961,
+      "sha256": "e5d9c09a576005bd5cde8e92097f068bd2d8c727fa824f60f8478a99dc499d06"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-07.svg",
+      "bytes": 6967,
+      "sha256": "b44566a90407fbfcfc258baf7f774ea6aaf8421c9747a47eaeda2f7ea6a94dda"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-08.dot",
+      "bytes": 1236,
+      "sha256": "4c8e9a8800f47eb597d357584bd9403d85e6fc2a16403f1f71275667d7d141b2"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-08.mmd",
+      "bytes": 826,
+      "sha256": "97d1017a812399db3da996e25debb447cf11b9bc441ef18b919f09517f3136b4"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-08.png",
+      "bytes": 137830,
+      "sha256": "ef5d8c8f8a500cb16f3614fb94ad203275054f1fdb9ab4be0307b038c3b42b43"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-08.svg",
+      "bytes": 8852,
+      "sha256": "f70fcd2e003bf0b6596d3cdb4f70a660d39b8ca7de077e99e76cf477425d5651"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-09.dot",
+      "bytes": 1112,
+      "sha256": "aae9774ec2ee472a56ad8ec8543eb99c8d2c9ec96d6b0daeac34c05ba75b098b"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-09.mmd",
+      "bytes": 689,
+      "sha256": "2ce82b6949bafe3060ed6577b9f67a6bdd0796148f0988e6cd87d91345715b46"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-09.png",
+      "bytes": 100659,
+      "sha256": "a8072c1040b6ab5412802a171ac428fe4c749d129a82842eae90240675973dd4"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-09.svg",
+      "bytes": 6856,
+      "sha256": "50b3e43843151366b35a48d7c980a3bbc341e7b9ac30151ad93def5a3ae2988f"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-10.dot",
+      "bytes": 1021,
+      "sha256": "4fb5c584bf979c4ad5360013eecb25d51a64117ae86f38048c8a9ce5c4b5f563"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-10.mmd",
+      "bytes": 682,
+      "sha256": "896ff7698dc725c9f2eab7ff362b82dc31c6fc9dda838ab29dcd8ab8b8f42cd7"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-10.png",
+      "bytes": 113076,
+      "sha256": "cd8c02a79ebfc9eeb647caa9d0c75cbde3567f6822295c50099ae9143d9a83cc"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-10.svg",
+      "bytes": 6988,
+      "sha256": "b79106f1440b90ce2af931662c1e2e72c0f255981132c5caae4a72aeb9619230"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-11.dot",
+      "bytes": 1236,
+      "sha256": "b34b5f28fff72a3b28ccac41cf7a9371daf4b2d98b695ffa528c9f09474cec30"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-11.mmd",
+      "bytes": 874,
+      "sha256": "98131050870215f9d91b013210e948213cd69ddd84acd71e65157092d9b89022"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-11.png",
+      "bytes": 156883,
+      "sha256": "6b1c0110f9834bda3759b1abfe53715c987c98090dfdadec609da606c6a2313d"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-11.svg",
+      "bytes": 9265,
+      "sha256": "ef3edf030684fed92576d47638ec40ff83cb466aed03cc563aaf074b3eb4c5ac"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-12.dot",
+      "bytes": 908,
+      "sha256": "97a658e96838759ae665d5dbe9070a7d26c97069bd1ae084db03b3d1787b62db"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-12.mmd",
+      "bytes": 528,
+      "sha256": "7b56e78c2dbfcd8deb21e5524daadb9418a9ebf450bc9c1ad26412d69175876a"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-12.png",
+      "bytes": 78805,
+      "sha256": "3b10883729b9a0ffb51831759e156b4cc967e447e4d3fa6d907acfdf0f27bae5"
+    },
+    {
+      "path": "references/A0/diagrams/FIG-12.svg",
+      "bytes": 6174,
+      "sha256": "3def82f821cdc7cc413c4a32da4c5d17fe5e9523c918efe6a069a3ffdb2aeddd"
+    },
+    {
+      "path": "references/inputs/chat-component-authoring.html",
+      "bytes": 95871,
+      "sha256": "946b84ae2031bc42bb4c06d417a98003ed12fb693a7b45a0aea5d0ebbaac5d17"
+    },
+    {
+      "path": "references/inputs/image-044804.png",
+      "bytes": 2191177,
+      "sha256": "d355094796e67b8a552e776f0b054d73de35825294f3ca06f7b79585afa16189"
+    },
+    {
+      "path": "references/inputs/image-044809.png",
+      "bytes": 2409666,
+      "sha256": "79852d82dd3c1871fc46a87721f8552548747772d11102945dc39c58c216de5a"
+    },
+    {
+      "path": "references/inputs/image-044814.png",
+      "bytes": 2406730,
+      "sha256": "4f0d64f94bc3be14af3ba9bf8819108808d74e8895c1a98265d3da93fd960e15"
+    }
+  ]
+}

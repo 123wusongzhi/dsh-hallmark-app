@@ -1,0 +1,266 @@
+{
+  "S01": {
+    "id": "S01",
+    "title": "最新仓库说明",
+    "path": "README.md",
+    "symbol": "Apps V1 / 最新文档与体验入口",
+    "kind": "仓库声明",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/README.md"
+  },
+  "S02": {
+    "id": "S02",
+    "title": "候选版范围和版本矩阵",
+    "path": "docs/apps-v1-candidate.md",
+    "symbol": "运行与边界 / 插件、SDK 与源码组件",
+    "kind": "仓库声明",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-v1-candidate.md"
+  },
+  "S03": {
+    "id": "S03",
+    "title": "发布验证摘要",
+    "path": "docs/apps-publication-validation-20261007.md",
+    "symbol": "历史候选验证与新增设计分别记录",
+    "kind": "仓库声明；未提供原始运行档案",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-publication-validation-20261007.md"
+  },
+  "S04": {
+    "id": "S04",
+    "title": "现有需求追踪",
+    "path": "docs/requirements/traceability.csv",
+    "symbol": "REQ-001..048；implementationStatus / remainingRealStatus",
+    "kind": "仓库记录",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/traceability.csv"
+  },
+  "S05": {
+    "id": "S05",
+    "title": "A.1 架构",
+    "path": "docs/requirements/03_ARCHITECTURE.md",
+    "symbol": "FIG-13 / FIG-14 / AC-13-01..09",
+    "kind": "目标规范",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/03_ARCHITECTURE.md"
+  },
+  "S06": {
+    "id": "S06",
+    "title": "当前桌面产品要求",
+    "path": "docs/apps-product-requirements-20261007.md",
+    "symbol": "PR-01..24",
+    "kind": "目标规范",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-product-requirements-20261007.md"
+  },
+  "S07": {
+    "id": "S07",
+    "title": "原聊天创作评审",
+    "path": "docs/chat-component-authoring-review.md",
+    "symbol": "完成范围与后续接线",
+    "kind": "目标规范与边界声明",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/chat-component-authoring-review.md"
+  },
+  "S08": {
+    "id": "S08",
+    "title": "唯一 Runtime 目录及调用",
+    "path": "packages/app-runtime/src/index.ts",
+    "symbol": "AppsRuntime：目录、绑定、调用、核实与恢复的已读路径",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-runtime/src/index.ts"
+  },
+  "S09": {
+    "id": "S09",
+    "title": "P2 组合根",
+    "path": "packages/service/src/apps-main.ts",
+    "symbol": "composeAppsRuntime / clientFor / main",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/service/src/apps-main.ts"
+  },
+  "S10": {
+    "id": "S10",
+    "title": "组合 bundle Host",
+    "path": "bundles/apps/server/index.ts",
+    "symbol": "Config / bundle装配 / legacy资源路由兼容",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/bundles/apps/server/index.ts"
+  },
+  "S11": {
+    "id": "S11",
+    "title": "组合 bundle Client",
+    "path": "bundles/apps/client/index.tsx",
+    "symbol": "createClientPlugin 实参 / AppsWorkspace / AppsToolView",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/bundles/apps/client/index.tsx"
+  },
+  "S12": {
+    "id": "S12",
+    "title": "DSH Host 门面",
+    "path": "packages/plugin-apps/src/index.ts",
+    "symbol": "gatewaySchemas / AppsHost / installNativeContextHook",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/src/index.ts"
+  },
+  "S13": {
+    "id": "S13",
+    "title": "Hallmark Provider",
+    "path": "packages/app-hallmark/src/index.ts",
+    "symbol": "HALLMARK_DESCRIPTORS / HALLMARK_API_OPERATIONS / execute",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-hallmark/src/index.ts"
+  },
+  "S14": {
+    "id": "S14",
+    "title": "Notes Provider",
+    "path": "packages/app-notes/src/index.ts",
+    "symbol": "NOTES_DESCRIPTORS / NotesProvider.execute/inspect",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-notes/src/index.ts"
+  },
+  "S15": {
+    "id": "S15",
+    "title": "SDK 与生成器",
+    "path": "packages/app-sdk/src/index.ts",
+    "symbol": "AppsClient / HttpRuntimeTransport / generateArtifacts",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-sdk/src/index.ts"
+  },
+  "S16": {
+    "id": "S16",
+    "title": "共享展示与保存",
+    "path": "packages/app-presentation/src/index.ts",
+    "symbol": "openSource / createView / saveComponent / openComponent / manageSaved",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-presentation/src/index.ts"
+  },
+  "S17": {
+    "id": "S17",
+    "title": "源码构建存档",
+    "path": "packages/source-components/src/index.ts",
+    "symbol": "projectSnapshot / capture / capturePreview / verify / checkout",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/source-components/src/index.ts"
+  },
+  "S18": {
+    "id": "S18",
+    "title": "当前预览载体",
+    "path": "scripts/source-preview.mjs",
+    "symbol": "readDist / hostHTML；hallmark.source.v1",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/scripts/source-preview.mjs"
+  },
+  "S19": {
+    "id": "S19",
+    "title": "v2 组件客户端",
+    "path": "packages/component-runtime/src/apps-client.ts",
+    "symbol": "COMPONENT_CHANNEL / COMPONENT_METHODS / createAppsClient",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/component-runtime/src/apps-client.ts"
+  },
+  "S20": {
+    "id": "S20",
+    "title": "生产 frame 容器",
+    "path": "packages/dsh-plugin/client/component-frame.tsx",
+    "symbol": "useComponentBridge / AppsSourceFrame",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/dsh-plugin/client/component-frame.tsx"
+  },
+  "S21": {
+    "id": "S21",
+    "title": "新组件显示投影",
+    "path": "packages/plugin-apps/client/view.tsx",
+    "symbol": "appsToolViewReference / AppsNativeView / AppsToolView",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/view.tsx"
+  },
+  "S22": {
+    "id": "S22",
+    "title": "原生扩展装配",
+    "path": "packages/dsh-plugin/client/plugin.ts",
+    "symbol": "ClientContext / createClientPlugin / bindNativeInput",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/dsh-plugin/client/plugin.ts"
+  },
+  "S23": {
+    "id": "S23",
+    "title": "组件能力与附件接线",
+    "path": "packages/plugin-apps/client/component-handlers.ts",
+    "symbol": "createAppsComponentHandlers / attachSelection",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/component-handlers.ts"
+  },
+  "S24": {
+    "id": "S24",
+    "title": "当前应用目录",
+    "path": "packages/plugin-apps/client/directory.tsx",
+    "symbol": "AppsDirectory / bind",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/directory.tsx"
+  },
+  "S25": {
+    "id": "S25",
+    "title": "当前工作区",
+    "path": "packages/plugin-apps/client/workspace.tsx",
+    "symbol": "AppsWorkspace",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/workspace.tsx"
+  },
+  "S26": {
+    "id": "S26",
+    "title": "迁移和回退运行手册",
+    "path": "docs/apps-migration-runbook.md",
+    "symbol": "PROC-MIG-01 / PROC-RBK-01 / GC",
+    "kind": "命令与夹具范围声明",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-migration-runbook.md"
+  },
+  "S27": {
+    "id": "S27",
+    "title": "开发脚本与 Node 要求",
+    "path": "package.json",
+    "symbol": "scripts / engines / version",
+    "kind": "代码静态证据",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/package.json"
+  },
+  "S28": {
+    "id": "S28",
+    "title": "仓库 HTML 原型",
+    "path": "docs/prototypes/chat-component-authoring.html",
+    "symbol": "schema 3 / sendCommand / runBuild / saveAsset",
+    "kind": "离线交互原型",
+    "url": "https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/prototypes/chat-component-authoring.html"
+  },
+  "U01": {
+    "id": "U01",
+    "title": "本次上传 HTML",
+    "path": "references/inputs/chat-component-authoring.html",
+    "symbol": "见 AUDIT 的原型逐项表",
+    "kind": "用户原型；可静态复核",
+    "url": "../references/inputs/chat-component-authoring.html"
+  },
+  "U02": {
+    "id": "U02",
+    "title": "用户架构示意图 1",
+    "path": "references/inputs/image-044804.png",
+    "symbol": "整图与绿色保存/重开路径",
+    "kind": "目标示意，不是工程验收",
+    "url": "../references/inputs/image-044804.png"
+  },
+  "U03": {
+    "id": "U03",
+    "title": "用户架构示意图 2",
+    "path": "references/inputs/image-044809.png",
+    "symbol": "整图与绿色保存/重开路径",
+    "kind": "目标示意，不是工程验收",
+    "url": "../references/inputs/image-044809.png"
+  },
+  "U04": {
+    "id": "U04",
+    "title": "用户架构示意图 3",
+    "path": "references/inputs/image-044814.png",
+    "symbol": "整图与绿色保存/重开路径",
+    "kind": "目标示意，不是工程验收",
+    "url": "../references/inputs/image-044814.png"
+  },
+  "B00": {
+    "id": "B00",
+    "title": "上一轮 A.0 文档原件",
+    "path": "references/A0/02_SPEC.md",
+    "symbol": "REQ-001..048 / TST-001..048",
+    "kind": "目标基线；不是执行证据",
+    "url": "../references/A0/02_SPEC.md"
+  }
+}

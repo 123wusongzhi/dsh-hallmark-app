@@ -1,0 +1,576 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DSH Apps · A.2 补充架构图与连线说明</title><style>
+* {box-sizing:border-box;}
+body {font-family:ManualCJK,"Noto Sans CJK SC","Microsoft YaHei","PingFang SC",sans-serif;color:#213047;font-size:10pt;line-height:1.65;margin:0;}
+h1,h2,h3,h4 {color:#153C6A;font-weight:700;}
+h1 {font-size:27pt;line-height:1.4;} h2 {font-size:17pt;line-height:1.45;border-bottom:1.4pt solid #3D77B4;padding-bottom:7pt;margin:15pt 0 11pt;break-after:avoid;break-before:page;}
+h3 {font-size:12.5pt;line-height:1.5;margin:17pt 0 8pt;break-after:avoid;padding:5pt 8pt;background:#EDF4FB;border-left:3pt solid #4C86BD;}
+h4 {font-size:11pt;break-after:avoid;}
+p {margin:6pt 0 9pt;widows:3;orphans:3;} li{margin:4pt 0;widows:2;orphans:2;} ol,ul{padding-left:20pt;margin:8pt 0;}
+strong {font-weight:700;color:#203F60;}
+a {color:#246CB0;text-decoration:none;overflow-wrap:anywhere;}
+code {font-family:"DejaVu Sans Mono",ManualCJK,monospace;font-size:8.6pt;line-height:1.55;overflow-wrap:anywhere;background:#F4F6F8;padding:0 1.5pt;}
+pre {white-space:pre-wrap;overflow-wrap:anywhere;background:#F3F6FA;border:0.6pt solid #D7E2EE;padding:10pt;line-height:1.5;margin:9pt 0;break-inside:avoid;} pre code {font-size:8.4pt;background:none;padding:0;}
+table {width:100%;border-collapse:collapse;table-layout:fixed;font-size:8.8pt;line-height:1.55;margin:10pt 0 13pt;}
+th,td {padding:6pt 7pt;border:0.6pt solid #D4DFEB;vertical-align:top;overflow-wrap:anywhere;}
+th {background:#1F4D7B;color:white;font-weight:700;text-align:left;}
+th strong{color:white;}tr{break-inside:avoid;}thead{display:table-header-group;}tbody tr:nth-child(even){background:#F6F9FC;}
+td code {font-size:8pt;background:none;padding:0;}
+blockquote {border-left:4pt solid #CC832B;background:#FFF5E7;padding:9pt 12pt;margin:13pt 0;color:#694C29;break-inside:avoid;}
+blockquote p{margin:0;}
+img {max-width:100%;height:auto;}
+.figure {text-align:center;break-inside:avoid;margin:15pt 0;}
+.figure img{max-height:230mm;max-width:100%;}
+.cover {height:245mm;position:relative;break-after:page;padding:12mm 0 0;}
+.cover .eyebrow{font-size:11pt;letter-spacing:1.4pt;color:#477BA8;border-top:4pt solid #195589;padding-top:13pt;}
+.cover .brand {font-size:44pt;font-weight:700;color:#123F6C;margin:22mm 0 4mm;line-height:1.05;}
+.cover .kind{font-size:26pt;color:#163D68;line-height:1.5;font-weight:700;}
+.cover .summary{font-size:13pt;color:#57718B;margin:12mm 0 4mm;}
+.cover .metric{font-size:19pt;font-weight:700;color:#1963A5;padding:13pt 0;border-top:0.7pt solid #C3D4E3;border-bottom:0.7pt solid #C3D4E3;margin:8mm 0;}
+.cover .meta{font-size:10pt;line-height:2;color:#4C6580;}
+.cover .warning{position:absolute;bottom:8mm;left:0;right:0;border-top:0.6pt solid #B9CBDD;padding-top:10pt;font-size:9.3pt;color:#926328;}
+.toc {break-after:page;}
+.toc h2{break-before:auto;}
+.toc ul {list-style:none;padding:0;}
+.toc li {margin:0;border-bottom:0.4pt solid #E2EAF2;padding:6pt 0;font-size:10.5pt;}
+.toc a::after {content:target-counter(attr(href),page);float:right;color:#6A8198;}
+.paper-id {color:#8394A6;font-size:8pt;}
+.card-unit {break-inside:avoid; margin-bottom:9pt;} .card-unit p {margin:4pt 0 6pt;} .card-unit h3 {margin-top:12pt;}
+.screen-nav {padding:10px 0;font-size:12px;display:none;}
+@media screen {body{max-width:1000px;margin:25px auto;background:#fff;padding:0 25px;} .screen-nav{display:block;} .cover{height:auto;padding-bottom:60px;} .cover .warning{position:static;margin-top:30px;} .toc a::after{content:none;} h2{margin-top:45px;} .figure img{max-height:1100px;} }
+
+@page {size:A3 portrait; margin:18mm 19mm 19mm;
+@top-left {content:"DSH-APPS-ARCH-002  /  A.2";font-family:ManualCJK;font-size:8pt;color:#70849B;}
+@top-right {content:"BASE caea817  ·  2026-10-07";font-family:ManualCJK;font-size:8pt;color:#70849B;}
+@bottom-left {content:"设计评审稿 · 未批准生产放行";font-family:ManualCJK;font-size:8pt;color:#7C8999;}
+@bottom-right {content:counter(page) " / " counter(pages);font-family:ManualCJK;font-size:8pt;color:#55728F;}
+}
+@page:first {@top-left{content:none;}@top-right{content:none;}}
+body{font-size:12pt;} table{font-size:10.6pt;} td code{font-size:9.6pt;} h2{font-size:21pt;} .cover{height:365mm;} .cover .brand{font-size:58pt;} .cover .kind{font-size:36pt;} .cover .summary{font-size:17pt;} .cover .metric{font-size:25pt;} .toc li{font-size:14pt;} .cover .meta{font-size:14pt;} .cover .warning{font-size:12pt;}</style></head><body><nav class="screen-nav"><a href="../index.html">返回文档包首页</a> · <a href="../docs/04_ARCHITECTURE.md">Markdown 源文件</a> · <a href="../pdf/04_ARCHITECTURE.pdf">PDF 阅读版</a></nav><section class="cover"><div class="eyebrow">ENGINEERING REVIEW / CONTROLLED DOCUMENT</div><div class="brand">DSH APPS</div><div class="kind">补充架构图册</div><div class="summary">同源矢量图、编号关系表、当前实现与拟增改造</div><div class="metric">FIG-15—19 · 5 张工程图</div><div class="meta">文件编号　DSH-APPS-ARCH-002<br>修订版本　A.2 · 2026-10-07<br>代码基线　caea8175b5c7507bf942b2e752a7327063bfdd43<br>目标基线　A.0 + 仓库 A.1 + 本次图示与 HTML</div><div class="warning">本文件区分代码实现、原型演示与执行证据。<br>新工作包为 TODO；产品新一轮验收为 NOT_RUN。<br>静态审计完成不等于应用、业务写或数据切换已经放行。</div></section><section class="toc"><h2>阅读目录</h2><ul><li><a href="#section-00">00 图册规则</a></li><li><a href="#section-01">FIG-15 · 目标分层与本次改造位置（实现存在不等于验收）</a></li><li><a href="#section-02">FIG-16 · 创作证据、候选发布与失败恢复</a></li><li><a href="#section-03">FIG-17 · 工作副本、视图和保存历史的关系</a></li><li><a href="#section-04">FIG-18 · 组件交互四路分流与独立刷新</a></li><li><a href="#section-05">FIG-19 · 整个架构按证据层次与范围放行</a></li><li><a href="#section-06">06 图面签认与变更</a></li></ul><p class="paper-id">编号对象可使用 PDF 搜索或 HTML 页内搜索定位；规格、工作包和测试保持统一编号。</p></section>
+<p><strong>文件编号：DSH-APPS-ARCH-002　｜　修订：A.2　｜　日期：2026-10-07</strong></p>
+<p><strong>状态：审计后续实施评审稿，未批准生产放行。</strong> 新任务均为 TODO，新一轮产品验收均为 NOT_RUN。历史候选记录保留原标签，不由本次文件代签。</p>
+<table><colgroup><col style="width:23%"/><col style="width:77%"/></colgroup>
+<thead>
+<tr>
+<th>控制项</th>
+<th>规定</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>审计快照</td>
+<td><code>caea8175b5c7507bf942​b2e752a7327063bfdd43</code>（main 读取时的固定提交）</td>
+</tr>
+<tr>
+<td>原始目标基线</td>
+<td>A.0 / <code>cb871b4086508988485d​c4a0a5d6aa5440901267</code>；仓库 A.1 增加原聊天创作要求</td>
+</tr>
+<tr>
+<td>已读版本</td>
+<td>bundle/Host candidate.6；Runtime candidate.4；DB 3；HTTP/目录 1；bridge 2.0。根 package.json 仍为 0.3.0，不代表整个运行系统版本。</td>
+</tr>
+<tr>
+<td>文档体系</td>
+<td>AUDIT 说明证据与差距；TODO 规定工作包；SPEC 规定目标；ACCEPTANCE 规定验证；ARCH 规定图面关系</td>
+</tr>
+<tr>
+<td>适用范围</td>
+<td>本机优先；一个 Apps 入口、1+N 逻辑插件、原 DSH Agent/会话、一个 P2 Runtime；不重建 DSH 聊天或插件管理器</td>
+</tr>
+<tr>
+<td>规范词</td>
+<td>必须＝放行条件；不得＝禁止；应＝偏离须登记理由；可＝可选；“已实现”仅指本次见到的代码路径</td>
+</tr>
+<tr>
+<td>角色</td>
+<td>A 架构责任人；I 实施人；V 验证人；R 发布责任人。姓名/日期/签认在执行时填写，不预先代填。</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>使用前检查：</strong> SHA、实际进程/包版本和宿主契约与本文件不一致时，先生成差异表。不得将拟新增项目接口当作现有 DSH 服务。不得将文档检查、语法检查或原型演示计为生产验收。</p>
+</blockquote>
+<h2 id="section-00">00 图册规则</h2>
+<p>本图册从FIG-15续号，保留仓库A.1的FIG-13/14编号。A.0的FIG-01..12原件在references/A0/diagrams，可恢复供历史阅读；它们不是caea817的当前实现图。三张用户原图保留在references/inputs，不更改其字节。</p>
+<p>所有图由同一节点/边模型生成DOT、SVG、PNG、Mermaid；每条箭头使用E编号，含义在其后关系表中。箭头编号仅在对应图内唯一。依赖/请求/状态/数据关系不混称网络调用。DOT/SVG为图面基准；Mermaid保留关系，自动布局可能不同。</p>
+<p>蓝色＝本次已见代码路径，不等于验收；橙色＝本版拟补齐；灰色＝外部或已明确的事实边界；红色＝停止/恢复路径。颜色不是唯一语义，框内文字和下表仍能独立解释。</p>
+<p>不把插件数量、安装包数量、源码包数量和进程数量混为一谈。P3是Client/frame执行上下文，不保证对应特定浏览器OS进程数；临时编译/预览子进程不等于新增常驻Runtime。</p>
+<table>
+<thead>
+<tr>
+<th>图号</th>
+<th>内容</th>
+<th>主要规格</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FIG-15</td>
+<td>目标分层与本次改造位置（实现存在不等于验收）</td>
+<td>02 SPEC 第02章；REQ049/052</td>
+</tr>
+<tr>
+<td>FIG-16</td>
+<td>创作证据、候选发布与失败恢复</td>
+<td>REQ054–063</td>
+</tr>
+<tr>
+<td>FIG-17</td>
+<td>工作副本、视图和保存历史的关系</td>
+<td>REQ053/056/070–073</td>
+</tr>
+<tr>
+<td>FIG-18</td>
+<td>组件交互四路分流与独立刷新</td>
+<td>REQ064–068/074–076</td>
+</tr>
+<tr>
+<td>FIG-19</td>
+<td>整个架构按证据层次与范围放行</td>
+<td>REQ077–080</td>
+</tr>
+</tbody>
+</table>
+<h2 id="section-01">FIG-15 · 目标分层与本次改造位置（实现存在不等于验收）</h2>
+<p class="figure"><img alt="FIG-15 目标分层与本次改造位置（实现存在不等于验收）" src="../diagrams/FIG-15.svg"/></p>
+<p><strong>读图结论：</strong> 蓝色框表示已读到实现；橙色框表示本版拟补齐。它们是职责边界，不表示新增常驻进程。Hallmark/Notes具体Provider仅由P2组合根装配。图内不包含另一套Agent或聊天日志。</p>
+<p><strong>证据/目标依据：</strong> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-runtime/src/index.ts">S08</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/service/src/apps-main.ts">S09</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/bundles/apps/server/index.ts">S10</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-presentation/src/index.ts">S16</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/dsh-plugin/client/component-frame.tsx">S20</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/dsh-plugin/client/plugin.ts">S22</a></p>
+<table><colgroup><col style="width:7%"/><col style="width:43%"/><col style="width:50%"/></colgroup>
+<thead>
+<tr>
+<th>边</th>
+<th>起点 → 终点</th>
+<th>准确含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E01</td>
+<td>用户 / 原 DSH 会话 → 原 DSH Agent / 原工具 / 原日志</td>
+<td>原输入手动发送；原会话与Agent不替换</td>
+</tr>
+<tr>
+<td>E02</td>
+<td>用户 / 原 DSH 会话 → 新增 @ 输入 source / 局部引用 UI</td>
+<td>选择应用；不是发送消息</td>
+</tr>
+<tr>
+<td>E03</td>
+<td>新增 @ 输入 source / 局部引用 UI → P1 AppsHost / 四网关 / 原生代理</td>
+<td>提交明确会话与连接绑定请求</td>
+</tr>
+<tr>
+<td>E04</td>
+<td>原 DSH Agent / 原工具 / 原日志 → P1 AppsHost / 四网关 / 原生代理</td>
+<td>使用现有四网关发现/调用应用能力</td>
+</tr>
+<tr>
+<td>E05</td>
+<td>P1 AppsHost / 四网关 / 原生代理 → P2 AppsRuntime / 唯一目录 / invoke</td>
+<td>P1代理至P2；目录与业务执行在P2</td>
+</tr>
+<tr>
+<td>E06</td>
+<td>P2 AppsRuntime / 唯一目录 / invoke → Hallmark Provider / 原业务适配</td>
+<td>已注册能力执行</td>
+</tr>
+<tr>
+<td>E07</td>
+<td>P2 AppsRuntime / 唯一目录 / invoke → Notes Provider / 真实 CRUD</td>
+<td>已注册异构Notes能力执行</td>
+</tr>
+<tr>
+<td>E08</td>
+<td>Hallmark Provider / 原业务适配 → P4 原 Hallmark / 业务事实与账本</td>
+<td>原业务API及结果核实</td>
+</tr>
+<tr>
+<td>E09</td>
+<td>P2 AppsRuntime / 唯一目录 / invoke → 共享 Presentation / view / 保存 / 版本</td>
+<td>已有共享展示与保存能力</td>
+</tr>
+<tr>
+<td>E10</td>
+<td>共享 Presentation / view / 保存 / 版本 → SourceComponentStore / 不可变源码 + dist</td>
+<td>复用已有capture/checkout/verify</td>
+</tr>
+<tr>
+<td>E11</td>
+<td>P2 AppsRuntime / 唯一目录 / invoke → 新增 Authoring 协议 / attempt / receipts / CAS</td>
+<td>拟新增项目能力；不另建模型循环</td>
+</tr>
+<tr>
+<td>E12</td>
+<td>新增 Authoring 协议 / attempt / receipts / CAS → SourceComponentStore / 不可变源码 + dist</td>
+<td>候选存档与构建/预览证据关联</td>
+</tr>
+<tr>
+<td>E13</td>
+<td>新增 Authoring 协议 / attempt / receipts / CAS → 共享 Presentation / view / 保存 / 版本</td>
+<td>核对证据及CAS后发布目标view</td>
+</tr>
+<tr>
+<td>E14</td>
+<td>共享 Presentation / view / 保存 / 版本 → P3 原组件 frame / v2 bridge 已有</td>
+<td>原生组件区按明确view读取</td>
+</tr>
+<tr>
+<td>E15</td>
+<td>P3 原组件 frame / v2 bridge 已有 → 新增候选就绪 / UI恢复 / 不替换原聊天</td>
+<td>协商就绪及UI状态扩展</td>
+</tr>
+<tr>
+<td>E16</td>
+<td>新增候选就绪 / UI恢复 / 不替换原聊天 → 新增 Authoring 协议 / attempt / receipts / CAS</td>
+<td>同候选身份的就绪回执；不是onLoad</td>
+</tr>
+<tr>
+<td>E17</td>
+<td>新增完整组件库 UI / 调用现有保存能力 → P1 AppsHost / 四网关 / 原生代理</td>
+<td>接已有保存/历史/管理能力，不创建第二库</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图源：</strong> <code>diagrams/FIG-15.dot</code> / <code>.mmd</code>；SVG/PNG与当前关系表同源。</p>
+<h2 id="section-02">FIG-16 · 创作证据、候选发布与失败恢复</h2>
+<p class="figure"><img alt="FIG-16 创作证据、候选发布与失败恢复" src="../diagrams/FIG-16.svg"/></p>
+<p><strong>读图结论：</strong> 候选归档在预览前只为冻结字节，不是对用户发布，因此不违反“检查后展示”。本图CAS确认是取消与发布的线性化点；已确认后再报错，恢复旧构建必须新记操作，不能抹去已发布事实。</p>
+<p><strong>证据/目标依据：</strong> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-presentation/src/index.ts">S16</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/source-components/src/index.ts">S17</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/scripts/source-preview.mjs">S18</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/dsh-plugin/client/component-frame.tsx">S20</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/03_ARCHITECTURE.md">S05</a></p>
+<table><colgroup><col style="width:7%"/><col style="width:43%"/><col style="width:50%"/></colgroup>
+<thead>
+<tr>
+<th>边</th>
+<th>起点 → 终点</th>
+<th>准确含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E01</td>
+<td>原 Agent / 文件工具 / 修改独立源码工作副本 → 执行真实 build 命令 / 输入前后摘要 + exitCode</td>
+<td>原DSH文件/命令工具，非关键词模拟</td>
+</tr>
+<tr>
+<td>E02</td>
+<td>执行真实 build 命令 / 输入前后摘要 + exitCode → 归档候选 / BuildReceipt / 不改变当前 view</td>
+<td>仅exit0且输入不变；关联实际输出摘要</td>
+</tr>
+<tr>
+<td>E03</td>
+<td>执行真实 build 命令 / 输入前后摘要 + exitCode → 保留旧可用界面 / 失败、取消或冲突如实报告</td>
+<td>build失败/旧dist/输入变化，不发布</td>
+</tr>
+<tr>
+<td>E04</td>
+<td>归档候选 / BuildReceipt / 不改变当前 view → 真实 v2 预览 / 同份 dist / 两视口 / 控件</td>
+<td>预览冻结archive中的真实dist字节</td>
+</tr>
+<tr>
+<td>E05</td>
+<td>真实 v2 预览 / 同份 dist / 两视口 / 控件 → 预览证据完整 / 且断言 PASS？</td>
+<td>收集截图、异常、请求、桥接和断言</td>
+</tr>
+<tr>
+<td>E06</td>
+<td>预览证据完整 / 且断言 PASS？ → mounting 候选 frame / publicationId / expectedViewRevision</td>
+<td>是：准备候选；尚未称已展示</td>
+</tr>
+<tr>
+<td>E07</td>
+<td>预览证据完整 / 且断言 PASS？ → 保留旧可用界面 / 失败、取消或冲突如实报告</td>
+<td>否：保留证据，不更新active</td>
+</tr>
+<tr>
+<td>E08</td>
+<td>mounting 候选 frame / publicationId / expectedViewRevision → 同身份 renderReady / 且当前 attempt 未取消？</td>
+<td>hello后还须验证首屏与约定数据</td>
+</tr>
+<tr>
+<td>E09</td>
+<td>同身份 renderReady / 且当前 attempt 未取消？ → P2 事务 CAS 确认 / owner / epoch / viewRevision</td>
+<td>是：提交确认事务</td>
+</tr>
+<tr>
+<td>E10</td>
+<td>同身份 renderReady / 且当前 attempt 未取消？ → 保留旧可用界面 / 失败、取消或冲突如实报告</td>
+<td>否/超时/取消：候选无效</td>
+</tr>
+<tr>
+<td>E11</td>
+<td>P2 事务 CAS 确认 / owner / epoch / viewRevision → 当前会话已确认展示 / active / lastGood / viewRevision+1</td>
+<td>CAS成功才提升为当前确认build</td>
+</tr>
+<tr>
+<td>E12</td>
+<td>P2 事务 CAS 确认 / owner / epoch / viewRevision → 保留旧可用界面 / 失败、取消或冲突如实报告</td>
+<td>冲突或代际落后不得自动覆写</td>
+</tr>
+<tr>
+<td>E13</td>
+<td>保留旧可用界面 / 失败、取消或冲突如实报告 → 原 Agent 读取错误 / 截图 / 继续修正同一目标</td>
+<td>可定位错误及旧/候选build身份</td>
+</tr>
+<tr>
+<td>E14</td>
+<td>原 Agent 读取错误 / 截图 / 继续修正同一目标 → 原 Agent / 文件工具 / 修改独立源码工作副本</td>
+<td>原会话下一步或下一轮实际修改</td>
+</tr>
+<tr>
+<td>E15</td>
+<td>当前会话已确认展示 / active / lastGood / viewRevision+1 → 组件库保持不变 / 本图没有明确保存动作</td>
+<td>展示不写库；保存需要FIG-17显式条件</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图源：</strong> <code>diagrams/FIG-16.dot</code> / <code>.mmd</code>；SVG/PNG与当前关系表同源。</p>
+<h2 id="section-03">FIG-17 · 工作副本、视图和保存历史的关系</h2>
+<p class="figure"><img alt="FIG-17 工作副本、视图和保存历史的关系" src="../diagrams/FIG-17.svg"/></p>
+<p><strong>读图结论：</strong> 替代三张用户图中含糊的绿色保存/重开线。selectedSourceRevision可以是v1而baseRevisionAtOpen是v3；它们不应合并为“版本”。本图箭头表示数据/动作关系，不全是网络请求。</p>
+<p><strong>证据/目标依据：</strong> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-presentation/src/index.ts">S16</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/source-components/src/index.ts">S17</a> <a href="../references/inputs/image-044804.png">U02</a> <a href="../references/inputs/image-044809.png">U03</a> <a href="../references/inputs/image-044814.png">U04</a></p>
+<table><colgroup><col style="width:7%"/><col style="width:43%"/><col style="width:50%"/></colgroup>
+<thead>
+<tr>
+<th>边</th>
+<th>起点 → 终点</th>
+<th>准确含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E01</td>
+<td>组件库 C / revision r / 不可变历史源版本 → 在会话 A 明确打开 r / base = 打开时库最新版本</td>
+<td>选择源revision，不修改库</td>
+</tr>
+<tr>
+<td>E02</td>
+<td>组件库 C / revision r / 不可变历史源版本 → 在会话 B 明确打开 r / base 独立记录</td>
+<td>同一历史资产可被另一会话打开</td>
+</tr>
+<tr>
+<td>E03</td>
+<td>在会话 A 明确打开 r / base = 打开时库最新版本 → A 独立 workspace / draft / 可编辑源码</td>
+<td>checkout到新的空目录</td>
+</tr>
+<tr>
+<td>E04</td>
+<td>在会话 B 明确打开 r / base 独立记录 → B 独立 workspace / draft / 可编辑源码</td>
+<td>checkout到另一新空目录</td>
+</tr>
+<tr>
+<td>E05</td>
+<td>A 独立 workspace / draft / 可编辑源码 → 不可变 archive buildId / 多个 view 可以引用</td>
+<td>实际构建后候选存档</td>
+</tr>
+<tr>
+<td>E06</td>
+<td>B 独立 workspace / draft / 可编辑源码 → 不可变 archive buildId / 多个 view 可以引用</td>
+<td>实际构建后候选存档；相同字节可复用</td>
+</tr>
+<tr>
+<td>E07</td>
+<td>不可变 archive buildId / 多个 view 可以引用 → A 的 viewId + viewRevision / 编辑保持 viewId</td>
+<td>仅通过FIG-16发布确认后引用</td>
+</tr>
+<tr>
+<td>E08</td>
+<td>不可变 archive buildId / 多个 view 可以引用 → B 的 viewId + viewRevision / owner 与 A 不同</td>
+<td>各自发布和CAS，不复制owner</td>
+</tr>
+<tr>
+<td>E09</td>
+<td>A 的 viewId + viewRevision / 编辑保持 viewId → 用户明确保存？ / 原话或按钮</td>
+<td>当前view是保存来源，不自动保存</td>
+</tr>
+<tr>
+<td>E10</td>
+<td>用户明确保存？ / 原话或按钮 → save_as 或 update / update 比较 expectedRevision</td>
+<td>是：使用同一共享保存实现</td>
+</tr>
+<tr>
+<td>E11</td>
+<td>用户明确保存？ / 原话或按钮 → 没有明确保存 / 只有草稿和展示</td>
+<td>否/取消：组件库不变</td>
+</tr>
+<tr>
+<td>E12</td>
+<td>save_as 或 update / update 比较 expectedRevision → 组件库新 revision / 或新的 componentId</td>
+<td>save_as新增ID；update CAS成功新增版本</td>
+</tr>
+<tr>
+<td>E13</td>
+<td>save_as 或 update / update 比较 expectedRevision → 冲突：保留当前副本 / 查看最新 / 另存</td>
+<td>CAS失败不改库、不丢副本</td>
+</tr>
+<tr>
+<td>E14</td>
+<td>组件库新 revision / 或新的 componentId → 组件库 C / revision r / 不可变历史源版本</td>
+<td>作为后续明确打开的资产版本</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图源：</strong> <code>diagrams/FIG-17.dot</code> / <code>.mmd</code>；SVG/PNG与当前关系表同源。</p>
+<h2 id="section-04">FIG-18 · 组件交互四路分流与独立刷新</h2>
+<p class="figure"><img alt="FIG-18 组件交互四路分流与独立刷新" src="../diagrams/FIG-18.svg"/></p>
+<p><strong>读图结论：</strong> 刷新是否需要实时上游读由Provider解释；界面只报告真实fetchedAt/sourceDataTime/freshness。计划字段存在不等于worker已运行。新frame恢复与Agent上下文版本属于不同状态。</p>
+<p><strong>证据/目标依据：</strong> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/app-presentation/src/index.ts">S16</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/component-runtime/src/apps-client.ts">S19</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/packages/plugin-apps/client/component-handlers.ts">S23</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-product-requirements-20261007.md">S06</a></p>
+<table><colgroup><col style="width:7%"/><col style="width:43%"/><col style="width:50%"/></colgroup>
+<thead>
+<tr>
+<th>边</th>
+<th>起点 → 终点</th>
+<th>准确含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E01</td>
+<td>组件交互入口 / 当前 session / view / build → 排序 / 筛选 / 勾选 / React 本地状态</td>
+<td>纯本地动作；新增模型步与业务写均0</td>
+</tr>
+<tr>
+<td>E02</td>
+<td>排序 / 筛选 / 勾选 / React 本地状态 → 协商 UI 状态快照 / 按 view 恢复 / 选择重验</td>
+<td>换frame前按声明的schema导出/恢复</td>
+</tr>
+<tr>
+<td>E03</td>
+<td>组件交互入口 / 当前 session / view / build → 附加选择 / ResourceRef + datasetRevision</td>
+<td>只有点击附加才提交选择</td>
+</tr>
+<tr>
+<td>E04</td>
+<td>附加选择 / ResourceRef + datasetRevision → Runtime 校验 + 去重 / 同会话 / 同快照</td>
+<td>校验最新版本与资源归属</td>
+</tr>
+<tr>
+<td>E05</td>
+<td>Runtime 校验 + 去重 / 同会话 / 同快照 → 原 DSH 输入附件区 / 正文与旧附件保留</td>
+<td>原生接纳只能称attached，不是sent</td>
+</tr>
+<tr>
+<td>E06</td>
+<td>原 DSH 输入附件区 / 正文与旧附件保留 → 用户手动原发送</td>
+<td>发送仍由用户原输入动作决定</td>
+</tr>
+<tr>
+<td>E07</td>
+<td>用户手动原发送 → 原 Agent 消费实际 JSON / 然后处理本条自然语言</td>
+<td>正式会话输入与文件消费证据</td>
+</tr>
+<tr>
+<td>E08</td>
+<td>组件交互入口 / 当前 session / view / build → 明确应用动作 / Runtime统一 invoke</td>
+<td>明确业务按钮走既有能力，不自行拼第二套实现</td>
+</tr>
+<tr>
+<td>E09</td>
+<td>组件交互入口 / 当前 session / view / build → 可选 updateContext / requestAgent / 正式原生投影 / 队列</td>
+<td>可选能力先探测；不影响默认手动链</td>
+</tr>
+<tr>
+<td>E10</td>
+<td>可选 updateContext / requestAgent / 正式原生投影 / 队列 → 原 Agent 消费实际 JSON / 然后处理本条自然语言</td>
+<td>requestAgent有真实队列回执；context只留给后续消费</td>
+</tr>
+<tr>
+<td>E11</td>
+<td>组件交互入口 / 当前 session / view / build → 手动或实际 worker 刷新 / 仅 query / compute</td>
+<td>原按钮/聊天或已装配调度触发读</td>
+</tr>
+<tr>
+<td>E12</td>
+<td>手动或实际 worker 刷新 / 仅 query / compute → 每个 binding 独立快照 / 失败保旧 / 真实来源时间</td>
+<td>各数据集成功或失败独立结算</td>
+</tr>
+<tr>
+<td>E13</td>
+<td>每个 binding 独立快照 / 失败保旧 / 真实来源时间 → 排序 / 筛选 / 勾选 / React 本地状态</td>
+<td>发送新数据事件，不触发编译</td>
+</tr>
+<tr>
+<td>E14</td>
+<td>每个 binding 独立快照 / 失败保旧 / 真实来源时间 → 设计 / build / 保存 revision 不变 / 失效选择不得按行号迁移</td>
+<td>刷新不能改设计/构建/组件库版本</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图源：</strong> <code>diagrams/FIG-18.dot</code> / <code>.mmd</code>；SVG/PNG与当前关系表同源。</p>
+<h2 id="section-05">FIG-19 · 整个架构按证据层次与范围放行</h2>
+<p class="figure"><img alt="FIG-19 整个架构按证据层次与范围放行" src="../diagrams/FIG-19.svg"/></p>
+<p><strong>读图结论：</strong> 图中“签认”是目标节点，不是本次已获得批准。本次只有静态审计、HTML身份和语法检查；产品80项新运行均NOT_RUN。原型浏览器为BLOCKED_ENV，不证明产品失败。</p>
+<p><strong>证据/目标依据：</strong> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-publication-validation-20261007.md">S03</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/requirements/traceability.csv">S04</a> <a href="https://github.com/123wusongzhi/dsh-hallmark-app/blob/caea8175b5c7507bf942b2e752a7327063bfdd43/docs/apps-migration-runbook.md">S26</a></p>
+<table><colgroup><col style="width:7%"/><col style="width:43%"/><col style="width:50%"/></colgroup>
+<thead>
+<tr>
+<th>边</th>
+<th>起点 → 终点</th>
+<th>准确含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E01</td>
+<td>原 TST-001..048 / 新版本回归 / 原状态保留 → 证据身份过滤 / commit / 版本 / scope / SHA</td>
+<td>原PASS只能作为reported，不自动继承</td>
+</tr>
+<tr>
+<td>E02</td>
+<td>新 TST-049..080 / 新创作与运行验收 → 证据身份过滤 / commit / 版本 / scope / SHA</td>
+<td>每个断言附原始证据，不只总数</td>
+</tr>
+<tr>
+<td>E03</td>
+<td>证据身份过滤 / commit / 版本 / scope / SHA → 缺证据 / 版本不符 / 未运行 / 不代签，返回对应工作包</td>
+<td>不合格：先补实际执行或证据</td>
+</tr>
+<tr>
+<td>E04</td>
+<td>证据身份过滤 / commit / 版本 / scope / SHA → CORE / 基础协议 / 实际 Host / 兼容</td>
+<td>符合当前版本的基础范围证据</td>
+</tr>
+<tr>
+<td>E05</td>
+<td>CORE / 基础协议 / 实际 Host / 兼容 → AUTHORING / 原 @ / 真实源码与预览 / 原 Agent / 保存重开</td>
+<td>再满足默认手动创作和真实模型链</td>
+</tr>
+<tr>
+<td>E06</td>
+<td>CORE / 基础协议 / 实际 Host / 兼容 → BUSINESS-WRITE / 每个动作真实回执与核实</td>
+<td>再满足用户指定真实写动作</td>
+</tr>
+<tr>
+<td>E07</td>
+<td>CORE / 基础协议 / 实际 Host / 兼容 → DATA-CUTOVER / 真实迁移 / 唯一 writer / 回退</td>
+<td>再满足实际接入库/资产切换</td>
+</tr>
+<tr>
+<td>E08</td>
+<td>AUTHORING / 原 @ / 真实源码与预览 / 原 Agent / 保存重开 → 本次承诺范围 / 全部强制项均满足？</td>
+<td>作者体验范围签认</td>
+</tr>
+<tr>
+<td>E09</td>
+<td>BUSINESS-WRITE / 每个动作真实回执与核实 → 本次承诺范围 / 全部强制项均满足？</td>
+<td>各业务动作分别签认</td>
+</tr>
+<tr>
+<td>E10</td>
+<td>DATA-CUTOVER / 真实迁移 / 唯一 writer / 回退 → 本次承诺范围 / 全部强制项均满足？</td>
+<td>切库范围签认</td>
+</tr>
+<tr>
+<td>E11</td>
+<td>本次承诺范围 / 全部强制项均满足？ → 仅已验范围的候选 / 其余 NOT_ACCEPTED</td>
+<td>否：只陈述已通过范围和限制</td>
+</tr>
+<tr>
+<td>E12</td>
+<td>本次承诺范围 / 全部强制项均满足？ → A / V / R 明确签认 / 包 hash与运行identity一致</td>
+<td>是：签本次承诺的整体范围</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图源：</strong> <code>diagrams/FIG-19.dot</code> / <code>.mmd</code>；SVG/PNG与当前关系表同源。</p>
+<h2 id="section-06">06 图面签认与变更</h2>
+<p>图面变更先修改节点/边模型，再同步DOT、SVG、PNG、Mermaid与关系表；不能只在PNG上画一条未说明的线。CR需写被修改的图号/边号、前后语义、关联REQ/TST和审查人。</p>
+<p>本版图面已做文件生成与排版检查，但节点上的运行功能仍以代码和产品测试证明。FIG-19的“批准”节点只是目标。图中任何用户示例名称、颜色、图标均不构成真实业务或原生宿主运行证据。</p>
+</body></html>

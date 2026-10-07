@@ -54,7 +54,9 @@ for (const service of ['hallmark-control', 'hallmark-board']) {
       const health = await client.health();
       assert.notEqual(health.status, 'ok');
       assert.equal(health.error?.code, code);
-      assert.equal((await client.getStores()).status, 'unavailable');
+      const blocked = await client.getStores();
+      assert.equal(blocked.status, httpStatus === 401 ? 'failed' : 'unavailable');
+      assert.deepEqual(blocked.error, health.error);
       assert.equal(calls, 1);
     });
   }

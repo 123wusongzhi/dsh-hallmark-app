@@ -132,8 +132,11 @@ export class SelectionInputBridge {
   /** Runtime has already checked membership/revision; native insertion only carries exact generic ResourceRefs. */
   attachResources(sessionId:string,context:SelectionEnvelope&{sessionId:string;viewId:string;buildId:string}):AttachSelectionResult {
     if(context.sessionId!==sessionId||!id(context.viewId)||!id(context.buildId)||!id(context.bindingId)||!id(context.datasetRevision)||!Array.isArray(context.resources)||!context.resources.length||context.resources.some(resource=>!id(resource.appId)||!id(resource.connectionId)||!id(resource.resourceType)||!id(resource.resourceId)))return {ok:false,message:'资源选择或附件所属会话无效，未附加。'};
-    const exact={type:'dsh.apps.resource-selection',version:2,sessionId,viewId:context.viewId,buildId:context.buildId,bindingId:context.bindingId,datasetRevision:context.datasetRevision,resources:context.resources.map(resource=>({appId:resource.appId,connectionId:resource.connectionId,resourceType:resource.resourceType,resourceId:resource.resourceId,...(resource.revision!==undefined?{revision:resource.revision}:{})}))};
-    const attachment={name:`Apps-已选资源-${exact.resources.length}项.json`,content:JSON.stringify(exact,null,2)+'\n',signature:JSON.stringify({...exact,resources:[...exact.resources].sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)))})};
+    const normalized=context.resources.map(resource=>({appId:resource.appId,connectionId:resource.connectionId,resourceType:resource.resourceType,resourceId:resource.resourceId,...(resource.revision!==undefined?{revision:resource.revision}:{})}));
+    const resources=[...new Map(normalized.map(resource=>[JSON.stringify(resource),resource])).values()].sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
+    const exact={type:'dsh.apps.resource-selection',version:2,sessionId,viewId:context.viewId,buildId:context.buildId,bindingId:context.bindingId,datasetRevision:context.datasetRevision,resources};
+    // A rebuilt renderer retains provenance in the file, while attachment identity follows the selection set.
+    const attachment={name:`Apps-已选资源-${exact.resources.length}项.json`,content:JSON.stringify(exact,null,2)+'\n',signature:JSON.stringify({sessionId,viewId:context.viewId,bindingId:context.bindingId,datasetRevision:context.datasetRevision,resources})};
     return this.attachPrepared(sessionId,attachment);
   }
   private attachPrepared(sessionId:string,attachment:ReturnType<typeof selectionAttachment>):AttachSelectionResult {

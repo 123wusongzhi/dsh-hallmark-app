@@ -10,6 +10,9 @@ import { projectModelResult, readResultPage } from '../../app-runtime/src/projec
 import type { AppsPresentationService, AppsView } from '../../app-presentation/src/index.ts';
 import type { Operation } from '../../core/src/types.ts';
 import { createLegacyPresentationAdapter, normalizeLegacyPresentationInput, projectLegacyPresentationResult, projectLegacySpec } from './apps-legacy-presentation.ts';
+import {NativeAppBindings} from './native-bindings.ts';
+import type {CandidateFrameIdentity} from '../../app-presentation/src/authoring-types.ts';
+import type {AppsSnapshotScheduler} from './apps-scheduler.ts';
 
 function strict(value:Record<string,unknown>,keys:readonly string[],required:readonly string[]=[]):void {
   const invalid=Object.keys(value).filter(key=>!keys.includes(key));const missing=required.filter(key=>!Object.hasOwn(value,key));
@@ -21,8 +24,24 @@ function legacyResult(result:CapabilityResult):ToolResult {
   if(result.status==='needs_clarification')return {status:'needs_clarification',clarification:{missing:result.missing,candidates:result.candidates,question:result.question}};
   return {status:result.status==='cancelled'?'failed':result.status,...('data' in result?{data:result.data}:{}),...(result.operation?{operation:{operationId:result.operation.operationId,state:result.operation.state==='dispatching'?'running':result.operation.state==='queued'?'pending':result.operation.state==='cancelled'?'failed':result.operation.state}}:{}),...('error' in result?{error:{code:result.error.code,message:result.error.message,retryable:result.error.retryPolicy==='read_retry'}}:{}),...(result.provenance?.[0]?{provenance:{source:result.provenance[0].sourceKind==='derived'?'hallmark_compute':'app_snapshot',fetchedAt:result.provenance[0].fetchedAt,...(result.provenance[0].sourceDataTime?{dataTime:result.provenance[0].sourceDataTime}:{}),endpoint:result.provenance[0].sourceRef}}:{})};
 }
-export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsPresentationService;token:string;port?:number;allowedOrigins?:string[];health?:()=>Promise<unknown>}) {
+export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsPresentationService;token:string;port?:number;allowedOrigins?:string[];health?:()=>Promise<unknown>;scheduler?:AppsSnapshotScheduler}) {
   const {runtime,presentation}=options;if(options.token.length<32)throw new Error('SERVICE_KEY_TOO_SHORT');
+  const nativeBindings=new NativeAppBindings(runtime);
+  const frameKey=(value:{sessionId:string;viewId:string;frameInstanceId:string})=>canonicalJson(['apps','presentation','frame_grants',value.sessionId,value.viewId,value.frameInstanceId]);
+  type Grant={identity:BridgeIdentity;documentNonce:string;features:string[];candidate?:CandidateFrameIdentity;retired?:boolean};
+  const frameGrant=(identity:BridgeIdentity)=>{
+    const grant=runtime.store.get<{value:Grant}>('provider_records',frameKey(identity))?.value;
+    if(!grant||grant.retired||canonicalJson(grant.identity)!==canonicalJson(identity))throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});return grant;
+  };
+  const grantFrame=(sessionId:string,params:Record<string,unknown>,candidate?:CandidateFrameIdentity)=>{
+    const identity:BridgeIdentity={protocolVersion:'2.0',sessionId,viewId:String(params.viewId),buildId:String(params.buildId),frameInstanceId:String(params.frameInstanceId)},view=presentation.ownedView(sessionId,identity.viewId);
+    if(!identity.frameInstanceId||!params.documentNonce||view.source?.buildId!==identity.buildId&&!presentation.authoring?.acceptsFrame(candidate!))throw new Error('BRIDGE_IDENTITY_STALE');
+    if(params.clientFeatures!==undefined&&(!Array.isArray(params.clientFeatures)||params.clientFeatures.some(feature=>typeof feature!=='string')))throw new Error('INVALID_CLIENT_FEATURES');
+    const prior=runtime.store.get<{value:Grant}>('provider_records',frameKey(identity))?.value;
+    if(prior&&(prior.retired||canonicalJson(prior.identity)!==canonicalJson(identity)||prior.documentNonce!==params.documentNonce))throw new Error('BRIDGE_IDENTITY_STALE');
+    const features=(params.clientFeatures as string[]??[]).filter(feature=>['renderReadyV1','uiStateV1'].includes(feature)),grant:Grant={identity,documentNonce:String(params.documentNonce),features,...(candidate?{candidate}:{})};
+    runtime.store.put('provider_records',frameKey(identity),{appId:'apps',connectionId:'presentation',namespace:'frame_grants',recordId:frameKey(identity),value:grant});return {features};
+  };
   const legacyPresentation=createLegacyPresentationAdapter(presentation,runtime);
   const legacyConnection=():string|undefined=>runtime.store.get<{appId:string;connectionId:string;status?:string}>('legacy_aliases','connection:default')?.connectionId;
   const bindings=(sessionId:string,active:boolean)=>{
@@ -101,6 +120,53 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       if(req.method==='POST'&&legacyTool){const input=await body(req);strict(input,['arguments','sessionId','userRequest'],['arguments','sessionId']);return send(res,200,await legacyInvoke({name:legacyTool[1],...input,invocationId:randomUUID(),traceId:randomUUID(),deadlineAt:new Date(Date.now()+90000).toISOString()},controller.signal));}
       if(req.method==='GET'&&path==='/v1/runtime')return send(res,200,runtime.identity());
       if(req.method==='GET'&&path==='/v1/apps')return send(res,200,{apps:runtime.listApps()});
+      if(req.method==='GET'&&path==='/v1/authoring/features')return send(res,200,{features:presentation.authoring?['renderReadyV1','uiStateV1']:[]});
+      if(req.method==='GET'&&path==='/v1/views'){const sessionId=url.searchParams.get('sessionId');if(!sessionId)throw new Error('EXPLICIT_SESSION_REQUIRED');return send(res,200,{views:runtime.store.list<AppsView>('views').filter(view=>view.ownerSessionId===sessionId)});}
+      if(req.method==='GET'&&path==='/v1/saved')return send(res,200,{components:runtime.store.list<import('../../app-presentation/src/types.ts').AppsComponent>('components').map(component=>({...component,revisions:presentation.componentVersions(component.componentId)})),assets:runtime.store.list('saved_assets')});
+      if(req.method==='POST'&&path==='/v1/presentation-actions'){
+        const input=await body(req);strict(input,['sessionId','capabilityId','input','requestId'],['sessionId','capabilityId','input','requestId']);
+        const sessionId=String(input.sessionId),capabilityId=String(input.capabilityId),descriptor=runtime.describe(capabilityId);
+        if(!sessionId||!String(input.requestId)||!/^apps\.(presentation|authoring)\./.test(capabilityId)||!descriptor)throw new Error('PRESENTATION_ACTION_UNAVAILABLE');
+        runtime.bind({sessionId,appId:'apps',connectionId:'presentation',enabled:true,boundAt:new Date().toISOString()});
+        return send(res,200,await runtime.invoke({protocolVersion:'1.0',invocationId:String(input.requestId),traceId:String(input.requestId),appId:'apps',connectionId:'presentation',capabilityId,capabilityVersion:descriptor.version,input:input.input as JsonValue,source:{kind:'agent',sessionId,nativeCallId:String(input.requestId)},deadlineAt:new Date(Date.now()+30000).toISOString(),...(descriptor.effect==='mutation'?{idempotencyKey:String(input.requestId)}:{})},controller.signal));
+      }
+      const authoringAction=path.match(/^\/v1\/authoring\/([a-zA-Z]+)$/);
+      if(req.method==='POST'&&authoringAction){
+        const input=await body(req);strict(input,['sessionId','params'],['sessionId','params']);const sessionId=String(input.sessionId),params=input.params as Record<string,unknown>,authoring=presentation.authoring;if(!authoring)throw new Error('AUTHORING_UNAVAILABLE');
+        switch(authoringAction[1]){
+          case 'markBuilding':strict(params,['attemptId','epoch'],['attemptId','epoch']);return send(res,200,authoring.markBuilding(sessionId,params as never));
+          case 'authorizeFrame':{
+            strict(params,['publicationId','attemptId','attemptEpoch','viewId','buildId','frameInstanceId','documentNonce','clientFeatures'],['publicationId','attemptId','attemptEpoch','viewId','buildId','frameInstanceId','documentNonce']);
+            const publication=authoring.authorizeFrame(sessionId,params as never);if(publication.viewId!==params.viewId)throw new Error('VIEW_NOT_OWNED');
+            const candidate={...params,protocolVersion:'2.0',sessionId} as unknown as CandidateFrameIdentity;const grant=grantFrame(sessionId,params,candidate);return send(res,200,{...publication,...grant});
+          }
+          case 'negotiateFrame':strict(params,['viewId','buildId','frameInstanceId','documentNonce','clientFeatures'],['viewId','buildId','frameInstanceId','documentNonce','clientFeatures']);return send(res,200,grantFrame(sessionId,params));
+          case 'retireFrame':{
+            strict(params,['viewId','buildId','frameInstanceId','documentNonce'],['viewId','buildId','frameInstanceId','documentNonce']);presentation.ownedView(sessionId,String(params.viewId));
+            const identity:BridgeIdentity={protocolVersion:'2.0',sessionId,viewId:String(params.viewId),buildId:String(params.buildId),frameInstanceId:String(params.frameInstanceId)},grant=frameGrant(identity);if(grant.documentNonce!==params.documentNonce)throw new Error('BRIDGE_IDENTITY_STALE');runtime.store.put('provider_records',frameKey(identity),{appId:'apps',connectionId:'presentation',namespace:'frame_grants',recordId:frameKey(identity),value:{...grant,retired:true}});return send(res,200,{retired:true});
+          }
+          case 'inspect':return send(res,200,authoring.inspect(sessionId,params as never));
+          case 'failMount':strict(params,['publicationId','reason'],['publicationId','reason']);return send(res,200,authoring.failMount(sessionId,String(params.publicationId),String(params.reason)));
+          case 'exportUiState':return send(res,200,authoring.exportUiState(sessionId,params as never));
+          case 'restoreUiState':return send(res,200,authoring.restoreUiState(sessionId,params as never));
+          case 'closeDraft':strict(params,['viewId','action'],['viewId','action']);return send(res,200,authoring.closeDraft(sessionId,String(params.viewId),params.action as 'keep'|'discard'));
+          default:throw new Error('AUTHORING_ACTION_UNKNOWN');
+        }
+      }
+      if(path==='/v1/schedules'){
+        if(!options.scheduler)throw new Error('SCHEDULER_UNAVAILABLE');
+        if(req.method==='GET')return send(res,200,options.scheduler.status());
+        if(req.method==='POST')return send(res,200,options.scheduler.create(await body(req) as never));
+        if(req.method==='PATCH'){const input=await body(req),{scheduleId,...patch}=input;return send(res,200,options.scheduler.update(String(scheduleId),patch as never));}
+      }
+      if(req.method==='POST'&&path==='/v1/native-bindings'){
+        const input=await body(req);strict(input,['sessionId','appId','connectionId','bindRequestId','epoch','enabled','referenceId'],['sessionId','appId','bindRequestId','epoch','enabled','referenceId']);
+        return send(res,200,nativeBindings.bind(input as never));
+      }
+      if(req.method==='GET'&&path==='/v1/native-bindings')return send(res,200,nativeBindings.get(url.searchParams.get('sessionId')??'',url.searchParams.get('bindRequestId')??'',url.searchParams.get('referenceId')??undefined));
+      if(req.method==='POST'&&path==='/v1/native-references/serialize'){
+        const input=await body(req);strict(input,['referenceId','sessionId'],['referenceId','sessionId']);return send(res,200,nativeBindings.serialize(input as never));
+      }
       if(req.method==='GET'&&path==='/v1/diagnostics'){
         const sessionId=url.searchParams.get('sessionId');if(!sessionId||[...url.searchParams.keys()].some(key=>key!=='sessionId'))throw new Error('EXPLICIT_SESSION_REQUIRED');
         const invocations=runtime.store.list<InvocationRecord>('invocations').filter(row=>'sessionId' in row.request.source&&row.request.source.sessionId===sessionId).slice(-25).reverse().map(row=>({invocationId:row.invocationId,traceId:row.request.traceId,operationId:row.operationId??null,runId:row.parentRunId??null,appId:row.request.appId,connectionId:row.request.connectionId,capabilityId:row.request.capabilityId,capabilityVersion:row.request.capabilityVersion,status:row.result?.status??row.state,durationMs:row.durationMs??null}));return send(res,200,{invocations});
@@ -133,20 +199,51 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       }
       const description=path.match(/^\/v1\/capabilities\/([^/]+)$/);if(req.method==='GET'&&description){const descriptor=runtime.describe(decodeURIComponent(description[1]),url.searchParams.get('version')??undefined);return send(res,descriptor?200:404,descriptor??{error:'CAPABILITY_NOT_FOUND'});}
       if(req.method==='POST'&&path==='/v1/invocations'){const input=await body(req),result=await runtime.invoke(input as unknown as InvocationRequest,controller.signal);return send(res,input.protocolVersion!=='1.0'?409:result.status==='pending'?202:200,result);}
+      if(req.method==='POST'&&path==='/v1/component-extension'){
+        const input=await body(req);strict(input,['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','type','feature','action','params'],['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','type','feature','action','params']);
+        const identity:BridgeIdentity={protocolVersion:input.protocolVersion as '2.0',sessionId:String(input.sessionId),viewId:String(input.viewId),buildId:String(input.buildId),frameInstanceId:String(input.frameInstanceId)},grant=frameGrant(identity);
+        if(input.type!=='extension'||!grant.features.includes(String(input.feature)))throw new Error('UNSUPPORTED_HOST_CAPABILITY');
+        const params=input.params as Record<string,unknown>;if(params.documentNonce!==undefined&&params.documentNonce!==grant.documentNonce)throw new Error('BRIDGE_IDENTITY_STALE');
+        const host=presentation.createHost(identity,{signal:controller.signal,candidate:grant.candidate,clientFeatures:grant.features});try{return send(res,200,await host.handle(input));}finally{host.dispose();}
+      }
       if(req.method==='POST'&&path==='/v1/component-bridge'){
         const input=await body(req);strict(input,['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','method','params'],['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','method','params']);
         const view=presentation.ownedView(String(input.sessionId),String(input.viewId));
-        if(!view.source||view.source.buildId!==input.buildId)throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});
         const identity:BridgeIdentity={protocolVersion:input.protocolVersion as '2.0',sessionId:String(input.sessionId),viewId:String(input.viewId),buildId:String(input.buildId),frameInstanceId:String(input.frameInstanceId)};
-        const host=presentation.createHost(identity,{signal:controller.signal,attachSelection:async(_identity,selection)=>({status:'validated',selection:JSON.parse(canonicalJson(selection)) as JsonValue})});
+        const grant=runtime.store.get<{value:Grant}>('provider_records',frameKey(identity))?.value;
+        if(grant?.retired)throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});
+        if((!view.source||view.source.buildId!==input.buildId)&&(!grant?.candidate||!presentation.authoring?.acceptsFrame(grant.candidate)))throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});
+        const host=presentation.createHost(identity,{signal:controller.signal,candidate:grant?.candidate,clientFeatures:grant?.features,attachSelection:async(_identity,selection)=>({status:'validated',selection:JSON.parse(canonicalJson(selection)) as JsonValue})});
         try{const response=await host.handle(input);return send(res,response?200:400,response??{error:{code:'INVALID_BRIDGE_MESSAGE',retryPolicy:'never'}});}finally{host.dispose();}
       }
       const invocation=path.match(/^\/v1\/invocations\/([^/]+)$/);if(req.method==='GET'&&invocation){const record=runtime.store.get<InvocationRecord>('invocations',decodeURIComponent(invocation[1]));return send(res,record?200:404,record??{error:'INVOCATION_NOT_FOUND'});}
       const operation=path.match(/^\/v1\/operations\/([^/]+)(\/inspect)?$/);if(operation){const id=decodeURIComponent(operation[1]);if(req.method==='POST'&&operation[2]){const input=await body(req);strict(input,[]);return send(res,200,await runtime.inspect(id,controller.signal));}if(req.method==='GET'&&!operation[2]){const record=runtime.store.get<RuntimeOperation>('operations',id);return send(res,record?200:404,record?{...record,events:runtime.store.list<{operationId:string}>('operation_events').filter(row=>row.operationId===id)}:{error:'OPERATION_NOT_FOUND'});}}
       if(path==='/v1/session-bindings'){if(req.method==='GET')return send(res,200,{bindings:runtime.sessionBindings(url.searchParams.get('sessionId')??'')});if(req.method==='POST'){const input=await body(req);strict(input,['sessionId','appId','connectionId','enabled','boundAt'],['sessionId','appId','connectionId','enabled','boundAt']);return send(res,200,runtime.bind(input as unknown as SessionAppBinding));}}
-      if(path==='/v1/connections'){if(req.method==='GET')return send(res,200,{connections:runtime.listConnections(url.searchParams.get('appId')??undefined)});if(req.method==='POST'){const input=await body(req);strict(input,['appId','connectionId','displayName','config','configRevision','enabled'],['appId','connectionId','displayName','config','configRevision','enabled']);return send(res,200,runtime.addConnection(input as unknown as AppConnection));}}
+      if(path==='/v1/connections'){if(req.method==='GET')return send(res,200,{connections:runtime.listConnections(url.searchParams.get('appId')??undefined)});if(req.method==='POST'){const input=await body(req);strict(input,['appId','connectionId','displayName','config','configRevision','enabled'],['appId','connectionId','displayName','config','configRevision','enabled']);return send(res,200,runtime.addConnection(input as unknown as AppConnection));}if(req.method==='PATCH'){const input=await body(req);strict(input,['appId','connectionId','displayName','config','expectedConfigRevision','enabled','drainTimeoutMs'],['appId','connectionId','expectedConfigRevision']);return send(res,200,await runtime.updateConnection(input as never,controller.signal));}}
       if(req.method==='POST'&&path==='/v1/views/open'){const input=await body(req);strict(input,['sessionId','title','directory','design','bindings','viewId','componentId','revision'],['sessionId']);const sessionId=String(input.sessionId);const view=input.componentId?presentation.openComponent(sessionId,String(input.componentId),{revision:input.revision as number|undefined,directory:input.directory as string|undefined}):input.directory?presentation.openSource(sessionId,String(input.directory),input as never):presentation.createView(sessionId,input as never);return send(res,200,view);}
-      const viewRoute=path.match(/^\/v1\/views\/([^/]+)(\/data|\/refresh)?$/);if(viewRoute){const viewId=decodeURIComponent(viewRoute[1]);if(req.method==='GET'){const sessionId=url.searchParams.get('sessionId')??'';return send(res,200,viewRoute[2]?presentation.getData(sessionId,viewId):presentation.ownedView(sessionId,viewId));}if(req.method==='POST'&&viewRoute[2]==='/refresh'){const input=await body(req);strict(input,['sessionId','bindingIds'],['sessionId']);return send(res,200,await presentation.refreshView(String(input.sessionId),viewId,source(String(input.sessionId)),input.bindingIds as string[]|undefined,controller.signal));}}
+      const viewRoute=path.match(/^\/v1\/views\/([^/]+)(\/data|\/refresh)?$/);if(viewRoute){const viewId=decodeURIComponent(viewRoute[1]);if(req.method==='GET'){
+        const sessionId=url.searchParams.get('sessionId')??'',current=presentation.ownedView(sessionId,viewId);
+        if(viewRoute[2])return send(res,200,presentation.getData(sessionId,viewId));
+        const buildId=url.searchParams.get('buildId'),revision=url.searchParams.has('viewRevision')?Number(url.searchParams.get('viewRevision')):undefined,publicationId=url.searchParams.get('publicationId');
+        if(revision!==undefined&&(!Number.isSafeInteger(revision)||revision<1))throw new Error('VIEW_REVISION_INVALID');
+        if(publicationId){
+          const publication=runtime.store.get<import('../../app-presentation/src/authoring-types.ts').ViewPublication>('view_publications',publicationId);
+          if(!publication||publication.ownerSessionId!==sessionId||publication.viewId!==viewId||buildId&&publication.candidateBuildId!==buildId)throw Object.assign(new Error('Publication target does not belong to this message and session.'),{code:'PUBLICATION_TARGET_MISMATCH'});
+          if(publication.state==='mounting'&&current.pendingPublicationId===publication.publicationId&&current.viewRevision===publication.expectedViewRevision&&(!revision||revision===publication.expectedViewRevision))return send(res,200,{...current,source:publication.source,publication});
+          if(publication.state==='mounted'&&publication.committedViewRevision&&(!revision||revision===publication.committedViewRevision)){
+            const snapshot=runtime.store.list<{namespace:string;value:AppsView}>('provider_records').find(row=>row.namespace==='view_revisions'&&row.value.ownerSessionId===sessionId&&row.value.viewId===viewId&&row.value.viewRevision===publication.committedViewRevision&&row.value.source?.buildId===publication.candidateBuildId)?.value;
+            if(snapshot)return send(res,200,{...snapshot,publication});
+          }
+          throw Object.assign(new Error('The fixed publication is no longer mountable; inspect its terminal result.'),{code:'PUBLICATION_UNAVAILABLE'});
+        }
+        if(buildId||revision!==undefined){
+          const historical=runtime.store.list<{namespace:string;value:AppsView}>('provider_records').filter(row=>row.namespace==='view_revisions').map(row=>row.value).find(view=>view.ownerSessionId===sessionId&&view.viewId===viewId&&(revision===undefined||view.viewRevision===revision)&&(!buildId||view.source?.buildId===buildId));
+          if(historical)return send(res,200,historical);
+          if((!buildId||current.source?.buildId===buildId)&&(revision===undefined||current.viewRevision===revision))return send(res,200,current);
+          throw Object.assign(new Error('The message names an unavailable historical view; current source is not substituted.'),{code:'VIEW_REVISION_NOT_FOUND'});
+        }
+        return send(res,200,current);
+      }if(req.method==='POST'&&viewRoute[2]==='/refresh'){const input=await body(req);strict(input,['sessionId','bindingIds'],['sessionId']);return send(res,200,await presentation.refreshView(String(input.sessionId),viewId,source(String(input.sessionId)),input.bindingIds as string[]|undefined,controller.signal));}}
       if(path==='/v1/components'){if(req.method==='GET')return send(res,200,{components:runtime.store.list('components')});if(req.method==='POST'){const input=await body(req);strict(input,['sessionId','viewId','userRequest','mode','componentId','expectedRevision'],['sessionId','viewId','userRequest','mode']);return send(res,200,presentation.saveComponent(String(input.sessionId),String(input.viewId),String(input.userRequest),input as never));}}
       const resultRoute=path.match(/^\/v1\/results\/(.+)$/);if(req.method==='GET'&&resultRoute)return send(res,200,readResultPage(runtime.store,decodeURIComponent(resultRoute[1]),url.searchParams.get('cursor')??'0',Number(url.searchParams.get('limit')??100)));
       if(req.method==='POST'&&path==='/v1/model-result'){const input=await body(req);strict(input,['invocationId'],['invocationId']);const record=runtime.store.get<InvocationRecord>('invocations',String(input.invocationId));if(!record?.result)return send(res,404,{error:'INVOCATION_NOT_FOUND'});return send(res,200,projectModelResult(runtime.store,record.result));}

@@ -7,6 +7,10 @@ export * from './types.ts';
 export * from './descriptors.ts';
 import {APP_PRESENTATION_DESCRIPTORS} from './descriptors.ts';
 import {ComponentContexts} from './context.ts';
+import {AppsAuthoringService} from './authoring.ts';
+import type {AppsAuthoringOptions,CandidateFrameIdentity,ViewPublication} from './authoring-types.ts';
+import {APP_AUTHORING_DESCRIPTORS} from './authoring-descriptors.ts';
+export * from './authoring.ts';
 
 export class AppsPresentationError extends Error {
   code:string;
@@ -30,20 +34,26 @@ export class AppsPresentationService {
   readonly runtime:AppsPresentationOptions['runtime'];
   readonly sources:AppsPresentationOptions['sources'];
   readonly contexts:ComponentContexts;
+  authoring?:AppsAuthoringService;
   private options:AppsPresentationOptions;
   private refreshes=new Map<string,Promise<DatasetSnapshot>>();
   constructor(options:AppsPresentationOptions){this.options=options;this.store=options.store;this.runtime=options.runtime;this.sources=options.sources;this.contexts=new ComponentContexts(this);}
+  configureAuthoring(options:Pick<AppsAuthoringOptions,'validateBuildEvidence'|'validatePreviewEvidence'|'evidenceRoot'|'clock'|'readyTimeoutMs'|'maxUiStateBytes'|'onCancel'|'resolveEvidencePath'>={}):AppsAuthoringService {
+    if(!this.sources)fail('SOURCE_STORE_UNAVAILABLE','Authoring requires the existing source archive.');
+    if(this.authoring)fail('AUTHORING_ALREADY_CONFIGURED','Authoring service has already been configured.');
+    return this.authoring=new AppsAuthoringService({store:this.store,sources:this.sources,presentation:this,...options});
+  }
   private binding(value:DatasetBinding):DatasetBinding {
     json(value);text(value.bindingId,'bindingId');text(value.appId,'appId');text(value.connectionId,'connectionId');
     if(!Number.isSafeInteger(value.capabilityMajor)||value.capabilityMajor<1)fail('INVALID_BINDING','A positive capability major is required.');
     if(!Array.isArray(value.projection)||value.projection.some(field=>typeof field!=='string'||!field)||new Set(value.projection).size!==value.projection.length)fail('INVALID_BINDING','Projection must contain unique field names.');
     if(!value.refresh||!['manual','scheduled'].includes(value.refresh.mode))fail('INVALID_BINDING','Refresh mode must be explicit.');
-    if(value.refresh.mode==='scheduled')text(value.refresh.scheduleId,'scheduleId');
+    if(value.refresh.mode==='scheduled'){text(value.refresh.scheduleId,'scheduleId');if(!this.options.scheduledBinding)fail('SCHEDULER_UNAVAILABLE','No running refresh worker is configured.');this.options.scheduledBinding(value);}
     const descriptor=this.runtime.describe(value.capabilityId);
     if(!descriptor)fail('CAPABILITY_UNAVAILABLE',`Binding capability ${value.capabilityId} is unavailable.`);
     if(Number(descriptor.version.split('.')[0])!==value.capabilityMajor)fail('INCOMPATIBLE_CAPABILITY','Binding capability major does not match.');
     if(!['query','compute'].includes(descriptor.effect))fail('QUERY_NOT_READ_ONLY','A data binding cannot invoke a mutation.');
-    if(descriptor.capabilityId.startsWith('apps.presentation.'))fail('QUERY_NOT_READ_ONLY','Presentation lifecycle actions cannot serve as their own dataset source.');
+    if(/^apps\.(presentation|authoring)\./.test(descriptor.capabilityId))fail('QUERY_NOT_READ_ONLY','Presentation lifecycle actions cannot serve as their own dataset source.');
     const errors=compileSchema(descriptor.inputSchema)(value.input);if(errors.length)fail('INVALID_BINDING',errors.join('; '));
     const id=datasetId(value);if(value.datasetId!==undefined&&value.datasetId!==id)fail('DATASET_ID_MISMATCH','Binding identity does not match its canonical query.');
     return {...clone(value),datasetId:id};
@@ -69,6 +79,9 @@ export class AppsPresentationService {
       const design=input.legacyBindings?{kind:'source',bindings:json(input.legacyBindings)}:previous?.design??{kind:'source'};
       const view=this.createView(sessionId,{...input,title:input.title??previous?.title??String(metadata.title??metadata.name??'Source component'),design,...(input.bindings?{bindings:input.bindings}:previous?{}:Array.isArray(metadata.bindings)?{bindings:metadata.bindings as DatasetBinding[]}:{} )});
       view.source=source;
+      view.validationStatus='legacy_unverified';
+      view.viewRevision=(previous?.viewRevision??0)+1;view.activeBuildId=source.buildId;
+      const snapshotId='view-revision:'+canonicalJson([sessionId,view.viewId,view.viewRevision]);this.store.put('provider_records',snapshotId,{appId:'apps',connectionId:'presentation',namespace:'view_revisions',recordId:snapshotId,value:clone(view)});
       this.store.put('builds',source.buildId,this.sources!.manifest(source.buildId));this.store.put('artifact_refs',`view:${view.viewId}:${source.buildId}`,{ownerKind:'view',ownerId:view.viewId,targetKind:'build',targetId:source.buildId});return clone(this.store.put('views',view.viewId,view));
     });
   }
@@ -165,7 +178,7 @@ export class AppsPresentationService {
   openComponent(sessionId:string|null,componentId:string,options:{revision?:number;directory?:string}={}):AppsView {
     if(sessionId!==null)text(sessionId,'sessionId');const latest=this.store.get<AppsComponent>('components',componentId);if(!latest)fail('COMPONENT_NOT_FOUND','Saved component does not exist.');
     const selected=options.revision===undefined?latest:this.store.get<AppsComponent>('component_versions',`${componentId}:${options.revision}`);if(!selected)fail('COMPONENT_REVISION_NOT_FOUND','Saved revision does not exist.');
-    const now=new Date().toISOString(),view:AppsView={...clone(selected.view),viewId:randomUUID(),ownerSessionId:sessionId,createdAt:now,updatedAt:now,sourceComponentId:componentId,baseRevision:latest.revision};
+    const now=new Date().toISOString(),view:AppsView={...clone(selected.view),viewId:randomUUID(),ownerSessionId:sessionId,createdAt:now,updatedAt:now,sourceComponentId:componentId,baseRevision:latest.revision,baseRevisionAtOpen:latest.revision,selectedSourceRevision:selected.revision,pendingPublicationId:null};
     if(view.source){if(!this.sources)fail('SOURCE_STORE_UNAVAILABLE','Source archive is not configured.');view.source=this.sources.checkout(view.source,options.directory);}
     // Opening an offline saved design does not resolve or execute its business bindings.
     return this.store.transaction(()=>{if(view.source)this.store.put('artifact_refs',`view:${view.viewId}:${view.source.buildId}`,{ownerKind:'view',ownerId:view.viewId,targetKind:'build',targetId:view.source.buildId});return clone(this.store.put('views',view.viewId,view));});
@@ -190,13 +203,14 @@ export class AppsPresentationService {
     const data=await this.refreshView(view.ownerSessionId,view.viewId,source,missing,signal);
     return {...view,initialData:data.bindings.filter(binding=>missing.includes(binding.bindingId)).map(binding=>({bindingId:binding.bindingId,datasetId:binding.datasetId,status:binding.state}))};
   }
-  createHost(identity:BridgeIdentity,options:{signal?:AbortSignal;attachSelection?:NonNullable<AppsPresentationOptions['attachSelection']>}={}):ComponentHost {
-    const current=()=>{const view=this.ownedView(identity.sessionId,identity.viewId);if(view.source&&view.source.buildId!==identity.buildId)fail('BRIDGE_IDENTITY_STALE','View build changed. Reopen the component.');return view;};
+  createHost(identity:BridgeIdentity,options:{signal?:AbortSignal;attachSelection?:NonNullable<AppsPresentationOptions['attachSelection']>;candidate?:CandidateFrameIdentity;clientFeatures?:string[]}={}):ComponentHost {
+    const current=()=>{const view=this.ownedView(identity.sessionId,identity.viewId);if((view.source&&view.source.buildId!==identity.buildId||view.validationStatus==='draft_unpublished')&&!this.authoring?.acceptsFrame(options.candidate??identity as CandidateFrameIdentity))fail('BRIDGE_IDENTITY_STALE','View build changed. Reopen the component.');return view;};
     const initial=current();
+    const contextInfo=()=>{const view=current();return {...this.contexts.get({...identity,buildId:view.source?.buildId??identity.buildId}),...identity};};
     const source:InvocationSource={kind:'component',sessionId:identity.sessionId,viewId:identity.viewId,frameInstanceId:identity.frameInstanceId};
     return new ComponentHost(identity,{
       getData:()=>{current();return json(this.getData(identity.sessionId,identity.viewId));},
-      getContext:()=>{current();return json(this.contexts.get(identity));},
+      getContext:()=>{current();const publication=options.candidate?this.store.get<ViewPublication>('view_publications',options.candidate.publicationId):undefined;return json({...contextInfo(),...(publication?{publication:{publicationId:publication.publicationId,attemptId:publication.attemptId,attemptEpoch:publication.attemptEpoch,buildId:publication.candidateBuildId,documentNonce:publication.documentNonce}}:{})});},
       ...(initial.source?{
         updateContext:(request:import('../../app-contracts/src/index.ts').BridgeRequest)=>{current();return json(this.contexts.update(identity,request.requestId,request.params as never));},
         requestAgent:(request:import('../../app-contracts/src/index.ts').BridgeRequest)=>{current();return json(this.contexts.prepare(identity,request.requestId,request.params as never));},
@@ -211,12 +225,15 @@ export class AppsPresentationService {
         const result=await this.runtime.invoke({protocolVersion:'1.0',appId:input.appId,connectionId:input.connectionId,capabilityId:input.capabilityId,capabilityVersion:input.capabilityVersion,input:input.input,deadlineAt:input.deadlineAt,invocationId:randomUUID(),traceId:randomUUID(),source,...(input.idempotencyKey?{idempotencyKey:input.idempotencyKey}:{}),...(input.expectedResourceRevision?{expectedResourceRevision:input.expectedResourceRevision}:{})},options.signal);
         return json(result);
       },
-    },{contextRevision:()=>this.contexts.get(identity).contextRevision});
+    },{contextRevision:()=>contextInfo().contextRevision,clientFeatures:options.clientFeatures,extensionHandlers:this.authoring?{
+      renderReadyV1:request=>{if(request.action!=='ready'||!options.candidate)fail('FRAME_NOT_READY','No authorized candidate publication.');const params=request.params as unknown as {checks:Parameters<AppsAuthoringService['confirmReady']>[1]['checks']};return json(this.authoring!.confirmReady(identity.sessionId,{...options.candidate,...identity,checks:params.checks}));},
+      uiStateV1:request=>{const params=request.params as unknown as {uiStateSchemaVersion:number;expectedStateRevision?:number;value?:JsonValue;state?:JsonValue;selectionEvidence?:Parameters<AppsAuthoringService['exportUiState']>[1]['selectionEvidence']};current();if(request.action==='read')return json(this.authoring!.restoreUiState(identity.sessionId,{viewId:identity.viewId,targetBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion},options.candidate));if(request.action==='write')return json(this.authoring!.exportUiState(identity.sessionId,{viewId:identity.viewId,sourceBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion,expectedStateRevision:params.expectedStateRevision??0,value:params.value??params.state??null,selectionEvidence:params.selectionEvidence??[]}));fail('INVALID_INPUT','Unknown UI state action.');},
+    }:undefined});
   }
   /** Runtime registration adapter. The shared provider has no application-domain imports. */
   provider():AppProvider {
     const manifest:AppManifest={manifestVersion:1,appId:'apps',displayName:'Shared presentation',providerPackage:'@dsh/app-presentation',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:['component','template','entry']};
-    return {manifest,descriptors:APP_PRESENTATION_DESCRIPTORS,execute:context=>this.execute(context),dispose:async()=>{}};
+    return {manifest,descriptors:[...APP_PRESENTATION_DESCRIPTORS,...APP_AUTHORING_DESCRIPTORS],execute:context=>this.execute(context),dispose:async()=>{}};
   }
   async execute(context:ExecutionContext):Promise<CapabilityResult> {
     const {request}=context,params=request.input as Record<string,JsonValue>;
@@ -224,6 +241,20 @@ export class AppsPresentationService {
     const output=(data:unknown):CapabilityResult=>({status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:json(data)});
     try{
       if(!sessionId)fail('SESSION_REQUIRED','Presentation actions require an explicit owning session.');
+      if(request.capabilityId.startsWith('apps.authoring.')){
+        if(!this.authoring)fail('AUTHORING_UNAVAILABLE','Authoring is not configured.');
+        const action=request.capabilityId.slice('apps.authoring.'.length);
+        switch(action){
+          case 'begin':return output(this.authoring.begin(sessionId,{...params,invocationId:request.invocationId} as never));
+          case 'record_build':return output(await this.authoring.recordBuild(sessionId,params as never));
+          case 'record_preview':return output(await this.authoring.recordPreview(sessionId,params as never));
+          case 'publish':return output(this.authoring.publish(sessionId,params as never));
+          case 'inspect':return output(this.authoring.inspect(sessionId,params as never));
+          case 'cancel':return output(this.authoring.cancel(sessionId,params as never));
+          case 'save_component':return output(this.authoring.saveComponent(sessionId,params as never));
+          default:fail('CAPABILITY_NOT_FOUND','Unknown authoring action.');
+        }
+      }
       switch(request.capabilityId){
         case 'apps.presentation.render_view':{
           const required=params.requiredBindingIds as unknown as string[]|undefined,bindings=params.bindings as unknown as DatasetBinding[]??[];
@@ -248,7 +279,7 @@ export class AppsPresentationService {
         case 'apps.presentation.save_template':{
           return output(this.saveTemplate(sessionId,text(params.viewId,'viewId'),text(params.name,'name'),text(params.userRequest,'userRequest'),typeof params.description==='string'?params.description:''));
         }
-        case 'apps.presentation.manage_saved':return output(this.manageSaved(params));
+        case 'apps.presentation.manage_saved':return output(params.kind==='component'&&params.expectedRevision!==undefined&&this.authoring?this.authoring.manageSavedComponent(sessionId,{componentId:String(params.id),expectedRevision:Number(params.expectedRevision),action:params.action,title:params.name} as never):this.manageSaved(params));
         default:fail('CAPABILITY_NOT_FOUND','Unknown shared presentation action.');
       }
     }catch(error){return {status:'failed',invocationId:request.invocationId,traceId:request.traceId,error:problem((error as AppsPresentationError).code??'PRESENTATION_FAILED',error instanceof Error?error.message:String(error))};}

@@ -1,13 +1,20 @@
 {
   "name": "dsh-plugin-apps-bundle",
-  "version": "1.0.0-candidate.6",
-  "description": "Apps V1 candidate: one native shell and logical Hallmark/Notes projections; single companion Runtime",
+  "version": "1.0.0-candidate.10",
+  "description": "Apps A.2 candidate: native chat references, verified component authoring and one companion Runtime",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
     ".": "./lib/index.js",
     "./client": "./client/client.js",
+    "./runtime": "./lib/runtime.js",
+    "./authoring/build": "./lib/apps-authoring-build.js",
+    "./authoring/preview": "./lib/apps-authoring-preview.js",
     "./package.json": "./package.json"
+  },
+  "bin": {
+    "dsh-apps-authoring-build": "./lib/apps-authoring-build.js",
+    "dsh-apps-authoring-preview": "./lib/apps-authoring-preview.js"
   },
   "files": [
     "lib",

@@ -1,10 +1,92 @@
-# Apps V1 离线迁移、回退与资产清理运行手册
+# Apps 数据升级、备份、回退与清理
+
+A.2 Runtime 使用schema4；candidate.9 / Runtime candidate.7 已官方覆盖安装、正常重开和读取健康，694/694检查通过。candidate.7阶段已将实际schema3迁入新schema4，116资产/原集合计数保留；完整备份/核验284文件/25集合、新根恢复404可信映射、入口与唯一writer已执行。更新9前另做294文件/25集合完整备份，新Runtime核对后正常重开，profile/dataDirectory未再次切换。**这些步骤与全部数据切换验收分开记录。** 价格/库存本次四个写动作及独立读回恢复通过；之后真实Agent创作已结束，构建/预览/读图迭代有证据但原生挂载失败。该轮新增创作状态尚需备份/恢复和对账；局部视觉修复仅在隔离fixture通过、未安装。附件、条件回退和上品仍未验收，见 [A.2 执行记录](apps-a2-execution.md)。
+
+candidate.10现已打包，Host10 / Runtime7；706全仓、类型检查、26视觉fixture、独立包内构建/预览和5GET/0mutation smoke通过，143源输入无差异。Runtime JS仍为 `2264139fc4404a11dbe9fdde00a374b541d1bda1544ef784483bfb6547cc9844`，客户端展示修复未变更Runtime协议/数据schema，不代表重新迁移或备份验收。覆盖ValidateOnly通过，实际桌面仍9，已请求正常退出；尚未执行9→10安装或原生挂载复验。备份/恢复及原数据历史继续按原范围保留。
+
+本页先列当前 schema3→4 和 schema4 全量备份命令，后面保留旧 schema2→3 的 V1 历史。不要把旧目标 schema3 命令直接当成 A.2 Runtime 可运行数据。
+
+## A.2：离线检查与工具身份
+
+命令从核实过源码/版本的本仓库根目录执行，Node 须支持 node:sqlite 与原生 TypeScript。安装包中的 build/preview CLI 使用 Host guidance 返回的 Node 执行方式；本页的 `migrate-apps-schema4.mjs`、`backup-apps.mjs` 为**仓库维护工具**。完整备份模块/CLI 不在 candidate.7 的打包 sourceInputs 或安装入口中，须独立记录其源码摘要、测试日志与运行身份，不能拼接一个不存在的已安装 lib 备份命令。
+
+操作前确认实际 schema、源数据/资产根、新目标路径、连接版本和当前进程。冻结源入口并停止所有 Runtime writer，等待实际执行排空；对 queued/dispatching/pending/unknown 按原 operationId/taskId/requestId 只读核实。未决结果不能靠重发写入或删除记录“解决”。正常退出官方桌面后再执行官方同名插件更新；不要强关用户会话，也不要凭旧 URL 假定服务停止。
+
+`--offline-confirmed` / `--offline` 是操作者明确的停写声明，不会停止进程、屏蔽入口或保证所有业务网络写入都已停。writer lease 还须核对 PID/进程/监听；遇到残留先查所有者，不能删除 lease 绕过唯一 writer。源、备份、目标不能重叠；目标必须新目录，失败产物留作诊断，不覆盖或递归清空来重试。
+
+## A.2：schema3→4 独立迁移
+
+下面均为路径示例，须替换成已核实的离线源与全新目标；不要指向原 Hallmark 业务数据库。首次 dry-run：
+
+```powershell
+node scripts/migrate-apps-schema4.mjs --source "E:/offline-apps-schema3" --target "E:/new-apps-schema4" --offline-confirmed
+```
+
+审阅来源指纹、集合/资产清单、源/目标 schema 和缺失/未知问题；同一离线源 apply：
+
+```powershell
+node scripts/migrate-apps-schema4.mjs --source "E:/offline-apps-schema3" --target "E:/new-apps-schema4" --offline-confirmed --apply
+```
+
+程序生成一致 SQLite 备份（包含已提交 WAL）和完整资产 manifest，复制到独立目标后事务新增六个 authoring 集合。原 19 个集合、view/history/source 身份保留；旧构建不会凭迁移变成 verified，历史仍 legacy_unverified，不发明 BuildReceipt/PreviewReceipt。保留迁移 ID、源 fingerprint、每集合对账、文件 hash 与源未变校验。正常 Runtime 打开既有 schema3 会拒绝并要求离线升级，不在原库上悄悄执行新 DDL。
+
+schema2 源先执行下方历史 2→3 工具到独立中间目录，再按当前 3→4 工具执行；分别记录两次迁移，不跳过旧 unknown/quarantine 检查。
+
+若必须恢复迁移时的 schema3 备份，只可恢复到另一新目录：
+
+```powershell
+node scripts/migrate-apps-schema4.mjs --restore "E:/verified-schema3-backup" --target "E:/new-restored-schema3"
+```
+
+该命令恢复格式3，不启动旧代码、不切入口。新库已有数据增量时不能据此恢复旧 writer；先冻结并导出增量，按条件回退程序判断兼容读取/回迁范围。
+
+## A.2：schema4 完整备份、核验与恢复
+
+完整备份与升级备份分开：完整备份保存 schema4 数据、25 类集合、SQLite/WAL 一致状态、源码/dist、历史版本、外部可编辑工作副本、日志、签名构建/预览报告、PNG、UI 状态及 runner key。不能只复制 apps.db 或仅导出 JSON 来宣称可恢复创作链。
+
+```powershell
+node scripts/backup-apps.mjs --mode dry-run --source "E:/offline-apps-schema4" --backup "E:/private-backups/apps-schema4-run1" --offline --output "E:/operator/backup-dry-run.json"
+node scripts/backup-apps.mjs --mode apply --source "E:/offline-apps-schema4" --backup "E:/private-backups/apps-schema4-run1" --offline --output "E:/operator/backup-applied.json"
+node scripts/backup-apps.mjs --mode verify --backup "E:/private-backups/apps-schema4-run1" --output "E:/operator/backup-verified.json"
+node scripts/backup-apps.mjs --mode restore --backup "E:/private-backups/apps-schema4-run1" --target "E:/new-restored-schema4" --output "E:/operator/backup-restored.json"
+```
+
+dry-run 不代替 apply；verify 不代替运行恢复；restore 只创建新目标，不改源或桌面配置。每个 output 须新文件且位于源/备份/恢复目录之外；命令拒绝覆盖输出。依次检查退出状态和报告，不在前一步失败后继续串行执行下一步。完整 manifest 保留每个文件字节数/hash、集合逻辑指纹与引用；缺图/缺锁/缺归档/缺 key、未知表/外部引用、篡改、路径越界、非受控符号链接或备份期间源变化会拒绝通过。
+
+**依赖缓存排除有边界。** 仅明确识别为可编辑工作副本的 node_modules 可重新生成缓存被排除，不跟随其中 junction/symlink，manifest 列出排除路径和原因。Runtime 内的工作副本须有明确 draft/view 所有权或已认证恢复映射，且位于 component-workspace/restored-workspaces；不是对全 Runtime 的 node_modules 通配忽略。不可变源码归档、dist、回执/截图和其他 Runtime 目录保持严格清单。若持久资产/证据明确引用被排除依赖中的文件，则拒绝备份，不能静默遗漏。
+
+source、dist、package.json 和原锁文件仍保存。原锁/依赖路径适用时恢复后执行 npm ci（或相应包管理器），再新 attempt 构建；不要把“恢复 dist 可读”当成“编辑依赖已安装”。file SDK 的相对锁路径在新根可能失效，不能保证任意恢复目录直接 npm ci 成功：保留原 source/lock，进入显式新 attempt，核实当前 guidance 的 SDK 路径后 npm install 生成新锁、新输入 digest 并真实重建，旧归档/签名回执保持原字节。
+
+恢复会加入哈希锚定的 evidence_relocations，映射原绝对报告、源码工作目录和资产引用到新根；原不可变 JSON/签名报告字节不重写，即使旧目录仍在也使用已验证的新映射。每次访问核对 manifest/hash/映射边界。恢复目录再次备份/恢复保留别名历史；缺失、冲突、篡改映射或未在 manifest 中的引用不猜新路径。
+
+完整备份包含数据库连接配置、service-key、runner 私有签名 key 和业务/会话材料，必须私有保管。对外发布摘要与 hash，不提交备份目录、完整 manifest、PNG 中的真实业务或密钥；恢复不输出 key 内容。
+
+实际旧工作副本依赖junction首轮安全拒绝已保留；限定排除规则与显式证据引用负例修复后，实施人/独立V各17/17、当时全仓655/655，实际完整备份/校验/恢复均已通过相应步骤。后续candidate.9另有694/694，不改写旧备份执行版本。备份ID为 `runtime-backup:c3131e247c1b340297f43e36efd9afad7780e0b5261c77bb3d3048f1a05cc1dd`；可核对hash与范围见执行页，不用步骤通过代签DATA-CUTOVER全部断言。
+
+## A.2：唯一 writer、入口切换与条件回退
+
+离线迁移/恢复核对完成后，保存新库 rollback baseline，审阅原格式和新 schema4 的增量，再按 [A.2 验收范围](requirements/A2/docs/03_ACCEPTANCE.md)记录 CORE、AUTHORING、BUSINESS-WRITE、DATA-CUTOVER。maintenance CLI 识别既有 schema3/4 并只读检查；GC apply 前按真实格式取得 lease，不隐式迁移。
+
+```powershell
+node scripts/apps-maintenance.mjs --directory "E:/new-apps-schema4" --mode baseline --output "E:/operator/schema4-rollback-baseline.json"
+node scripts/apps-maintenance.mjs --directory "E:/new-apps-schema4" --mode gc --output "E:/operator/schema4-gc-plan.json"
+```
+
+确认目标 Runtime 可由准确安装包读取，配置指向新 dataDirectory/明确 serviceUrl，实际新 Runtime 单 writer；核对旧进程/监听关闭、来源/绑定/组件/history/操作和所有资产，再正常重开官方桌面并读取实际内存 identity。配置切换不是改价/库存/上品的业务验收，scope 分开记录。脚本不会自动代办服务停启或桌面配置修改。
+
+无增量且无未决操作时，依据已验证备份讨论旧格式恢复；有新增 succeeded/unknown、用户资产/保存版本/绑定或 authoring 状态增量时必须导出并停止盲目恢复旧库写入。先使用能读新格式的兼容代码核实数据；恢复旧插件不等于回退 schema，也不能撤销外部业务。维护 baseline/rollback 会比较新增 authoring 摘要和导出范围。
+
+GC 默认 dry-run；attempt/receipt/UI 状态、pending candidate、active/last-good/previous-good、保存历史和外部引用均参与保留。审阅最终绝对路径和同一 plan，停 writer 后才 apply；引用或状态变化、越界、符号链接、过期计划拒绝执行。关闭 view、删除库项与物理 purge 分开，保留仍活的历史/工作副本/源码。
+
+## 历史 V1：schema2→3 迁移与夹具记录
+
+以下保留 Apps V1 的 schema2→3 工具、旧回退/GC 程序与当时证据。文中的“当前”“NOT_RUN”和 schema3 指该历史阶段；本轮 A.2 的实际状态和 schema4 完整备份以上文及执行记录为准。旧工具仍用于明确 schema2 来源，不用作新 schema4 数据的格式降级。
 
 本手册对应 SPEC 的 PROC-MIG-01、PROC-RBK-01，以及 TODO-023/024/025。实现版本为本仓库 Apps V1 候选代码；Node 需要支持 `node:sqlite` 和原生 TypeScript（本次夹具运行版本 v24.12.0）。命令均从 `dsh-hallmark-app` 目录运行。
 
 当前证据来自合成 schema-2 副本，证明迁移、备份、回退判定、GC 和实际 Runtime 组合根的代码行为。真实业务库、Host 安装、外部业务写入与生产切换均为 `NOT_RUN`。夹具通过不表示 G0–G4 或生产发布已获准；实际切换仍要求这些门禁的独立证据。
 
-## PROC-MIG-01：准备副本并检查
+## 历史 V1：PROC-MIG-01：准备副本并检查
 
 1. 停止旧入口接收新请求和所有旧业务写入。核查未决操作的原始 operationId/taskId/requestId，保留只读回查结果。软件切换不会撤销外部业务。
 2. 确定离线源数据库、资产根和一个新的目标目录。此实现要求目标独立于源资产目录，源库保持 schema 2；不能把目标指向原目录或其子目录。
@@ -33,7 +115,7 @@ node scripts/migrate-apps.mjs --source "E:/offline-copy/app.db" --source-directo
 
 逐表核对 `counts.source = counts.mapped + counts.quarantined`；检查每条 `records` 的源 ID 和目标 ID、26 项 `legacyTools`、`datasetAliases.canonicalBinding`、所有文件 SHA256、`assetErrors` 与 `unresolvedOperationIds`。任何未知工具/连接/记录形状、孤儿入口、无法确认的 view owner 或缺失历史版本均阻止 apply。原记录保留在 Provider 命名空间或完整数据库备份中，报告列出隔离原因，不能把隔离数量写成转换成功。
 
-## 一致备份和离线 apply
+## 历史 V1：一致备份和离线 apply
 
 完成审阅后，对同一离线副本执行：
 
@@ -55,7 +137,7 @@ apply 取得目标 `runtime-writer.json` 独占 lease，使用 SQLite backup API
 
 未决旧操作保留原 operationId 并以 unknown/inspect_only 导入，不会重发旧 mutation。内部领域证据和 Runtime 记录使用同一 operationId，原 taskId/requestId 和来源记录可追踪。pending-closures 的会话不重新启用。
 
-## 验证与切换门禁
+## 历史 V1：验证与切换门禁
 
 切换前在隔离目录验证 strict `list_saved`、历史 source/dist/manifest、原快照字段、连接绑定和所有操作映射；不能以组件名称猜测资源匹配。生成真实 G0–G4、唯一 writer 和未决操作核查文件，例如：
 
@@ -77,7 +159,7 @@ node scripts/apps-maintenance.mjs --directory "E:/apps-candidate" --mode cutover
 
 工具只判定证据，不启动、停止或切换服务。任何 gate 未验证、旧 writer 未停止、writer 数量不为 1、迁移未验证或存在未解释操作时 `allowed=false`。实际切换记录应附 cutoverAt、候选包版本、schema 版本、connectionId、备份 ID、进程身份及 Runtime identity。
 
-## PROC-RBK-01：冻结与有条件回退
+## 历史 V1：PROC-RBK-01：冻结与有条件回退
 
 正式切换前保存基线：
 
@@ -98,7 +180,7 @@ node scripts/apps-maintenance.mjs --directory "E:/apps-candidate" --mode rollbac
 
 报告总是 `freezeRequired=true`、`externalBusinessReversed=false`。没有充分证据时保持冻结；反向业务操作必须经应用显式能力产生新的操作记录。
 
-## 引用 GC 与存储策略
+## 历史 V1：引用 GC 与存储策略
 
 默认仅列出清理计划：
 
@@ -116,7 +198,7 @@ node scripts/apps-maintenance.mjs --directory "E:/apps-candidate" --mode gc --pl
 
 apply 取得独占 lease，验证记录状态摘要与候选引用，拒绝过期计划、路径变化、符号链接和越界目标。无引用 view 的 source 引用解除后，其 build 可在下一次 dry-run 重新评估。操作、历史版本及迁移证据不会被清理。writer lease 残留时应先核查进程，不自动删除 lease 规避唯一 writer。
 
-## 可复现证据
+## 历史 V1：可复现证据
 
 ```powershell
 $env:APPS_MIGRATION_EVIDENCE_DIR = "E:/project/deepseek_h/dsh-hallmark-app/evidence/apps-v1-20261007/P5"

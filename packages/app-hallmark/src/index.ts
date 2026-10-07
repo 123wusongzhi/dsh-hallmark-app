@@ -4,9 +4,14 @@ import { TOOL_DEFINITIONS } from '../../contracts/src/index.ts';
 import type { ToolResult, InvocationContext } from '../../contracts/src/index.ts';
 import type { CoreStore, CoreClient, CoreBroker, RecordData } from '../../core/src/types.ts';
 import { HallmarkDomain } from './domain.ts';
+import { validateLoopbackUrl } from '../../hallmark-adapter/client.ts';
 export { HallmarkStorePort } from './store.ts';
 export type { ProviderRecordStore } from './store.ts';
 export type { HallmarkDomainOptions } from './domain.ts';
+export function validateHallmarkConnection(config:JsonValue):void {
+ if(!config||typeof config!=='object'||Array.isArray(config)||typeof config.baseUrl!=='string')throw new Error('EXPLICIT_HALLMARK_BACKEND_REQUIRED');
+ validateLoopbackUrl(config.baseUrl);
+}
 
 export const HALLMARK_MANIFEST:AppManifest={manifestVersion:1,appId:'hallmark',displayName:'Hallmark',providerPackage:'app-hallmark',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:['store','product','collected-item','category','operation']};
 const domainCapabilityIds:Record<string,string>={
@@ -70,9 +75,9 @@ function apiDescriptor(route:ApiRoute):CapabilityDescriptor{
 }
 export const HALLMARK_DESCRIPTORS:readonly CapabilityDescriptor[]=[...Object.keys(domainCapabilityIds).map(descriptor),...HALLMARK_API_OPERATIONS.map(apiDescriptor)];
 export interface HallmarkProviderOptions {
- store:CoreStore|((connectionId:string)=>CoreStore);
- client:CoreClient|((connectionId:string)=>CoreClient);
- broker:CoreBroker|((connectionId:string)=>CoreBroker);
+ store:CoreStore|((connectionId:string,configRevision?:number)=>CoreStore);
+ client:CoreClient|((connectionId:string,configRevision?:number)=>CoreClient);
+ broker:CoreBroker|((connectionId:string,configRevision?:number)=>CoreBroker);
 }
 const isObject=(value:unknown):value is RecordData=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const state=(legacy:string):OperationState=>legacy==='running'?'dispatching':legacy==='pending'?'pending':['unknown','succeeded','failed','partial','cancelled'].includes(legacy)?legacy as OperationState:'unknown';
@@ -83,14 +88,16 @@ export class HallmarkProvider implements AppProvider {
  readonly options:HallmarkProviderOptions;
  private domains=new Map<string,HallmarkDomain>();
  constructor(options:HallmarkProviderOptions){this.options=options;}
- private domain(connectionId:string):HallmarkDomain{let domain=this.domains.get(connectionId);if(!domain){const resolve=<T>(value:T|((id:string)=>T)):T=>typeof value==='function'?(value as (id:string)=>T)(connectionId):value;domain=new HallmarkDomain({store:resolve(this.options.store),client:resolve(this.options.client),broker:resolve(this.options.broker)});this.domains.set(connectionId,domain);}return domain;}
+ private domain(connectionId:string,configRevision=1):HallmarkDomain{const key=canonicalJson([connectionId,configRevision]);let domain=this.domains.get(key);if(!domain){const resolve=<T>(value:T|((id:string,revision?:number)=>T)):T=>typeof value==='function'?(value as (id:string,revision?:number)=>T)(connectionId,configRevision):value;domain=new HallmarkDomain({store:resolve(this.options.store),client:resolve(this.options.client),broker:resolve(this.options.broker)});this.domains.set(key,domain);}return domain;}
+ /** Runtime calls this only after the connection has drained; evidence stays in its original generation. */
+ invalidateConnection(connectionId:string):void {for(const id of this.domains.keys())if((JSON.parse(id) as [string,number])[0]===connectionId)this.domains.delete(id);}
  private failure(context:ExecutionContext,code:string,message:string):CapabilityResult{return {invocationId:context.request.invocationId,traceId:context.request.traceId,status:'failed',error:{code,message,retryPolicy:'never'}};}
  async execute(context:ExecutionContext):Promise<CapabilityResult>{
   const {request}=context,descriptor=this.descriptors.find(row=>row.capabilityId===request.capabilityId&&row.version===request.capabilityVersion);
   if(request.appId!=='hallmark'||!descriptor)return this.failure(context,'CAPABILITY_NOT_FOUND','Hallmark 能力或精确版本未登记。');
   if(!isObject(request.input))return this.failure(context,'INPUT_SCHEMA_INVALID','Hallmark 输入须为对象。');
   if(descriptor.effect==='mutation'&&!context.operationId)return this.failure(context,'OPERATION_ID_REQUIRED','变更必须先由 Runtime 持久化操作身份。');
-  const domain=this.domain(request.connectionId),args:RecordData={...request.input};
+  const domain=this.domain(request.connectionId,context.configRevision),args:RecordData={...request.input};
   const source=request.source,sessionId='sessionId' in source?source.sessionId:`runtime:${request.connectionId}`;
   const legacyContext:InvocationContext={sessionId,signal:context.signal,...(context.operationId?{operationId:context.operationId}:{}),...(typeof args.userRequest==='string'?{userRequest:args.userRequest}:{})};
   if(descriptor.effect==='mutation')args.clientOperationKey=canonicalJson([request.appId,request.connectionId,request.capabilityId,request.idempotencyKey]);
@@ -108,7 +115,7 @@ export class HallmarkProvider implements AppProvider {
   let operationRef=legacy.operation?{operationId:legacy.operation.operationId,state:state(legacy.operation.state)}:context.operationId?{operationId:context.operationId,state:'unknown' as const}:undefined;
   const error=(fallback:string,retryPolicy:FailureInfo['retryPolicy']):FailureInfo=>({code:legacy.error?.code==='IDEMPOTENCY_KEY_CONFLICT'?'IDEMPOTENCY_CONFLICT':legacy.error?.code??fallback,message:legacy.error?.message??'Hallmark 未取得业务结果证据。',retryPolicy,...(legacy.error?.retryAfterMs!==undefined?{retryAfterMs:legacy.error.retryAfterMs}:{})});
   let provenance:DataProvenance[]|undefined;
-  if(legacy.provenance||legacy.metricBasis){const old=legacy.provenance,input:RecordData=isObject(request.input)?request.input:{},snapshot=input.storeId?this.domain(request.connectionId).options.store.get('snapshots',`store_products:${input.storeId}`):undefined;provenance=[{appId:'hallmark',connectionId:request.connectionId,sourceKind:old?.source==='hallmark_compute'?'derived':old?.source==='app_snapshot'||old?.source==='hallmark_snapshot'?'snapshot':'application',sourceRef:old?.endpoint??descriptor?.capabilityId??request.capabilityId,fetchedAt:old?.fetchedAt??snapshot?.lastSuccessAt??new Date().toISOString(),sourceDataTime:old?.dataTime??null,freshness:snapshot?.state==='failed'?'stale':'unknown',...(legacy.metricBasis?{metricBasis:legacy.metricBasis}:{})}];}
+  if(legacy.provenance||legacy.metricBasis){const old=legacy.provenance,input:RecordData=isObject(request.input)?request.input:{},snapshot=input.storeId?this.domain(request.connectionId,context.configRevision).options.store.get('snapshots',`store_products:${input.storeId}`):undefined;provenance=[{appId:'hallmark',connectionId:request.connectionId,sourceKind:old?.source==='hallmark_compute'?'derived':old?.source==='app_snapshot'||old?.source==='hallmark_snapshot'?'snapshot':'application',sourceRef:old?.endpoint??descriptor?.capabilityId??request.capabilityId,fetchedAt:old?.fetchedAt??snapshot?.lastSuccessAt??new Date().toISOString(),sourceDataTime:old?.dataTime??null,freshness:snapshot?.state==='failed'?'stale':'unknown',...(legacy.metricBasis?{metricBasis:legacy.metricBasis}:{})}];}
   const common={...base,...(provenance?{provenance}:{}),...(operationRef?{operation:operationRef}:{})};
   let result:CapabilityResult;
   if(legacy.status==='ok')result={...common,status:'ok',data:legacy.data as JsonValue};
@@ -124,7 +131,7 @@ export class HallmarkProvider implements AppProvider {
   return result;
  }
  async inspect(operationId:string,context:ExecutionContext):Promise<CapabilityResult>{
-  const domain=this.domain(context.request.connectionId),legacy=await domain.writes.get(operationId);
+  const domain=this.domain(context.request.connectionId,context.configRevision),legacy=await domain.writes.get(operationId);
   return this.convert(legacy,context,{...descriptor('get_operation'),capabilityId:context.request.capabilityId});
  }
  async dispose():Promise<void>{await Promise.all([...this.domains.values()].map(domain=>domain.dispose()));}

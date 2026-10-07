@@ -1,0 +1,18 @@
+flowchart TB
+  %% FIG-08: 组件交互分流：不是每次点击都找 Agent | 目标 / 桥接行为图
+  click["用户在组件中操作"]
+  classify{"交互类型"}
+  local["本地 UI<br/>排序 / 筛选 / 选中"]
+  invoke["invokeCapability<br/>明确业务动作 → Runtime"]
+  context["updateContext<br/>保存结构化状态，不唤醒模型"]
+  agent["requestAgent<br/>原生会话任务输入"]
+  log["DSH 正式持久会话机制<br/>消费时可重建模型输入"]
+  fallback["宿主不支持：明确报错<br/>可附加到输入框，由用户发送"]
+  click -->|"判定"| classify
+  classify -->|"本地"| local
+  classify -->|"动作"| invoke
+  classify -->|"上下文"| context
+  classify -->|"任务"| agent
+  context -->|"消费时记录"| log
+  agent -->|"提交"| log
+  agent -->|"不支持"| fallback

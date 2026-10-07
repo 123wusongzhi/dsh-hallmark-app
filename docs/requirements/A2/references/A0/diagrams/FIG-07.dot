@@ -1,0 +1,20 @@
+digraph G {
+ graph [bgcolor="white", rankdir=TB, pad=0.18, nodesep=0.35, ranksep=0.48, splines=polyline, fontname="Noto Sans CJK SC", fontsize=12, color="#8090a0"];
+ node [shape=box, style="rounded,filled", fillcolor="#f5f7fa", color="#34506b", fontname="Noto Sans CJK SC", fontsize=11, margin="0.16,0.10", penwidth=1.2];
+ edge [color="#34506b", fontname="Noto Sans CJK SC", fontsize=9, arrowsize=0.7];
+
+ w[label="可编辑工程 directory
+TSX / CSS / lockfile"];
+ build[label="构建命令
+DSH 文件与命令工具执行"];
+ bid[label="buildId
+不可变源码+dist 清单"];
+ view[label="viewId
+会话草稿 / 引用构建与绑定"];
+ saved[label="componentId + revision
+显式保存的资产版本"];
+ copy[label="新工作副本
+旧版本仍保持不变"];
+ w->build[label="编辑后编译"];build->bid[label="登记已有构建"];bid->view[label="打开 / 更新此 view"];view->saved[label="显式 save + expectedRevision"];saved->copy[label="checkout 历史或当前版本"];copy->w[label="新目录编辑"];
+
+}

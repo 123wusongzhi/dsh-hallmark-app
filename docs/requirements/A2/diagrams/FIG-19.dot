@@ -1,0 +1,28 @@
+digraph G {
+graph [rankdir=TB, bgcolor="white", pad="0.20", nodesep="0.30", ranksep="0.40", splines=polyline, outputorder=edgesfirst];
+node [shape=box, style="rounded,filled", fontname="Noto Sans CJK SC", fontsize=14, margin="0.15,0.10", penwidth=1.3];
+edge [fontname="Noto Sans CJK SC", fontsize=10, color="#5B7292", arrowsize=0.7, penwidth=1.2];
+base [label="原 TST-001..048\n新版本回归 / 原状态保留", fillcolor="#EAF3FF", color="#3265A3"];
+new [label="新 TST-049..080\n新创作与运行验收", fillcolor="#FFF3DF", color="#C47724"];
+e [label="证据身份过滤\ncommit / 版本 / scope / SHA", fillcolor="#FFF7E8", color="#A87527", shape=diamond];
+bad [label="缺证据 / 版本不符 / 未运行\n不代签，返回对应工作包", fillcolor="#FDEEEA", color="#B05243"];
+core [label="CORE\n基础协议 / 实际 Host / 兼容", fillcolor="#EAF3FF", color="#3265A3"];
+author [label="AUTHORING\n原 @ / 真实源码与预览\n原 Agent / 保存重开", fillcolor="#FFF3DF", color="#C47724"];
+biz [label="BUSINESS-WRITE\n每个动作真实回执与核实", fillcolor="#FFF3DF", color="#C47724"];
+mig [label="DATA-CUTOVER\n真实迁移 / 唯一 writer / 回退", fillcolor="#FFF3DF", color="#C47724"];
+gate [label="本次承诺范围\n全部强制项均满足？", fillcolor="#FFF7E8", color="#A87527", shape=diamond];
+candidate [label="仅已验范围的候选\n其余 NOT_ACCEPTED", fillcolor="#FDEEEA", color="#B05243"];
+approved [label="A / V / R 明确签认\n包 hash与运行identity一致", fillcolor="#F3F5F8", color="#6A778C"];
+base -> e [label="E01"];
+new -> e [label="E02"];
+e -> bad [label="E03 不合格"];
+e -> core [label="E04"];
+core -> author [label="E05"];
+core -> biz [label="E06"];
+core -> mig [label="E07"];
+author -> gate [label="E08"];
+biz -> gate [label="E09"];
+mig -> gate [label="E10"];
+gate -> candidate [label="E11 否"];
+gate -> approved [label="E12 是"];
+}

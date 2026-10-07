@@ -1,0 +1,22 @@
+digraph G {
+ graph [bgcolor="white", rankdir=TB, pad=0.18, nodesep=0.35, ranksep=0.48, splines=polyline, fontname="Noto Sans CJK SC", fontsize=12, color="#8090a0"];
+ node [shape=box, style="rounded,filled", fillcolor="#f5f7fa", color="#34506b", fontname="Noto Sans CJK SC", fontsize=11, margin="0.16,0.10", penwidth=1.2];
+ edge [color="#34506b", fontname="Noto Sans CJK SC", fontsize=9, arrowsize=0.7];
+
+ source[label="原应用
+商品 / 订单 / 原始 Note
+业务事实所有者"];
+ provider[label="Provider
+领域解释 / remoteRef / inspect"];
+ runtime[label="Runtime
+连接 / 调用记录 / 数据集
+共享状态唯一写入者"];
+ artifacts[label="组件版本与绑定
+componentId / revision"];
+ assets[label="构建文件
+buildId / 文件哈希"];
+ session[label="DSH 原生会话记录
+模型输入与工具结果"];
+ source->provider[label="源数据与完成证据"];provider->runtime[label="原样字段 + provenance"];artifacts->runtime[label="绑定引用，不复制业务权威"];artifacts->assets[label="不可变构建引用"];runtime->session[label="工具结果 / 正式上下文投影"];
+
+}

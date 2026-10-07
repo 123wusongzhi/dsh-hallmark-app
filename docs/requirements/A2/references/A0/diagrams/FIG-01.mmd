@@ -1,0 +1,18 @@
+flowchart TB
+  %% FIG-01: 现有架构：Hallmark 中包含公共平台能力 | 现状 / cb871b4
+  a["DSH 原生会话 / Agent"]
+  b["dsh-plugin Host / Client<br/>工具 + 应用目录 + SourceFrame"]
+  c["本机 Hallmark 能力服务<br/>service/main.ts"]
+  d["AppCore<br/>业务动作 + 组件管理混合分发"]
+  e["HallmarkClient / TaskBroker<br/>原后端适配"]
+  f["PresentationManager<br/>SourceComponentStore"]
+  g["AppStore / app.db<br/>SCHEMA_VERSION = 2"]
+  h["原 Hallmark 后端<br/>业务事实来源"]
+  a -->|"原生工具 / 界面事件"| b
+  b -->|"HTTP"| c
+  c -->|"invoke"| d
+  d -->|"业务"| e
+  d -->|"展示"| f
+  d -->|"状态"| g
+  f -->|"保存"| g
+  e -->|"API"| h

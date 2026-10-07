@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dsh-apps:proposed:preview-receipt:1",
+  "title": "拟新增 PreviewReceipt；还须校验build、文件hash、覆盖集合和实际断言",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "receiptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attemptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "buildReceiptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "buildId": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "protocol": {
+      "const": "dsh.apps.component.v2"
+    },
+    "mode": {
+      "enum": [
+        "fixture",
+        "live_readonly"
+      ]
+    },
+    "runnerVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finishedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "viewportResults": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contentWidthCssPx": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "heightCssPx": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "deviceScaleFactor": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "screenshot": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "path",
+              "sha256",
+              "bytes"
+            ],
+            "additionalProperties": false
+          },
+          "pageErrors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "unhandledRejections": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "failedRequests": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "bridgeReady": {
+            "type": "boolean"
+          },
+          "assertionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "id",
+          "contentWidthCssPx",
+          "heightCssPx",
+          "deviceScaleFactor",
+          "screenshot",
+          "pageErrors",
+          "unhandledRejections",
+          "failedRequests",
+          "bridgeReady",
+          "assertionIds"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "assertionResults": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "expected": {
+            "type": "string",
+            "minLength": 1
+          },
+          "actual": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "PASS",
+              "FAIL",
+              "NOT_RUN",
+              "BLOCKED"
+            ]
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "path",
+                "sha256",
+                "bytes"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "required",
+          "expected",
+          "actual",
+          "status",
+          "evidenceRefs"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "verdict": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "INCOMPLETE"
+      ]
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "receiptId",
+    "attemptId",
+    "buildReceiptId",
+    "buildId",
+    "protocol",
+    "mode",
+    "runnerVersion",
+    "startedAt",
+    "finishedAt",
+    "viewportResults",
+    "assertionResults",
+    "verdict"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "PASS"
+          }
+        },
+        "required": [
+          "verdict"
+        ]
+      },
+      "then": {
+        "properties": {
+          "viewportResults": {
+            "minItems": 2,
+            "items": {
+              "properties": {
+                "pageErrors": {
+                  "maxItems": 0
+                },
+                "unhandledRejections": {
+                  "maxItems": 0
+                },
+                "bridgeReady": {
+                  "const": true
+                }
+              }
+            }
+          },
+          "assertionResults": {
+            "items": {
+              "if": {
+                "properties": {
+                  "required": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "required"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "status": {
+                    "const": "PASS"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

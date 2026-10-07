@@ -1,11 +1,11 @@
 {
-  "releaseId": "apps-v1-20261007",
-  "bundleVersion": "1.0.0-candidate.6",
-  "hostPluginVersion": "1.0.0-candidate.6",
-  "runtimeVersion": "1.0.0-candidate.4",
+  "releaseId": "apps-a2-20261007",
+  "bundleVersion": "1.0.0-candidate.10",
+  "hostPluginVersion": "1.0.0-candidate.10",
+  "runtimeVersion": "1.0.0-candidate.7",
   "transportMajor": 1,
   "catalogSchemaVersion": 1,
-  "databaseSchemaVersion": 3,
+  "databaseSchemaVersion": 4,
   "providers": {
     "hallmark": "1.0.0",
     "notes": "1.0.0"
@@ -24,7 +24,8 @@
   "legacyNativeToolProjection": "explicit compatibility option; default false",
   "hostCompatibility": {
     "installedCli": "0.2.0-rc.2",
-    "liveBundleAcceptance": "NOT_RUN for candidate.6; prior candidate evidence preserved",
+    "liveBundleAcceptance": "NOT_RUN for candidate.10; candidate.9 real Agent build/preview passed but native candidate mount failed; visual and independent visible candidate discovery fixes require new desktop acceptance; prior evidence preserved",
+    "authoringCli": "standalone Node ESM build/preview entries; immutable receipts and exact attempt epoch",
     "dynamicSchema": "unsupported; fixed gateway",
     "nativeSessionAdapter": "disabled by default; explicit dsh-0.2.0-rc.2 contract opt-in with strict ACTIVE service lifecycle",
     "requestAgent": "opt-in formal queue/flush/inspect; accepted means durable queued",

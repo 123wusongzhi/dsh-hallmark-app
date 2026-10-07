@@ -1,0 +1,25 @@
+digraph G {
+ graph [bgcolor="white", rankdir=TB, pad=0.18, nodesep=0.35, ranksep=0.48, splines=polyline, fontname="Noto Sans CJK SC", fontsize=12, color="#8090a0"];
+ node [shape=box, style="rounded,filled", fillcolor="#f5f7fa", color="#34506b", fontname="Noto Sans CJK SC", fontsize=11, margin="0.16,0.10", penwidth=1.2];
+ edge [color="#34506b", fontname="Noto Sans CJK SC", fontsize=9, arrowsize=0.7];
+
+ h[label="DSH 已有能力
+Agent · tools · sessions · slots"];
+ shell[label="plugin-apps
+唯一 Apps 外壳 + AppsHost 门面"];
+ ph[label="plugin-hallmark
+原生投影 / 旧工具兼容"];
+ pn[label="plugin-notes
+原生投影"];
+ rt[label="P2 App Runtime
+唯一能力目录 + invoke + 共享展示"];
+ hp[label="Hallmark Provider
+业务适配实现"];
+ np[label="Notes Provider
+业务适配实现"];
+ h->shell[label="宿主扩展点"]; h->ph[label="插件装载"]; h->pn[label="插件装载"];
+ ph->shell[label="attachApp + 注册句柄"]; pn->shell[label="attachApp + 注册句柄"];
+ shell->rt[label="目录 / 调用 / 状态"];
+ rt->hp[label="execute / inspect"];rt->np[label="execute / inspect"];
+
+}

@@ -1,0 +1,20 @@
+flowchart TB
+  %% FIG-06: 变更操作状态机：取消与未知结果 | 目标 / 不适用于普通查询缓存
+  q["queued<br/>已落账，未分发"]
+  d["dispatching<br/>已越过分发屏障"]
+  p["pending<br/>上游接受，业务待完成"]
+  u["unknown<br/>是否完成无法证明"]
+  ok["succeeded<br/>完成证据充分"]
+  fail["failed / partial<br/>已知终态"]
+  can["cancelled<br/>仅能证明尚未产生业务效果"]
+  q -->|"分发屏障"| d
+  q -->|"发送前取消"| can
+  d -->|"接受"| p
+  d -->|"证据"| ok
+  d -->|"明确结果"| fail
+  d -->|"证据缺失"| u
+  p -->|"inspect"| ok
+  p -->|"inspect"| fail
+  p -->|"不可确认"| u
+  u -->|"inspect"| ok
+  u -->|"inspect"| fail

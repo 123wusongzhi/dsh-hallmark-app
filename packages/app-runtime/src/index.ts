@@ -3,9 +3,12 @@ import { canonicalJson, compileSchema, validateInvocation, validateResult, valid
 import type { AppProvider, CapabilityDescriptor, CapabilityResult, ExecutionContext, FailureInfo, InvocationRequest, JsonValue, SessionAppBinding, OperationState } from '../../app-contracts/src/index.ts';
 import { RuntimeStore, DATABASE_SCHEMA_VERSION } from './store.ts';
 import type { InvocationRecord, RuntimeOperation } from './store.ts';
+import { ConnectionLifecycle } from './connection-lifecycle.ts';
 export * from './store.ts';
 
 export interface AppConnection { appId: string; connectionId: string; displayName: string; config: JsonValue; configRevision: number; enabled: boolean; }
+export interface AppConnectionUpdate {appId:string;connectionId:string;expectedConfigRevision:number;displayName?:string;config?:JsonValue;enabled?:boolean;drainTimeoutMs?:number}
+export interface ConnectionLifecycleHooks {validate?:(next:AppConnection)=>void;invalidate:(previous:AppConnection,next:AppConnection)=>void}
 export type ProviderState = 'registered' | 'ready' | 'degraded' | 'stopping' | 'stopped';
 interface RegisteredProvider { provider: AppProvider; state: ProviderState; inputs: Map<string, (value: unknown) => string[]>; outputs: Map<string, (value: unknown) => string[]>; }
 function key(...values: string[]): string { return JSON.stringify(values); }
@@ -47,7 +50,7 @@ class ConnectionQueue {
 
 export class AppsRuntime {
   readonly store: RuntimeStore;
-  readonly runtimeVersion = '1.0.0-candidate.4';
+  readonly runtimeVersion = '1.0.0-candidate.7';
   readonly transportMajor = 1;
   readonly catalogSchemaVersion = 1;
   #providers = new Map<string, RegisteredProvider>();
@@ -57,6 +60,8 @@ export class AppsRuntime {
   #inflight = new Map<string, Promise<CapabilityResult>>();
   #executions = new Set<Promise<CapabilityResult>>();
   #queues = new Map<string, ConnectionQueue>();
+  #connections = new Map<string,ConnectionLifecycle>();
+  #connectionHooks = new Map<string,ConnectionLifecycleHooks>();
   #log: (event: Record<string, unknown>) => void;
   constructor(store: RuntimeStore, options: {log?: (event: Record<string, unknown>) => void} = {}) {this.store=store;this.#log=options.log??(()=>{});}
   get catalogDigest(): string { return this.#catalogDigest??=digest([...this.#capabilities.values()].map(row=>({appId:row.appId,descriptor:row.descriptor})).sort((a,b)=>a.descriptor.capabilityId.localeCompare(b.descriptor.capabilityId))); }
@@ -99,13 +104,50 @@ export class AppsRuntime {
     const items=all.slice(offset,offset+limit).map(({appId,descriptor})=>({appId,capabilityId:descriptor.capabilityId,version:descriptor.version,title:descriptor.title,effect:descriptor.effect,description:descriptor.description}));
     return {items,total:all.length,returned:items.length,nextCursor:offset+items.length<all.length?String(offset+items.length):null,catalogDigest:this.catalogDigest};
   }
-  addConnection(connection: AppConnection): AppConnection {
+  private validateConnection(connection:AppConnection):void {
     if(!this.#providers.has(connection.appId)||!connection.connectionId||!connection.displayName||!Number.isSafeInteger(connection.configRevision)||connection.configRevision<1||typeof connection.enabled!=='boolean')throw new Error('INVALID_CONNECTION');
     canonicalJson(connection.config);
     const rejectCredentials=(value:JsonValue):void=>{if(value&&typeof value==='object')for(const [name,item] of Object.entries(value)){if(/^(?:api_?key|client_?id|operator_?token|password|secret|ozoncredentials)$/i.test(name))throw new Error('CREDENTIAL_FIELD_FORBIDDEN');rejectCredentials(item);}};rejectCredentials(connection.config);
-    const previous=this.getConnection(connection.appId,connection.connectionId);
-    if(previous && connection.configRevision<=previous.configRevision)throw new Error('REVISION_CONFLICT');
+    this.#connectionHooks.get(connection.appId)?.validate?.(connection);
+  }
+  addConnection(connection: AppConnection): AppConnection {
+    this.validateConnection(connection);
+    if(this.getConnection(connection.appId,connection.connectionId))throw new Error('CONTROLLED_CONNECTION_UPDATE_REQUIRED');
     return this.store.put('connections',key(connection.appId,connection.connectionId),connection);
+  }
+  registerConnectionLifecycle(appId:string,hooks:ConnectionLifecycleHooks):void {
+    if(!this.#providers.has(appId)||this.#connectionHooks.has(appId))throw new Error('INVALID_CONNECTION_LIFECYCLE');
+    this.#connectionHooks.set(appId,hooks);
+  }
+  private lifecycle(appId:string,connectionId:string):ConnectionLifecycle {
+    const id=key(appId,connectionId);let entry=this.#connections.get(id);
+    if(!entry){entry=new ConnectionLifecycle();this.#connections.set(id,entry);}return entry;
+  }
+  connectionState(appId:string,connectionId:string){return {...this.lifecycle(appId,connectionId).state,configRevision:this.getConnection(appId,connectionId)?.configRevision??null};}
+  async updateConnection(input:AppConnectionUpdate,signal?:AbortSignal):Promise<AppConnection> {
+    const previous=this.getConnection(input.appId,input.connectionId);
+    if(!previous)throw new Error('CONNECTION_NOT_FOUND');
+    if(!Number.isSafeInteger(input.expectedConfigRevision)||input.expectedConfigRevision!==previous.configRevision)throw new Error('CONFIG_REVISION_CONFLICT');
+    const timeout=input.drainTimeoutMs??30000;if(!Number.isSafeInteger(timeout)||timeout<1||timeout>90000)throw new Error('INVALID_DRAIN_TIMEOUT');
+    const next:AppConnection={...previous,...(input.displayName!==undefined?{displayName:input.displayName}:{}),...(input.config!==undefined?{config:structuredClone(input.config)}:{}),...(input.enabled!==undefined?{enabled:input.enabled}:{}),configRevision:previous.configRevision+1};
+    this.validateConnection(next);
+    const unresolved=()=>this.store.list<RuntimeOperation>('operations').some(row=>row.appId===input.appId&&row.connectionId===input.connectionId&&['unknown','pending','dispatching'].includes(row.state));
+    if(unresolved())throw new Error('OPERATION_UNRESOLVED');
+    const gate=this.lifecycle(input.appId,input.connectionId);gate.pause();let committed=false;
+    try {
+      await gate.drain(timeout,signal);
+      if(signal?.aborted)throw new Error('CONNECTION_DRAIN_ABORTED');
+      if(unresolved())throw new Error('OPERATION_UNRESOLVED');
+      const result=this.store.transaction(()=>{
+        if(this.getConnection(input.appId,input.connectionId)?.configRevision!==input.expectedConfigRevision)throw new Error('CONFIG_REVISION_CONFLICT');
+        this.store.put('connections',key(input.appId,input.connectionId),next);
+        this.#connectionHooks.get(input.appId)?.invalidate(previous,next);
+        // Keep the last successful data as historical evidence, never present it as a read from the new backend.
+        for(const snapshot of this.store.list<{datasetId:string;canonicalBinding:{appId?:string;connectionId?:string};[name:string]:unknown}>('datasets'))if(snapshot.canonicalBinding?.appId===input.appId&&snapshot.canonicalBinding.connectionId===input.connectionId)this.store.put('datasets',snapshot.datasetId,{...snapshot,state:'unavailable',freshness:'stale',error:{code:'CONNECTION_CONFIG_CHANGED',message:'Refresh using the current connection configuration.',retryPolicy:'read_retry'}});
+        return structuredClone(next);
+      });
+      committed=true;this.#log({event:'connection_config_updated',appId:input.appId,connectionId:input.connectionId,previousConfigRevision:previous.configRevision,configRevision:next.configRevision,cacheGeneration:gate.state.cacheGeneration+1});return result;
+    }finally{gate.resume(committed);}
   }
   getConnection(appId: string, connectionId: string): AppConnection | undefined {return this.store.get('connections',key(appId,connectionId));}
   listConnections(appId?: string): AppConnection[] {return this.store.list<AppConnection>('connections').filter(row=>!appId||row.appId===appId);}
@@ -130,7 +172,8 @@ export class AppsRuntime {
     const existing=this.store.transaction(()=>{
       const previous=this.store.get<InvocationRecord>('invocations',request.invocationId);
       if(previous)return previous;
-      this.store.put('invocations',request.invocationId,{invocationId:request.invocationId,requestHash:attemptHash,request:structuredClone(request),state:'received',startedAt:new Date().toISOString(),...('runId' in request.source?{parentRunId:request.source.runId}:{})} satisfies InvocationRecord);
+      const configRevision=this.getConnection(request.appId,request.connectionId)?.configRevision;
+      this.store.put('invocations',request.invocationId,{invocationId:request.invocationId,requestHash:attemptHash,request:structuredClone(request),state:'received',startedAt:new Date().toISOString(),...(configRevision!==undefined?{configRevision}:{}),...('runId' in request.source?{parentRunId:request.source.runId}:{})} satisfies InvocationRecord);
       return undefined;
     });
     if(existing){if(existing.requestHash!==attemptHash)return failure(request,'INVOCATION_CONFLICT','Invocation ID already identifies another request.');if(existing.result)return existing.result;if(existing.operationId){const op=this.store.get<RuntimeOperation>('operations',existing.operationId);if(op)return operationResult(op,request);}return failure(request,'INVOCATION_IN_PROGRESS','This invocation has already been received.','unavailable','read_retry');}
@@ -150,6 +193,7 @@ export class AppsRuntime {
     if(registered.state!=='ready'&&registered.state!=='degraded')return failure(request,'APP_STOPPING','Provider is not accepting new calls.','unavailable','read_retry');
     const connection=this.getConnection(request.appId,request.connectionId);
     if(!connection?.enabled)return failure(request,'CONNECTION_NOT_FOUND','An explicit enabled connection is required.');
+    try{this.lifecycle(request.appId,request.connectionId).assertReady();}catch{return failure(request,'CONNECTION_UPDATING','Connection configuration is draining.','unavailable','read_retry');}
     if('sessionId' in request.source&&!this.sessionBindings(request.source.sessionId).some(row=>row.appId===request.appId&&row.connectionId===request.connectionId&&row.enabled))return failure(request,'APP_NOT_ACTIVE','This connection is not enabled in the source session.');
     if(request.source.kind==='recovery')return failure(request,'INSPECT_REQUIRED','Recovery must inspect the original operation.');
     const errors=registered.inputs.get(request.capabilityId)!(request.input);
@@ -163,12 +207,12 @@ export class AppsRuntime {
         const previous=this.store.operationByKey(request.appId,request.connectionId,request.capabilityId,request.idempotencyKey!);
         if(previous)return {previous};
         const at=new Date().toISOString();
-        const op:RuntimeOperation={operationId:randomUUID(),appId:request.appId,connectionId:request.connectionId,capabilityId:request.capabilityId,capabilityVersion:request.capabilityVersion,idempotencyKey:request.idempotencyKey!,requestHash:hash,request,state:'queued',createdAt:at,updatedAt:at};
+        const op:RuntimeOperation={operationId:randomUUID(),appId:request.appId,connectionId:request.connectionId,capabilityId:request.capabilityId,capabilityVersion:request.capabilityVersion,idempotencyKey:request.idempotencyKey!,requestHash:hash,request,state:'queued',createdAt:at,updatedAt:at,configRevision:connection.configRevision};
         this.store.put('operations',op.operationId,op);this.store.appendEvent(op.operationId,{event:'received',traceId:request.traceId,invocationId:request.invocationId,state:'queued'});return {created:op};
       });
       operation=reserved.previous??reserved.created!;
       this.store.put('invocation_operations',request.invocationId,{invocationId:request.invocationId,operationId:operation.operationId});
-      const record=this.store.get<InvocationRecord>('invocations',request.invocationId)!;this.store.put('invocations',request.invocationId,{...record,operationId:operation.operationId});
+      const record=this.store.get<InvocationRecord>('invocations',request.invocationId)!;this.store.put('invocations',request.invocationId,{...record,operationId:operation.operationId,configRevision:operation.configRevision??connection.configRevision});
       if(reserved.previous){if(operation.requestHash!==hash)return {...failure(request,'IDEMPOTENCY_CONFLICT','Intent key was already used with different normalized input or capability version.'),operation:{operationId:operation.operationId,state:operation.state}};return operationResult(operation,request);}
     }
     const controller=new AbortController();
@@ -177,10 +221,12 @@ export class AppsRuntime {
     const timer=setTimeout(()=>controller.abort(new Error('DEADLINE_EXCEEDED')),Math.max(0,remaining));
     if(remaining<=0)controller.abort(new Error('DEADLINE_EXCEEDED'));
     const queueKey=key(request.appId,request.connectionId), queue=this.#queues.get(queueKey)??new ConnectionQueue();this.#queues.set(queueKey,queue);
-    let release: (()=>void) | undefined, providerWork: Promise<CapabilityResult> | undefined;
+    let release: (()=>void) | undefined, releaseConnection:(()=>void)|undefined, providerWork: Promise<CapabilityResult> | undefined;
     try {
       release=await queue.acquire(mutation||entry.descriptor.execution.concurrency==='exclusive',controller.signal);
       if(controller.signal.aborted)throw new Error('ABORTED');
+      if(this.getConnection(request.appId,request.connectionId)?.configRevision!==connection.configRevision)throw new Error('CONNECTION_REVISION_CHANGED');
+      releaseConnection=this.lifecycle(request.appId,request.connectionId).enter();
       if(mutation){
         const unresolved=this.store.list<RuntimeOperation>('operations').find(row=>row.operationId!==operation!.operationId&&row.appId===request.appId&&row.connectionId===request.connectionId&&['unknown','pending','dispatching'].includes(row.state));
         if(unresolved){const result={...failure(request,'OPERATION_UNRESOLVED','Inspect the unresolved operation before another mutation.'),operation:{operationId:operation!.operationId,state:'failed' as const}};this.store.updateOperation(operation!.operationId,'failed',result,{blockedBy:unresolved.operationId});return result;}
@@ -188,7 +234,7 @@ export class AppsRuntime {
       }
       const record=this.store.get<InvocationRecord>('invocations',request.invocationId)!;this.store.put('invocations',request.invocationId,{...record,state:'dispatching'});
       this.log(request,'dispatch_intent',{operationId:operation?.operationId??null});
-      const context:ExecutionContext={request:structuredClone(request),signal:controller.signal,...(operation?{operationId:operation.operationId}:{}),...('runId' in request.source?{parentRunId:request.source.runId}:{})};
+      const context:ExecutionContext={request:structuredClone(request),signal:controller.signal,configRevision:connection.configRevision,...(operation?{operationId:operation.operationId}:{}),...('runId' in request.source?{parentRunId:request.source.runId}:{})};
       const execution=registered.provider.execute(context);
       providerWork=execution;
       this.#executions.add(execution);
@@ -221,7 +267,7 @@ export class AppsRuntime {
         this.store.updateOperation(operation.operationId,dispatched?'unknown':'cancelled',result);return result;
       }
       return failure(request,controller.signal.aborted?'CALL_ABORTED':'APP_SERVICE_UNAVAILABLE',error instanceof Error?error.message:'Provider unavailable','unavailable','read_retry');
-    } finally {if(release){if(providerWork)providerWork.finally(release).catch(()=>{});else release();}clearTimeout(timer);externalSignal?.removeEventListener('abort',cancel);}
+    } finally {const idle=()=>{release?.();releaseConnection?.();};if(providerWork)providerWork.finally(idle).catch(()=>{});else idle();clearTimeout(timer);externalSignal?.removeEventListener('abort',cancel);}
   }
   private unknown(request: InvocationRequest, operationId: string, code: string, message: string): CapabilityResult {return {invocationId:request.invocationId,traceId:request.traceId,status:'unknown',operation:{operationId,state:'unknown'},error:{code,message,retryPolicy:'inspect_only'}};}
   private waitForResult(work: Promise<CapabilityResult>, signal: AbortSignal): Promise<CapabilityResult> {
@@ -238,7 +284,7 @@ export class AppsRuntime {
     if(!operation)return failure(identity,'OPERATION_NOT_FOUND','No such operation.');
     const request:InvocationRequest={...operation.request,...identity,source:{kind:'recovery',operationId},deadlineAt:new Date(Date.now()+30000).toISOString()};
     const startedAt=new Date().toISOString();
-    this.store.put('invocations',request.invocationId,{invocationId:request.invocationId,requestHash:digest(request),request,state:'received',operationId,startedAt} satisfies InvocationRecord);
+    this.store.put('invocations',request.invocationId,{invocationId:request.invocationId,requestHash:digest(request),request,state:'received',operationId,startedAt,...(operation.configRevision!==undefined?{configRevision:operation.configRevision}:{})} satisfies InvocationRecord);
     this.store.put('invocation_operations',request.invocationId,{invocationId:request.invocationId,operationId});
     const work=this.inspectExisting(operation,request,signal).then(result=>{
       const row=this.store.get<InvocationRecord>('invocations',request.invocationId)!;
@@ -254,10 +300,14 @@ export class AppsRuntime {
     const provider=this.#providers.get(operation.appId), descriptor=this.describe(operation.capabilityId,operation.capabilityVersion);
     if(!provider?.provider.inspect||!descriptor)return this.unknown(request,operationId,'INSPECT_UNSUPPORTED','Provider cannot inspect this existing operation.');
     const controller=new AbortController(), abort=()=>controller.abort(signal?.reason);signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)abort();
-    const timer=setTimeout(()=>controller.abort(),30000);
+    const timer=setTimeout(()=>controller.abort(),30000);let releaseConnection:(()=>void)|undefined,providerWork:Promise<CapabilityResult>|undefined;
     try {
+      releaseConnection=this.lifecycle(operation.appId,operation.connectionId).enter();
+      if(operation.configRevision!==undefined&&this.getConnection(operation.appId,operation.connectionId)?.configRevision!==operation.configRevision)return this.unknown(request,operationId,'CONNECTION_REVISION_CHANGED','The original backend configuration is no longer active.');
       this.store.appendEvent(operationId,{event:'inspect',invocationId:request.invocationId,traceId:request.traceId});this.log(request,'inspect',{operationId});
-      const result=await this.waitForResult(provider.provider.inspect(operationId,{request,signal:controller.signal,operationId}),controller.signal);
+      providerWork=provider.provider.inspect(operationId,{request,signal:controller.signal,operationId,...(operation.configRevision!==undefined?{configRevision:operation.configRevision}:{})});
+      this.#executions.add(providerWork);providerWork.finally(()=>this.#executions.delete(providerWork!)).catch(()=>{});
+      const result=await this.waitForResult(providerWork,controller.signal);
       const errors=[...validateResult(result),...('data' in result?provider.outputs.get(operation.capabilityId)!(result.data):[])];
       if(errors.length)return this.unknown(request,operationId,'OUTPUT_SCHEMA_INVALID',errors.join('; '));
       const latest=this.store.get<RuntimeOperation>('operations',operationId)!;
@@ -267,7 +317,7 @@ export class AppsRuntime {
       const normalized:CapabilityResult=next==='unknown'?this.unknown(request,operationId,'OUTCOME_UNKNOWN','Inspection did not establish business completion.'):{...result,...identity,operation:{operationId,state:next}};
       this.store.updateOperation(operationId,next,normalized,{event:'inspect_result'});return normalized;
     } catch {return this.unknown(request,operationId,'OUTCOME_UNKNOWN','Read-only inspection is unavailable.');}
-    finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);}
+    finally{if(providerWork)providerWork.finally(()=>releaseConnection?.()).catch(()=>{});else releaseConnection?.();clearTimeout(timer);signal?.removeEventListener('abort',abort);}
   }
   async recover(): Promise<CapabilityResult[]> {
     const queued=this.store.list<RuntimeOperation>('operations').filter(op=>op.state==='queued');
@@ -289,6 +339,6 @@ export class AppsRuntime {
     for(const descriptor of row.provider.descriptors){this.#capabilities.delete(descriptor.capabilityId);for(const alias of descriptor.aliases)this.#aliases.delete(alias);}
     this.#catalogDigest=undefined;
   }
-  private log(request: InvocationRequest, event: string, extra: Record<string, unknown> = {}): void {this.#log({event,at:new Date().toISOString(),traceId:request.traceId,invocationId:request.invocationId,appId:request.appId,connectionId:request.connectionId,capabilityId:request.capabilityId,capabilityVersion:request.capabilityVersion,runId:'runId' in request.source?request.source.runId:null,...extra});}
+  private log(request: InvocationRequest, event: string, extra: Record<string, unknown> = {}): void {this.#log({event,at:new Date().toISOString(),traceId:request.traceId,invocationId:request.invocationId,appId:request.appId,connectionId:request.connectionId,configRevision:this.store.get<InvocationRecord>('invocations',request.invocationId)?.configRevision??null,capabilityId:request.capabilityId,capabilityVersion:request.capabilityVersion,runId:'runId' in request.source?request.source.runId:null,...extra});}
   async dispose(): Promise<void> {await Promise.all([...this.#providers.keys()].map(appId=>this.stopProvider(appId)));}
 }

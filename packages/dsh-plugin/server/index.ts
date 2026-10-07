@@ -47,6 +47,8 @@ export class HallmarkPlugin {
   private closed=false;
   private readonly sourceAssets:SourceAssetRoutes;
   constructor(ctx:PluginContext,config:PluginConfig={}){this.ctx=ctx;this.config=config;this.client=new AppServiceClient(config);this.closures=new ClosureOutbox(this.client.directory);this.sourceAssets=new SourceAssetRoutes(ctx,this.client,this.lifetime.signal);this.own(()=>this.sourceAssets.dispose());}
+  /** The composition reuses this asset registration owner for verified candidate and historical builds. */
+  async prepareSource(value:unknown):Promise<void>{await this.sourceAssets.prepare(value);}
   private own(dispose:()=>unknown):void{this.disposers.push(dispose);}
   private trusted(agent:AgentRef|undefined):string|undefined {
     return agent&&SESSION.test(agent.id)&&this.ctx.agents.get(agent.id)===agent?agent.id:undefined;

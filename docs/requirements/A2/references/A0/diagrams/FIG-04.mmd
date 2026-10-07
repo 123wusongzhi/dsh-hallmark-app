@@ -1,0 +1,19 @@
+flowchart TB
+  %% FIG-04: 源码依赖：箭头严格表示 import | 目标 / 依赖检查用
+  contract["app-contracts<br/>类型 / Schema / 标识"]
+  runtime["app-runtime<br/>通用运行时"]
+  pres["presentation / source-components<br/>共享展示"]
+  provider["app-hallmark / app-notes<br/>领域 Provider"]
+  sdk["app-sdk / component-runtime<br/>通用客户端"]
+  compat["dsh-compat<br/>宿主版本适配"]
+  plugins["plugin-apps / N 个投影插件"]
+  boot["service 启动组合器<br/>显式模块配置"]
+  runtime -->|"import"| contract
+  pres -->|"import"| contract
+  provider -->|"import"| contract
+  sdk -->|"import"| contract
+  plugins -->|"import"| compat
+  plugins -->|"import"| sdk
+  boot -->|"compose"| runtime
+  boot -->|"compose"| pres
+  boot -->|"load manifest"| provider

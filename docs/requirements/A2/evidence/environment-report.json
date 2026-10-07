@@ -1,0 +1,41 @@
+{
+  "auditCommit": "caea8175b5c7507bf942b2e752a7327063bfdd43",
+  "date": "2026-10-07",
+  "nodeVersion": "v22.16.0",
+  "repositoryNodeRequirement": ">=22.18",
+  "repositoryTests": {
+    "status": "NOT_RUN",
+    "reason": "未取得可执行完整checkout；容器Node低于项目要求；无用户DSH/业务运行环境"
+  },
+  "prototypeSyntax": {
+    "status": "PASS",
+    "command": "node --check prototype-script.js",
+    "exitCode": 0,
+    "stderr": ""
+  },
+  "prototypeGitBlob": {
+    "observed": "699650d19f2bdcb66029e5b31780ff4b61f6c903",
+    "repositoryBlob": "699650d19f2bdcb66029e5b31780ff4b61f6c903",
+    "match": true
+  },
+  "prototypeBrowser": {
+    "status": "BLOCKED_ENV",
+    "executedAssertions": 0,
+    "attempts": [
+      {
+        "transport": "file URL",
+        "stage": "page.goto",
+        "error": "net::ERR_BLOCKED_BY_ADMINISTRATOR"
+      },
+      {
+        "transport": "isolated 127.0.0.1 HTTP",
+        "stage": "page.goto",
+        "error": "net::ERR_BLOCKED_BY_ADMINISTRATOR"
+      }
+    ],
+    "interpretation": "环境在加载前阻断；不是产品测试失败，也不是通过；未绕过策略"
+  },
+  "repositoryWrites": 0,
+  "deployments": 0,
+  "realBusinessMutations": 0
+}

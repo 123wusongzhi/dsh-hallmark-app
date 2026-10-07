@@ -1,0 +1,38 @@
+flowchart TD
+  user["用户<br/>原 DSH 会话"]
+  agent["原 DSH Agent<br/>原工具 / 原日志"]
+  at["新增 @ 输入 source<br/>局部引用 UI"]
+  host["P1 AppsHost<br/>四网关 / 原生代理"]
+  rt["P2 AppsRuntime<br/>唯一目录 / invoke"]
+  hp["Hallmark Provider<br/>原业务适配"]
+  np["Notes Provider<br/>真实 CRUD"]
+  biz["P4 原 Hallmark<br/>业务事实与账本"]
+  pres["共享 Presentation<br/>view / 保存 / 版本"]
+  src["SourceComponentStore<br/>不可变源码 + dist"]
+  auth["新增 Authoring 协议<br/>attempt / receipts / CAS"]
+  frame["P3 原组件 frame<br/>v2 bridge 已有"]
+  ready["新增候选就绪 / UI恢复<br/>不替换原聊天"]
+  lib["新增完整组件库 UI<br/>调用现有保存能力"]
+  user -->|E01| agent
+  user -->|E02| at
+  at -->|E03| host
+  agent -->|E04| host
+  host -->|E05| rt
+  rt -->|E06| hp
+  rt -->|E07| np
+  hp -->|E08| biz
+  rt -->|E09| pres
+  pres -->|E10| src
+  rt -->|E11| auth
+  auth -->|E12| src
+  auth -->|E13| pres
+  pres -->|E14| frame
+  frame -->|E15| ready
+  ready -->|E16| auth
+  lib -->|E17| host
+  classDef existing fill:#EAF3FF,stroke:#3265A3,color:#17283F
+  class agent,host,rt,hp,np,pres,src,frame existing
+  classDef new fill:#FFF3DF,stroke:#C47724,color:#17283F
+  class at,auth,ready,lib new
+  classDef external fill:#F3F5F8,stroke:#6A778C,color:#17283F
+  class user,biz external

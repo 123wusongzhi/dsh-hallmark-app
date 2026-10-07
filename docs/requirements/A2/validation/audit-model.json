@@ -1,0 +1,2846 @@
+{
+  "findings": [
+    {
+      "id": "GAP-01",
+      "title": "原生 @ 尚未与 Runtime 绑定形成生产入口",
+      "priority": "P0",
+      "state": "GAP",
+      "observed": "Client 装配已有原输入附件与会话组件插槽，但没有 Apps inputTriggers 注册；当前绑定入口仍是 AppsDirectory 的按钮。A.1 明确把 @ 接线列为待完成。",
+      "impact": "用户在任意原会话直接 @ 应用的主入口不可据现有目录按钮视为完成；失败、取消、重复引用与切会话还没有闭环证据。",
+      "repair": "使用现场核实的原生 @ source；候选只带稳定 appId，Host 确认 sessionId 与明确 connectionId 后再显示已绑定。",
+      "sources": [
+        "S22",
+        "S24",
+        "S05"
+      ],
+      "reqs": [
+        49,
+        50,
+        51,
+        52
+      ],
+      "tasks": [
+        28,
+        29,
+        30
+      ]
+    },
+    {
+      "id": "GAP-02",
+      "title": "预览载体 v1 与新源码 SDK v2 不一致",
+      "priority": "P0",
+      "state": "GAP",
+      "observed": "source-preview.mjs 的 hostHTML 只处理 hallmark.source.v1；apps-client.ts 主协议是 dsh.apps.component.v2。现有 readDist 冻结同份 dist 的实现应复用。",
+      "impact": "新 SDK 工程不能把旧预览页中一张截图当作完成 v2 数据、握手、选择与交互验证。",
+      "repair": "添加 v2 预览 Host 和明确 legacy v1 分支；同一冻结 dist 在预览与正式宿主加载，报告真实支持的方法与失败。",
+      "sources": [
+        "S18",
+        "S19"
+      ],
+      "reqs": [
+        57,
+        58
+      ],
+      "tasks": [
+        34,
+        35
+      ]
+    },
+    {
+      "id": "GAP-03",
+      "title": "内容地址存档不能证明源码确实构建成当前 dist",
+      "priority": "P0",
+      "state": "GAP",
+      "observed": "projectSnapshot 要求 dist/index.html 存在，并对源码与 dist 联合取哈希；它没有构建命令成功、构建前输入摘要和输出摘要的强制回执。",
+      "impact": "静态机制允许“改过源码但仍带上次 dist”的目录被 capture；哈希一致只能证明存档完整，不能证明因果关系。此场景需夹具复现。",
+      "repair": "给新创作链增加 BuildReceipt；构建输入冻结、真实命令退出码、工具链/锁文件、输出摘要和最终 buildId 必须关联。",
+      "sources": [
+        "S17"
+      ],
+      "reqs": [
+        54,
+        55,
+        56
+      ],
+      "tasks": [
+        32,
+        33
+      ]
+    },
+    {
+      "id": "GAP-04",
+      "title": "openSource 没有强制预览通过门禁",
+      "priority": "P0",
+      "state": "GAP",
+      "observed": "openSource 在 capture 成功后直接事务更新 view.source；capturePreview 可缺失，已有报告只要求 buildId 相同，未把通过状态、运行错误或交互断言作为发布前提。",
+      "impact": "“文件已登记”与“预览/交互通过”仍可混淆；未通过的新构建可能成为当前会话引用。",
+      "repair": "分开归档候选与发布视图；新建/编辑的正常发布要求匹配、成功的 PreviewReceipt，旧历史构建继续兼容只读打开并标验证状态。",
+      "sources": [
+        "S16",
+        "S17"
+      ],
+      "reqs": [
+        58,
+        59,
+        60
+      ],
+      "tasks": [
+        35,
+        36
+      ]
+    },
+    {
+      "id": "GAP-05",
+      "title": "frame 握手及 iframe onLoad 不是应用可用回执",
+      "priority": "P0",
+      "state": "PARTIAL",
+      "observed": "现有 frame 身份和 nonce 校验已实现；AppsSourceFrame 仅用 onLoad 清除错误，onError 显示装载失败，未见组件首屏可用确认或旧可用构建恢复状态机。",
+      "impact": "JS 运行错误、白屏、握手后数据失败不能仅依赖 HTML load 事件发现；A.1 的“失败保留旧可用界面”没有完整落实。",
+      "repair": "为候选 frame 增加可协商 readiness，确认首屏/关键数据/错误状态后完成展示确认；失败恢复 last-good，第一版无旧构建则显示明确失败空态。",
+      "sources": [
+        "S20",
+        "S21",
+        "S05"
+      ],
+      "reqs": [
+        60,
+        61
+      ],
+      "tasks": [
+        36,
+        37
+      ]
+    },
+    {
+      "id": "GAP-06",
+      "title": "创作 attempt、取消和迟到发布缺少专门代际约束",
+      "priority": "P0",
+      "state": "PARTIAL",
+      "observed": "Runtime 已有 invocation 和业务 operation；presentation 的源码替换主要按 ownerSessionId/viewId，尚未见 authoring attempt 与 expectedViewRevision 的发布 CAS。",
+      "impact": "业务幂等不能替代源码发布竞争控制；较早构建迟到、取消后返回、同一 view 同时编辑可能覆盖较新的展示。",
+      "repair": "在 P2 添加轻量创作状态，不建立第二 Agent Loop；attemptId/sourceRevision/epoch 与 viewRevision 检查必须在发布事务内完成。",
+      "sources": [
+        "S08",
+        "S16",
+        "S20"
+      ],
+      "reqs": [
+        54,
+        59,
+        62,
+        63
+      ],
+      "tasks": [
+        32,
+        36,
+        38
+      ]
+    },
+    {
+      "id": "GAP-07",
+      "title": "新 frame 会重建 React 本地状态，恢复契约尚缺",
+      "priority": "P1",
+      "state": "GAP",
+      "observed": "iframe key 包含 sessionId、viewId、buildId；换 build 必定重新挂载。现有方法清单无 UI 状态导出/恢复，不能假设筛选、页码、选择自动保存。",
+      "impact": "编辑成功、侧栏/工作台切换后会有状态丢失风险；原型“保留筛选与选择”不是生产保证。",
+      "repair": "增加组件声明的 uiStateSchemaVersion、可序列化快照和迁移函数；按 view 保存，恢复选择必须重新验证 ResourceRef 与 datasetRevision。",
+      "sources": [
+        "S20",
+        "S19",
+        "S05"
+      ],
+      "reqs": [
+        64
+      ],
+      "tasks": [
+        39
+      ]
+    },
+    {
+      "id": "GAP-08",
+      "title": "Agent 修改对象和预览反馈需要可追踪的正式上下文",
+      "priority": "P1",
+      "state": "PARTIAL",
+      "observed": "已有工具结果显式 view 元数据、原生上下文 hook 和可选 requestAgent；但新创作从目标定位、工作目录、构建错误、截图到下一次修改的完整模型输入证据未提供。",
+      "impact": "“改这个组件”可能指向错误 view；不能将 iframe 状态或预览文件落盘等同模型已读取。",
+      "repair": "输出稳定创作定位包；多个 view 有歧义时才澄清；实际截图/报告通过原工具输出或原生附件进入原 Agent 的记录。",
+      "sources": [
+        "S12",
+        "S21",
+        "S05"
+      ],
+      "reqs": [
+        53,
+        58,
+        68
+      ],
+      "tasks": [
+        31,
+        35,
+        42
+      ]
+    },
+    {
+      "id": "GAP-09",
+      "title": "原生附件桥已有代码，但整链生产验收仍欠缺",
+      "priority": "P0",
+      "state": "PARTIAL / EVIDENCE_GAP",
+      "observed": "createAppsComponentHandlers 已校验选择并调用 selectionInputBridge.attachResources；原输入 actions 接线也存在。不能说附件能力从零缺失。候选说明只单列 fixture collector 的证明范围。",
+      "impact": "仍需证明真正原输入的正文/旧附件保留、重复附加去重、移除、上传、手动发送与模型读取原 JSON；不能用返回 attached 代替。",
+      "repair": "优先复用现有桥；补双会话/刷新竞态/附件失败/人工发送的桌面回归及真实模型消费记录。",
+      "sources": [
+        "S23",
+        "S22",
+        "S02"
+      ],
+      "reqs": [
+        65,
+        66,
+        67
+      ],
+      "tasks": [
+        40,
+        41,
+        42
+      ]
+    },
+    {
+      "id": "GAP-10",
+      "title": "应用工作台和组件库后端成熟度高于当前前端",
+      "priority": "P1",
+      "state": "PARTIAL",
+      "observed": "AppsDirectory 主要展示应用按钮、连接和诊断；AppsWorkspace 展示目录或单一打开的 view。共享后端已有 list_saved、保存、历史、管理等能力。",
+      "impact": "用户要求的常驻应用列表、可搜索组件库、历史打开/恢复、另存、保存冲突和未保存副本入口尚不能由当前 UI 证实。",
+      "repair": "只重做插件区域并接已有后端；不得再建一套组件库，更不得将 HTML 中整个 DSH 外壳搬入生产。",
+      "sources": [
+        "S24",
+        "S25",
+        "S16",
+        "S06"
+      ],
+      "reqs": [
+        69,
+        70,
+        71,
+        72
+      ],
+      "tasks": [
+        43,
+        44,
+        45
+      ]
+    },
+    {
+      "id": "GAP-11",
+      "title": "保存、重命名和删除语义需要显式对齐",
+      "priority": "P1",
+      "state": "CONFLICT",
+      "observed": "生产 saveComponent 已有 CAS/版本；生产 manageSaved 重命名会增加 revision，删除保留历史记录。HTML rename 只改名称，delete 删除原型资产及其版本。",
+      "impact": "把原型直接移植会改变现有版本含义、冲突触发和历史保留策略；不同文档给实施者不同答案。",
+      "repair": "本次建议保留生产规则：重命名形成元数据新 revision；删除是从库目录移除，历史保留并受 GC 引用保护。以 CR 确认，UI 文案对应真实含义。",
+      "sources": [
+        "S16",
+        "U01"
+      ],
+      "reqs": [
+        71,
+        72,
+        73
+      ],
+      "tasks": [
+        27,
+        44,
+        45
+      ]
+    },
+    {
+      "id": "GAP-12",
+      "title": "单应用/单组件原型不代表目标多应用模型",
+      "priority": "P1",
+      "state": "PROTOTYPE_LIMIT",
+      "observed": "HTML 使用一个 activeApp 和一个 component；选择 Notes 替换 Hallmark，消息入口 open-pane 指向当前 component。实际 Runtime 已支持会话多绑定。",
+      "impact": "照搬原型会让多应用能力退化；旧消息可能打开另一新组件。后者是原型静态风险，不能归因于生产 AppsToolView。",
+      "repair": "保留真实多绑定集合；明确当前编辑目标和每条消息 view 引用；原型作为视觉样例，不作为业务状态代码。",
+      "sources": [
+        "U01",
+        "S08",
+        "S21"
+      ],
+      "reqs": [
+        52,
+        53,
+        69
+      ],
+      "tasks": [
+        30,
+        31,
+        43
+      ]
+    },
+    {
+      "id": "GAP-13",
+      "title": "图中保存/重开箭头有歧义，不能直接作为代码流程",
+      "priority": "P1",
+      "state": "AMBIGUOUS_INPUT",
+      "observed": "三图共识一致，但图二从会话展示直接连组件库未显式画保存条件，图三重开线接点不完整，图一也未标对象与触发。用户未指定三图中哪张取代其余。",
+      "impact": "无法据一条无条件箭头推导“显示即保存”或“返回即发布”；buildId 到 viewId 也不是一一对应。",
+      "repair": "用 FIG-15..19 与编号关系表重画，显式保存门禁；保留三张原图作为输入，不修改原件，冲突规则登记 CR-01。",
+      "sources": [
+        "U02",
+        "U03",
+        "U04",
+        "S05"
+      ],
+      "reqs": [
+        49,
+        70
+      ],
+      "tasks": [
+        27,
+        43
+      ]
+    },
+    {
+      "id": "GAP-14",
+      "title": "后台刷新只有配置并不足以证明可调度",
+      "priority": "P1",
+      "state": "EVIDENCE_GAP",
+      "observed": "共享 binding 接受 scheduled/scheduleId；本次已读 apps-main 启动链仅见 server 和 recover，未见调度 worker 装配。不能由字段推断定时刷新已经运行。",
+      "impact": "PR-21 的“后台更新独立于打开”需端到端证明；也不能以 approx 半天容忍擅定 12 小时硬保证。",
+      "repair": "核实实际 worker；未装配则完成持久计划/时区/错过执行/去重/停用规则。无 worker 时不宣称 scheduled 可用。",
+      "sources": [
+        "S16",
+        "S09",
+        "S06"
+      ],
+      "reqs": [
+        75
+      ],
+      "tasks": [
+        46
+      ]
+    },
+    {
+      "id": "GAP-15",
+      "title": "连接配置更新的权威来源和缓存失效不明确",
+      "priority": "P1",
+      "state": "STATIC_RISK",
+      "observed": "composeAppsRuntime 对已存在连接跳过配置文件导入；clientFor 按 connectionId 缓存客户端，不按 configRevision。Runtime 本身又允许 addConnection 提高 revision。",
+      "impact": "编辑配置文件不一定改变数据库；更新数据库也不一定替换已缓存后端。此为已读路径风险，未声称实际误连店铺。",
+      "repair": "明确 DB 为活动配置、文件仅初次播种；受控配置更新先排空该连接，再递增 revision 并失效 client/broker/domain 缓存，记录新请求使用的配置版本。",
+      "sources": [
+        "S09",
+        "S08",
+        "S13"
+      ],
+      "reqs": [
+        76
+      ],
+      "tasks": [
+        47
+      ]
+    },
+    {
+      "id": "GAP-16",
+      "title": "历史 VERIFIED/PASS 不能直接汇总为整体验收通过",
+      "priority": "P0",
+      "state": "EVIDENCE_GAP",
+      "observed": "追踪 CSV 48 行全部 VERIFIED/PASS，同时 42 行 remainingRealStatus=NOT_RUN；6 行 PASS 也仍须看实际执行范围和版本。原始 evidence 不在仓库，发布摘要区分了 deterministic model、原型与外部模型。",
+      "impact": "把 fixture、旧 candidate、桌面显示、真实业务四层混合，可能错误放行 A.1 新体验和未做的业务写/切库。",
+      "repair": "保留原记录列，新增本次审计结论、executedCommit、版本、scope、原始证据可访问性、当前运行状态与签认；不覆盖历史。",
+      "sources": [
+        "S04",
+        "S03",
+        "S02"
+      ],
+      "reqs": [
+        77,
+        79,
+        80
+      ],
+      "tasks": [
+        27,
+        49,
+        50
+      ]
+    },
+    {
+      "id": "GAP-17",
+      "title": "真实外部模型、业务写和切库仍是独立验收范围",
+      "priority": "P0",
+      "state": "EVIDENCE_GAP",
+      "observed": "候选说明公开承认真实外部模型、真实 Hallmark 调价/库存、原业务库切换未完成；候选5本地确定性模型证据不自动升级为候选6外部模型通过。已读公开低层目录为15个只读API操作和1个调价操作，不等于原应用全部API；采购价、归档、促销写、素材交付未在该已读目录登记。",
+      "impact": "可以发布有范围的候选，但不能宣称完整自然语言办业务、上品、写入和生产迁移已经验收。",
+      "repair": "分别建 AUTHORING、BUSINESS-WRITE、DATA-CUTOVER 放行记录；真实写入只针对用户指定测试对象和参数，读取前后领域证据；不以模拟写代签。",
+      "sources": [
+        "S02",
+        "S03",
+        "S06",
+        "S13"
+      ],
+      "reqs": [
+        67,
+        78,
+        79,
+        80
+      ],
+      "tasks": [
+        42,
+        48,
+        50
+      ]
+    },
+    {
+      "id": "GAP-18",
+      "title": "不应重建已有基础或把合法兼容层当作缺陷",
+      "priority": "P2",
+      "state": "PRESERVE",
+      "observed": "Runtime、Notes CRUD、通用资源、生成 SDK、四网关、操作恢复、版本保存、v1 兼容均有代码；bundle 引用旧 Host 以复用资源路由是明确兼容装配。",
+      "impact": "重复实现、全面改名或提前拆多个服务反而增加维护成本；固定发现网关是 A.0 允许的降级，不是必须改掉的缺口。",
+      "repair": "本次 TODO 从 027 追加；旧工作包做回归复核，不重新开工。逐步把通用 frame/selection 移到中性包可单列后续重构，不阻塞本期闭环。",
+      "sources": [
+        "S08",
+        "S09",
+        "S10",
+        "S13",
+        "S14",
+        "S15",
+        "B00"
+      ],
+      "reqs": [
+        77
+      ],
+      "tasks": [
+        49
+      ]
+    },
+    {
+      "id": "GAP-19",
+      "title": "A.0 工程图原件可恢复，仓库文档还缺统一入口",
+      "priority": "P2",
+      "state": "DOC_GAP",
+      "observed": "仓库 A.1 说明 FIG-01..12 图源未随材料提供；本会话上一版 ZIP 实际包含这些 SVG/DOT/Mermaid/PNG。本交付按原件保留，不当作最新实现图。",
+      "impact": "仅剩历史文字与不同版本图会使维护者错认基线；新任务和新 AC 缺少统一机器追踪。",
+      "repair": "恢复历史图到 references/A0；新图从 FIG-15 续号；清楚标注现状、目标、来源和替代范围，并提供交叉索引。",
+      "sources": [
+        "S05",
+        "B00"
+      ],
+      "reqs": [
+        77,
+        80
+      ],
+      "tasks": [
+        27,
+        49,
+        50
+      ]
+    },
+    {
+      "id": "GAP-20",
+      "title": "当前审计不是完整执行性或所有文件漏洞审查",
+      "priority": "P2",
+      "state": "LIMIT",
+      "observed": "本次读取固定提交下关键链路、目标文档及上传原型；未取得完整可执行 checkout。容器 Node 22.16 低于仓库要求；浏览器两次在导航前被环境策略阻断。",
+      "impact": "不能报告570项重跑通过，不能把原型浏览器未运行写成产品失败；静态未见也不证明整个仓库完全不存在某功能。",
+      "repair": "记录源码覆盖清单、HTML语法检查与同仓blob对照；产品测试均等待匹配环境执行，并保留本次 BLOCKED_ENV。",
+      "sources": [
+        "S27",
+        "U01"
+      ],
+      "reqs": [
+        77,
+        80
+      ],
+      "tasks": [
+        27,
+        50
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-049",
+      "test": "TST-049",
+      "title": "只扩展原聊天，不移植原型外壳",
+      "norm": "必须保留 DSH 原窗口、导航、会话日志、输入正文、附件、模型选择及原发送流程。原型的侧栏/聊天 HTML 仅是展示参照，不得成为生产中的第二套会话系统。图片中任何无条件保存箭头由本规格的显式保存规则取代；本次 CR 未签认前不得将争议箭头实现为自动保存。",
+      "tasks": [
+        27,
+        28,
+        43
+      ],
+      "old": [
+        1,
+        2,
+        48
+      ],
+      "ac": [
+        "AC-13-01"
+      ],
+      "scope": "LIVE_HOST",
+      "prep": "F-HOST；已有会话 A/B；安装前核心哈希与原输入记录",
+      "steps": [
+        "在 A 原输入写一段正文并加入原生附件；打开应用页，再返回 A。",
+        "通过原入口创建组件，收起、展开到工作台并返回；切换到 B 再回来。",
+        "卸载或停用测试投影并正常重开宿主；核对核心与导航。"
+      ],
+      "expected": "无新聊天系统/全局聊天标签；原消息和草稿不被替代；组件 UI 仅占允许插件区域；核心哈希不因插件改造改变。",
+      "evidence": "前后界面、会话ID、核心清单、注册清理、CR-01签认。",
+      "stop": "出现原正文丢失或写入另一会话：停止，保留导出，不用重新建会话掩盖。"
+    },
+    {
+      "id": "REQ-050",
+      "test": "TST-050",
+      "title": "原生 @ 候选、引用与清理",
+      "norm": "候选必须来自 Runtime 的可用应用目录，经已核实宿主扩展注册。选择候选不发送、不跳转、不新建会话、不执行领域写。候选或引用卸载必须释放注册；输入中文组合键时 Enter 不得由插件提前发送。",
+      "tasks": [
+        28,
+        29
+      ],
+      "old": [
+        5,
+        6,
+        9,
+        41
+      ],
+      "ac": [
+        "AC-13-01"
+      ],
+      "scope": "LIVE_HOST",
+      "prep": "F-HOST；Hallmark/Notes 均注册；原输入有正文和附件",
+      "steps": [
+        "输入 @，分别用键盘和鼠标搜索选择两种应用；测试无匹配、Esc、中文输入法组合状态。",
+        "切 A/B；使目录离线再尝试；恢复后刷新候选。",
+        "重复挂载/卸载投影10次，检查候选和监听数量。"
+      ],
+      "expected": "候选名称来自应用元数据且携带appId；选择前后正式消息数量不变；正文/附件不变；注册无倍增；不可用状态明确。",
+      "evidence": "inputTriggers实测契约、事件计数、录屏、发送前后日志位置。",
+      "stop": "缺扩展契约时记BLOCKED_CAPABILITY，保留目录按钮作为旧降级；不得给 @ 验收签PASS。"
+    },
+    {
+      "id": "REQ-051",
+      "test": "TST-051",
+      "title": "引用绑定状态机与迟到响应",
+      "norm": "引用状态与绑定状态分别记录。只有 Host 验证 sessionId 并收到 Runtime 的具体 appId/connectionId enabled 结果才可显示“可调用”。用 bindRequestId 与 epoch 拒绝迟到结果；移除引用只撤销用户指定绑定，不影响其他已启用连接。持久绑定提交前取消为无变化；提交后移除为新的明确关闭动作。",
+      "tasks": [
+        29,
+        30
+      ],
+      "old": [
+        7,
+        8,
+        9,
+        34
+      ],
+      "ac": [
+        "AC-13-01"
+      ],
+      "scope": "FIXTURE+LIVE_HOST",
+      "prep": "两连接 H1/H2；延迟和失败可控；A/B 均存在",
+      "steps": [
+        "A 选择 Hallmark；多连接不能唯一确定时观察候选；明确选H2。",
+        "A绑定请求延迟时切B并取消A引用；释放旧响应。",
+        "在已有H1绑定的A中添加H2后移除H2；重开宿主。"
+      ],
+      "expected": "未确认时不得显示bound；只命中H2；A的响应不改变B；原H1保持；数据库与chip可对账；失败不清空原输入。",
+      "evidence": "绑定请求、epoch、tuple、Runtime状态、Client状态快照、重启前后对账。",
+      "stop": "无法解释客户端与Runtime差异则禁止该绑定派发；不按第一连接补齐。"
+    },
+    {
+      "id": "REQ-052",
+      "test": "TST-052",
+      "title": "不把多应用模型退化为单 activeApp",
+      "norm": "同一会话必须保留多 app+connection 绑定集合；编辑焦点、工作台焦点和引用显示不得覆写集合。不同会话状态独立。开组件所需连接不明确时澄清，不通过打开资产静默将会话替换为 Hallmark。",
+      "tasks": [
+        30,
+        31
+      ],
+      "old": [
+        7,
+        8,
+        9,
+        32,
+        43
+      ],
+      "ac": [
+        "AC-13-01",
+        "AC-13-08"
+      ],
+      "scope": "FIXTURE+LIVE_HOST",
+      "prep": "A启用H1和Notes N1；B未绑定；同一页面有两个应用入口",
+      "steps": [
+        "切工作台焦点Hallmark/Notes，分别执行只读查询。",
+        "在A打开含两个应用的组件；切B查看绑定。",
+        "关闭A中的Notes，再查询Hallmark。"
+      ],
+      "expected": "焦点变化不变更绑定；B无隐式授权或草稿认领；关闭Notes不影响Hallmark；共享协议不假定商品字段。",
+      "evidence": "绑定集合diff、两Provider调用计数、UI焦点快照。",
+      "stop": "出现单字段覆盖集合时停止并修协议，不增加第二个假Notes图标凑数。"
+    },
+    {
+      "id": "REQ-053",
+      "test": "TST-053",
+      "title": "编辑目标与历史消息引用明确",
+      "norm": "每次创作请求必须可定位到 sessionId/viewId/draftId/workspacePath；新建请求明确生成新view。多个可能目标且文字无指代时才澄清。消息卡必须保存自身view引用，不能读取全局“当前组件”。旧构建内容是否跟随view最新状态须显示说明；已保存历史版本入口必须固定revision。",
+      "tasks": [
+        31
+      ],
+      "old": [
+        25,
+        26,
+        31
+      ],
+      "ac": [
+        "AC-13-03",
+        "AC-13-08"
+      ],
+      "scope": "FIXTURE+LIVE_HOST",
+      "prep": "A打开V1/V2；保存V1的组件C1含两个版本",
+      "steps": [
+        "点击早期V1消息卡，再点击V2消息卡；要求“修改第一个”。",
+        "用不明确的“改这个”且两目标均无焦点，观察澄清。",
+        "从C1历史v1打开，再对当前工作副本编辑。"
+      ],
+      "expected": "消息卡定位正确view；修改只在目标目录发生；历史入口返回指定source revision，更新基线单独记录；不猜最近view。",
+      "evidence": "消息meta、工具输入/输出、目录diff、目标定位包。",
+      "stop": "无法确定目标时零文件/发布写入，等待明确指代。"
+    },
+    {
+      "id": "REQ-054",
+      "test": "TST-054",
+      "title": "创作工作副本与尝试账本",
+      "norm": "必须在P2保存轻量DraftRecord和AuthoringAttempt；workspacePath为独立可编辑目录。attemptId唯一、sourceRevision单调、epoch区分取消/替代；文件由原DSH文件/命令工具处理，不新建Agent Loop。业务operation与创作attempt分开命名，允许用invocationId关联但不得混用状态。",
+      "tasks": [
+        32
+      ],
+      "old": [
+        25,
+        26,
+        34,
+        44
+      ],
+      "ac": [
+        "AC-13-02",
+        "AC-13-08"
+      ],
+      "scope": "FIXTURE",
+      "prep": "F-SOURCE；空工作区；A/B两会话",
+      "steps": [
+        "从新工程创建A草稿；从同一模板为B创建草稿。",
+        "A连续发起两次编辑尝试，记录目录和revision。",
+        "查询未完成attempt与关联invocation，检查可定位错误和工作副本。"
+      ],
+      "expected": "两会话工作目录独立；attempt与view/component/build身份不混用；每次文件修改和结果有所属尝试；没有自制模型循环。",
+      "evidence": "Draft/Attempt导出、目录清单、invocation关联。",
+      "stop": "目录指向不可变archive或另一会话时停止；保留原目录不覆盖。"
+    },
+    {
+      "id": "REQ-055",
+      "test": "TST-055",
+      "title": "真实构建输入与输出回执",
+      "norm": "必须对冻结的构建输入计算sourceInputDigest，记录实际命令、cwd、工具链、锁文件摘要、退出码、完整日志引用及输出distDigest。构建期间源码输入发生变化，或退出码非0，均不得生成可发布BuildReceipt。存在dist/index.html不是构建成功证据。",
+      "tasks": [
+        33
+      ],
+      "old": [
+        25,
+        26,
+        47
+      ],
+      "ac": [
+        "AC-13-02",
+        "AC-13-04"
+      ],
+      "scope": "FIXTURE+SOURCE_EXEC",
+      "prep": "F-SOURCE；可执行真实构建命令；保留上次dist",
+      "steps": [
+        "成功构建一次；只改TSX但不运行构建，尝试登记为新发布。",
+        "在构建中途改变输入；另造exit1但残留dist情形。",
+        "重新干净构建并比对源摘要与输出文件。"
+      ],
+      "expected": "前三类伪成功/变化输入均拒绝发布；实际成功产生唯一receipt；日志、输入、dist与buildId可校验；原可用view不变。",
+      "evidence": "命令记录、exitCode、锁摘要、输入/输出清单、拒绝原因。",
+      "stop": "BuildReceipt来源不可证时记BUILD_EVIDENCE_INVALID，不把旧dist删除后重新声称通过。"
+    },
+    {
+      "id": "REQ-056",
+      "test": "TST-056",
+      "title": "不可变归档和历史兼容",
+      "norm": "必须保留SourceComponentStore的内容地址与文件摘要机制。新BuildReceipt将源码输入、输出和最终archive buildId关联；preview存档不改变buildId。历史无回执构建可继续只读打开并标legacy_unverified，不能自动填“已预览通过”；本次编辑发布适用新门禁。",
+      "tasks": [
+        33,
+        45
+      ],
+      "old": [
+        26,
+        36,
+        39,
+        40
+      ],
+      "ac": [
+        "AC-13-05"
+      ],
+      "scope": "FIXTURE",
+      "prep": "一个历史v1manifest、一个当前manifest、一个新回执",
+      "steps": [
+        "读旧构建并打开副本；新增preview证据后核对buildId。",
+        "修改归档字节并执行verify。",
+        "对旧工作副本编辑并尝试绕过新回执发布。"
+      ],
+      "expected": "未篡改旧构建仍可读；preview不改变archive地址；篡改被拒；新编辑不得继承旧回执；历史信息不被覆写。",
+      "evidence": "manifest与校验输出、legacy状态、历史版本前后hash。",
+      "stop": "验证失败保留坏副本和报告；从已核实备份恢复，不能静默重新哈希认可。"
+    },
+    {
+      "id": "REQ-057",
+      "test": "TST-057",
+      "title": "v2 同份 dist 的真实预览",
+      "norm": "新源码组件预览必须使用dsh.apps.component.v2，并复用相同能力/数据字段语义；v1独立兼容分支保留。预览服务提供冻结的实际dist字节，记录previewMode=fixture或live_readonly；未执行真实业务操作时不得用预览按钮模拟成功冒充业务证据。",
+      "tasks": [
+        34
+      ],
+      "old": [
+        25,
+        27,
+        28
+      ],
+      "ac": [
+        "AC-13-02"
+      ],
+      "scope": "SOURCE_EXEC",
+      "prep": "F-SOURCE使用新SDK；固定夹具与只读真实数据分别标明",
+      "steps": [
+        "加载v2工程，执行hello/getData/getContext/resize。",
+        "用v1工程走legacy载体；故意协议不匹配，观察错误。",
+        "逐文件核对预览响应字节与归档dist摘要。"
+      ],
+      "expected": "v2可真实握手与读数据；错误协议不得假就绪；每个资源哈希一致；mock/live来源有明确标记；不泄漏为模型业务成功。",
+      "evidence": "HTTP资源manifest、桥接日志、协议、数据来源、截图。",
+      "stop": "任何资源字节与待发布archive不符则该preview无效，停止发布。"
+    },
+    {
+      "id": "REQ-058",
+      "test": "TST-058",
+      "title": "真实预览报告与 Agent 可消费反馈",
+      "norm": "PreviewReceipt必须关联buildId/buildReceiptId，包含至少窄侧栏与宽工作台两种实测视口、截图文件SHA256、pageerror、未处理异常、失败请求、握手与交互断言。PASS要求必需断言全通过；NOT_RUN/UNKNOWN不是PASS。报告/截图经原工具或原附件可供原Agent读取，消费证据另记，不由报告生成推断。",
+      "tasks": [
+        35,
+        42
+      ],
+      "old": [
+        25,
+        27,
+        31,
+        47
+      ],
+      "ac": [
+        "AC-13-02",
+        "AC-13-03"
+      ],
+      "scope": "SOURCE_EXEC+LIVE_MODEL",
+      "prep": "实际渲染器；F-SOURCE含搜索、选择；视口内容宽度420与1040 CSS像素作为本版测试样例",
+      "steps": [
+        "实际截图并操作搜索/排序/选择；注入运行异常再执行一次。",
+        "将旧build截图回执用于新build；移除截图文件后验证。",
+        "让原Agent读取匹配截图和报告并据一个可观察问题修改。"
+      ],
+      "expected": "错误/缺图/错build不能PASS；截图不是另画页面；Agent日志可定位实际读取的证据与后续文件diff；两视口视觉审查分别签认。",
+      "evidence": "PreviewReceipt、截图sha、错误报告、Agent原会话消息/工具记录、改动diff。",
+      "stop": "模型不具备图像读取路径时人工视觉审核可验证图面，但LIVE_MODEL_VISUAL保持BLOCKED。"
+    },
+    {
+      "id": "REQ-059",
+      "test": "TST-059",
+      "title": "候选存档、允许发布与实际发布分离",
+      "norm": "新源码流程必须区分captured候选和当前view引用。缺BuildReceipt或匹配PASS预览时只能保存候选，不能改activeBuildId。已有open_source_component的名称可保留，但应以版本化契约表达新门禁，不捏造原生registerBuild API。候选存档不自动进入组件库。",
+      "tasks": [
+        36
+      ],
+      "old": [
+        25,
+        26,
+        27
+      ],
+      "ac": [
+        "AC-13-02",
+        "AC-13-04"
+      ],
+      "scope": "FIXTURE",
+      "prep": "V0已可用；B1有效；B2缺预览；C1已保存",
+      "steps": [
+        "归档B2并尝试publish；核对V0/C1。",
+        "给B1合法回执，允许进入候选装载。",
+        "重复相同attempt的发布请求并检查写入次数。"
+      ],
+      "expected": "B2只留archive无active变化；C1从未自动新增revision；重复发布返回同一结果而不重复创建view。",
+      "evidence": "候选/active/组件库事务前后记录、拒绝日志。",
+      "stop": "门禁绕过视为P0，暂停新发布入口，保持现有可用view。"
+    },
+    {
+      "id": "REQ-060",
+      "test": "TST-060",
+      "title": "同 view 发布 CAS 与代际一致性",
+      "norm": "更新同一草稿保持viewId，但发布必须带expectedViewRevision和attemptEpoch。CAS在P2同一事务核实owner、取消状态、候选证据和最新版本；成功后递增viewRevision。两次发布有序竞争，过期者报告VIEW_CONFLICT或ATTEMPT_SUPERSEDED，不自动换新revision重试。",
+      "tasks": [
+        36
+      ],
+      "old": [
+        17,
+        20,
+        26,
+        34
+      ],
+      "ac": [
+        "AC-13-03",
+        "AC-13-08"
+      ],
+      "scope": "FIXTURE",
+      "prep": "A同一view两尝试a1/a2；B另一view",
+      "steps": [
+        "a1延迟；a2先发布；释放a1。",
+        "同expectedViewRevision并发提交两候选。",
+        "篡改owner为B，提交A结果。"
+      ],
+      "expected": "只有一个CAS获胜；active不回退旧attempt；B不变；每个冲突保留自己的工作副本和候选。",
+      "evidence": "事务序列、viewRevision、epochs、冲突包络、两个目录摘要。",
+      "stop": "发现后到旧尝试覆盖新view即停止，冻结发布并恢复明确last-good。"
+    },
+    {
+      "id": "REQ-061",
+      "test": "TST-061",
+      "title": "展示就绪确认和 last-good 恢复",
+      "norm": "hello只确认桥接身份，iframe onLoad只确认文档加载。新构建必须收到同session/view/build/frame/attempt的renderReady检查结果后才可对用户称“已展示”。加载/React运行失败或超时保持lastGoodBuildId并显示原因；首次创建失败无旧构建时呈现错误空态而非示例数据。",
+      "tasks": [
+        37
+      ],
+      "old": [
+        25,
+        27,
+        33
+      ],
+      "ac": [
+        "AC-13-04"
+      ],
+      "scope": "SOURCE_EXEC+LIVE_HOST",
+      "prep": "B0可用；Bbad加载后抛React错误；Bslow不发就绪",
+      "steps": [
+        "发布Bbad观察候选、可见界面与结果。",
+        "对Bslow等到本次配置的displayReadyTimeoutMs；送入旧frame就绪回执。",
+        "在无B0的新view重复失败场景。"
+      ],
+      "expected": "不因onLoad称成功；旧frame回执无效；B0仍可恢复/显示；新view显示真实错误；回复含stage与证据ID。",
+      "evidence": "frame生命周期日志、可见build前后、错误截图、配置超时值。",
+      "stop": "本版超时建议15000ms，属于待测配置不是已测SLA；超时不得提交自动保存。"
+    },
+    {
+      "id": "REQ-062",
+      "test": "TST-062",
+      "title": "取消与晚到结果的确定性语义",
+      "norm": "取消只阻止未提交阶段，不谎称撤销已发生变化。取消epoch先持久化，构建/预览协作停止；发布事务再检查epoch。取消早于发布提交则active不变；取消晚于提交则明确返回已发布事实，并仅经新的显式操作恢复last-good。",
+      "tasks": [
+        38
+      ],
+      "old": [
+        19,
+        20,
+        26
+      ],
+      "ac": [
+        "AC-13-04",
+        "AC-13-08"
+      ],
+      "scope": "FIXTURE+LIVE_HOST",
+      "prep": "可停在build/preview/publishBefore/publishAfter的受控夹具",
+      "steps": [
+        "依次在四个时点取消，再释放所有迟到回调。",
+        "A取消后切B；旧frame/网络响应继续返回。",
+        "断开取消回执后只读查询原attempt。"
+      ],
+      "expected": "取消前事务不发布；提交后不伪称撤销；重复查询不重建/重发；B状态不变；有明确linearization日志。",
+      "evidence": "取消与提交持久化时间/sequence、attempt状态、只读核查回执。",
+      "stop": "提交结果未知则先查attempt，不能另造尝试自动覆盖。"
+    },
+    {
+      "id": "REQ-063",
+      "test": "TST-063",
+      "title": "草稿恢复、关闭与进程重启",
+      "norm": "关闭view不删除工作目录或保存资产。打开另一组件前对未保存草稿提供保留/保存/放弃；恢复必须找回明确目录和最近成功build。进程重启后running attempt标interrupted并查询已提交状态，不自动重跑构建、发布或业务修改。",
+      "tasks": [
+        32,
+        38,
+        45
+      ],
+      "old": [
+        26,
+        33,
+        34,
+        39
+      ],
+      "ac": [
+        "AC-13-04",
+        "AC-13-08"
+      ],
+      "scope": "FIXTURE+LIVE_HOST",
+      "prep": "A未保存编辑；B另有草稿；可隔离重启Runtime/Host",
+      "steps": [
+        "关闭A组件并打开另一资产；再找回保留草稿。",
+        "构建/预览期间重启隔离Runtime；重开A。",
+        "删除保存库目录项但保持A工作副本，再尝试另存。"
+      ],
+      "expected": "不静默丢草稿；恢复目标明确；未完成尝试不伪标success；无重发；B目录不变；删库不销毁打开的副本。",
+      "evidence": "草稿目录、持久记录、重启前后序列、业务计数0。",
+      "stop": "实际业务进程不得为测试任意杀死；只能重启明示隔离实例。"
+    },
+    {
+      "id": "REQ-064",
+      "test": "TST-064",
+      "title": "组件本地状态恢复和版本迁移",
+      "norm": "组件仅在声明UI状态契约时承诺恢复。UI快照按sessionId/viewId保存，带uiStateSchemaVersion、来源build、datasetRevision；换frame恢复搜索/排序/页码等可序列化状态。选择逐资源验证，失效项明确移除或要求重选；不自动搬运DSH输入正文。",
+      "tasks": [
+        39
+      ],
+      "old": [
+        28,
+        29,
+        33
+      ],
+      "ac": [
+        "AC-13-03",
+        "AC-13-07",
+        "AC-13-08"
+      ],
+      "scope": "SOURCE_EXEC+LIVE_HOST",
+      "prep": "兼容B1/B2和不兼容B3；有筛选外选择与删除资源",
+      "steps": [
+        "设置搜索/页码/排序和选择，切宽窄/关闭重开，再换B2。",
+        "刷新删除一个所选ResourceRef。",
+        "加载不能迁移的B3，记录用户可见提示。"
+      ],
+      "expected": "声明可恢复的字段值保持；仅有效选择恢复；不兼容状态不静默乱映射；另会话同组件不共享UI状态。",
+      "evidence": "UI状态前后JSON、迁移版本、资源验证、录屏。",
+      "stop": "无法恢复则保留旧快照并明确重置范围，不填假默认值声称保留。"
+    },
+    {
+      "id": "REQ-065",
+      "test": "TST-065",
+      "title": "选择验证、附件去重与输入保护",
+      "norm": "附加动作复用既有SelectionEnvelope与attachResources。去重范围为同会话、同view、同binding、同datasetRevision与规范化资源集合；不同快照不伪认为相同。只添加新附件，不替换原正文/旧附件；失败保留原输入与待选对象。",
+      "tasks": [
+        40
+      ],
+      "old": [
+        28,
+        29,
+        31
+      ],
+      "ac": [
+        "AC-13-06",
+        "AC-13-07"
+      ],
+      "scope": "FIXTURE+LIVE_HOST",
+      "prep": "A已有文字和一个其他原生附件；商品与Notes资源各一组",
+      "steps": [
+        "同集合不同勾选顺序附加两次，观察待发送附件数量。",
+        "在校验后插入前刷新数据版本；在插入途中切B。",
+        "模拟原生附件接口失败并重试同一请求。"
+      ],
+      "expected": "同一有效快照去重；过期/跨会话请求拒绝或留在原会话且可解释；文字/旧附件hash不变；资源语义不是行号。",
+      "evidence": "SelectionEnvelope、原输入状态diff、附件数量/内容、失败原因。",
+      "stop": "正文或旧附件变更即停止；不使用DOM替换textarea来修补。"
+    },
+    {
+      "id": "REQ-066",
+      "test": "TST-066",
+      "title": "附加、上传、手动发送与消费分段验收",
+      "norm": "validated只表示Runtime校验，attached只表示原输入接纳，submitted/accepted仅表示正式会话队列接收；消费和业务完成另有证据。默认路径必须用户原发送；插件不得把attached改写成“Agent已收到”。可移除附件必须真正从原草稿移除。",
+      "tasks": [
+        41
+      ],
+      "old": [
+        29,
+        30,
+        31
+      ],
+      "ac": [
+        "AC-13-06",
+        "AC-13-09"
+      ],
+      "scope": "LIVE_HOST+LIVE_MODEL",
+      "prep": "原生附件上传可用；记录原Agent步骤计数；adapter disabled",
+      "steps": [
+        "勾选并附加；等待、编辑正文、移除再附加；不发送。",
+        "使用原发送按钮提交；在原Agent工具里读取附件实际JSON。",
+        "检查用户内容、稳定资源与来源是否在正式会话记录。"
+      ],
+      "expected": "未发送阶段新增模型步为0；发送后原Agent读取真实字节；attached≠sent≠业务完成；原输入功能仍可用。",
+      "evidence": "原文件引用/内容SHA、输入阶段记录、原会话event/工具结果。",
+      "stop": "无原生文件上传/读取能力则BLOCKED；local collector不能替代。"
+    },
+    {
+      "id": "REQ-067",
+      "test": "TST-067",
+      "title": "原 Agent 自主创作整链必须用真实模型复核",
+      "norm": "至少一条实际配置外部模型的原会话完成“需求→源码修改→实际构建→读取真实反馈→再修改→展示→明确保存→重开编辑”。确定性模型、手工预置组件、规则关键词脚本分别标scope，不能冒充这条验收。模型/版本、输入和人工介入必须记录。",
+      "tasks": [
+        42
+      ],
+      "old": [
+        25,
+        43,
+        45,
+        47
+      ],
+      "ac": [
+        "AC-13-02",
+        "AC-13-03",
+        "AC-13-06"
+      ],
+      "scope": "LIVE_MODEL",
+      "prep": "其他基础门禁通过；真实模型可用；只读Hallmark与可写隔离Notes",
+      "steps": [
+        "不提供最终成品代码，要求原Agent制作含两绑定的普通React组件。",
+        "要求改变一个视觉和一个交互行为，读取本次真实预览后迭代。",
+        "人工明确保存；另一原会话打开并编辑；读取选择附件。"
+      ],
+      "expected": "原Agent执行可追踪；没有第二Agent；每轮截图匹配build；最终组件可用且仅保存动作改库；失败如实记录重试次数。",
+      "evidence": "完整会话/工具流水、模型版本、用户提示、人工干预表、源码diff与回执。",
+      "stop": "模型不可用不改用模拟后签PASS；允许保留其他范围的候选验收。"
+    },
+    {
+      "id": "REQ-068",
+      "test": "TST-068",
+      "title": "手动创作不依赖可选 requestAgent",
+      "norm": "默认原输入手动发送路径不依赖nativeSessionAdapter。可选updateContext只更新可重建上下文且不唤醒模型；requestAgent只在实际Host能力可用时公开，经原正式队列返回回执。adapter disabled时原聊天仍能创建/编辑组件；可选主动请求明确不支持。",
+      "tasks": [
+        41,
+        42
+      ],
+      "old": [
+        30,
+        31,
+        41
+      ],
+      "ac": [
+        "AC-13-09"
+      ],
+      "scope": "LIVE_HOST",
+      "prep": "分别配置disabled与已核实adapter；同一模板和会话任务",
+      "steps": [
+        "disabled下手动创建/编辑；尝试组件requestAgent。",
+        "启用真实匹配adapter，更新context不发送；再显式requestAgent。",
+        "查看原队列、消费快照和重启后的可重建性。"
+      ],
+      "expected": "手动链不因disabled阻断；主动不支持明确报错；updateContext新增模型步0；accepted不冒称消费完成；回放内容版本可核实。",
+      "evidence": "hostCapabilities、queueReceipt、snapshotId/contextRevision与会话记录。",
+      "stop": "官方签名不匹配停止主动路径，不能直接写session日志。"
+    },
+    {
+      "id": "REQ-069",
+      "test": "TST-069",
+      "title": "应用目录与组件库的局部 UI 完整性",
+      "norm": "工作台必须在原导航旁提供应用列表和应用内容区；组件库接共享Presentation接口，支持查询、搜索、明确打开、历史版本、另存和管理。一个会话可管理多个view；同view重复打开应复用展示意图。不得复制HTML全局聊天或重新维护组件资产副本。",
+      "tasks": [
+        43
+      ],
+      "old": [
+        2,
+        5,
+        25,
+        33
+      ],
+      "ac": [
+        "AC-13-05",
+        "AC-13-08"
+      ],
+      "scope": "LIVE_HOST",
+      "prep": "两应用；空库/多组件库；长中文标题；相同标题不同componentId",
+      "steps": [
+        "搜索组件并分别打开同名不同ID；重复打开同view；查看历史。",
+        "从原聊天展开到工作区，返回，切换应用焦点。",
+        "模拟目录/库不可用及空结果。"
+      ],
+      "expected": "稳定ID决定动作；原聊天正文/附件保持；目录不成为 @ 前置条件；加载/空/错误状态不显示虚构连接。",
+      "evidence": "界面截图、接口请求、componentId/viewId选择记录。",
+      "stop": "发现第二资产数据库或名称猜测，停止新UI写入。"
+    },
+    {
+      "id": "REQ-070",
+      "test": "TST-070",
+      "title": "新建、编辑、展示和明确保存是四个不同动作",
+      "norm": "新建/编辑只更新工作副本；展示发布只更新view引用；只有用户明确保存指令或保存按钮产生组件资产revision。图中展示到库的路径必须经过显式保存条件。用户已用自然语言明确保存并给齐名称时，不额外强制其重复点击保存按钮。",
+      "tasks": [
+        43,
+        44
+      ],
+      "old": [
+        26,
+        33
+      ],
+      "ac": [
+        "AC-13-02",
+        "AC-13-05"
+      ],
+      "scope": "FIXTURE+LIVE_HOST",
+      "prep": "库C0；新草稿V1；用户指令分别为“不错”和“保存为X”",
+      "steps": [
+        "创建/展示/改样式/刷新；每步记录组件库计数。",
+        "说“不错”后观察；随后自然语言明确保存。",
+        "按钮另存为Y；取消保存对话框。"
+      ],
+      "expected": "前几步库不变；“不错”不等于保存；明确指令或按钮才新增；取消无资产写；不新增无必要双重审批。",
+      "evidence": "用户原话/动作标识、库diff、保存invocation、组件revision。",
+      "stop": "保存意图不明确则不保存；不得以图库缩略图生成当作保存。"
+    },
+    {
+      "id": "REQ-071",
+      "test": "TST-071",
+      "title": "源版本、更新基线与保存 CAS",
+      "norm": "打开历史版本时selectedSourceRevision记录所选源码，baseRevisionAtOpen取打开时最新组件revision。保存update必须比较expectedRevision=该基线并核对viewRevision；冲突保留工作副本。恢复历史版本是将历史内容保存成新revision，不倒改历史。",
+      "tasks": [
+        44
+      ],
+      "old": [
+        20,
+        26,
+        33
+      ],
+      "ac": [
+        "AC-13-05",
+        "AC-13-08"
+      ],
+      "scope": "FIXTURE+LIVE_HOST",
+      "prep": "组件C历史v1/v2/v3；A打开v1，B打开v3",
+      "steps": [
+        "核对A源码来自v1、baseRevisionAtOpen为3。",
+        "B保存v4；A以3更新并观察冲突。",
+        "A另存；再明确将历史内容保存为C的新版本。"
+      ],
+      "expected": "冲突不改C；A源码不丢；无自动提升expectedRevision重试；历史版本hash不变；新版本记录来源与基线。",
+      "evidence": "open/save输入输出、版本清单、两个目录hash、冲突UI。",
+      "stop": "源版本与CAS基线混用立即阻断保存。"
+    },
+    {
+      "id": "REQ-072",
+      "test": "TST-072",
+      "title": "重命名、移除视图与删除库项的语义",
+      "norm": "本版拟确认生产既有规则：重命名组件生成元数据新revision；删除组件从可发现库目录移除，不等于清除历史bytes。关闭/移除会话view不删除库项；删除库项不销毁已打开工作副本。历史永久清除属于另行明确的保留/GC策略，不能用HTML delete逻辑替代。",
+      "tasks": [
+        27,
+        44,
+        45
+      ],
+      "old": [
+        26,
+        33,
+        39
+      ],
+      "ac": [
+        "AC-13-05"
+      ],
+      "scope": "FIXTURE+LIVE_HOST",
+      "prep": "组件C有两个版本；A/B已打开；历史引用存在",
+      "steps": [
+        "重命名，核对revision与A/B后续保存冲突行为。",
+        "移除A view后检查C；删除C库项后检查B目录。",
+        "从B另存并检查历史引用保留。"
+      ],
+      "expected": "每类操作的影响范围与文案一致；不删除业务商品；历史未被静默purge；被删除库项update失败但save_as可用。",
+      "evidence": "CR-02签认、事务diff、目录项和历史文件清单。",
+      "stop": "CR未确认时保持现有生产行为，不按原型擅改。"
+    },
+    {
+      "id": "REQ-073",
+      "test": "TST-073",
+      "title": "新增创作证据与状态必须纳入备份和 GC",
+      "norm": "新增Draft/Attempt/BuildReceipt/PreviewReceipt/last-good/UI状态必须列入引用图和迁移备份。仍被view、组件历史、未决attempt或验收证据引用的build和截图不得清理。GC默认dry-run，apply核对同一计划和唯一writer；时间未知保守保留。",
+      "tasks": [
+        45,
+        48
+      ],
+      "old": [
+        34,
+        36,
+        39
+      ],
+      "ac": [],
+      "scope": "FIXTURE",
+      "prep": "保留与无引用构建混合；一个未决attempt；历史preview引用",
+      "steps": [
+        "生成GC计划并检查每个保留原因；在计划后添加引用。",
+        "对旧计划apply，观察拒绝；重新plan仅删除真正孤儿。",
+        "一致备份后恢复并打开last-good及历史截图。"
+      ],
+      "expected": "活引用零误删；旧计划被拒；恢复后新记录与文件hash一致；未决attempt仍可只读解释。",
+      "evidence": "GCplan/diff、引用清单、备份manifest、恢复结果。",
+      "stop": "失效引用不可解释则停止apply，保留全部相关文件。"
+    },
+    {
+      "id": "REQ-074",
+      "test": "TST-074",
+      "title": "刷新与构建分离且每个绑定独立报告",
+      "norm": "手动或聊天刷新仅调用已登记query/compute，不触发构建或业务mutation；design、buildId、component revision不变。一个绑定失败时仅其状态标stale/unavailable并保留最近成功数据，其余绑定可更新。旧选择须重新验证，sourceDataTime不能用读取时刻替代。",
+      "tasks": [
+        39,
+        46
+      ],
+      "old": [
+        16,
+        28,
+        32,
+        33,
+        35
+      ],
+      "ac": [
+        "AC-13-07"
+      ],
+      "scope": "FIXTURE+LIVE_HOST",
+      "prep": "Hallmark H1+Notes N1组件；H1来源时间固定；N1可修改",
+      "steps": [
+        "更新N1并断开H1，执行刷新；记录两绑定数据revision。",
+        "用旧H1选择尝试附加；恢复H1后再刷新。",
+        "检查构建命令、业务mutation和组件保存计数。"
+      ],
+      "expected": "三种不相关计数均0；成功绑定更新，失败绑定保旧；设计build不变；实际来源时间准确；旧选择未冒充当前。",
+      "evidence": "逐binding快照、源/读时间、调用计数、UI状态diff。",
+      "stop": "刷新隐式触发业务写即停止并保留operationId。"
+    },
+    {
+      "id": "REQ-075",
+      "test": "TST-075",
+      "title": "后台计划真实装配或明确不可用",
+      "norm": "scheduled能力必须由实际worker提供并报告状态，不能仅接收scheduleId。先选用已有DSH调度能力或当前P2可复用调度模块；只在无合适模块时补最小持久执行器。计划明确时区/下次执行/错过执行策略/停用/去重；本版采用错过多次最多补一次，禁止追赶风暴。",
+      "tasks": [
+        46
+      ],
+      "old": [
+        32,
+        33,
+        35,
+        45
+      ],
+      "ac": [],
+      "scope": "FIXTURE+CLOCK_CONTROL",
+      "prep": "虚拟时钟与两个dataset；UI全关闭；故障可控",
+      "steps": [
+        "计划触发时不打开任何组件，检查只读刷新。",
+        "时钟前进跨多次触发并重启worker，再恢复。",
+        "停用计划/连接；请求scheduled但worker未装配。"
+      ],
+      "expected": "确有执行证据与nextRun；最多补一次且单dataset单飞；停用无新执行；缺worker明确unsupported；不规定虚构12小时SLA。",
+      "evidence": "时钟轨迹、计划记录、workeridentity、query计数。",
+      "stop": "计划启用而worker不可观测时保持disabled，不宣称后台新鲜度保证。"
+    },
+    {
+      "id": "REQ-076",
+      "test": "TST-076",
+      "title": "连接配置权威与 client 缓存一致",
+      "norm": "本版拟固定：Runtime数据库为活动连接配置，配置文件仅首次播种；差异须报告，不静默覆盖。受控配置更新校验expectedConfigRevision，停止该连接新派发、排空、提交递增revision、失效client/broker/domain缓存后恢复。每次调用记录所用configRevision；在途调用不得迁到新后端。",
+      "tasks": [
+        47
+      ],
+      "old": [
+        7,
+        9,
+        20,
+        34
+      ],
+      "ac": [],
+      "scope": "FIXTURE",
+      "prep": "H1后端MockA/MockB记录请求；可阻塞在途读取",
+      "steps": [
+        "修改播种文件后重启，观察配置差异报告。",
+        "请求受控更新H1到B；已有A调用未完成时观察排空。",
+        "更新完成后新调用；用旧expectedRevision再修改。"
+      ],
+      "expected": "权威来源明确；旧调用只在A，新调用只在B；缓存失效；旧revision冲突；不存在UI显示B实际仍打A。",
+      "evidence": "configRevision、cachegeneration、A/B请求日志、更新事务。",
+      "stop": "无法排空或结果未知则不切换该连接，不能只改显示地址。"
+    },
+    {
+      "id": "REQ-077",
+      "test": "TST-077",
+      "title": "证据范围、版本和引用不可混用",
+      "norm": "每项测试须记录目标commit、执行commit、bundle/Host/Client/Runtime/协议版本、scope、运行状态、原始证据URI与SHA256。仓库旧VERIFIED/PASS保留为reported列；本次sourceObservation与newRunStatus另列。fixture、prototype、local_model、live_host、external_model、real_business、cutover不得互相替代。",
+      "tasks": [
+        27,
+        49,
+        50
+      ],
+      "old": [
+        41,
+        42,
+        44,
+        46,
+        47
+      ],
+      "ac": [],
+      "scope": "DOC+FIXTURE",
+      "prep": "旧48行CSV与候选5/6记录范围；构造缺失证据、错版本样例",
+      "steps": [
+        "导入旧记录而不更改其原值；生成本次追踪表。",
+        "将candidate5本地模型记录用于candidate6外部模型，执行门禁判断。",
+        "删除证据文件或改动字节，检查校验。"
+      ],
+      "expected": "冲突和缺证据阻断对应范围；不存在总PASS遮蔽42个NOT_RUN；字节数不冒充token；语法检查不冒充UI执行。",
+      "evidence": "旧/新CSV、manifest、校验结果、scope拒绝记录。",
+      "stop": "缺原始档案记EVIDENCE_GAP，不从摘要自动生成PASS原始记录。"
+    },
+    {
+      "id": "REQ-078",
+      "test": "TST-078",
+      "title": "真实 Hallmark 核心业务按动作分别验收",
+      "norm": "查询、参考利润、已有采集上品、价格与库存分别定义验收对象和结果证据。真实写测试仅在用户明确的店铺/商品/SKU/仓库和参数范围内执行；复用原业务实现、幂等和inspect。上品平台接受不等于上架；普通CNY历史price-state不冒充实时平台价格。必须维护源API→能力→三入口→代码/夹具/真实验收覆盖表；未登记的功能明确未覆盖，不以有限目录声称全量API。",
+      "tasks": [
+        48
+      ],
+      "old": [
+        3,
+        4,
+        13,
+        17,
+        18,
+        43
+      ],
+      "ac": [],
+      "scope": "REAL_BUSINESS",
+      "prep": "用户提供专用测试范围；原应用连接就绪；非本次文档生成自动执行",
+      "steps": [
+        "先记录源数据与前态；运行同一已登记能力的明确动作。",
+        "保留requestId/taskId/operationId及逐项回执；按原后端语义只读核实。",
+        "另在隔离mock注入响应丢失，检查unknown不重发；真实环境不故意制造破坏。"
+      ],
+      "expected": "每种动作独立PASS/FAIL/BLOCKED；结果口径正确且范围不扩大；未知先inspect；原始账本与Runtime可对照。",
+      "evidence": "明确测试指令、前后态、原始回执与只读核实、版本与来源。",
+      "stop": "缺素材/类目/任务上下文/真实参数时相应动作BLOCKED，不以查询通过代签。"
+    },
+    {
+      "id": "REQ-079",
+      "test": "TST-079",
+      "title": "生产数据切换与入口升级分开签认",
+      "norm": "插件安装/重开成功不等于旧app.db已迁移。切库必须验证离线副本、一致WAL备份、逐记录映射、文件hash、未决操作、唯一writer和回退增量。原业务数据库及凭据仍由原应用拥有；切换本项目接入库不撤销任何外部业务。",
+      "tasks": [
+        48,
+        50
+      ],
+      "old": [
+        36,
+        37,
+        38,
+        39,
+        42
+      ],
+      "ac": [],
+      "scope": "FIXTURE+DATA_CUTOVER",
+      "prep": "隔离完整副本通过后，另获真实切换窗口与明确路径；现有迁移runbook",
+      "steps": [
+        "在副本dry-run/apply并从真实compose根打开；核对所有历史构建与查询。",
+        "演练无增量回退及有succeeded+unknown增量阻断旧库接管。",
+        "实际切换前核实writer/入口冻结/备份；切后记录运行identity并按批准范围验收。"
+      ],
+      "expected": "计数守恒，隔离不冒充成功；备份可恢复；无双写；新增资产/绑定/操作不被覆盖；DATA_CUTOVER独立签认。",
+      "evidence": "迁移报告、manifest、进程/端口记录、回退判定及执行日志。",
+      "stop": "旧writer或未解释unknown存在时禁止切换；--offline-confirmed不替操作者停机。"
+    },
+    {
+      "id": "REQ-080",
+      "test": "TST-080",
+      "title": "整架构分范围放行与可复现交付",
+      "norm": "发布必须由明确范围的门禁决定，不计算一个混合百分比。CORE、AUTHORING、BUSINESS-WRITE、DATA-CUTOVER分别给出必需用例、版本适用、状态和限制；整体完成要求所有用户承诺范围均满足。安装后核对内存实际版本，卸载后按宿主要求正常重开再验注册清理。",
+      "tasks": [
+        49,
+        50
+      ],
+      "old": [
+        6,
+        41,
+        42,
+        45,
+        46,
+        47,
+        48
+      ],
+      "ac": [],
+      "scope": "DOC+LIVE_HOST",
+      "prep": "TST001..080结果表；候选包及前版备份；安装/重开可控",
+      "steps": [
+        "完成对应矩阵后计算每范围阻断项；缺一个必需用例演示拒绝。",
+        "用官方管理器安装，在正常重开后读实际四网关/Client/Runtimeidentity。",
+        "卸载/重开再核对注册、资源路由及保留数据；最后形成带限制的签认。"
+      ],
+      "expected": "无自动代签；候选包hash与运行版本对得上；原始资料可访问；未完成范围显式NOT_ACCEPTED；不把磁盘更新当内存更新。",
+      "evidence": "运行版本矩阵、包hash、原始用例结果、gate-decision和四角色签认。",
+      "stop": "关键回归或证据不匹配则保留候选标签，按增量条件回退，不覆盖业务结果。"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TODO-027",
+      "title": "冻结差异基线并批准语义变更",
+      "phase": "R0",
+      "owner": "A / V",
+      "deps": [],
+      "paths": [
+        "docs/requirements/",
+        "docs/apps-product-requirements-20261007.md",
+        "本次A.0/HTML/三图"
+      ],
+      "steps": [
+        "固定审计SHA、候选运行版本、原A.0及A.1文档和输入哈希。",
+        "保留原48行的reported状态，建立新运行列；对42个remainingRealStatus=NOT_RUN逐行标范围。",
+        "签认CR-01图面/显式保存、CR-02资产管理、CR-03新增创作持久记录/兼容协议、CR-04连接更新/后台计划。"
+      ],
+      "deliver": "基线清单、审计差异表、四张CR、全量追踪表。",
+      "done": "A/V确认每个新任务能追溯输入或代码，不把已实现基础重新列为缺失。",
+      "stop": "任何冲突未经确认不得按图片位置自行推导。",
+      "back": "文档修订可退回评审；不变更用户正在运行的程序。",
+      "status": "TODO",
+      "reqs": [
+        49,
+        72,
+        77
+      ]
+    },
+    {
+      "id": "TODO-028",
+      "title": "现场核实原生输入与会话扩展契约",
+      "phase": "R0",
+      "owner": "I / V",
+      "deps": [
+        27
+      ],
+      "paths": [
+        "packages/dsh-compat/",
+        "packages/dsh-plugin/client/plugin.ts",
+        "test/dsh-compat/"
+      ],
+      "steps": [
+        "通过实际安装版本Inspect/官方扩展源核实 @ source、引用、输入actions、移除和清理签名。",
+        "确认原会话目标读取、中文输入法、手动发送和已有原生引用共存。",
+        "输出能力矩阵；manual-send与可选requestAgent分别探测，不用master文档代替。"
+      ],
+      "deliver": "版本绑定的host-probe.json、最小插件探针、原生签名适配和测试。",
+      "done": "原UI不被替换；缺能力有明确降级；探针卸载零注册残留。",
+      "stop": "拿不到当前宿主/不匹配则对应能力BLOCKED。",
+      "back": "卸载探针或恢复原候选投影；不改DSH核心。",
+      "status": "TODO",
+      "reqs": [
+        49,
+        50
+      ]
+    },
+    {
+      "id": "TODO-029",
+      "title": "实现 @ 目录候选与原引用生命周期",
+      "phase": "R1",
+      "owner": "I / V",
+      "deps": [
+        28
+      ],
+      "paths": [
+        "packages/plugin-apps/client/（新增输入source模块）",
+        "packages/dsh-plugin/client/plugin.ts"
+      ],
+      "steps": [
+        "用Runtime目录生成 @ 候选，显示名称与稳定appId分离。",
+        "接原输入选择、取消、键盘、中文组合态及错误/等待UI。",
+        "挂载/卸载所有source、事件与状态订阅，新增失败及多次挂载测试。"
+      ],
+      "deliver": "原生@source与桌面回归，不复用HTML里的伪textarea状态。",
+      "done": "TST050通过；选择不发消息/不跳转/不丢附件。",
+      "stop": "发现正文变化或选中自动发送立即停用新source。",
+      "back": "移除该source即可回到现有目录按钮绑定，不删持久绑定。",
+      "status": "TODO",
+      "reqs": [
+        50,
+        51
+      ]
+    },
+    {
+      "id": "TODO-030",
+      "title": "实现引用与多连接绑定状态机",
+      "phase": "R1",
+      "owner": "I / V",
+      "deps": [
+        29
+      ],
+      "paths": [
+        "packages/plugin-apps/src/index.ts",
+        "packages/app-runtime/src/index.ts",
+        "packages/plugin-apps/client/"
+      ],
+      "steps": [
+        "定义candidate→binding→bound/needs_connection/failed与取消代际。",
+        "Host核对session，Runtime保存tuple，Client只按回执确认。",
+        "覆盖延迟响应、切会话、多个连接、移除单项和重启对账；复用现有bind不维护第二份活动目录。"
+      ],
+      "deliver": "绑定状态机、回执接口、竞态测试与实际A/B会话记录。",
+      "done": "TST051/052；A响应不写B，focus不撤其他binding。",
+      "stop": "多连接无法唯一定位时零下游分发。",
+      "back": "关闭新增输入绑定路径，保留旧目录管理和DB事实。",
+      "status": "TODO",
+      "reqs": [
+        51,
+        52
+      ]
+    },
+    {
+      "id": "TODO-031",
+      "title": "建立多组件编辑定位与消息引用",
+      "phase": "R1",
+      "owner": "I / V",
+      "deps": [
+        30
+      ],
+      "paths": [
+        "packages/plugin-apps/client/view.tsx",
+        "packages/plugin-apps/src/index.ts",
+        "packages/app-presentation/src/"
+      ],
+      "steps": [
+        "将原工具结果扩展为编辑目标定位包并保留旧字段。",
+        "原消息卡使用持久viewId，当前focus仅用于无歧义默认目标。",
+        "为当前草稿/保存历史/新建分别提供明确入口，不把“打开原消息”映射到最后组件。"
+      ],
+      "deliver": "定位包、消息meta适配、歧义提示与回归用例。",
+      "done": "TST053；旧生产appsToolViewReference的显式身份保证不退化。",
+      "stop": "目标目录不属于当前view时停止编辑。",
+      "back": "回退新定位投影，旧消息meta继续可读。",
+      "status": "TODO",
+      "reqs": [
+        52,
+        53
+      ]
+    },
+    {
+      "id": "TODO-032",
+      "title": "新增轻量草稿与创作 attempt 持久模型",
+      "phase": "R2",
+      "owner": "I / A / V",
+      "deps": [
+        27,
+        31
+      ],
+      "paths": [
+        "packages/app-contracts/",
+        "packages/app-presentation/",
+        "packages/app-runtime/src/store.ts",
+        "scripts/migrate-apps.mjs；拟新增authoring持久化与schema3到4迁移模块"
+      ],
+      "steps": [
+        "按SPEC定义Draft、Attempt、发布修订及状态转移；记录元数据，不接管原Agent。",
+        "实现独立workspace分配、未保存副本保留/查找、attempt关联invocation。",
+        "新增数据库schema4迁移设计与3→4离线副本演练；不得直接把目标DDL施加原库。"
+      ],
+      "deliver": "版本化Schema、存储事务、迁移器及夹具；authoring数据所有者图。",
+      "done": "TST054/063；同模板跨会话工作副本互不覆盖。",
+      "stop": "迁移存在未知记录或来源不明目录时停在dry-run。",
+      "back": "只切回能读取相应schema的代码；新记录导出后再决定格式回退。",
+      "status": "TODO",
+      "reqs": [
+        54,
+        63
+      ]
+    },
+    {
+      "id": "TODO-033",
+      "title": "记录真实构建并关联不可变存档",
+      "phase": "R2",
+      "owner": "I / V",
+      "deps": [
+        32
+      ],
+      "paths": [
+        "scripts/create-apps-source.mjs",
+        "packages/source-components/src/index.ts",
+        "拟新增 scripts/apps-authoring-build.mjs"
+      ],
+      "steps": [
+        "复用原DSH命令运行工程真实build，捕获command/cwd/exit/log和输入摘要。",
+        "防止变动输入和旧dist被当新构建；成功后capture仅归档候选。",
+        "兼容旧manifest；所有新回执与源码/锁/dist/fileManifest可相互校验。"
+      ],
+      "deliver": "BuildReceipt、构建执行辅助脚本、旧dist/输入变化/exit1测试。",
+      "done": "TST055/056；使用正常React依赖，不重新限制成固定widget。",
+      "stop": "构建失败或输入变化不允许发布。",
+      "back": "候选归档可保留诊断；现有active/保存组件不变。",
+      "status": "TODO",
+      "reqs": [
+        55,
+        56
+      ]
+    },
+    {
+      "id": "TODO-034",
+      "title": "接通 v2 同份 dist 预览载体",
+      "phase": "R2",
+      "owner": "I / V",
+      "deps": [
+        33
+      ],
+      "paths": [
+        "scripts/source-preview.mjs",
+        "packages/component-runtime/src/apps-client.ts",
+        "packages/component-runtime/src/host.ts"
+      ],
+      "steps": [
+        "保留readDist冻结资源实现，增加基于v2 Host的明确协议分支。",
+        "预览数据采用真实DatasetBinding/ResourceRef结构，标fixture/live_readonly。",
+        "双协议测试；版本不匹配明确失败，预览不假扮原生发送或业务写成功。"
+      ],
+      "deliver": "v2预览命令、协议能力报告、逐资源hash测试、v1回归。",
+      "done": "TST057；新SDK不在旧协议超时或使用假数据替代。",
+      "stop": "待展示字节与预览manifest不一致停止。",
+      "back": "旧v1路径保留；新v2能力未通过不设为默认。",
+      "status": "TODO",
+      "reqs": [
+        57
+      ]
+    },
+    {
+      "id": "TODO-035",
+      "title": "生成真实视觉/交互报告并供原 Agent 读取",
+      "phase": "R2",
+      "owner": "I / V",
+      "deps": [
+        34
+      ],
+      "paths": [
+        "拟新增预览验证runner",
+        "packages/source-components/src/index.ts",
+        "skills/"
+      ],
+      "steps": [
+        "对同一冻结build实际运行窄/宽视口；记录截图、pageerrors、网络失败、握手及主要控件断言。",
+        "验证报告/图片SHA、build一致、必测项覆盖；PASS不可由Agent自由文本声明。",
+        "技能只指导读报告和图、迭代修改；实际消费通过原会话证据核对。"
+      ],
+      "deliver": "PreviewReceipt、可读取截图/报告入口、真实样例和反例。",
+      "done": "TST058；失效截图/空白页/运行错不会进可发布状态。",
+      "stop": "缺浏览器环境或图像读取能力按范围BLOCKED，不生成假截图。",
+      "back": "撤销无效preview引用，保留构建与错误日志。",
+      "status": "TODO",
+      "reqs": [
+        58
+      ]
+    },
+    {
+      "id": "TODO-036",
+      "title": "实现候选发布与同 view 事务 CAS",
+      "phase": "R3",
+      "owner": "I / A / V",
+      "deps": [
+        33,
+        35
+      ],
+      "paths": [
+        "packages/app-presentation/src/index.ts",
+        "packages/app-contracts/",
+        "packages/service/"
+      ],
+      "steps": [
+        "新增apps.authoring.*项目能力（拟新增），不误称DSH现成API。",
+        "归档与可见view更新分离，发布核对receipt、owner、epoch、expectedViewRevision。",
+        "按SPEC保留旧open_source_component兼容入口并明确legacy_unverified，不把其直开当新链通过。"
+      ],
+      "deliver": "候选/发布事务、新能力Schema、幂等publish与竞争测试。",
+      "done": "TST059/060；同view更新只换build引用，不自动save。",
+      "stop": "任一门禁缺失，旧active保持不变。",
+      "back": "关闭新发布入口；不抹去已提交publication，恢复需显式记录。",
+      "status": "TODO",
+      "reqs": [
+        59,
+        60
+      ]
+    },
+    {
+      "id": "TODO-037",
+      "title": "新增 frame 就绪与最后可用界面恢复",
+      "phase": "R3",
+      "owner": "I / V",
+      "deps": [
+        36
+      ],
+      "paths": [
+        "packages/dsh-plugin/client/component-frame.tsx",
+        "packages/plugin-apps/client/view.tsx",
+        "packages/component-runtime/"
+      ],
+      "steps": [
+        "协商可选renderReadyV1扩展；旧v2 SDK仍只接收到认识的方法列表。",
+        "候选frame必须被明确登记为候选身份，避免现有current-build校验拒绝合法候选或放行任意build。",
+        "确认可用后CAS提升；React白屏、失败数据、超时及旧nonce不影响旧frame。"
+      ],
+      "deliver": "就绪回执、候选frame装载/恢复逻辑、真实运行错误测试。",
+      "done": "TST061；onLoad不等于成功，无旧构建有真实空态。",
+      "stop": "失败时不销毁唯一last-good；不循环自动发布坏构建。",
+      "back": "恢复前一确认build或关闭未确认候选，保留失败publication。",
+      "status": "TODO",
+      "reqs": [
+        61
+      ]
+    },
+    {
+      "id": "TODO-038",
+      "title": "处理取消、重启和迟到创作结果",
+      "phase": "R3",
+      "owner": "I / V",
+      "deps": [
+        32,
+        36,
+        37
+      ],
+      "paths": [
+        "packages/app-presentation/",
+        "packages/app-runtime/",
+        "packages/plugin-apps/client/"
+      ],
+      "steps": [
+        "取消epoch持久化后协作中止未来阶段；发布内再次核验。",
+        "恢复running为interrupted并只读判定已提交事实，不自动重跑。",
+        "测试取消前后事务边界、Host/Runtime独立重开、A/B切换、同view旧attempt晚到。"
+      ],
+      "deliver": "取消与恢复状态机、故障注入夹具、重启前后证据。",
+      "done": "TST062/063；已发布不假称撤销，未发布不会晚到覆盖。",
+      "stop": "原业务操作unknown与创作取消分开处理，不用UI取消去撤业务。",
+      "back": "冻结相关view发布后恢复明确build，工作副本继续保留。",
+      "status": "TODO",
+      "reqs": [
+        62,
+        63
+      ]
+    },
+    {
+      "id": "TODO-039",
+      "title": "增加声明式 UI 状态恢复契约",
+      "phase": "R3",
+      "owner": "I / V",
+      "deps": [
+        37
+      ],
+      "paths": [
+        "packages/component-runtime/",
+        "packages/plugin-apps/client/view.tsx",
+        "packages/app-presentation/"
+      ],
+      "steps": [
+        "协商uiStateV1与schema版本；提供导出、恢复和迁移hooks但不规定布局语言。",
+        "宿主以session/view保存状态，frame切换导入，错误恢复明确提示。",
+        "选择按ResourceRef和最新datasetRevision重验；独立于Agent contextRevision及原输入草稿。"
+      ],
+      "deliver": "UI状态SDK、版本迁移样例、宽窄/重开/换build回归。",
+      "done": "TST064/074；承诺保留的字段逐一对账，失效选择不猜行号。",
+      "stop": "不兼容时保留旧快照并提示，不能静默恢复错误选择。",
+      "back": "组件未声明扩展仍可显示，但UI明确未承诺跨build保留。",
+      "status": "TODO",
+      "reqs": [
+        64,
+        74
+      ]
+    },
+    {
+      "id": "TODO-040",
+      "title": "完善现有选择附件桥的生产边界",
+      "phase": "R4",
+      "owner": "I / V",
+      "deps": [
+        30,
+        37
+      ],
+      "paths": [
+        "packages/plugin-apps/client/component-handlers.ts",
+        "packages/dsh-plugin/client/selection.ts",
+        "packages/dsh-plugin/client/selection-native.ts"
+      ],
+      "steps": [
+        "复用现有Runtime校验与原inputActions，补稳定去重键和阶段回执。",
+        "保留正文/旧附件；处理插入失败、切会话、数据刷新及重复点击。",
+        "完成真实附件移除/上传可读性验证，不新写浏览器私有会话存储。"
+      ],
+      "deliver": "附件去重与失败回归、真实原输入A/B操作证据。",
+      "done": "TST065；不存在直接清空输入或validated当attached。",
+      "stop": "原生API不可用时显示原因，保留选择，不偷偷发送文本替代。",
+      "back": "关闭新附加动作不删除原输入现有附件。",
+      "status": "TODO",
+      "reqs": [
+        65
+      ]
+    },
+    {
+      "id": "TODO-041",
+      "title": "区分手动发送与可选主动请求 Agent",
+      "phase": "R4",
+      "owner": "I / V",
+      "deps": [
+        40
+      ],
+      "paths": [
+        "packages/plugin-apps/src/index.ts",
+        "packages/dsh-compat/",
+        "packages/component-runtime/"
+      ],
+      "steps": [
+        "分别声明validated/attached/submitted/consumed语义及显示文案。",
+        "adapter disabled条件下核实默认创作与手动附件发送。",
+        "对可选updateContext/requestAgent保留已实现正式投影，重验实际版本而非重新写一套。"
+      ],
+      "deliver": "两条发送路径状态表、缺能力降级、原生队列/消费证据。",
+      "done": "TST066/068；附加/本地交互零额外模型步。",
+      "stop": "未取得正式回执不显示已发送；超时先只读查原请求。",
+      "back": "禁用可选adapter，默认手动原聊天路径仍可用。",
+      "status": "TODO",
+      "reqs": [
+        66,
+        68
+      ]
+    },
+    {
+      "id": "TODO-042",
+      "title": "跑真实原 Agent 的创作与迭代整链",
+      "phase": "R4",
+      "owner": "V / I",
+      "deps": [
+        31,
+        35,
+        38,
+        39,
+        41,
+        44
+      ],
+      "paths": [
+        "test/（新增原生E2E套件）",
+        "skills/",
+        "验收手册TST067"
+      ],
+      "steps": [
+        "用实际外部模型、原会话、固定测试数据和普通React工程完成从需求到界面的链。",
+        "强制至少一次依据真实反馈的源码修改；记录人工介入，不能预置最终dist充当模型创作。",
+        "核对保存、另一会话重开、附件实际读取及可选adapter关闭分支。"
+      ],
+      "deliver": "原Agent完整记录、模型版本、输入、构建/预览/发布回执和最终截图。",
+      "done": "TST067与AC-13整链映射通过；失败如实记录。",
+      "stop": "外部模型不可用则仅fixture/local_model保留结果，整链NOT_ACCEPTED。",
+      "back": "只读展示任务不改真实业务；删除测试草稿按显式清理计划。",
+      "status": "TODO",
+      "reqs": [
+        58,
+        67,
+        68
+      ]
+    },
+    {
+      "id": "TODO-043",
+      "title": "落地局部工作台、组件库与交互状态",
+      "phase": "R4",
+      "owner": "I / V",
+      "deps": [
+        31,
+        39
+      ],
+      "paths": [
+        "packages/plugin-apps/client/directory.tsx",
+        "packages/plugin-apps/client/workspace.tsx",
+        "packages/plugin-apps/client/view.tsx"
+      ],
+      "steps": [
+        "按原导航→应用列表→应用内容布局重做插件区，保留原聊天。",
+        "连接现有list_saved、历史版本和管理能力，提供多view定位与重开。",
+        "完成空/加载/失败/长标题/窄宽/键盘交互，蓝白参考仅作用插件区。"
+      ],
+      "deliver": "局部UI与后端接线、视觉状态矩阵、视口截图。",
+      "done": "TST049/069/070；无独立聊天页，无第二组件库。",
+      "stop": "原型外壳或singleactiveApp被复制进入生产时停止评审。",
+      "back": "回到现有AppsDirectory和原生组件侧栏，资产数据不迁来迁去。",
+      "status": "TODO",
+      "reqs": [
+        49,
+        69,
+        70
+      ]
+    },
+    {
+      "id": "TODO-044",
+      "title": "完成明确保存、历史回退和 CAS 冲突 UI",
+      "phase": "R4",
+      "owner": "I / V",
+      "deps": [
+        36,
+        43
+      ],
+      "paths": [
+        "packages/app-presentation/src/index.ts",
+        "packages/plugin-apps/client/"
+      ],
+      "steps": [
+        "保留现有save_as/update实现；补source revision、baseRevision与viewRevision定位显示。",
+        "自然语言明确保存或按钮都可进入同一保存能力，不增加无必要再次审批。",
+        "呈现冲突：保留副本、查看最新、另存；历史恢复新增版本；重命名采用CR确认语义。"
+      ],
+      "deliver": "保存/冲突/历史操作UI、数据回归和两会话竞争用例。",
+      "done": "TST070/071/072；不错不保存、冲突不自动换revision。",
+      "stop": "无法证明保存的view是已验证候选时拒绝新正式发布保存。",
+      "back": "现有组件历史不改写；恢复前一版本以新revision记录。",
+      "status": "TODO",
+      "reqs": [
+        70,
+        71,
+        72
+      ]
+    },
+    {
+      "id": "TODO-045",
+      "title": "统一副本、删除、历史及引用清理",
+      "phase": "R5",
+      "owner": "I / V",
+      "deps": [
+        32,
+        38,
+        44
+      ],
+      "paths": [
+        "packages/app-presentation/",
+        "packages/source-components/",
+        "scripts/apps-maintenance.mjs",
+        "实际迁移/备份实现"
+      ],
+      "steps": [
+        "实现草稿保留/恢复入口，区分close/remove/delete/purge。",
+        "把新增attempt/receipt/UI状态及candidate/last-good纳入备份与GC引用。",
+        "在离线隔离库演练历史打开、增量备份、过期GC计划拒绝及恢复。"
+      ],
+      "deliver": "删除规则、引用迁移、GC/备份报告、恢复测试。",
+      "done": "TST056/063/072/073；活引用零误删。",
+      "stop": "原型delete与生产历史保留冲突未解决则不提供永久删除。",
+      "back": "GC默认dry-run；apply失败保留计划与失败对象，不自动重建库。",
+      "status": "TODO",
+      "reqs": [
+        56,
+        63,
+        72,
+        73
+      ]
+    },
+    {
+      "id": "TODO-046",
+      "title": "补齐后台刷新和多绑定数据状态",
+      "phase": "R5",
+      "owner": "I / V",
+      "deps": [
+        30,
+        39
+      ],
+      "paths": [
+        "packages/service/src/apps-main.ts",
+        "packages/app-presentation/src/index.ts",
+        "既有调度模块或新增最小调度适配"
+      ],
+      "steps": [
+        "核对真实worker是否存在；若已存在只接线和验证，不重复实现。",
+        "持久计划、时区、禁用、下一执行、单飞、重启错过最多补一次。",
+        "UI逐绑定显示状态与sourceDataTime，刷新不触发构建/保存/业务写。"
+      ],
+      "deliver": "调度能力矩阵、workeridentity、计划状态与虚拟时钟/真实Runtime验证。",
+      "done": "TST074/075；关UI仍执行后台读，失败不清空快照。",
+      "stop": "无法证明worker已装配时禁止显示计划已运行。",
+      "back": "停用计划即可降级手动刷新，保存设计不变。",
+      "status": "TODO",
+      "reqs": [
+        74,
+        75
+      ]
+    },
+    {
+      "id": "TODO-047",
+      "title": "明确连接配置更新及缓存失效",
+      "phase": "R5",
+      "owner": "I / A / V",
+      "deps": [
+        30
+      ],
+      "paths": [
+        "packages/service/src/apps-main.ts",
+        "packages/app-runtime/src/index.ts",
+        "packages/app-hallmark/src/index.ts"
+      ],
+      "steps": [
+        "发布DB活动配置/文件初始播种规则；启动输出差异而非静默覆盖。",
+        "实现revision CAS、连接排空、客户端/任务代理/领域缓存失效。",
+        "记录调用configRevision并对MockA/B迁移做在途与新请求检查。"
+      ],
+      "deliver": "配置更新程序、缓存代际规则、A/B后端精确路由测试。",
+      "done": "TST076；地址显示与实际请求一致；在途不迁移。",
+      "stop": "未决业务操作或无法排空时停止该连接切换。",
+      "back": "保持旧revision活动配置；已完成切换的回退必须新revision。",
+      "status": "TODO",
+      "reqs": [
+        76
+      ]
+    },
+    {
+      "id": "TODO-048",
+      "title": "分开演练业务写、schema升级和真实切换",
+      "phase": "R5",
+      "owner": "V / R / I",
+      "deps": [
+        45,
+        46,
+        47,
+        49
+      ],
+      "paths": [
+        "docs/apps-migration-runbook.md",
+        "scripts/migrate-apps.mjs",
+        "scripts/apps-maintenance.mjs",
+        "真实Hallmark Provider"
+      ],
+      "steps": [
+        "先完成隔离2→3与拟新增3→4完整副本链及所有新增资产引用恢复。",
+        "将价格、库存、已有采集上品各自列测试范围；没有用户明确参数不执行真实写。",
+        "分别签BUSINESS-WRITE与DATA-CUTOVER，核查唯一writer及含新增资产/unknown的回退分支。"
+      ],
+      "deliver": "源API与三入口覆盖表、每类业务前后态与原回执、完整迁移/回退演练、独立切换签认。",
+      "done": "TST078/079；查询通过不代签写；插件升级不代签切库。",
+      "stop": "任一前提缺失保持对应范围BLOCKED，不影响可独立审查的创作候选。",
+      "back": "冻结受影响入口；只读核查unknown，按增量决定兼容代码回退。",
+      "status": "TODO",
+      "reqs": [
+        73,
+        78,
+        79
+      ]
+    },
+    {
+      "id": "TODO-049",
+      "title": "重跑原 48 项架构回归与兼容分发",
+      "phase": "R5",
+      "owner": "V / I",
+      "deps": [
+        33,
+        34,
+        36,
+        40
+      ],
+      "paths": [
+        "test/app-* / test/apps-* / test/dsh-compat",
+        "scripts/generate-apps-sdk.mjs",
+        "scripts/build-apps-bundle.mjs",
+        "test旧Hallmark覆盖"
+      ],
+      "steps": [
+        "按实际Node/构建顺序重跑仓库测试、类型、构建、smoke；重新生成SDK并检查目录一致。",
+        "将原TST001..048逐项映射到本次可访问原始结果；保留原candidate记录。",
+        "重验四网关、26legacy工具/HTTP/v1组件与旧历史消息；不强制改动态工具加载。"
+      ],
+      "deliver": "原48回归矩阵、SDK/catalog一致性、兼容窗说明、测试/构建原始日志。",
+      "done": "原功能没有因新闭环回归；据范围和版本判定，不按总测试数代替。",
+      "stop": "新代码与执行版本不同则结果不可用于当前发布。",
+      "back": "停发新包；保留前候选但新schema必须由兼容版本读取。",
+      "status": "TODO",
+      "reqs": [
+        77,
+        80
+      ]
+    },
+    {
+      "id": "TODO-050",
+      "title": "整个架构按范围验收并形成发布包",
+      "phase": "R6",
+      "owner": "V / R / A",
+      "deps": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49
+      ],
+      "paths": [
+        "本次03_ACCEPTANCE.md",
+        "docs/requirements/traceability.csv",
+        "bundle/Host/Client/Runtime运行identity"
+      ],
+      "steps": [
+        "执行全80项适用检查，分别整理CORE、AUTHORING、BUSINESS-WRITE、DATA-CUTOVER阻断项。",
+        "复核实际安装、正常重开、原会话显示、卸载重开清理与数据保留。",
+        "生成可访问证据manifest、限制清单、四角色签认、回退条件和新版本图册。"
+      ],
+      "deliver": "最终验收结论、四个范围状态、包hash与运行矩阵、完整资料包。",
+      "done": "TST077/080；任何未验范围明确NOT_ACCEPTED；不以文档完成代签。",
+      "stop": "范围内任一强制项FAIL/BLOCKED/NOT_RUN或证据缺失就不放行该范围。",
+      "back": "只发布有范围的candidate；恢复入口前按新数据增量审阅，不宣称撤销业务。",
+      "status": "TODO",
+      "reqs": [
+        77,
+        79,
+        80
+      ]
+    }
+  ],
+  "baseline": [
+    {
+      "id": "REQ-001",
+      "title": "不修改 DSH 核心",
+      "text": "集成实现必须通过已核实的 DSH 插件、工具、会话与展示扩展点工作；不得增加第二个 Agent Loop、复制聊天历史或修改 DSH 核心文件。\n\n验证：`TST-001`；放行断言：核心文件哈希不变；任务使用原会话；卸载无残留注册。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "PASS",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S10",
+        "S22"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-002",
+      "title": "一个外壳与 N 个接入",
+      "text": "共享 Apps 外壳不得 import 任何具体应用实现。每个应用必须通过清单和 Provider 注册加入；应用 UI 入口数不得随接入插件数增长。\n\n验证：`TST-002`；放行断言：公共源代码无 notes 分支；目录出现两个应用；仍只有一个 Apps 入口。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S09",
+        "S10",
+        "S11"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-003",
+      "title": "一个业务事实来源",
+      "text": "原应用必须继续拥有商品、订单等业务事实。Runtime 只能保存连接、调用证据、查询快照和展示资产；不得把缓存标为实时源记录。\n\n验证：`TST-003`；放行断言：快照可读且明确 stale/时间；刷新报 unavailable；原业务库没有被替代写入。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S09",
+        "S13",
+        "S14"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-004",
+      "title": "一个能力执行实现",
+      "text": "原生工具、SDK、底层 operationId 入口和组件动作必须汇聚到 Runtime invoke；一个逻辑调用只能触发一次 Provider execute。\n\n验证：`TST-004`；放行断言：每次独立调用 Provider 恰为一次；三入口的结果包络和错误语义一致。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08",
+        "S13",
+        "S15",
+        "S23"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-005",
+      "title": "唯一运行时目录",
+      "text": "P2 Runtime 必须维护唯一活动能力目录。DSH Host 只保存可撤销投影和目录版本缓存，不得独立定义第二份能力 Schema。\n\n验证：`TST-005`；放行断言：Host 由目录生成新投影；catalogDigest 改变；不存在手工同步的第二份 Schema。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08",
+        "S12"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-006",
+      "title": "生命周期与卸载",
+      "text": "Provider 启动、Host 投影挂载、停止接收、排空及卸载必须是显式状态。卸载 Host 投影不得删除组件、快照或已提交业务操作。\n\n验证：`TST-006`；放行断言：无重复工具和事件监听；组件仍存在；操作可由 Runtime 回查。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08",
+        "S10",
+        "S03"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-007",
+      "title": "连接独立于应用",
+      "text": "一个 appId 必须允许多个 connectionId。connectionId 必须绑定明确后端实例；店铺 ID 必须保留为领域参数，不得默认等同 connectionId。\n\n验证：`TST-007`；放行断言：请求只到指定连接；店铺按输入解析；不复制插件或混淆两类标识。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08",
+        "S09"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-008",
+      "title": "会话应用集合与焦点分离",
+      "text": "SessionAppBinding 必须以 sessionId、appId、connectionId 为组合身份。focusedApp 只影响界面，不得自动禁用其他已启用会话绑定。\n\n验证：`TST-008`；放行断言：原会话仍能调用两应用；另一会话未获得隐式绑定。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08",
+        "S24"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-009",
+      "title": "显式路由与歧义处理",
+      "text": "调用在多个连接候选间无法唯一解析时，必须返回 needs_clarification 和候选 connectionId；不得按最近使用、第一项或名称相似自动选择。\n\n验证：`TST-009`；放行断言：首个请求零下游分发并返回候选；完整 ID 请求仅命中一个连接。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08",
+        "S12"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-010",
+      "title": "按需工具发现",
+      "text": "默认模型上下文必须只包含应用摘要和已选工作集能力；未验证 DSH 动态 Schema 支持前，必须使用固定 discovery/describe/invoke 投影，不得宣称执行门禁等于按需发现。\n\n验证：`TST-010`；放行断言：完整 1000 能力 Schema 未整体注入；加载工作集可追踪；未支持路径显式降级。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "PASS",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S12",
+        "S02"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-011",
+      "title": "兼容性握手",
+      "text": "Host 与 Runtime 必须校验 transportMajor、catalogSchemaVersion 和能力版本；支持范围外的破坏性差异必须返回 INCOMPATIBLE_PROTOCOL，不得绕过检验继续执行。\n\n验证：`TST-011`；放行断言：前者目录刷新成功；后者在 Provider 分发前停止并显示期望/实际版本。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08",
+        "S12"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-012",
+      "title": "输入输出同时声明",
+      "text": "每个能力必须声明版本化输入及输出 Schema，且注册时编译校验。成功结果的 data 必须满足输出 Schema；校验失败不得投影为成功。\n\n验证：`TST-012`；放行断言：注册失败或 OUTPUT_SCHEMA_INVALID；错误包含字段路径；模型不见伪成功。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08",
+        "S13",
+        "S14"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-013",
+      "title": "底层 API 不是第二套业务",
+      "text": "底层调用必须通过注册 operationId 和对应 Provider dispatch，保留请求/响应证据。具备直接 HTTP 的应用可用生成客户端；CLI/MCP 接入可另写适配器。\n\n验证：`TST-013`；放行断言：无需新增语义工具即可调用；仍生成 invocationId 和正确来源/结果状态。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S13",
+        "S15"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-014",
+      "title": "未知写接口显式分类",
+      "text": "目录未登记的底层操作必须先添加效果类型、请求格式和结果解释。不得把未知 POST 当只读；这是结果可解释性要求，不是要求人工审批每次调用。\n\n验证：`TST-014`；放行断言：未登记请求为 CAPABILITY_NOT_FOUND；登记后沿统一写入链路执行。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S13"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-015",
+      "title": "生成 SDK 与调用语义",
+      "text": "SDK 类型、能力文档和原生参数投影必须从同一能力清单生成。SDK 必须返回显式结果联合类型，不得将 unknown 静默转为空对象或自动重试写操作。\n\n验证：`TST-015`；放行断言：类型/文档/工具投影同步变化；调用方必须处理 unknown，Provider 未再次执行。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S15"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-016",
+      "title": "数据来源时间口径",
+      "text": "返回数据必须分别表达 fetchedAt、sourceDataTime 和 freshness；无法证明源时间时 sourceDataTime 为 null。参考利润必须保留 metricBasis，不得改称结算净利润。\n\n验证：`TST-016`；放行断言：sourceDataTime=null；缺成本单列；标题及结果未使用实际结算净利润。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S13",
+        "S16"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-017",
+      "title": "幂等身份与请求哈希",
+      "text": "变更调用必须在分发前持久化 operationId；幂等唯一域为 appId+connectionId+capabilityId+idempotencyKey。相同键不同规范化请求必须返回 IDEMPOTENCY_CONFLICT。\n\n验证：`TST-017`；放行断言：仅一次业务分发；并发获得同一 operationId；改变价格请求冲突且零新分发。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-018",
+      "title": "状态与业务核实",
+      "text": "接受请求、平台接收和业务完成必须分开表示。unknown 只能由只读回查变为已知状态，不得经自动重发变为 running。\n\n验证：`TST-018`；放行断言：操作先 unknown；仅执行 inspect；确认完成后 succeeded，原变更端点总调用数为一。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08",
+        "S13"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-019",
+      "title": "取消不等于撤销",
+      "text": "取消前未分发的变更必须记 cancelled；分发后缺少完成证据的取消必须记 unknown 或保持 pending 并回查。AbortSignal 必须逐层传递，停止新增子调用。\n\n验证：`TST-019`；放行断言：前者外部请求为零；后者不声称业务撤回；子调用不再增加。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-020",
+      "title": "并发与冲突域",
+      "text": "Provider 必须声明同一连接/资源的并发规则。默认变更串行；readOnly 名称不能代替并发安全证明；冲突保存必须使用 expectedRevision。\n\n验证：`TST-020`；放行断言：冲突域内按序；无关读取按声明执行；仅一个保存成功，另一个 REVISION_CONFLICT。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08",
+        "S16"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-021",
+      "title": "脚本子调用日志",
+      "text": "脚本和批处理必须有 runId，所有能力子调用必须记录 parentRunId、invocationId、appId 和 connectionId。已完成子调用在后续失败时不得从记录中删除。\n\n验证：`TST-021`；放行断言：run=failed/partial 可定位；Notes 完成记录仍在；恢复未重放已完成写入。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S02"
+      ],
+      "auditObservation": "REPORTED_ONLY / 需原始证据"
+    },
+    {
+      "id": "REQ-022",
+      "title": "跨应用不假装事务",
+      "text": "跨应用流程必须按步骤汇报结果；补偿必须由应用明确提供，且补偿本身具有独立操作记录。不得承诺通用原子回滚。\n\n验证：`TST-022`；放行断言：结果为 partial 并列出步骤；只恢复未完成步骤；没有自动反向 Hallmark 变更。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S02"
+      ],
+      "auditObservation": "REPORTED_ONLY / 需原始证据"
+    },
+    {
+      "id": "REQ-023",
+      "title": "模型预算与数据句柄",
+      "text": "完整数据必须能以数据集或文件引用读取；模型投影默认不得超过 16384 UTF-8 字节。分页/筛选必须明确 total、returned、cursor 和完整性。\n\n验证：`TST-023`；放行断言：模型响应受预算限制；完整结果可查；spill 失败给明确错误/更小分页提示，不转无限文本。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S02",
+        "S15"
+      ],
+      "auditObservation": "REPORTED_ONLY / 需原始证据"
+    },
+    {
+      "id": "REQ-024",
+      "title": "稳定错误契约",
+      "text": "业务错误必须有 code、message、retryPolicy 和相关 operationId；retryPolicy 必须区分 never、read_retry、inspect_only。transport 超时不得统一变成业务 failed。\n\n验证：`TST-024`；放行断言：结果依次为 failed/never、unavailable/read_retry、unknown/inspect_only。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08",
+        "S15"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-025",
+      "title": "普通源码为主路径",
+      "text": "复杂组件必须允许普通 React/TSX/CSS 源码和正常依赖构建；静态/声明式组件可作为快速路径，不得成为自由布局上限。\n\n验证：`TST-025`；放行断言：不依赖七类固定控件即可展示；构建错误不覆盖旧可用版本。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S17",
+        "S18",
+        "S19"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-026",
+      "title": "构建与保存分离",
+      "text": "buildId 必须标识不可变构建；viewId 必须标识会话展示实例；componentId 必须标识已保存资产。登记草稿不得自动保存进组件库。\n\n验证：`TST-026`；放行断言：A 构建仍可读；另一 view 未被覆盖；只有保存步骤生成组件版本。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S16",
+        "S17"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-027",
+      "title": "桥接握手与协议",
+      "text": "组件握手必须包含 protocolVersion、viewId、buildId、frameInstanceId 和宿主支持方法。旧 frame 回复不得改变新构建状态。\n\n验证：`TST-027`；放行断言：旧回复被丢弃；新 frame 数据与当前 buildId 匹配；未知主版本被拒绝。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S19",
+        "S20"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-028",
+      "title": "通用资源选择",
+      "text": "组件选择必须使用 ResourceRef，不得在通用 SDK 声明商品、店铺或利润专属字段。选择提交必须携带 bindingId 和数据 revision。\n\n验证：`TST-028`；放行断言：两种资源均可表示；旧选择返回 SELECTION_STALE，未静默映射到新行。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S16",
+        "S23"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-029",
+      "title": "本地动作不经过模型",
+      "text": "筛选、排序、折叠、分页显示和选中状态必须在组件本地处理；明确业务按钮通过 SDK invoke，不得每次点击都生成 Agent 请求。\n\n验证：`TST-029`；放行断言：本地交互模型请求数为零；能力按钮产生一次 invocation。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S19",
+        "S23"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-030",
+      "title": "上下文与消息分开",
+      "text": "updateContext 必须只更新可在后续模型步消费的结构化上下文；requestAgent 必须沿 DSH 已验证会话输入路径提交任务。上下文更新不得自动唤醒模型。\n\n验证：`TST-030`；放行断言：前者不新增模型步；后者产生可重放的原生会话输入或明确 UNSUPPORTED_HOST_CAPABILITY。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "PASS",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S12",
+        "S23"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-031",
+      "title": "确定性会话投影",
+      "text": "任何实际进入模型的组件上下文必须能从 DSH 持久会话记录或正式纯投影重建。仅保存在 iframe 内存中的状态不得被宣称为已送达 Agent。\n\n验证：`TST-031`；放行断言：消费时的 revision 与数据引用可重建；后续 UI 状态未篡改历史输入。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "PASS",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S12",
+        "S02"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-032",
+      "title": "多应用绑定",
+      "text": "单组件必须能绑定不同 appId/connectionId 的多个数据集，各绑定独立报告 freshness 和错误。跨应用实体关联必须注明匹配键与证据。\n\n验证：`TST-032`；放行断言：可用区域继续显示；失败区域独立报错；未映射对象标记 unresolved，不按名称猜配。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S16"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-033",
+      "title": "离线与版本冲突",
+      "text": "打开保存组件不得强制业务后端在线；刷新失败必须保留上次成功快照；组件更新必须提供 expectedRevision，历史版本回退必须保存为新版本。\n\n验证：`TST-033`；放行断言：设计可打开，数据明确 stale；冲突不覆盖；历史版本仍存在。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S16"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-034",
+      "title": "明确状态所有者",
+      "text": "P2 Runtime 必须是应用目录、连接、调用记录和共享展示库的唯一写入者；Provider 域状态必须命名空间隔离；P1/P3 不得直接写 SQLite。\n\n验证：`TST-034`；放行断言：只有 Runtime 存储接口提交共享写；Host/浏览器无直接数据库访问。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08",
+        "S09",
+        "S16"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-035",
+      "title": "确定性数据集身份",
+      "text": "数据集键必须由协议版本、appId、connectionId、能力主版本、规范化输入和字段投影生成；对象键排序但数组保序，未知字段必须按 Schema 处理。\n\n验证：`TST-035`；放行断言：仅对象键重排仍同键；其他语义变化不同键；存储保留完整规范输入以核对哈希。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S16"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-036",
+      "title": "历史数据可追溯迁移",
+      "text": "v2 到目标数据结构必须在离线副本执行 dry-run，生成逐表计数、旧新 ID 映射和构建文件校验。未知连接/工具映射必须隔离为 needs_migration。\n\n验证：`TST-036`；放行断言：原库不变；可解析记录有映射；孤儿不被自动认领；异常在报告中逐项列出。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S26"
+      ],
+      "auditObservation": "REPORTED_ONLY / 需原始证据"
+    },
+    {
+      "id": "REQ-037",
+      "title": "禁止双写切换",
+      "text": "切换前必须停止旧入口接收与写入、核实未决操作并取得一致备份。切换后只有新 Runtime 写新库；旧库必须保留且禁止新旧服务同时写同一业务请求。\n\n验证：`TST-037`；放行断言：第二写入者被拒绝；切换检查失败不开放入口；已应答数据未遗失。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S09",
+        "S26"
+      ],
+      "auditObservation": "REPORTED_ONLY / 需原始证据"
+    },
+    {
+      "id": "REQ-038",
+      "title": "有条件回退",
+      "text": "新系统已产生业务变更后，不得简单还原旧 app.db 并恢复写入。必须先冻结新入口、导出增量操作及回查，再决定兼容代码回退或数据恢复。\n\n验证：`TST-038`；放行断言：流程阻止盲目旧库写入；两条操作仍可追踪；回退结论附校验记录。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S26"
+      ],
+      "auditObservation": "REPORTED_ONLY / 需原始证据"
+    },
+    {
+      "id": "REQ-039",
+      "title": "引用驱动清理",
+      "text": "保存组件引用的构建、数据证据和历史 revision 不得因普通临时文件清理被删除。清理必须先标记，再核对引用，最后按显式保留策略删除。\n\n验证：`TST-039`；放行断言：A 不在删除计划；B 只有满足保留条件才可删除；计划含字节数和引用原因。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S26"
+      ],
+      "auditObservation": "REPORTED_ONLY / 需原始证据"
+    },
+    {
+      "id": "REQ-040",
+      "title": "保留旧工具与协议入口",
+      "text": "迁移版本必须保留已有 26 个 hallmark_* 工具名及其参数/结果语义的兼容投影；旧源码 bridge v1 通过适配器工作，不直接强制所有组件重建。\n\n验证：`TST-040`；放行断言：26 名称覆盖完整；结果语义不退化；hallmark.source.v1 仍能读取和附加选择。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S10",
+        "S13"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-041",
+      "title": "DSH 兼容探针",
+      "text": "dsh-compat 必须记录实际 Host 版本及各扩展点探针结果。无法核实的动态工具、Agent 消息或上下文接口必须关闭相关特性，不得通过猜测方法名上线。\n\n验证：`TST-041`；放行断言：功能矩阵准确；不支持项返回固定错误并显示可用替代路径。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "PASS",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S12",
+        "S02"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-042",
+      "title": "统一分发但独立版本",
+      "text": "V1 必须采用单仓库、一个组合 bundle、一个 P2 运行时进程；逻辑上保留 1+N 原生插件。插件包版本、能力版本、桥接协议和数据库版本必须分开记录。\n\n验证：`TST-042`；放行断言：无每应用一进程要求；版本字段可分别解释；安装器仍为 DSH 官方管理机制。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "PASS",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S10",
+        "S02"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-043",
+      "title": "异构应用验证",
+      "text": "第二个验证应用必须是 Notes 等非商品领域，且至少具备 list/get/create/update 与独立 ResourceRef；第二家店铺不得作为多应用验收替代。\n\n验证：`TST-043`；放行断言：两种领域正常工作；通用层无 storeId/productId 分支；无需改 Hallmark 源文件。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S14",
+        "S02"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-044",
+      "title": "可定位观测记录",
+      "text": "日志必须携带 traceId、invocationId、operationId（存在时）、runId（存在时）、appId、connectionId、能力版本与耗时；UI 必须显示可复制的诊断标识。\n\n验证：`TST-044`；放行断言：可定位到同一次调用；包含分发/结果证据；没有仅写 unknown error 的不可定位日志。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S08",
+        "S24"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    },
+    {
+      "id": "REQ-045",
+      "title": "自动化故障矩阵",
+      "text": "发布必须覆盖服务不可用、响应丢失、重启恢复、组件旧帧、重复请求、并发保存和协议不兼容；成功路径测试不得替代故障测试。\n\n验证：`TST-045`；放行断言：全部强制断言通过；失败项阻止候选版通过 G5。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S03"
+      ],
+      "auditObservation": "REPORTED_ONLY / 需原始证据"
+    },
+    {
+      "id": "REQ-046",
+      "title": "性能与上下文基准",
+      "text": "必须对同一任务比较直接工具、SDK 脚本和混合方式，报告模型输入量、总耗时及成功率；不得引用外部项目提升比例作为本项目验收结果。\n\n验证：`TST-046`；放行断言：报告原始样本和分位数；无未经测量的提速承诺；预算硬限制通过。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S02",
+        "S03"
+      ],
+      "auditObservation": "REPORTED_ONLY / 需原始证据"
+    },
+    {
+      "id": "REQ-047",
+      "title": "可复现交付证据",
+      "text": "每个需求必须关联任务、测试和证据路径。代码完成、模拟测试通过、真实后端验收和文档发布必须分别记录，不得互相替代。\n\n验证：`TST-047`；放行断言：48 个需求无遗漏；未运行测试保留 NOT_RUN；真实业务验收缺口明确。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S03",
+        "S04"
+      ],
+      "auditObservation": "REPORTED_ONLY / 需原始证据"
+    },
+    {
+      "id": "REQ-048",
+      "title": "不扩张本期目标",
+      "text": "V1 不得包含插件市场、第二套权限系统、通用工作流引擎、强制 MCP 改造或自研浏览器；新需求必须经变更单确定影响与新增验收。\n\n验证：`TST-048`；放行断言：越界变更被评审标为 scope_change；未纳入 V1 放行声明。",
+      "reportedImplementation": "VERIFIED",
+      "reportedTest": "PASS",
+      "reportedFixture": "PASS",
+      "reportedRemainingReal": "NOT_RUN",
+      "currentRun": "NOT_RUN",
+      "evidenceAccess": "原始现场档案未随仓库提供",
+      "sources": [
+        "S09",
+        "S10",
+        "S06"
+      ],
+      "auditObservation": "CODE_PRESENT / 不等于整体验收"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+flowchart TB
+  %% FIG-09: 数据所有权与引用关系 | 目标 / 一事实一所有者
+  source["原应用<br/>商品 / 订单 / 原始 Note<br/>业务事实所有者"]
+  provider["Provider<br/>领域解释 / remoteRef / inspect"]
+  runtime["Runtime<br/>连接 / 调用记录 / 数据集<br/>共享状态唯一写入者"]
+  artifacts["组件版本与绑定<br/>componentId / revision"]
+  assets["构建文件<br/>buildId / 文件哈希"]
+  session["DSH 原生会话记录<br/>模型输入与工具结果"]
+  source -->|"源数据"| provider
+  provider -->|"证据"| runtime
+  artifacts -->|"绑定引用"| runtime
+  artifacts -->|"buildId"| assets
+  runtime -->|"正式投影"| session

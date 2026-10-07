@@ -4,6 +4,9 @@ import type {BridgeRequest, CapabilityResult, ComponentAgentIntent, JsonSchema, 
 import {hostFeatureModes, requireHostCapability, type HostCapabilityMatrix, type NativeSessionAdapterMode} from '../../dsh-compat/src/index.ts';
 import type {AppsHostTransport, RuntimeApp, ModelProjection} from './transport.ts';
 import {nativeInputReceipt} from '../../dsh-compat/src/native-receipt.ts';
+import {parseNativeReference,type NativeBindingRequest} from '../client/native-apps.ts';
+import type {ComponentExtensionRequest} from '../../component-runtime/src/host.ts';
+import {authoringInstructions,type AppsAuthoringGuidance} from './authoring-guidance.ts';
 export * from './transport.ts';
 export const name = 'dsh-plugin-apps';
 export const inject = ['tools', 'agents', 'connection', 'systemPrompt'];
@@ -66,8 +69,10 @@ export class AppsHost {
   private nativeReady: boolean;
   private nativeHookInstalled=false;
   readonly prepareView?: (view: JsonValue, sessionId: string, signal?: AbortSignal) => Promise<void>;
-  constructor(ctx: AppsPluginContext, transport: AppsHostTransport, capabilities: HostCapabilityMatrix = {hostVersion: null, capabilities: {}},options: {prepareView?: (view: JsonValue, sessionId: string, signal?: AbortSignal) => Promise<void>;nativeSessionAdapter?: NativeSessionAdapterMode} = {}) {
+  readonly authoringGuidance?:AppsAuthoringGuidance;
+  constructor(ctx: AppsPluginContext, transport: AppsHostTransport, capabilities: HostCapabilityMatrix = {hostVersion: null, capabilities: {}},options: {prepareView?: (view: JsonValue, sessionId: string, signal?: AbortSignal) => Promise<void>;nativeSessionAdapter?: NativeSessionAdapterMode;authoringGuidance?:AppsAuthoringGuidance} = {}) {
     this.ctx = ctx;this.transport = transport;this.capabilities = capabilities;this.prepareView=options.prepareView;this.nativeSessionAdapter=options.nativeSessionAdapter??'disabled';
+    this.authoringGuidance=options.authoringGuidance?structuredClone(options.authoringGuidance):undefined;
     this.nativeReady=false;this.modes={...hostFeatureModes(capabilities),requestAgent:false,updateContext:false};this.refreshNativeAdapter();
   }
   /** Cordis strict get exposes ACTIVE providers only; an initial missing value is never cached forever. */
@@ -134,7 +139,7 @@ export class AppsHost {
       if (this.ctx.connection) this.disposers.push(this.ctx.connection.fetch.register({path: UI_PATH, methods: ['GET', 'POST'], requestBody: 'buffered', fetch: request => this.ui(request)}));
       if (this.ctx.systemPrompt) this.disposers.push(this.ctx.systemPrompt.context({name: 'dsh-apps-summary', order: 510, text: context => {
         const agent = (context.agent ?? context.scope) as AgentRef | undefined;
-        return this.trusted(agent) && (!context.scope || context.scope === agent) ? this.appSummary() : '';
+        const sessionId=this.trusted(agent);return sessionId && (!context.scope || context.scope === agent) ? this.appSummary(sessionId) : '';
       }}));
       this.started = true;
       if(this.nativeSessionAdapter==='dsh-0.2.0-rc.2'&&typeof this.ctx.on==='function')this.disposers.push(this.ctx.on('internal/service',name=>{if(name==='sessionController'||name==='sessions')this.refreshNativeAdapter();}));
@@ -149,12 +154,12 @@ export class AppsHost {
     const content = canonicalJson(value);
     return Buffer.byteLength(content) <= 16384 ? content : canonicalJson({status: 'failed', error: {code: 'RESULT_SPILL_FAILED', message: '此发现/说明结果超过预算。请限制能力分页或缩小工作集。'}});
   }
-  private appSummary() {return `Apps采用固定发现网关。应用摘要：${JSON.stringify(this.apps.map(app=>({appId:app.appId,displayName:app.displayName,runtimeState:app.providerState})))}。先apps_list/describe按需发现，调用需明确连接和能力版本。`;}
+  private appSummary(sessionId?:string) {return `Apps采用固定发现网关。应用摘要：${JSON.stringify(this.apps.map(app=>({appId:app.appId,displayName:app.displayName,runtimeState:app.providerState})))}。先apps_list/describe按需发现，调用需明确连接和能力版本。${this.authoringGuidance&&sessionId?'\n'+canonicalJson(authoringInstructions(this.authoringGuidance,sessionId)):''}`;}
   private presentationMeta(args: unknown,value: unknown): Record<string,unknown> {
-    const input=args as {appId?:string;capabilityId?:string}|null;if(input?.appId!=='apps'||!['apps.presentation.render_view','apps.presentation.update_view','apps.presentation.open_component','apps.presentation.open_source_component'].includes(input.capabilityId??''))return {};
+    const input=args as {appId?:string;capabilityId?:string}|null;if(input?.appId!=='apps'||!['apps.presentation.render_view','apps.presentation.update_view','apps.presentation.open_component','apps.presentation.open_source_component','apps.authoring.begin','apps.authoring.inspect','apps.authoring.publish'].includes(input.capabilityId??''))return {};
     const result=(value&&typeof value==='object'&&'result' in value?value.result:value) as CapabilityResult|undefined;if(result?.status!=='ok'||!('data' in result)||!result.data||typeof result.data!=='object'||Array.isArray(result.data))return {};
-    const view=result.data;if(typeof view.viewId!=='string'||typeof view.ownerSessionId!=='string')return {};const source=view.source;
-    return {apps:{viewId:view.viewId,sessionId:view.ownerSessionId,...(source&&typeof source==='object'&&!Array.isArray(source)&&typeof source.buildId==='string'?{buildId:source.buildId}:{})}};
+    const payload=result.data,view=['apps.authoring.begin','apps.authoring.inspect'].includes(input.capabilityId!)?payload.view:payload;if(!view||typeof view!=='object'||Array.isArray(view)||typeof view.viewId!=='string'||typeof view.ownerSessionId!=='string')return {};const publication=input.capabilityId==='apps.authoring.publish'?view:input.capabilityId==='apps.authoring.inspect'?payload.publication:undefined,pub=publication&&typeof publication==='object'&&!Array.isArray(publication)&&publication.viewId===view.viewId&&publication.ownerSessionId===view.ownerSessionId&&typeof publication.publicationId==='string'?publication:undefined,source=pub?.source??view.source;
+    return {apps:{viewId:view.viewId,sessionId:view.ownerSessionId,...(source&&typeof source==='object'&&!Array.isArray(source)&&typeof source.buildId==='string'?{buildId:source.buildId}:{}),...(pub?{publicationId:pub.publicationId,...(Number.isSafeInteger(pub.committedViewRevision)?{viewRevision:pub.committedViewRevision}:{})}:Number.isSafeInteger(view.viewRevision)?{viewRevision:view.viewRevision}:{})}};
   }
   /** Called only by an application native projection. Disposing never stops its Provider or deletes assets. */
   attachApp(appId: string): () => void {
@@ -239,7 +244,7 @@ export class AppsHost {
     const latest=await this.transport.componentContexts!(intent.sessionId,signal);
     if(latest.sessionId!==intent.sessionId||latest.snapshot&&latest.snapshot.sessionId!==intent.sessionId)throw new Error('CONTEXT_NOT_OWNED');
     const context=latest.snapshot?canonicalJson({kind:'dsh-apps-component-context',sessionId:latest.sessionId,snapshot:latest.snapshot}):null;
-    const contribution=canonicalJson({content:intent.content,contexts:[{name:'dsh-apps-summary',text:this.appSummary()},...(context?[{name:'dsh-apps-component-context',text:context}]:[])],tools:Object.entries(gatewaySchemas).map(([name,parameters])=>({name,description:gatewayDescriptions[name],parameters}))});
+    const contribution=canonicalJson({content:intent.content,contexts:[{name:'dsh-apps-summary',text:this.appSummary(intent.sessionId)},...(context?[{name:'dsh-apps-component-context',text:context}]:[])],tools:Object.entries(gatewaySchemas).map(([name,parameters])=>({name,description:gatewayDescriptions[name],parameters}))});
     if(Buffer.byteLength(contribution)>16384||context&&Buffer.byteLength(context)>8192)throw new Error('APPS_CONTEXT_BUDGET_EXCEEDED');
     let claim:{dispatchGranted:boolean;intent:ComponentAgentIntent};
     try {claim=await this.transport.dispatchAgent!(intent.sessionId,intent.requestId,intent.requestHash,signal);this.validateIntent(claim.intent,request,intent.requestHash);}
@@ -276,12 +281,23 @@ export class AppsHost {
       if (request.method === 'GET') {
         const resource = url.searchParams.get('resource');
         if(resource==='hostCapabilities'&&[...url.searchParams.keys()].every(key=>key==='resource'))return jsonResponse(this.hostCapabilities());
+        if(resource==='componentFeatures'&&[...url.searchParams.keys()].every(key=>key==='resource'))return jsonResponse(this.transport.componentFeatures?await this.transport.componentFeatures(this.combined(request.signal)):{features:[]});
+        if(resource==='saved'&&[...url.searchParams.keys()].every(key=>key==='resource'))return jsonResponse(this.transport.saved?await this.transport.saved(this.combined(request.signal)):fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供共享组件库。'));
         if (resource === 'apps' && [...url.searchParams.keys()].every(key => key === 'resource')) return jsonResponse(await this.directory(request.signal));
         if (resource === 'connections' && [...url.searchParams.keys()].every(key => ['resource','appId'].includes(key))) return jsonResponse(await this.transport.listConnections(url.searchParams.get('appId') ?? undefined, request.signal));
         const sessionId = url.searchParams.get('sessionId');
+        if(resource==='nativeBinding'&&sessionId&&[...url.searchParams.keys()].every(key=>['resource','sessionId','bindRequestId','referenceId'].includes(key))){const referenceId=url.searchParams.get('referenceId')??'',reference=parseNativeReference(referenceId),bindRequestId=url.searchParams.get('bindRequestId');if(!reference||reference.sessionId!==sessionId||reference.bindRequestId!==bindRequestId||!await this.knownSession(sessionId,request.signal))return jsonResponse(fail('INVALID_SESSION','原Apps引用与本机会话身份不一致。'),400);return jsonResponse(this.transport.inspectNativeBinding?await this.transport.inspectNativeBinding(sessionId,reference.bindRequestId,referenceId,this.combined(request.signal)):fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供原Apps引用回读。'));}
+        if(resource==='views'&&sessionId&&[...url.searchParams.keys()].every(key=>['resource','sessionId'].includes(key))&&await this.knownSession(sessionId,request.signal))return jsonResponse(this.transport.views?await this.transport.views(sessionId,this.combined(request.signal)):fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供会话组件目录。'));
         if (resource === 'bindings' && sessionId && [...url.searchParams.keys()].every(key => ['resource','sessionId'].includes(key)) && await this.knownSession(sessionId, request.signal)) return jsonResponse(await this.transport.sessionBindings(sessionId,request.signal));
         if (resource === 'diagnostics' && sessionId && [...url.searchParams.keys()].every(key => ['resource','sessionId'].includes(key)) && await this.knownSession(sessionId, request.signal)) return jsonResponse(this.transport.diagnostics ? await this.transport.diagnostics(sessionId,request.signal) : fail('UNSUPPORTED_HOST_CAPABILITY','当前Runtime未提供诊断接口。'));
         const requestId=url.searchParams.get('requestId');
+        if(resource==='presentationRequest'&&sessionId&&requestId&&/^[-a-zA-Z0-9_.:]{1,160}$/.test(requestId)&&[...url.searchParams.keys()].every(key=>['resource','sessionId','requestId'].includes(key))&&await this.knownSession(sessionId,request.signal)){
+          if(!this.transport.presentationRequest)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供原界面调用回查。'),503);
+          const invocation=await this.transport.presentationRequest(requestId,this.combined(request.signal));
+          if(!invocation)return jsonResponse({invocation:null});
+          if(invocation.invocationId!==requestId||invocation.request.invocationId!==requestId||invocation.request.appId!=='apps'||invocation.request.connectionId!=='presentation'||!/^apps\.(presentation|authoring)\.[a-z_]+$/.test(invocation.request.capabilityId)||!('sessionId' in invocation.request.source)||invocation.request.source.sessionId!==sessionId)return jsonResponse(fail('INVALID_SESSION','原调用不属于此会话界面动作。'),400);
+          return jsonResponse({invocation});
+        }
         if(resource==='agentRequest'&&sessionId&&requestId&&/^[-a-zA-Z0-9_.:]{1,160}$/.test(requestId)&&[...url.searchParams.keys()].every(key=>['resource','sessionId','requestId'].includes(key))&&await this.knownSession(sessionId,request.signal)){
           if(!this.transport.agentIntent)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','当前Runtime未提供原请求回查。'));
           const intent=await this.transport.agentIntent(sessionId,requestId,request.signal);
@@ -289,8 +305,9 @@ export class AppsHost {
           return jsonResponse(intent);
         }
         const viewId=url.searchParams.get('viewId');
-        if (['view','viewData'].includes(resource??'')&&sessionId&&viewId&&/^[-a-zA-Z0-9_.:]{1,180}$/.test(viewId)&&[...url.searchParams.keys()].every(key=>['resource','sessionId','viewId'].includes(key))&&await this.knownSession(sessionId,request.signal)) {
-          if(resource==='view'&&this.transport.view){const view=await this.transport.view(sessionId,viewId,request.signal);await this.prepareView?.(view,sessionId,request.signal);return jsonResponse(view);}
+        const fixedBuild=url.searchParams.get('buildId'),fixedRevision=url.searchParams.get('viewRevision'),publicationId=url.searchParams.get('publicationId');
+        if (['view','viewData'].includes(resource??'')&&sessionId&&viewId&&/^[-a-zA-Z0-9_.:]{1,180}$/.test(viewId)&&(!fixedBuild||/^[-a-zA-Z0-9_]{1,180}$/.test(fixedBuild))&&(!publicationId||/^[-a-zA-Z0-9_.:]{1,180}$/.test(publicationId))&&(!fixedRevision||/^[1-9][0-9]{0,9}$/.test(fixedRevision))&&[...url.searchParams.keys()].every(key=>['resource','sessionId','viewId','buildId','viewRevision','publicationId'].includes(key))&&await this.knownSession(sessionId,request.signal)) {
+          if(resource==='view'&&this.transport.view){const view=await this.transport.view(sessionId,viewId,request.signal,{...(fixedBuild?{buildId:fixedBuild}:{}),...(fixedRevision?{viewRevision:Number(fixedRevision)}:{}),...(publicationId?{publicationId}:{})});await this.prepareView?.(view,sessionId,request.signal);return jsonResponse(view);}
           if(resource==='viewData'&&this.transport.viewData)return jsonResponse(await this.transport.viewData(sessionId,viewId,request.signal));
           return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','当前Runtime未提供组件读取接口。'));
         }
@@ -300,6 +317,28 @@ export class AppsHost {
         const input: unknown = JSON.parse(body);
         if (input && typeof input === 'object' && !Array.isArray(input)) {
           const value = input as Record<string,unknown>;
+          if(value.action==='presentation'&&Object.keys(value).every(key=>['action','sessionId','capabilityId','input','requestId'].includes(key))&&typeof value.sessionId==='string'&&typeof value.capabilityId==='string'&&/^apps\.(presentation|authoring)\.[a-z_]+$/.test(value.capabilityId)&&typeof value.requestId==='string'&&value.requestId.length<=160&&Object.hasOwn(value,'input')){
+            if(!await this.knownSession(value.sessionId,request.signal))return jsonResponse(fail('INVALID_SESSION','没有此本机会话。'),400);if(!this.transport.presentationAction)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供共享界面操作。'),503);
+            return jsonResponse(await this.transport.presentationAction({sessionId:value.sessionId,capabilityId:value.capabilityId,input:value.input as JsonValue,requestId:value.requestId},this.combined(request.signal)));
+          }
+          if(value.action==='authoring'&&Object.keys(value).every(key=>['action','sessionId','operation','params'].includes(key))&&typeof value.sessionId==='string'&&typeof value.operation==='string'&&['authorizeFrame','negotiateFrame','retireFrame','inspect','failMount','exportUiState','restoreUiState','closeDraft'].includes(value.operation)&&value.params&&typeof value.params==='object'&&!Array.isArray(value.params)){
+            if(!await this.knownSession(value.sessionId,request.signal))return jsonResponse(fail('INVALID_SESSION','没有此本机会话。'),400);if(!this.transport.authoringAction)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供创作界面操作。'),503);
+            return jsonResponse(await this.transport.authoringAction(value.operation,value.sessionId,value.params as JsonValue,this.combined(request.signal)));
+          }
+          if(value.action==='componentExtension'&&Object.keys(value).every(key=>['action','request'].includes(key))&&value.request&&typeof value.request==='object'&&!Array.isArray(value.request)){
+            const extension=value.request as ComponentExtensionRequest;if(typeof extension.sessionId!=='string'||!await this.knownSession(extension.sessionId,request.signal))return jsonResponse(fail('INVALID_SESSION','没有此本机会话。'),400);if(!this.transport.componentExtension)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供组件扩展。'),503);
+            return jsonResponse(await this.transport.componentExtension(extension,this.combined(request.signal)));
+          }
+          if(value.action==='nativeBinding'&&Object.keys(value).every(key=>['action','sessionId','appId','connectionId','bindRequestId','epoch','enabled','referenceId'].includes(key))&&typeof value.sessionId==='string'&&typeof value.appId==='string'&&typeof value.bindRequestId==='string'&&typeof value.referenceId==='string'&&typeof value.enabled==='boolean'&&Number.isSafeInteger(value.epoch)&&Number(value.epoch)>=0&&(value.connectionId===undefined||typeof value.connectionId==='string')){
+            const reference=parseNativeReference(value.referenceId);if(!reference||reference.sessionId!==value.sessionId||reference.appId!==value.appId||reference.bindRequestId!==value.bindRequestId||!await this.knownSession(value.sessionId,request.signal))return jsonResponse(fail('INVALID_SESSION','Apps引用与原会话身份不一致。'),400);
+            if(!this.transport.nativeBinding)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供Apps引用绑定。'),503);
+            const {action:_,...binding}=value;return jsonResponse(await this.transport.nativeBinding(binding as unknown as NativeBindingRequest,this.combined(request.signal)));
+          }
+          if(value.action==='serializeNativeReference'&&Object.keys(value).every(key=>['action','referenceId'].includes(key))&&typeof value.referenceId==='string'){
+            const reference=parseNativeReference(value.referenceId);if(!reference||!await this.knownSession(reference.sessionId,request.signal))return jsonResponse(fail('INVALID_SESSION','Apps引用不属于有效原会话。'),400);
+            if(!this.transport.serializeNativeReference)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供Apps引用序列化。'),503);
+            return jsonResponse(await this.transport.serializeNativeReference(value.referenceId,reference.sessionId,this.combined(request.signal)));
+          }
           if (value.action === 'bind' && Object.keys(value).every(key => ['action','sessionId','appId','connectionId','enabled'].includes(key)) && typeof value.sessionId === 'string' && typeof value.appId === 'string' && typeof value.connectionId === 'string' && typeof value.enabled === 'boolean') return jsonResponse(await this.bind(value.sessionId,value.appId,value.connectionId,value.enabled,request.signal));
           if(value.action==='componentBridge'&&Object.keys(value).every(key=>['action','request'].includes(key))&&value.request&&typeof value.request==='object'&&!Array.isArray(value.request)) {
             const bridge=value.request as BridgeRequest;if(typeof bridge.sessionId!=='string'||!await this.knownSession(bridge.sessionId,request.signal))return jsonResponse(fail('INVALID_SESSION','没有此本机会话。'),400);

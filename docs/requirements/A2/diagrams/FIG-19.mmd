@@ -1,0 +1,34 @@
+flowchart TD
+  base["原 TST-001..048<br/>新版本回归 / 原状态保留"]
+  new["新 TST-049..080<br/>新创作与运行验收"]
+  e{"证据身份过滤<br/>commit / 版本 / scope / SHA"}
+  bad["缺证据 / 版本不符 / 未运行<br/>不代签，返回对应工作包"]
+  core["CORE<br/>基础协议 / 实际 Host / 兼容"]
+  author["AUTHORING<br/>原 @ / 真实源码与预览<br/>原 Agent / 保存重开"]
+  biz["BUSINESS-WRITE<br/>每个动作真实回执与核实"]
+  mig["DATA-CUTOVER<br/>真实迁移 / 唯一 writer / 回退"]
+  gate{"本次承诺范围<br/>全部强制项均满足？"}
+  candidate["仅已验范围的候选<br/>其余 NOT_ACCEPTED"]
+  approved["A / V / R 明确签认<br/>包 hash与运行identity一致"]
+  base -->|E01| e
+  new -->|E02| e
+  e -->|E03| bad
+  e -->|E04| core
+  core -->|E05| author
+  core -->|E06| biz
+  core -->|E07| mig
+  author -->|E08| gate
+  biz -->|E09| gate
+  mig -->|E10| gate
+  gate -->|E11| candidate
+  gate -->|E12| approved
+  classDef existing fill:#EAF3FF,stroke:#3265A3,color:#17283F
+  class base,core existing
+  classDef new fill:#FFF3DF,stroke:#C47724,color:#17283F
+  class new,author,biz,mig new
+  classDef external fill:#F3F5F8,stroke:#6A778C,color:#17283F
+  class approved external
+  classDef stop fill:#FDEEEA,stroke:#B05243,color:#17283F
+  class bad,candidate stop
+  classDef decision fill:#FFF7E8,stroke:#A87527,color:#17283F
+  class e,gate decision

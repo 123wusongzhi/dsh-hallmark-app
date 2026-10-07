@@ -1,0 +1,21 @@
+digraph G {
+ graph [bgcolor="white", rankdir=TB, pad=0.18, nodesep=0.35, ranksep=0.48, splines=polyline, fontname="Noto Sans CJK SC", fontsize=12, color="#8090a0"];
+ node [shape=box, style="rounded,filled", fillcolor="#f5f7fa", color="#34506b", fontname="Noto Sans CJK SC", fontsize=11, margin="0.16,0.10", penwidth=1.2];
+ edge [color="#34506b", fontname="Noto Sans CJK SC", fontsize=9, arrowsize=0.7];
+
+ old[label="旧 app.db + 源码构建目录
+基线 v2"];
+ freeze[label="1 停止新入口 + 排空
+盘点 pending / unknown"];
+ backup[label="2 一致备份与完整 manifest
+数据库 + 构建 + 配置映射"];
+ dry[label="3 离线副本迁移
+逐表计数 / 旧新 ID 映射"];
+ gate[label="4 校验通过？",shape=diamond];
+ new[label="5 新 apps.db 唯一写入
+原库只读保留"];
+ stop[label="停止切换
+保留旧系统状态与失败证据",fillcolor="#fff4df"];
+ old->freeze;freeze->backup;backup->dry;dry->gate;gate->new[label="通过且批准切换"];gate->stop[label="缺证据 / 未解析映射"];
+
+}

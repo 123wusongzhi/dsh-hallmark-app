@@ -1,0 +1,23 @@
+digraph G {
+ graph [bgcolor="white", rankdir=TB, pad=0.18, nodesep=0.35, ranksep=0.48, splines=polyline, fontname="Noto Sans CJK SC", fontsize=12, color="#8090a0"];
+ node [shape=box, style="rounded,filled", fillcolor="#f5f7fa", color="#34506b", fontname="Noto Sans CJK SC", fontsize=11, margin="0.16,0.10", penwidth=1.2];
+ edge [color="#34506b", fontname="Noto Sans CJK SC", fontsize=9, arrowsize=0.7];
+
+ contract[label="app-contracts
+类型 / Schema / 标识"];
+ runtime[label="app-runtime
+通用运行时"];
+ pres[label="presentation / source-components
+共享展示"];
+ provider[label="app-hallmark / app-notes
+领域 Provider"];
+ sdk[label="app-sdk / component-runtime
+通用客户端"];
+ compat[label="dsh-compat
+宿主版本适配"];
+ plugins[label="plugin-apps / N 个投影插件"];
+ boot[label="service 启动组合器
+显式模块配置"];
+ runtime->contract;pres->contract;provider->contract;sdk->contract;plugins->compat;plugins->sdk;boot->runtime;boot->pres;boot->provider[label="配置加载，非公共层硬编码"];
+
+}

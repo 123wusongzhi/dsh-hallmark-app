@@ -1,0 +1,22 @@
+digraph G {
+ graph [bgcolor="white", rankdir=TB, pad=0.18, nodesep=0.35, ranksep=0.48, splines=polyline, fontname="Noto Sans CJK SC", fontsize=12, color="#8090a0"];
+ node [shape=box, style="rounded,filled", fillcolor="#f5f7fa", color="#34506b", fontname="Noto Sans CJK SC", fontsize=11, margin="0.16,0.10", penwidth=1.2];
+ edge [color="#34506b", fontname="Noto Sans CJK SC", fontsize=9, arrowsize=0.7];
+
+ a[label="1 入口
+原生工具 / SDK / 组件"];
+ b[label="2 Host 或 SDK 绑定调用上下文
+source · sessionId · traceId"];
+ c[label="3 Runtime 解析连接与能力版本
+验证输入 / deadline"];
+ d[label="4 变更：持久化幂等键与 operationId
+查询：记录 invocation"];
+ e[label="5 Provider execute
+复用原后端适配实现"];
+ f[label="6 结果解释 / 必要时 inspect
+不能以 HTTP 200 代替业务完成"];
+ g[label="7 持久化结果 / Schema 校验
+完整数据 + 受限模型摘要"];
+ a->b[label="请求"];b->c[label="InvocationRequest"];c->d[label="解析成功"];d->e[label="允许分发"];e->f[label="原始证据"];f->g[label="明确或未知结果"];
+
+}

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, lstatSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { COLLECTIONS } from '../../store/index.ts';
-import { RuntimeStore, RUNTIME_COLLECTIONS } from '../../app-runtime/src/store.ts';
+import { RuntimeStore, RUNTIME_V3_COLLECTIONS as RUNTIME_COLLECTIONS } from '../../app-runtime/src/store.ts';
 import type { RuntimeOperation } from '../../app-runtime/src/store.ts';
 import type { AppConnection } from '../../app-runtime/src/index.ts';
 import { RuntimeWriterLease } from '../../app-runtime/src/lease.ts';
@@ -181,7 +181,7 @@ export async function migrateOffline(options:MigrationOptions):Promise<Migration
  requireOffline(options);const {report,writes}=planMigration(exportLegacyDatabase(options.sourceDatabase),options);if(report.status!=='ready')throw Object.assign(new Error('MIGRATION_REQUIRES_RESOLUTION'),{report});
  const target=resolve(options.targetDirectory),lease=new RuntimeWriterLease(target);let store:RuntimeStore|undefined;
  try{
-  store=new RuntimeStore(report.targetDatabase);const previous=store.get<MigrationReport>('migration_records',report.migrationId);if(previous){if(previous.sourceFingerprint!==report.sourceFingerprint)throw new Error('MIGRATION_INPUT_CONFLICT');verifyBackup(join(target,'backups',report.migrationId.replace(':','-')));for(const file of report.assets)if(!existsSync(join(target,file.relativePath))||sha(readFileSync(join(target,file.relativePath)))!==file.sha256)throw new Error('MIGRATED_ASSET_HASH_MISMATCH');return previous;}
+  store=new RuntimeStore(report.targetDatabase,{schemaVersion:3});const previous=store.get<MigrationReport>('migration_records',report.migrationId);if(previous){if(previous.sourceFingerprint!==report.sourceFingerprint)throw new Error('MIGRATION_INPUT_CONFLICT');verifyBackup(join(target,'backups',report.migrationId.replace(':','-')));for(const file of report.assets)if(!existsSync(join(target,file.relativePath))||sha(readFileSync(join(target,file.relativePath)))!==file.sha256)throw new Error('MIGRATED_ASSET_HASH_MISMATCH');return previous;}
   if(RUNTIME_COLLECTIONS.some(table=>store!.list(table).length))throw new Error('MIGRATION_TARGET_NOT_EMPTY');
   const manifest=await createConsistentBackup(options,join(target,'backups',report.migrationId.replace(':','-')),report),backups=join(target,'backups',report.migrationId.replace(':','-'),'assets');
   for(const file of manifest.files){const destination=join(target,file.relativePath);if(existsSync(destination)){if(sha(readFileSync(destination))!==file.sha256)throw new Error('TARGET_ASSET_CONFLICT');continue;}mkdirSync(dirname(destination),{recursive:true});writeFileSync(destination,readFileSync(join(backups,file.relativePath)),{flag:'wx'});}

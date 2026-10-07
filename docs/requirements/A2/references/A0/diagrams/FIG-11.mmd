@@ -1,0 +1,19 @@
+flowchart TB
+  %% FIG-11: 异常处置：先判断是否可能已分发 | 目标 / ABN-01..ABN-06
+  err["调用失败 / 超时 / 取消"]
+  known{"是否能证明未分发？"}
+  nodispatch["能：failed / cancelled<br/>修正输入或恢复服务后新调用"]
+  effect{"是否属于变更？"}
+  read["查询：按 read_retry 策略<br/>保留旧快照与时间"]
+  inspect["变更：unknown / pending<br/>保留原 operationId，只读核实"]
+  evidence{"是否获得完成证据？"}
+  settle["按证据结算 succeeded / failed / partial"]
+  hold["保持未决；停止自动重发<br/>输出诊断 ID 和缺失证据"]
+  err -->|"判断"| known
+  known -->|"是"| nodispatch
+  known -->|"否"| effect
+  effect -->|"查询"| read
+  effect -->|"变更"| inspect
+  inspect -->|"回查"| evidence
+  evidence -->|"证据充分"| settle
+  evidence -->|"证据不足"| hold

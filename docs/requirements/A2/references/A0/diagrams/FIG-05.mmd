@@ -1,0 +1,15 @@
+flowchart TB
+  %% FIG-05: 调用顺序：三个入口共享一条执行链 | 目标 / PROC-CALL-01
+  a["1 入口<br/>原生工具 / SDK / 组件"]
+  b["2 Host 或 SDK 绑定调用上下文<br/>source · sessionId · traceId"]
+  c["3 Runtime 解析连接与能力版本<br/>验证输入 / deadline"]
+  d["4 变更：持久化幂等键与 operationId<br/>查询：记录 invocation"]
+  e["5 Provider execute<br/>复用原后端适配实现"]
+  f["6 结果解释 / 必要时 inspect<br/>不能以 HTTP 200 代替业务完成"]
+  g["7 持久化结果 / Schema 校验<br/>完整数据 + 受限模型摘要"]
+  a -->|"请求"| b
+  b -->|"InvocationRequest"| c
+  c -->|"解析成功"| d
+  d -->|"分发"| e
+  e -->|"证据"| f
+  f -->|"结果"| g

@@ -1,0 +1,36 @@
+digraph G {
+graph [rankdir=TB, bgcolor="white", pad="0.20", nodesep="0.30", ranksep="0.40", splines=polyline, outputorder=edgesfirst];
+node [shape=box, style="rounded,filled", fontname="Noto Sans CJK SC", fontsize=14, margin="0.15,0.10", penwidth=1.3];
+edge [fontname="Noto Sans CJK SC", fontsize=10, color="#5B7292", arrowsize=0.7, penwidth=1.2];
+user [label="用户\n原 DSH 会话", fillcolor="#F3F5F8", color="#6A778C"];
+agent [label="原 DSH Agent\n原工具 / 原日志", fillcolor="#EAF3FF", color="#3265A3"];
+at [label="新增 @ 输入 source\n局部引用 UI", fillcolor="#FFF3DF", color="#C47724"];
+host [label="P1 AppsHost\n四网关 / 原生代理", fillcolor="#EAF3FF", color="#3265A3"];
+rt [label="P2 AppsRuntime\n唯一目录 / invoke", fillcolor="#EAF3FF", color="#3265A3"];
+hp [label="Hallmark Provider\n原业务适配", fillcolor="#EAF3FF", color="#3265A3"];
+np [label="Notes Provider\n真实 CRUD", fillcolor="#EAF3FF", color="#3265A3"];
+biz [label="P4 原 Hallmark\n业务事实与账本", fillcolor="#F3F5F8", color="#6A778C"];
+pres [label="共享 Presentation\nview / 保存 / 版本", fillcolor="#EAF3FF", color="#3265A3"];
+src [label="SourceComponentStore\n不可变源码 + dist", fillcolor="#EAF3FF", color="#3265A3"];
+auth [label="新增 Authoring 协议\nattempt / receipts / CAS", fillcolor="#FFF3DF", color="#C47724"];
+frame [label="P3 原组件 frame\nv2 bridge 已有", fillcolor="#EAF3FF", color="#3265A3"];
+ready [label="新增候选就绪 / UI恢复\n不替换原聊天", fillcolor="#FFF3DF", color="#C47724"];
+lib [label="新增完整组件库 UI\n调用现有保存能力", fillcolor="#FFF3DF", color="#C47724"];
+user -> agent [label="E01"];
+user -> at [label="E02"];
+at -> host [label="E03"];
+agent -> host [label="E04"];
+host -> rt [label="E05"];
+rt -> hp [label="E06"];
+rt -> np [label="E07"];
+hp -> biz [label="E08"];
+rt -> pres [label="E09"];
+pres -> src [label="E10"];
+rt -> auth [label="E11"];
+auth -> src [label="E12"];
+auth -> pres [label="E13"];
+pres -> frame [label="E14"];
+frame -> ready [label="E15"];
+ready -> auth [label="E16"];
+lib -> host [label="E17"];
+}

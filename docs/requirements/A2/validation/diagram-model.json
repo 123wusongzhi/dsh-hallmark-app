@@ -1,0 +1,760 @@
+[
+  {
+    "id": "FIG-15",
+    "title": "目标分层与本次改造位置（实现存在不等于验收）",
+    "nodes": [
+      [
+        "user",
+        "用户\n原 DSH 会话",
+        "external"
+      ],
+      [
+        "agent",
+        "原 DSH Agent\n原工具 / 原日志",
+        "existing"
+      ],
+      [
+        "at",
+        "新增 @ 输入 source\n局部引用 UI",
+        "new"
+      ],
+      [
+        "host",
+        "P1 AppsHost\n四网关 / 原生代理",
+        "existing"
+      ],
+      [
+        "rt",
+        "P2 AppsRuntime\n唯一目录 / invoke",
+        "existing"
+      ],
+      [
+        "hp",
+        "Hallmark Provider\n原业务适配",
+        "existing"
+      ],
+      [
+        "np",
+        "Notes Provider\n真实 CRUD",
+        "existing"
+      ],
+      [
+        "biz",
+        "P4 原 Hallmark\n业务事实与账本",
+        "external"
+      ],
+      [
+        "pres",
+        "共享 Presentation\nview / 保存 / 版本",
+        "existing"
+      ],
+      [
+        "src",
+        "SourceComponentStore\n不可变源码 + dist",
+        "existing"
+      ],
+      [
+        "auth",
+        "新增 Authoring 协议\nattempt / receipts / CAS",
+        "new"
+      ],
+      [
+        "frame",
+        "P3 原组件 frame\nv2 bridge 已有",
+        "existing"
+      ],
+      [
+        "ready",
+        "新增候选就绪 / UI恢复\n不替换原聊天",
+        "new"
+      ],
+      [
+        "lib",
+        "新增完整组件库 UI\n调用现有保存能力",
+        "new"
+      ]
+    ],
+    "edges": [
+      [
+        "user",
+        "agent",
+        "原输入手动发送；原会话与Agent不替换"
+      ],
+      [
+        "user",
+        "at",
+        "选择应用；不是发送消息"
+      ],
+      [
+        "at",
+        "host",
+        "提交明确会话与连接绑定请求"
+      ],
+      [
+        "agent",
+        "host",
+        "使用现有四网关发现/调用应用能力"
+      ],
+      [
+        "host",
+        "rt",
+        "P1代理至P2；目录与业务执行在P2"
+      ],
+      [
+        "rt",
+        "hp",
+        "已注册能力执行"
+      ],
+      [
+        "rt",
+        "np",
+        "已注册异构Notes能力执行"
+      ],
+      [
+        "hp",
+        "biz",
+        "原业务API及结果核实"
+      ],
+      [
+        "rt",
+        "pres",
+        "已有共享展示与保存能力"
+      ],
+      [
+        "pres",
+        "src",
+        "复用已有capture/checkout/verify"
+      ],
+      [
+        "rt",
+        "auth",
+        "拟新增项目能力；不另建模型循环"
+      ],
+      [
+        "auth",
+        "src",
+        "候选存档与构建/预览证据关联"
+      ],
+      [
+        "auth",
+        "pres",
+        "核对证据及CAS后发布目标view"
+      ],
+      [
+        "pres",
+        "frame",
+        "原生组件区按明确view读取"
+      ],
+      [
+        "frame",
+        "ready",
+        "协商就绪及UI状态扩展"
+      ],
+      [
+        "ready",
+        "auth",
+        "同候选身份的就绪回执；不是onLoad"
+      ],
+      [
+        "lib",
+        "host",
+        "接已有保存/历史/管理能力，不创建第二库"
+      ]
+    ],
+    "note": "蓝色框表示已读到实现；橙色框表示本版拟补齐。它们是职责边界，不表示新增常驻进程。Hallmark/Notes具体Provider仅由P2组合根装配。图内不包含另一套Agent或聊天日志。",
+    "refs": [
+      "S08",
+      "S09",
+      "S10",
+      "S16",
+      "S20",
+      "S22"
+    ],
+    "direction": "TB"
+  },
+  {
+    "id": "FIG-16",
+    "title": "创作证据、候选发布与失败恢复",
+    "nodes": [
+      [
+        "edit",
+        "原 Agent / 文件工具\n修改独立源码工作副本",
+        "existing"
+      ],
+      [
+        "build",
+        "执行真实 build 命令\n输入前后摘要 + exitCode",
+        "new"
+      ],
+      [
+        "freeze",
+        "归档候选 / BuildReceipt\n不改变当前 view",
+        "new"
+      ],
+      [
+        "pv",
+        "真实 v2 预览\n同份 dist / 两视口 / 控件",
+        "new"
+      ],
+      [
+        "pass",
+        "预览证据完整\n且断言 PASS？",
+        "decision"
+      ],
+      [
+        "mount",
+        "mounting 候选 frame\npublicationId / expectedViewRevision",
+        "new"
+      ],
+      [
+        "ready",
+        "同身份 renderReady\n且当前 attempt 未取消？",
+        "decision"
+      ],
+      [
+        "cas",
+        "P2 事务 CAS 确认\nowner / epoch / viewRevision",
+        "new"
+      ],
+      [
+        "active",
+        "当前会话已确认展示\nactive / lastGood / viewRevision+1",
+        "new"
+      ],
+      [
+        "old",
+        "保留旧可用界面\n失败、取消或冲突如实报告",
+        "stop"
+      ],
+      [
+        "feedback",
+        "原 Agent 读取错误 / 截图\n继续修正同一目标",
+        "existing"
+      ],
+      [
+        "saved",
+        "组件库保持不变\n本图没有明确保存动作",
+        "external"
+      ]
+    ],
+    "edges": [
+      [
+        "edit",
+        "build",
+        "原DSH文件/命令工具，非关键词模拟"
+      ],
+      [
+        "build",
+        "freeze",
+        "仅exit0且输入不变；关联实际输出摘要"
+      ],
+      [
+        "build",
+        "old",
+        "build失败/旧dist/输入变化，不发布"
+      ],
+      [
+        "freeze",
+        "pv",
+        "预览冻结archive中的真实dist字节"
+      ],
+      [
+        "pv",
+        "pass",
+        "收集截图、异常、请求、桥接和断言"
+      ],
+      [
+        "pass",
+        "mount",
+        "是：准备候选；尚未称已展示"
+      ],
+      [
+        "pass",
+        "old",
+        "否：保留证据，不更新active"
+      ],
+      [
+        "mount",
+        "ready",
+        "hello后还须验证首屏与约定数据"
+      ],
+      [
+        "ready",
+        "cas",
+        "是：提交确认事务"
+      ],
+      [
+        "ready",
+        "old",
+        "否/超时/取消：候选无效"
+      ],
+      [
+        "cas",
+        "active",
+        "CAS成功才提升为当前确认build"
+      ],
+      [
+        "cas",
+        "old",
+        "冲突或代际落后不得自动覆写"
+      ],
+      [
+        "old",
+        "feedback",
+        "可定位错误及旧/候选build身份"
+      ],
+      [
+        "feedback",
+        "edit",
+        "原会话下一步或下一轮实际修改"
+      ],
+      [
+        "active",
+        "saved",
+        "展示不写库；保存需要FIG-17显式条件"
+      ]
+    ],
+    "note": "候选归档在预览前只为冻结字节，不是对用户发布，因此不违反“检查后展示”。本图CAS确认是取消与发布的线性化点；已确认后再报错，恢复旧构建必须新记操作，不能抹去已发布事实。",
+    "refs": [
+      "S16",
+      "S17",
+      "S18",
+      "S20",
+      "S05"
+    ],
+    "direction": "TB"
+  },
+  {
+    "id": "FIG-17",
+    "title": "工作副本、视图和保存历史的关系",
+    "nodes": [
+      [
+        "c",
+        "组件库 C / revision r\n不可变历史源版本",
+        "existing"
+      ],
+      [
+        "oa",
+        "在会话 A 明确打开 r\nbase = 打开时库最新版本",
+        "existing"
+      ],
+      [
+        "ob",
+        "在会话 B 明确打开 r\nbase 独立记录",
+        "existing"
+      ],
+      [
+        "wa",
+        "A 独立 workspace / draft\n可编辑源码",
+        "existing"
+      ],
+      [
+        "wb",
+        "B 独立 workspace / draft\n可编辑源码",
+        "existing"
+      ],
+      [
+        "arch",
+        "不可变 archive buildId\n多个 view 可以引用",
+        "existing"
+      ],
+      [
+        "va",
+        "A 的 viewId + viewRevision\n编辑保持 viewId",
+        "new"
+      ],
+      [
+        "vb",
+        "B 的 viewId + viewRevision\nowner 与 A 不同",
+        "new"
+      ],
+      [
+        "intent",
+        "用户明确保存？\n原话或按钮",
+        "decision"
+      ],
+      [
+        "mode",
+        "save_as 或 update\nupdate 比较 expectedRevision",
+        "new"
+      ],
+      [
+        "next",
+        "组件库新 revision\n或新的 componentId",
+        "existing"
+      ],
+      [
+        "conf",
+        "冲突：保留当前副本\n查看最新 / 另存",
+        "stop"
+      ],
+      [
+        "unsaved",
+        "没有明确保存\n只有草稿和展示",
+        "external"
+      ]
+    ],
+    "edges": [
+      [
+        "c",
+        "oa",
+        "选择源revision，不修改库"
+      ],
+      [
+        "c",
+        "ob",
+        "同一历史资产可被另一会话打开"
+      ],
+      [
+        "oa",
+        "wa",
+        "checkout到新的空目录"
+      ],
+      [
+        "ob",
+        "wb",
+        "checkout到另一新空目录"
+      ],
+      [
+        "wa",
+        "arch",
+        "实际构建后候选存档"
+      ],
+      [
+        "wb",
+        "arch",
+        "实际构建后候选存档；相同字节可复用"
+      ],
+      [
+        "arch",
+        "va",
+        "仅通过FIG-16发布确认后引用"
+      ],
+      [
+        "arch",
+        "vb",
+        "各自发布和CAS，不复制owner"
+      ],
+      [
+        "va",
+        "intent",
+        "当前view是保存来源，不自动保存"
+      ],
+      [
+        "intent",
+        "mode",
+        "是：使用同一共享保存实现"
+      ],
+      [
+        "intent",
+        "unsaved",
+        "否/取消：组件库不变"
+      ],
+      [
+        "mode",
+        "next",
+        "save_as新增ID；update CAS成功新增版本"
+      ],
+      [
+        "mode",
+        "conf",
+        "CAS失败不改库、不丢副本"
+      ],
+      [
+        "next",
+        "c",
+        "作为后续明确打开的资产版本"
+      ]
+    ],
+    "note": "替代三张用户图中含糊的绿色保存/重开线。selectedSourceRevision可以是v1而baseRevisionAtOpen是v3；它们不应合并为“版本”。本图箭头表示数据/动作关系，不全是网络请求。",
+    "refs": [
+      "S16",
+      "S17",
+      "U02",
+      "U03",
+      "U04"
+    ],
+    "direction": "TB"
+  },
+  {
+    "id": "FIG-18",
+    "title": "组件交互四路分流与独立刷新",
+    "nodes": [
+      [
+        "ui",
+        "组件交互入口\n当前 session / view / build",
+        "existing"
+      ],
+      [
+        "local",
+        "排序 / 筛选 / 勾选\nReact 本地状态",
+        "existing"
+      ],
+      [
+        "state",
+        "协商 UI 状态快照\n按 view 恢复 / 选择重验",
+        "new"
+      ],
+      [
+        "attach",
+        "附加选择\nResourceRef + datasetRevision",
+        "existing"
+      ],
+      [
+        "check",
+        "Runtime 校验 + 去重\n同会话 / 同快照",
+        "new"
+      ],
+      [
+        "draft",
+        "原 DSH 输入附件区\n正文与旧附件保留",
+        "existing"
+      ],
+      [
+        "send",
+        "用户手动原发送",
+        "external"
+      ],
+      [
+        "agent",
+        "原 Agent 消费实际 JSON\n然后处理本条自然语言",
+        "external"
+      ],
+      [
+        "call",
+        "明确应用动作\nRuntime统一 invoke",
+        "existing"
+      ],
+      [
+        "ctx",
+        "可选 updateContext / requestAgent\n正式原生投影 / 队列",
+        "existing"
+      ],
+      [
+        "refresh",
+        "手动或实际 worker 刷新\n仅 query / compute",
+        "new"
+      ],
+      [
+        "data",
+        "每个 binding 独立快照\n失败保旧 / 真实来源时间",
+        "existing"
+      ],
+      [
+        "identity",
+        "设计 / build / 保存 revision 不变\n失效选择不得按行号迁移",
+        "external"
+      ]
+    ],
+    "edges": [
+      [
+        "ui",
+        "local",
+        "纯本地动作；新增模型步与业务写均0"
+      ],
+      [
+        "local",
+        "state",
+        "换frame前按声明的schema导出/恢复"
+      ],
+      [
+        "ui",
+        "attach",
+        "只有点击附加才提交选择"
+      ],
+      [
+        "attach",
+        "check",
+        "校验最新版本与资源归属"
+      ],
+      [
+        "check",
+        "draft",
+        "原生接纳只能称attached，不是sent"
+      ],
+      [
+        "draft",
+        "send",
+        "发送仍由用户原输入动作决定"
+      ],
+      [
+        "send",
+        "agent",
+        "正式会话输入与文件消费证据"
+      ],
+      [
+        "ui",
+        "call",
+        "明确业务按钮走既有能力，不自行拼第二套实现"
+      ],
+      [
+        "ui",
+        "ctx",
+        "可选能力先探测；不影响默认手动链"
+      ],
+      [
+        "ctx",
+        "agent",
+        "requestAgent有真实队列回执；context只留给后续消费"
+      ],
+      [
+        "ui",
+        "refresh",
+        "原按钮/聊天或已装配调度触发读"
+      ],
+      [
+        "refresh",
+        "data",
+        "各数据集成功或失败独立结算"
+      ],
+      [
+        "data",
+        "local",
+        "发送新数据事件，不触发编译"
+      ],
+      [
+        "data",
+        "identity",
+        "刷新不能改设计/构建/组件库版本"
+      ]
+    ],
+    "note": "刷新是否需要实时上游读由Provider解释；界面只报告真实fetchedAt/sourceDataTime/freshness。计划字段存在不等于worker已运行。新frame恢复与Agent上下文版本属于不同状态。",
+    "refs": [
+      "S16",
+      "S19",
+      "S23",
+      "S06"
+    ],
+    "direction": "TB"
+  },
+  {
+    "id": "FIG-19",
+    "title": "整个架构按证据层次与范围放行",
+    "nodes": [
+      [
+        "base",
+        "原 TST-001..048\n新版本回归 / 原状态保留",
+        "existing"
+      ],
+      [
+        "new",
+        "新 TST-049..080\n新创作与运行验收",
+        "new"
+      ],
+      [
+        "e",
+        "证据身份过滤\ncommit / 版本 / scope / SHA",
+        "decision"
+      ],
+      [
+        "bad",
+        "缺证据 / 版本不符 / 未运行\n不代签，返回对应工作包",
+        "stop"
+      ],
+      [
+        "core",
+        "CORE\n基础协议 / 实际 Host / 兼容",
+        "existing"
+      ],
+      [
+        "author",
+        "AUTHORING\n原 @ / 真实源码与预览\n原 Agent / 保存重开",
+        "new"
+      ],
+      [
+        "biz",
+        "BUSINESS-WRITE\n每个动作真实回执与核实",
+        "new"
+      ],
+      [
+        "mig",
+        "DATA-CUTOVER\n真实迁移 / 唯一 writer / 回退",
+        "new"
+      ],
+      [
+        "gate",
+        "本次承诺范围\n全部强制项均满足？",
+        "decision"
+      ],
+      [
+        "candidate",
+        "仅已验范围的候选\n其余 NOT_ACCEPTED",
+        "stop"
+      ],
+      [
+        "approved",
+        "A / V / R 明确签认\n包 hash与运行identity一致",
+        "external"
+      ]
+    ],
+    "edges": [
+      [
+        "base",
+        "e",
+        "原PASS只能作为reported，不自动继承"
+      ],
+      [
+        "new",
+        "e",
+        "每个断言附原始证据，不只总数"
+      ],
+      [
+        "e",
+        "bad",
+        "不合格：先补实际执行或证据"
+      ],
+      [
+        "e",
+        "core",
+        "符合当前版本的基础范围证据"
+      ],
+      [
+        "core",
+        "author",
+        "再满足默认手动创作和真实模型链"
+      ],
+      [
+        "core",
+        "biz",
+        "再满足用户指定真实写动作"
+      ],
+      [
+        "core",
+        "mig",
+        "再满足实际接入库/资产切换"
+      ],
+      [
+        "author",
+        "gate",
+        "作者体验范围签认"
+      ],
+      [
+        "biz",
+        "gate",
+        "各业务动作分别签认"
+      ],
+      [
+        "mig",
+        "gate",
+        "切库范围签认"
+      ],
+      [
+        "gate",
+        "candidate",
+        "否：只陈述已通过范围和限制"
+      ],
+      [
+        "gate",
+        "approved",
+        "是：签本次承诺的整体范围"
+      ]
+    ],
+    "note": "图中“签认”是目标节点，不是本次已获得批准。本次只有静态审计、HTML身份和语法检查；产品80项新运行均NOT_RUN。原型浏览器为BLOCKED_ENV，不证明产品失败。",
+    "refs": [
+      "S03",
+      "S04",
+      "S26"
+    ],
+    "direction": "TB"
+  }
+]

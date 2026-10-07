@@ -1,0 +1,20 @@
+digraph G {
+ graph [bgcolor="white", rankdir=TB, pad=0.18, nodesep=0.35, ranksep=0.48, splines=polyline, fontname="Noto Sans CJK SC", fontsize=12, color="#8090a0"];
+ node [shape=box, style="rounded,filled", fillcolor="#f5f7fa", color="#34506b", fontname="Noto Sans CJK SC", fontsize=11, margin="0.16,0.10", penwidth=1.2];
+ edge [color="#34506b", fontname="Noto Sans CJK SC", fontsize=9, arrowsize=0.7];
+
+ p0[label="P0 / TODO-001..003
+基线 + Host 探针 + G0"];
+ p1[label="P1 / TODO-004..008
+契约与职责抽取 + G1"];
+ p2[label="P2 / TODO-009..012
+连接 / 1+N / Notes + G2"];
+ p3[label="P3 / TODO-013..018
+SDK / 发现 / 可靠性 + G3"];
+ p4[label="P4 / TODO-019..022
+bridge / 上下文 / 组件 + G4"];
+ p5[label="P5 / TODO-023..026
+迁移 / 回退 / 发布 + G5"];
+ p0->p1[label="G0 通过"];p1->p2[label="G1 通过"];p2->p3[label="G2 通过"];p3->p4[label="G3 通过"];p4->p5[label="G4 通过"];
+
+}

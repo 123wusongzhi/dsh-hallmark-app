@@ -1,0 +1,2 @@
+# Preserve the audit input package byte-for-byte across Windows checkouts.
+docs/requirements/A2/** -text

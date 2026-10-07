@@ -12,6 +12,8 @@ export interface ComponentHostHandlers {
   updateContext?: (request: BridgeRequest)=>Promise<JsonValue>|JsonValue;
   requestAgent?: (request: BridgeRequest)=>Promise<JsonValue>|JsonValue;
 }
+export interface ComponentExtensionRequest extends BridgeIdentity {channel:string;type:'extension';feature:'renderReadyV1'|'uiStateV1';action:string;requestId:string;params:JsonValue}
+export type ComponentExtensionHandlers=Partial<Record<ComponentExtensionRequest['feature'],(request:ComponentExtensionRequest)=>Promise<JsonValue>|JsonValue>>;
 const unsupported=(method:string):FailureInfo=>({code:'UNSUPPORTED_HOST_CAPABILITY',message:`Host has no verified ${method} path. Attach a selection to the input and send it manually.`,retryPolicy:'never'});
 function messageBytes(value:unknown):number {
   const ancestors=new Set<object>();
@@ -31,14 +33,18 @@ export class ComponentHost {
   private active=true;
   private handlers:ComponentHostHandlers;
   private contextRevision:()=>number;
-  constructor(identity:BridgeIdentity,handlers:ComponentHostHandlers,options:{maxMessageBytes?:number;contextRevision?:()=>number}={}) {
+  private extensionHandlers:ComponentExtensionHandlers;
+  private negotiatedFeatures=new Set<string>();
+  constructor(identity:BridgeIdentity,handlers:ComponentHostHandlers,options:{maxMessageBytes?:number;contextRevision?:()=>number;extensionHandlers?:ComponentExtensionHandlers;clientFeatures?:string[]}={}) {
     if(!isBridgeIdentity(identity))throw new Error('INVALID_BRIDGE_IDENTITY');
     this.identity={...identity};this.handlers=handlers;this.maxMessageBytes=options.maxMessageBytes??262144;
     this.contextRevision=options.contextRevision??(()=>0);
+    this.extensionHandlers=options.extensionHandlers??{};
+    for(const feature of options.clientFeatures??[])if(Object.hasOwn(this.extensionHandlers,feature))this.negotiatedFeatures.add(feature);
     if(!Number.isSafeInteger(this.maxMessageBytes)||this.maxMessageBytes<1)throw new Error('INVALID_BRIDGE_BYTE_LIMIT');
     this.supportedMethods=COMPONENT_METHODS.filter(method=>typeof handlers[method as keyof ComponentHostHandlers]==='function') as BridgeRequest['method'][];
   }
-  hello(requestId?:string):ComponentHello {const contextRevision=this.contextRevision();if(!Number.isSafeInteger(contextRevision)||contextRevision<0)throw new Error('INVALID_CONTEXT_REVISION');return {...this.identity,channel:COMPONENT_CHANNEL,type:'hello',supportedMethods:[...this.supportedMethods],maxMessageBytes:this.maxMessageBytes,contextRevision,...(requestId?{requestId}:{})};}
+  hello(requestId?:string):ComponentHello {const contextRevision=this.contextRevision();if(!Number.isSafeInteger(contextRevision)||contextRevision<0)throw new Error('INVALID_CONTEXT_REVISION');return {...this.identity,channel:COMPONENT_CHANNEL,type:'hello',supportedMethods:[...this.supportedMethods],maxMessageBytes:this.maxMessageBytes,contextRevision,...(this.negotiatedFeatures.size?{features:[...this.negotiatedFeatures]}:{}),...(requestId?{requestId}:{})};}
   event(event:'data'|'context',data:JsonValue):ComponentEvent {return {...this.identity,channel:COMPONENT_CHANNEL,event,data};}
   async handle(message:unknown):Promise<ComponentResponse|ComponentHello|undefined> {
     if(!this.active||!message||typeof message!=='object')return;
@@ -47,8 +53,20 @@ export class ComponentHost {
     const response=(error:FailureInfo):ComponentResponse=>({...this.identity,channel:COMPONENT_CHANNEL,requestId:item.requestId as string,error});
     if(item.protocolVersion!=='2.0')return response({code:'UNSUPPORTED_PROTOCOL',message:'Unsupported component protocol major.',retryPolicy:'never'});
     try{if(messageBytes(message)>this.maxMessageBytes)return response({code:'BRIDGE_MESSAGE_TOO_LARGE',message:'Component request exceeds the negotiated byte limit.',retryPolicy:'never'});}catch(error){return response({code:'INVALID_BRIDGE_MESSAGE',message:error instanceof Error?error.message:String(error),retryPolicy:'never'});}
-    if(item.type==='hello'){try{return this.hello(item.requestId);}catch(error){return response({code:'CONTEXT_UNAVAILABLE',message:error instanceof Error?error.message:String(error),retryPolicy:'never'});}}
+    if(item.type==='hello'){
+      if(Object.keys(item).some(key=>!['channel','type','protocolVersion','requestId','documentNonce','clientFeatures','sessionId','viewId','buildId','frameInstanceId'].includes(key))||item.clientFeatures!==undefined&&(!Array.isArray(item.clientFeatures)||item.clientFeatures.some(feature=>typeof feature!=='string')))return response({code:'INVALID_BRIDGE_MESSAGE',message:'Invalid hello envelope.',retryPolicy:'never'});
+      this.negotiatedFeatures.clear();for(const feature of item.clientFeatures as string[]??[])if(Object.hasOwn(this.extensionHandlers,feature))this.negotiatedFeatures.add(feature);
+      try{return this.hello(item.requestId);}catch(error){return response({code:'CONTEXT_UNAVAILABLE',message:error instanceof Error?error.message:String(error),retryPolicy:'never'});}
+    }
     if(!isBridgeIdentity(message)||!sameBridgeIdentity(this.identity,message))return;
+    if(item.type==='extension'){
+      const allowed=new Set(['channel','type','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','feature','action','params']);
+      if(Object.keys(item).some(key=>!allowed.has(key))||!Object.hasOwn(item,'params')||typeof item.action!=='string'||!this.negotiatedFeatures.has(String(item.feature)))return response({code:'UNSUPPORTED_HOST_CAPABILITY',message:'Extension was not negotiated.',retryPolicy:'never'});
+      const handler=this.extensionHandlers[item.feature as ComponentExtensionRequest['feature']];
+      if(!handler)return response(unsupported(String(item.feature)));
+      try {const result=await handler(message as ComponentExtensionRequest);if(!this.active)return;const output:ComponentResponse={...this.identity,channel:COMPONENT_CHANNEL,requestId:String(item.requestId),result};if(messageBytes(output)>this.maxMessageBytes)return response({code:'BRIDGE_MESSAGE_TOO_LARGE',message:'Extension response exceeds limit.',retryPolicy:'never'});return output;}
+      catch(error){const problem=error as {code?:string;message?:string};return response({code:problem.code??'COMPONENT_ACTION_FAILED',message:problem.message??String(error),retryPolicy:'never'});}
+    }
     const allowed=new Set(['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','method','params']);
     if(Object.keys(item).some(key=>!allowed.has(key))||!Object.hasOwn(item,'params'))return response({code:'INVALID_BRIDGE_MESSAGE',message:'Bridge requests require params and reject unknown envelope fields.',retryPolicy:'never'});
     const request=message as BridgeRequest;

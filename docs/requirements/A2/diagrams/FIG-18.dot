@@ -1,0 +1,32 @@
+digraph G {
+graph [rankdir=TB, bgcolor="white", pad="0.20", nodesep="0.30", ranksep="0.40", splines=polyline, outputorder=edgesfirst];
+node [shape=box, style="rounded,filled", fontname="Noto Sans CJK SC", fontsize=14, margin="0.15,0.10", penwidth=1.3];
+edge [fontname="Noto Sans CJK SC", fontsize=10, color="#5B7292", arrowsize=0.7, penwidth=1.2];
+ui [label="组件交互入口\n当前 session / view / build", fillcolor="#EAF3FF", color="#3265A3"];
+local [label="排序 / 筛选 / 勾选\nReact 本地状态", fillcolor="#EAF3FF", color="#3265A3"];
+state [label="协商 UI 状态快照\n按 view 恢复 / 选择重验", fillcolor="#FFF3DF", color="#C47724"];
+attach [label="附加选择\nResourceRef + datasetRevision", fillcolor="#EAF3FF", color="#3265A3"];
+check [label="Runtime 校验 + 去重\n同会话 / 同快照", fillcolor="#FFF3DF", color="#C47724"];
+draft [label="原 DSH 输入附件区\n正文与旧附件保留", fillcolor="#EAF3FF", color="#3265A3"];
+send [label="用户手动原发送", fillcolor="#F3F5F8", color="#6A778C"];
+agent [label="原 Agent 消费实际 JSON\n然后处理本条自然语言", fillcolor="#F3F5F8", color="#6A778C"];
+call [label="明确应用动作\nRuntime统一 invoke", fillcolor="#EAF3FF", color="#3265A3"];
+ctx [label="可选 updateContext / requestAgent\n正式原生投影 / 队列", fillcolor="#EAF3FF", color="#3265A3"];
+refresh [label="手动或实际 worker 刷新\n仅 query / compute", fillcolor="#FFF3DF", color="#C47724"];
+data [label="每个 binding 独立快照\n失败保旧 / 真实来源时间", fillcolor="#EAF3FF", color="#3265A3"];
+identity [label="设计 / build / 保存 revision 不变\n失效选择不得按行号迁移", fillcolor="#F3F5F8", color="#6A778C"];
+ui -> local [label="E01"];
+local -> state [label="E02"];
+ui -> attach [label="E03"];
+attach -> check [label="E04"];
+check -> draft [label="E05"];
+draft -> send [label="E06"];
+send -> agent [label="E07"];
+ui -> call [label="E08"];
+ui -> ctx [label="E09"];
+ctx -> agent [label="E10"];
+ui -> refresh [label="E11"];
+refresh -> data [label="E12"];
+data -> local [label="E13"];
+data -> identity [label="E14"];
+}

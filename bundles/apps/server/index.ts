@@ -1,5 +1,6 @@
-import {readFileSync} from 'node:fs';
-import {isAbsolute, join} from 'node:path';
+import {existsSync,readFileSync} from 'node:fs';
+import {dirname,isAbsolute, join} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
 import Schema from '@deepseek-ai/schemastery';
 import {HallmarkPlugin} from '../../../packages/dsh-plugin/server/index.ts';
@@ -11,8 +12,9 @@ import {AppsHost, HttpAppsHostTransport, type AppsPluginContext, type AppsHostTr
 import {apply as attachHallmark} from '../../../packages/plugin-hallmark/src/index.ts';
 import {apply as attachNotes} from '../../../packages/plugin-notes/src/index.ts';
 import type {NativeSessionAdapterMode} from '../../../packages/dsh-compat/src/index.ts';
+import type {AppsAuthoringGuidance} from '../../../packages/plugin-apps/src/authoring-guidance.ts';
 export const name = 'dsh-plugin-apps-bundle';
-export const version = '1.0.0-candidate.6';
+export const version = '1.0.0-candidate.10';
 export const inject = ['tools', 'commands', 'systemPrompt', 'connection', 'agents', 'sessionQuery'];
 export const Config = Schema.object({
   serviceUrl: Schema.string().default('http://127.0.0.1:4181').description('显式Apps Runtime回环地址；候选包不启动或重启运行服务。'),
@@ -51,10 +53,20 @@ export async function createAppsBundle(ctx: PluginContext & AppsPluginContext, c
   };
   const legacy = new RuntimeLegacyHallmarkPlugin(legacyContext,config,transport);
   // Reuse the single legacy asset-route owner; new Apps views do not create a second registration set.
-  const host = new AppsHost(ctx,transport,undefined,{nativeSessionAdapter:options.nativeSessionAdapter,prepareView:async(view,sessionId,signal)=>{
-    if(!view||typeof view!=='object'||Array.isArray(view)||!view.source)return;
-    const response=await legacy.ui(new Request(`http://dsh.invalid/api/hallmark-app?resource=sessionView&sessionId=${encodeURIComponent(sessionId)}&viewId=${encodeURIComponent(String(view.viewId))}`,{signal}));
-    if(!response.ok)throw new Error('SOURCE_ASSET_REGISTRATION_FAILED');
+  const cliPath=join(dirname(process.execPath),'resources','runtime','cli','bin','dsh.cmd'),electron=Boolean(process.versions.electron);
+  const dataDirectory=config.dataDirectory??process.env.APPS_DATA_DIR,serviceUrl=config.serviceUrl;
+  const authoringGuidance:AppsAuthoringGuidance|undefined=dataDirectory&&serviceUrl?{cliPath:existsSync(cliPath)?cliPath:null,nodeExecutable:process.execPath,nodeArgs:electron?['--expose-internals']:[],nodeEnvironment:electron?{ELECTRON_RUN_AS_NODE:'1'}:{},starterPath:fileURLToPath(new URL('../source-starter/create-apps-source.mjs',import.meta.url)),sdkDirectory:fileURLToPath(new URL('../sdk/component-runtime',import.meta.url)),buildRunnerPath:fileURLToPath(new URL('./apps-authoring-build.js',import.meta.url)),previewRunnerPath:fileURLToPath(new URL('./apps-authoring-preview.js',import.meta.url)),runtime:{url:serviceUrl,keyFile:join(dataDirectory,'service-key'),archiveRoot:join(dataDirectory,'source-components'),evidenceRoot:join(dataDirectory,'authoring-evidence')}}:undefined;
+  const host = new AppsHost(ctx,transport,undefined,{nativeSessionAdapter:options.nativeSessionAdapter,authoringGuidance,prepareView:async(view,sessionId,signal)=>{
+    if(!view||typeof view!=='object'||Array.isArray(view))return;
+    if(view.ownerSessionId!==sessionId)throw new Error('VIEW_NOT_OWNED');
+    if(view.source)await legacy.prepareSource({kind:'source',source:view.source});
+    if(typeof view.pendingPublicationId==='string'&&transport.authoringAction){
+      const inspected=await transport.authoringAction('inspect',sessionId,{publicationId:view.pendingPublicationId},signal);
+      if(!inspected||typeof inspected!=='object'||Array.isArray(inspected))throw new Error('INVALID_PUBLICATION');
+      const publication=inspected.publication;
+      if(!publication||typeof publication!=='object'||Array.isArray(publication)||publication.ownerSessionId!==sessionId||publication.viewId!==view.viewId||publication.publicationId!==view.pendingPublicationId||publication.state!=='mounting')throw new Error('INVALID_PUBLICATION');
+      await legacy.prepareSource({kind:'source',source:publication.source});
+    }
   }});
   const attachments: (() => void)[] = [];
   let disposed = false;

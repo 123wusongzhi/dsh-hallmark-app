@@ -1,0 +1,32 @@
+digraph G {
+graph [rankdir=TB, bgcolor="white", pad="0.20", nodesep="0.30", ranksep="0.40", splines=polyline, outputorder=edgesfirst];
+node [shape=box, style="rounded,filled", fontname="Noto Sans CJK SC", fontsize=14, margin="0.15,0.10", penwidth=1.3];
+edge [fontname="Noto Sans CJK SC", fontsize=10, color="#5B7292", arrowsize=0.7, penwidth=1.2];
+c [label="组件库 C / revision r\n不可变历史源版本", fillcolor="#EAF3FF", color="#3265A3"];
+oa [label="在会话 A 明确打开 r\nbase = 打开时库最新版本", fillcolor="#EAF3FF", color="#3265A3"];
+ob [label="在会话 B 明确打开 r\nbase 独立记录", fillcolor="#EAF3FF", color="#3265A3"];
+wa [label="A 独立 workspace / draft\n可编辑源码", fillcolor="#EAF3FF", color="#3265A3"];
+wb [label="B 独立 workspace / draft\n可编辑源码", fillcolor="#EAF3FF", color="#3265A3"];
+arch [label="不可变 archive buildId\n多个 view 可以引用", fillcolor="#EAF3FF", color="#3265A3"];
+va [label="A 的 viewId + viewRevision\n编辑保持 viewId", fillcolor="#FFF3DF", color="#C47724"];
+vb [label="B 的 viewId + viewRevision\nowner 与 A 不同", fillcolor="#FFF3DF", color="#C47724"];
+intent [label="用户明确保存？\n原话或按钮", fillcolor="#FFF7E8", color="#A87527", shape=diamond];
+mode [label="save_as 或 update\nupdate 比较 expectedRevision", fillcolor="#FFF3DF", color="#C47724"];
+next [label="组件库新 revision\n或新的 componentId", fillcolor="#EAF3FF", color="#3265A3"];
+conf [label="冲突：保留当前副本\n查看最新 / 另存", fillcolor="#FDEEEA", color="#B05243"];
+unsaved [label="没有明确保存\n只有草稿和展示", fillcolor="#F3F5F8", color="#6A778C"];
+c -> oa [label="E01"];
+c -> ob [label="E02"];
+oa -> wa [label="E03"];
+ob -> wb [label="E04"];
+wa -> arch [label="E05"];
+wb -> arch [label="E06"];
+arch -> va [label="E07"];
+arch -> vb [label="E08"];
+va -> intent [label="E09"];
+intent -> mode [label="E10 是"];
+intent -> unsaved [label="E11 否"];
+mode -> next [label="E12"];
+mode -> conf [label="E13"];
+next -> c [label="E14"];
+}
