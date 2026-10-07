@@ -2,6 +2,8 @@
 
 A.2的 `hallmark-component-design` 已更新到DSH技能目录，旧版备份/hash及其余上游技能保留。candidate.7原生发现/只读和candidate.9真实源码/构建/预览/读图迭代历史不改，9原生挂载失败。candidate.10现已通过官方插件管理器覆盖原同名插件并正常重开桌面，安装文件/冻结源输入与实际Runtime健康核对通过；GUI/原生内存身份、新技能调用与新组件挂载待用户原会话手动验收。706包检查、26视觉fixture与实际CLI双视口不代签该范围，见 [A.2执行记录](apps-a2-execution.md)。
 
+TST-055/056/057源码构建/归档/预览最低完整scope及073/075/076/077维护卡已独立V通过，共7卡PASS/73NOT_RUN。SOURCE_EXEC预览与实际安装文件核对不证明新原Agent已读取技能、完整截图反馈或设计质量；TST-058整卡仍NOT_RUN，原技能正文/hash及上游技能本轮未改，用户“先不要保存”继续有效。
+
 ## A.2：已更新内容及证据范围
 
 2026-10-07T06:48:50.4361116Z 完成本地项目技能更新；再次安装检查保留一致文件。当前技能源码见 [SKILL.md](../skills/hallmark-component-design/SKILL.md)，正文 SHA-256 为 `0f41c1ecb84bdc490ec721788fcffae5453d030eab43685c3db82ae42d1a92dd`，视觉参考 SHA-256 为 `b284b00b9952a651699b27e9513306552f3b4411ffbafb2edf137f28a159a294`。原始安装 manifest 和旧版备份位于本机忽略目录；当时记录 `nativeDiscoveryObserved=false`、`actualAgentDesignQualityVerified=false` 保留原事实。后续 E-NATIVE-READ-7 观察到目录列出项目技能和当前描述，只补充发现结果，不代签模型读取或设计质量。

@@ -4,6 +4,10 @@ A.2 使用原 DSH 会话、原文件/命令工具和 Apps 网关。用户在任�
 
 candidate.10已通过官方插件管理器覆盖原同名插件并正常重开桌面：安装五hash/143冻结源输入、实际Runtime7/schema4/健康/唯一writer核对通过。冻结706/706、类型检查、26视觉fixture、实际包内build/双视口10断言和只读smoke范围保留；独立备份工具另验22+1并完成1754文件备份，包未重打。Host/Client原生内存身份、GUI和新挂载仍待人工验收。candidate.9原Agent源码/build/preview/read_image/反馈历史未改，旧挂载失败、最后旧pub重启后interrupted；用户本轮暂不保存。进度以 [A.2执行记录](apps-a2-execution.md)为准。
 
+本轮TST-055 FIXTURE+SOURCE_EXEC、056 FIXTURE、057 SOURCE_EXEC已按完整最低断言独立V通过；这些卡不代签原Agent/桌面全流程。057使用正常安装依赖的React/TSX/CSS与真实包内CLI，v2四方法/v1/major拒绝、资源字节核对以及同一冻结build的fixture/本地Bill200行live_readonly快照分别验证。快照源时间2026-10-06 16:01:20.856 UTC、取得时间次日07:50:12.932 UTC、freshness unknown，不代表新live API读数。旧HTML/JS只是子范围；058完整LIVE_MODEL/双视口视觉反馈仍NOT_RUN，420图价格/库存窄列逐字换行不能标视觉PASS。
+
+1754文件备份已实际恢复新根并核验6归档/8构建签名/6预览签名/12PNG/2草稿/44引用，普通npm ci和已安装CLI/SDK真实重建得到原Bill buildId，六原归档不改。该SOURCE_EXEC未切换桌面库或执行原Agent编辑；依赖安装通过仅适用于本次Bill归档和本地React夹具，不保证通用starter/file锁在所有机器可恢复。
+
 ## A.2：先发现能力和工程定位
 
 先用 `apps_list`、`apps_describe` 核实正在运行的目录与 `apps.authoring.*@1.0.0`，再经 `apps_invoke` 调用。创作由共享 `appId=apps`、`connectionId=presentation` 执行，原 sessionId 来自可信 Host；真实业务的数据绑定另外保持明确 appId/connectionId。不要从店铺展示名、当前 focus 或最近会话猜身份。

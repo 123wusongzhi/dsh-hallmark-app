@@ -2,7 +2,7 @@
 
 本页记录2026-10-07的A.2实施与现场执行。**candidate.10（Host candidate.10 / Runtime candidate.7 / schema4）已于08:52:03 UTC通过官方插件管理器覆盖原同名插件，08:52:34 UTC正常重开桌面；五项安装文件hash、143个冻结源输入零差异、实际Runtime/三个Provider/Hallmark健康及唯一writer已核对。** Host/Client内存身份、实际GUI视觉与新authoring仍待用户在原会话手动发送后验收。包冻结前706/706、类型检查、视觉fixture26条、实际包内CLI双视口10断言和只读smoke通过；独立备份工具另有22回归/加强碰撞单项/typecheck，最终备份1754文件/25集合apply/verify通过。candidate.9真实Agent创作到源码/build/preview/读图迭代但原生挂载失败，旧最后publication重启后interrupted；价格54.80→54.79/库存201→200四个授权写入恢复历史保留，本轮无新业务写或保存。四个范围未整体放行。
 
-逐项进度见 [24项任务](apps-a2-tasks.md)和 [80项对照CSV](apps-a2-progress.csv)。CSV将相关检查与正式TST分开；`formalAcceptanceStatus=NOT_RUN`指完整正式验收卡尚未归档，不抹去局部现场PASS或失败。`candidateArchiveSha256`绑定当前candidate.10；实际安装/Runtime读取、原生GUI/内存与candidate.9/7历史各按证据范围记录。独立备份工具不属于143打包源输入，706包冻结检查不代签其后续修复，任何总数均不把全部需求标为VERIFIED。
+逐项进度见 [24项任务](apps-a2-tasks.md)和 [80项对照CSV](apps-a2-progress.csv)。CSV将相关检查与正式TST分开：TST-055/056/057/073/075/076/077七卡完整最低scope已独立V复核，`formalAcceptanceStatus=PASS`仅指该卡范围；其余73卡为NOT_RUN，不抹去局部现场PASS或失败。`candidateArchiveSha256`绑定当前candidate.10；实际安装/Runtime读取、原生GUI/内存与candidate.9/7历史各按证据范围记录。独立维护工具不属于143打包源输入，706包冻结检查不代签后续工具；24任务尚未整体VERIFIED，四门禁NOT_ACCEPTED。
 
 ## 固定输入与版本
 
@@ -10,7 +10,7 @@
 
 `.gitattributes` 为 `docs/requirements/A2/**` 禁用行尾转换，防止 Windows 检出改变输入字节。提交前已核对113个暂存blob与原工作区副本，差异为零；检查记录SHA-256为 `35c2e9ef5dd3486f616ce535d1e83c996c6f456715e69fd9c407ba4afedce627`，范围仅为Git输入字节保留。
 
-原包检查的范围为DOCUMENT_PACKAGE_ONLY：80需求、24任务、20发现，产品测试零次。570项是父版本基线，655项是candidate.7与当时备份修复快照；candidate.9的694项、candidate.10的706项分别保留。候选10核心实现已推送main提交 `92b094888606db0391e9f06a14c006db8191a1fd`，远端核对一致；此后的独立备份工具修复及当前记录是后续变更，最终提交/推送另记，不假定已经包含在92b0948或冻结包中。
+原包检查的范围为DOCUMENT_PACKAGE_ONLY：80需求、24任务、20发现，产品测试零次。570项是父版本基线，655项是candidate.7与当时备份修复快照；candidate.9的694项、candidate.10的706项分别保留。核心实现已推送main提交 `92b094888606db0391e9f06a14c006db8191a1fd`；独立备份修复/上一轮说明已推送 `e53fd18a0bedb011db69dd2b87e159c5bb67cf75`，远端一致。本轮新增验收harness/离线证据审查脚本与可变文档尚属后续变更，不能假定已在e53或冻结包中。055/056和057记录executedCommit=e53；075/076原08:24执行commit未记录，09:30对既有源hash/测试trace的复验为verifiedAgainst=e53、reuse=true，不能反写原执行commit。
 
 | 版本域 | 当前候选 candidate.10 | 现场边界 |
 |---|---|---|
@@ -68,7 +68,7 @@ candidate.10客户端补充独立于聊天工具行的候选发现：常驻root�
 | E-PRESTOP-10 | 桌面完全退出后核实旧任务Runtime并停止 | 08:41:55.927Z桌面进程0，旧Runtime38844/36994身份核对；Windows Stop-Process，非graceful SIGTERM，不声称优雅退出 |
 | E-BACKUP-FAIL-10 / E-BACKUP-HOLD-10 | 首轮备份创建前失败；中间apply保留HOLD、非最终备份 | 首轮误扫描preview-fixture-dataset，目录/报告均未创建且源DB未改；中间apply后独立复核发现JSON显示路径碰撞，原报告/目录原样保留，不作为最终安装前备份 |
 | E-BACKUP-FIX-22 | 独立工具22回归/加强碰撞单项1/类型检查通过，源码复核PASS | 最终采用真实binding对象WeakSet身份；仅识别已有执行上下文里的未命名空间本地preview input标签。DB/签名report/typed refs/嵌套payload/含冒号namespace严格缺失拒绝。历史report无input digest，识别归档输入不能证明当时preview输入字节；不在10的143打包输入内、包未重打 |
-| E-BACKUP-PRE-10 | 最终新目标完整备份apply/verify通过：1754文件/25集合 | `runtime-backup:572c46b04b9f624b752f8c07532e099bc6ba8bc48049e9d86cef9258d9f1cb4f`，`artifacts/apps-a2-bill-backup-pre-candidate10-reviewed`；包含当时2草稿/9attempt/6publication等。本轮未执行该新备份的新根restore验收，不覆盖历史284/294文件备份 |
+| E-BACKUP-PRE-10 | 最终新目标完整备份apply/verify通过：1754文件/25集合 | `runtime-backup:572c46b04b9f624b752f8c07532e099bc6ba8bc48049e9d86cef9258d9f1cb4f`，`artifacts/apps-a2-bill-backup-pre-candidate10-reviewed`；包含当时2草稿/9attempt/6publication。新根restore及源码引用/重建见E-RESTORE-10/E-RESTORED-SOURCE-10/E-REBUILD-10，旧284/294备份历史保留 |
 | E-INSTALL-10 / E-LIVE-10 | 官方同名9→10覆盖、安装文件/Runtime健康核对、正常重开 | 08:52:03Z安装；五hash匹配/143源输入零差异。08:52:27Z实际Runtime7/schema4、3 Provider/Hallmark健康，3GET/0mutation；08:52:34Z正常重开。新Runtime62564为36994唯一listener、旧38844已退，profile/dataDirectory未再切；原生内存身份/GUI/新authoring仍PENDING |
 | E-OLD-RECOVERY-10 | 实际重启后只读旧candidate.9最后publication状态 | 08:53:13.779Z：interrupted、pending=null、active/lastGood=null、draft_unpublished；旧失败/源码/图片未覆盖，无mounted、save或新业务写。旧Agent重新发布建议不代签验收 |
 | E-CONFIG | 相关 57/57 PASS | FIXTURE+CLOCK_CONTROL，含 7 个连接与 7 个 worker 新用例；排空、缓存代际、独立绑定、错过计划、重启、时区/DST；真实业务调用 0 |
@@ -96,6 +96,19 @@ candidate.10客户端补充独立于聊天工具行的候选发现：常驻root�
 
 | 编号 | 本机归档键 | SHA-256 |
 |---|---|---|
+| E-RESTORE-10 | `evidence/apps-a2-20261007/cutover/full-restore-pre-candidate10-reviewed.json` | `6e196f323c27a17bf9b668528750ccad7577b1a438302c8aa8c665bf3d6933c0` |
+| E-RESTORED-SOURCE-10 | `evidence/apps-a2-20261007/cutover/restored-source-reference-check-candidate10.json` | `39e6f2c762017fb2a7c1c47b5d25632c7f6ddb53f0c8e5a56a736e424d816094` |
+| E-REBUILD-10 | `evidence/apps-a2-20261007/cutover/restored-source-rebuild-candidate10.json` | `6dd7bd586095b44f2dd663d01ccb69a82cdbb66cf7419445c2a76a60835735fd` |
+| E-FORMAL-055-056 | `evidence/apps-a2-20261007/formal-build-archive/a2-build-archive-928cf1f7-7faf-4aba-8bd2-20dbcb2b0065/result.json` | `526af553816f598154e280394b8e523fdf9c372cc4925f54b397baf3761a3527` |
+| E-FORMAL-055 | `evidence/apps-a2-20261007/formal-build-archive/a2-build-archive-928cf1f7-7faf-4aba-8bd2-20dbcb2b0065/TST-055/FIXTURE+SOURCE_EXEC/result.json` | `8c943f1677a307714c5ddf1ed73310593f88cb7e13251792e367d9d942639349` |
+| E-FORMAL-056 | `evidence/apps-a2-20261007/formal-build-archive/a2-build-archive-928cf1f7-7faf-4aba-8bd2-20dbcb2b0065/TST-056/FIXTURE/result.json` | `a1884c1ad921ad4f85aa8862530065ced05975082347d563d8fb9f0ef8ed60fb` |
+| E-V-055-056 | `evidence/apps-a2-20261007/formal-build-archive/a2-build-archive-928cf1f7-7faf-4aba-8bd2-20dbcb2b0065/independent-v-055-056-20261007.json` | `3399f37cd0c9997a37bf901f3ee69a73cd2478dd3d672cf802a1b1b8ab023fca` |
+| E-FORMAL-MAINT-4 | `evidence/apps-a2-20261007/formal-maintenance/maintenance-2026-10-07T09-30-10-078Z-0ac06523-9797-44d6-9048-035e996f2f6f/summary.json` | `ce415db9eafbe3fe3cc7db27878196257e7f7f845ebd7c03af0f9ac1162024bb` |
+| E-FORMAL-MAINT-4 / index | `evidence/apps-a2-20261007/formal-maintenance/maintenance-2026-10-07T09-30-10-078Z-0ac06523-9797-44d6-9048-035e996f2f6f/evidence-index.json` | `d401bbdc154d608b486293383bd57e74100e4635c4218ee89562ee965c7f6c08` |
+| E-V-MAINT-4 | `evidence/apps-a2-20261007/formal-maintenance/maintenance-2026-10-07T09-30-10-078Z-0ac06523-9797-44d6-9048-035e996f2f6f/independent-v-073-075-076-077-20261007.json` | `16be548e7c95769608d38bb27221826fbe7ebd98fc858f67a8782f6c43629502` |
+| E-FORMAL-057 | `evidence/apps-a2-20261007/formal-preview/final-index-612ea9b7-85e7-4fba-9607-e4d67baf7b18.json` | `e4dcba2b2f71cc7a16f1c6d3273e8234c64f57189c8fb1d69c48199d80c46867`；原I索引中的V pending保留，实际V追加见下 |
+| E-V-057 | `evidence/apps-a2-20261007/formal-preview/V-source-preview-final-20261007-0938.json` | `9b0f3040fe868e0927cd185bc3505fc18db13ebc96b6b69a81aaa8a4c6c0e26e` |
+| E-RELEASE-EVIDENCE | `scripts/verify-a2-release-evidence.mjs` | `c484ff4f3ce696e7210e3f3e7e5d0675dc3951a1bc61249e13c6a71bc5539795`；仓库独立工具，非包内CLI |
 | E-FULL-1 | `evidence/apps-a2-20261007/verification/full-test-1.txt` | `4067693b390eaab4493580cb85f8aad1d612b166547e633bc6d110c99283261d` |
 | E-FULL-2 | `evidence/apps-a2-20261007/verification/full-test-2.txt` | `4f5fba163fc1d12f6a78a41a923b09b48b8d69ccdea010e30211a155880759f9` |
 | E-FULL-3 | `evidence/apps-a2-20261007/verification/full-test-3.txt` | `90fd63d2e5e101d43962975dbf5912dd13748c6400acf2e33246c8b75b7f1743` |
@@ -156,6 +169,30 @@ E-V-57 来自团队实际运行回报，未另声称公开了原始 V 日志。E
 
 历史284文件备份ID为 `runtime-backup:c3131e247c1b340297f43e36efd9afad7780e0b5261c77bb3d3048f1a05cc1dd`，当时独立工具摘要为 `de45172149112ee6ff17f3baf57b43eb568b55019c85cf3020032d4917ff31bf`。本轮最终工具 `packages/app-migration/src/runtime-backup.ts` 为 `8b655dc37502725ba878cc01db9cf05d058cf3cd660f76d3c6a2e1a6c26b39d6`，测试 `test/apps-migration/runtime-backup.test.ts` 为 `72a19876f632a892883c6140aba9cebfb1d123e9be0e6018bf2e097579f38d52`；不在candidate.10的143打包源输入中，独立记录22+1检查与新1754文件备份，不改写旧日志或包。
 
+## 本轮新根恢复与完整最低范围验收
+
+最终1754文件/25集合备份已于09:03:29.916 UTC真实恢复到 `artifacts/apps-a2-bill-restore-check-candidate10`，加入2773条可信relocation，源证据未改。随后只读核对6个归档、8份签名构建、6份签名预览、12张PNG、2草稿和44个新根引用均有效，引用核验期间新根1754文件字节未变化；不可变归档/签名报告/PNG保留原字节，恢复数据库另增可信映射。由恢复的Bill不可变归档建立新checkout，正常npm ci、已安装candidate.10 build CLI/SDK实际重建PASS，buildId仍为 `d3a4605b356ce70264fd2597cf25e122cb99c43f3b951977615ba84fc551de6b`，六个原归档未改。该SOURCE_EXEC不启动恢复Runtime、不二次切换桌面dataDirectory，不代签Agent编辑、last-good或native挂载；普通依赖通过仅适用于这份Bill归档及本地React夹具，不证明任意机器starter/file锁路径可迁移。
+
+| 完整验收卡 | 独立V结论与最低scope | 执行与边界 |
+|---|---|---|
+| TST-055 | PASS_SCOPE_REVIEWED；FIXTURE+SOURCE_EXEC | 真实子进程/esbuild/输入变化拒绝、签名回执与不可变归档；TST-055 34断言，055/056 root共60断言，非native/模型签认 |
+| TST-056 | PASS_SCOPE_REVIEWED；FIXTURE | 20断言；历史/活引用、legacy fixture/tamper/备份恢复，合成ready只建立fixture基线 |
+| TST-057 | PASS；SOURCE_EXEC完整最低scope独立V通过 | 普通React依赖、v2/v1/错误major、资源字节及同一冻结React build的fixture/live_readonly；旧HTML/JS仅有效子集 |
+| TST-073 | PASS_SCOPE_REVIEWED；FIXTURE | GC旧计划拒绝、新根25集合/原路径不可用/归档与签名截图恢复；direct-archive headless夹具，不签native或真实切库 |
+| TST-075 | PASS_SCOPE_REVIEWED；FIXTURE+CLOCK_CONTROL | worker身份/无UI两数据集/错过计划单飞/重启/disabled/unavailable；原08:24记录按精确源与日志复验，无桌面/真实性能签认 |
+| TST-076 | PASS_SCOPE_REVIEWED；FIXTURE | DB权威、排空/CAS/unknown、实际mock A/B请求版本与缓存失效；原生地址显示仍NOT_RUN |
+| TST-077 | PASS_SCOPE_REVIEWED；DOC+FIXTURE | 冻结旧48CSV字节、身份/scope/model/版本/篡改/缺失拒绝及不可缩减集合；只审查离线资格，不执行断言或放行发布 |
+
+055/056独立V为 `/root/maintenance_acceptance_gap_audit`，09:25:33.860 UTC追加只读复核；维护四卡同一V于09:35:14.745 UTC复核311冻结文件、1165语义引用，只有三处声明的missing/tamper负例，143包源输入零差异。09:30维护run共267断言，独立新增12窄测试/typecheck另记，不加到706包检查。06:29维护summary的四条过期源hash明确剔除且保留，未用中间run替代最终记录。
+
+057独立V `/root/source_acceptance_gap_audit` 于09:36:58.785 UTC核对10份新签名report、377引用零意外错误、5个React carrier/30个HTTP资源manifest与原归档字节一致，实际v2四方法/v1/major3 transcript和单buildId负例通过；41个本地请求、零生产端口调用，关联Chrome/Node已退出。早期wrapper完整源码快照未保留的事实不抹去；React run执行harness为 `2a8ea3192f646b345f58ac5804b6a337788849b25edd2f640746c0604768bbdb`，最终live run为 `bfcb322c890a97c79722947d98c040754028acf104ce1a425550d69a80b8fab1`，不混用执行版本。
+
+057实际live_readonly是本地真实Bill200行快照，fetchedAt=2026-10-07 07:50:12.932 UTC、sourceDataTime=2026-10-06 16:01:20.856 UTC、freshness=unknown；不是新live API查询或桌面展示。fixture八行合成数据与真实快照分开标记。旧HTML757执行只证明HTML/JS子范围。TST-058虽有SOURCE_EXEC负例和旧原Agent部分读图历史，完整LIVE_MODEL/双视口视觉反馈仍NOT_RUN；实际420截图价格/库存逐字换行保留，不能以无溢出断言代签视觉质量。
+
+新增仓库工具 [verify-a2-release-evidence.mjs](../scripts/verify-a2-release-evidence.mjs) 强制CORE51/AUTHORING78/BUSINESS-WRITE52/DATA-CUTOVER53集合，调用者只能增加required卡，不能缩减；核对scope/model/candidate/commit/hash/bytes及重复/非PASS身份。它不执行产品测试、不独立证明断言，releaseApproved恒false，单卡DECLARED_TEST_SET无发布资格。离线用法见 [迁移运行手册](apps-migration-runbook.md)。四范围仍NOT_ACCEPTED，R未签认。
+
+本页源码SHA对应本次实际执行工作区的原始字节，私有源码快照保留该序列化；Git文本行尾由各checkout设置决定。
+
 ## 实际角色记录
 
 | 角色 | 实际身份 / 日期 | 确认范围 |
@@ -168,6 +205,9 @@ E-V-57 来自团队实际运行回报，未另声称公开了原始 V 日志。E
 | V 业务追加 | Codex `stock_original_inspection`；2026-10-07 07:44:37 UTC | 只读核实原operation、4次mutation/Source回执、独立价格与指定SKU/仓库库存读回恢复；SCRIPT/REAL_BUSINESS，不代签原生UI/模型操作 |
 | V 客户端追加 | Codex `/root/native_candidate_surface/frame_surface_review`；2026-10-07 08:28:05.103 UTC | E-V-SURFACE-10四项修复独立源码复核，无新遗留发现；Runtime/桌面未操作，不代签LIVE_HOST |
 | V 备份输入追加 | Codex `/root/backup_preview_reference_fix/preview_backup_scope_review`；2026-10-07 | WeakSet实际binding对象身份与加强匹配的独立fixture碰撞拒绝复核PASS；SOURCE_ONLY，无正式发布签名，不证明历史unsigned input逐字来源 |
+| V 055/056追加 | Codex `/root/maintenance_acceptance_gap_audit`；2026-10-07 09:25:33.860 UTC | E-V-055-056两卡完整最低scope通过，60断言/26HTTP trace及源/引用/HMAC只读交叉复核，不代签native/R |
+| V 维护四卡追加 | 同一独立V；2026-10-07 09:35:14.745 UTC | E-V-MAINT-4完整最低scope通过，311文件/1165引用、25集合/4归档/4签名核验；073 FIXTURE、075 FIXTURE+CLOCK_CONTROL、076 FIXTURE、077 DOC+FIXTURE |
+| V 057追加 | Codex `/root/source_acceptance_gap_audit`；2026-10-07 09:36:58.785 UTC | E-V-057完整SOURCE_EXEC最低scope PASS；10签名/377引用/5React carrier/30资源manifest复核，058仍NOT_RUN，无native/外部模型/人类R签认 |
 | R | 未签认 | 四个范围尚未放行；候选包通过不等于生产发布批准 |
 
 以上是实际 AI 执行/复核身份，不是人类签名。I 未代签 R，夹具 V 结果未代签真实环境。
@@ -176,14 +216,16 @@ E-V-57 来自团队实际运行回报，未另声称公开了原始 V 日志。E
 
 | 范围 | 当前结论 | 尚需的实际证据 |
 |---|---|---|
-| CORE | **NOT_ACCEPTED** | candidate.10已官方同名覆盖/五hash/143源输入/实际Runtime健康/正常重开；原生注册/内存身份、48项逐卡、卸载零残留与数据保留、TST-076/077/080仍待验 |
-| AUTHORING | **NOT_ACCEPTED** | candidate.9创作到真实源码/预览/读图迭代但挂载失败，重启后最后旧pub为interrupted；10修复已安装/重开，新GUI与原生内存、实际mounted/原输入附加/保存/另会话重开仍待人工验收 |
+| CORE | **NOT_ACCEPTED** | candidate.10已官方同名覆盖/五hash/143源输入/实际Runtime健康/正常重开；076/077最低fixture卡已V通过，原生注册/内存身份、原48逐卡、卸载零残留/数据保留及080仍待验 |
+| AUTHORING | **NOT_ACCEPTED** | 055/056/057最低scope V通过；9真实源码/预览/读图后挂载失败、旧pub重启interrupted。10新GUI/内存、实际mounted/原输入附加/明确保存/另会话重开仍待人工验收，058完整LIVE_MODEL未完成 |
 | BUSINESS-WRITE | **NOT_ACCEPTED** | 本次价格与库存的4个授权写动作/公开状态/独立读回恢复已通过SCRIPT/REAL_BUSINESS范围；上品、原生UI/模型业务操作及完整TST-078范围仍未完成 |
-| DATA-CUTOVER | **NOT_ACCEPTED** | 旧迁移/备份恢复/入口历史保留；本轮最终严格1754文件备份apply/verify及唯一writer更新通过，首轮失败/中间HOLD另列；未执行新备份新根restore，完整TST-073/079、历史/草稿对账、条件回退仍待验 |
+| DATA-CUTOVER | **NOT_ACCEPTED** | 最终1754文件备份新根restore/2773映射/源码签名PNG引用与普通npm ci重建SOURCE_EXEC通过，073最低FIXTURE卡V通过；未再次切桌面profile/dataDirectory，TST-079完整切库/运行历史草稿对账/条件回退仍待验，首失败与中间HOLD保留 |
 
 用户批准价格 **54.80 CNY→读回→恢复54.79**、库存 **201→读回→恢复200**，本次流水四个mutation已完整成功并独立读回恢复。旧stock-test因顶层products解析遗漏曾pending/STOPPED；首次修复又被独立V发现嵌套SKU冲突而拒绝candidate.8，历史保留。最终严格offer/SKU/warehouse唯一匹配修复各52/52通过，`packages/core/src/write.ts`摘要为 `a166f50b9b407dc219518097930a204a6f402613857266c9a1bdbf47591e4e38`，测试见 `test/core/stock-readback.test.ts`。安装9后07:41:40Z只inspect原stock-test确认succeeded，独立registered查询确认201；新恢复操作完成后07:42:37Z确认200。原测试未重发；上品输入/动作另验。
 
 用户截图的不可用提示已定位为真实业务源health超过旧1.5秒期限；Agent探测4180为旧服务查询，不是Apps自动fallback。修复默认10秒/短失败缓存、真实401/不重写边界后，candidate.9实际业务源健康读取ok。candidate.7原生技能目录列出hallmark-component-design及新描述，但无该turn读取SKILL/组件创作证据；后续candidate.9真实创作turn及原生历史已冻结，技能工具、普通源码/实际build/preview和read_image反馈修改有证据，正式发布没有mounted。主证据最初误选status字段而未列state，已以独立只读补充纠正；最后mounting行已超过deadline，不视为就绪。历史失败保留，后续新候选不得改写为旧请求成功。
+
+截至2026-10-07 09:39:24 UTC，原session-401dbe36-127b-4432-beae-fbd16e0fb8f2只读观察仍为1186rows、886368bytes、零新human消息，最新model turn仍为07:57旧terminal。原会话手动继续待用户操作，不自动发送或声明新Agent通过。
 
 candidate.9目录视觉与原生挂载失败保留，**VISUAL未验收**。局部重排/候选展示修复的candidate.10现已官方同名覆盖并正常重开，冻结706全仓/26视觉fixture/13专项/实际CLI双视口范围不变。新GUI/原生内存身份及实际mounted仍待用户在原会话手动继续；磁盘匹配/重开不代签视觉，旧Agent建议或runner截图不代签挂载。
 

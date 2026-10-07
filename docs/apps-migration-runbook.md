@@ -1,6 +1,6 @@
 # Apps 数据升级、备份、回退与清理
 
-A.2 Runtime使用schema4；candidate.10现已通过官方插件管理器覆盖原同名插件并正常重开桌面，五安装hash/143冻结源输入及实际Runtime7/健康/唯一writer核对通过。candidate.7的schema3→4、116资产/原集合保留、284文件/25集合备份、404映射新根恢复，以及更新9前294文件备份均保留原范围；本轮最终严格备份另为1754文件/25集合apply/verify通过。**低层步骤与全部数据切换验收分开记录。** 本轮未执行该新备份的新根restore验收，GUI/原生内存/新创作、完整历史/草稿对账、附件/条件回退/上品仍待验，见 [A.2执行记录](apps-a2-execution.md)。
+A.2 Runtime使用schema4；candidate.10现已通过官方插件管理器覆盖原同名插件并正常重开桌面，五安装hash/143冻结源输入及实际Runtime7/健康/唯一writer核对通过。candidate.7的schema3→4、116资产/原集合保留、284文件/25集合备份、404映射新根恢复，以及更新9前294文件备份均保留原范围；本轮最终严格备份另为1754文件/25集合apply/verify通过。**低层步骤与全部数据切换验收分开记录。** 本轮该备份已恢复新根并完成2773映射、归档/签名/PNG/草稿引用核验及普通npm ci/安装CLI重建（SOURCE_EXEC），未再次切换桌面dataDirectory；GUI/原生内存/新创作、完整历史/草稿对账、附件/条件回退/上品仍待验，见 [A.2执行记录](apps-a2-execution.md)。
 
 08:41:55 UTC桌面完全退出后核实任务所属旧Runtime38844，使用Windows Stop-Process停止，非graceful SIGTERM；完成最终备份后08:52:03 UTC安装10、08:52:34 UTC正常重开。新Runtime62564是36994唯一listener，旧38844已退；profile/dataDirectory未再切换。Runtime JS仍 `2264139fc4404a11dbe9fdde00a374b541d1bda1544ef784483bfb6547cc9844`，协议/schema和冻结包未变更；706项包检查不代签之后独立维护工具修复或原生GUI。
 
@@ -63,7 +63,7 @@ source、dist、package.json 和原锁文件仍保存。原锁/依赖路径适�
 
 本轮首apply因未签名preview input中的本地dataset标签被误当持久引用，在目录/报告创建前失败；中间apply后独立复核发现JSON显示路径碰撞，原目录/报告保留HOLD，未作为最终备份。最终工具仅按已有执行上下文识别归档输入，以实际binding对象WeakSet身份区分本地未命名空间标签；DB、签名report、typed refs、嵌套payload和所有含冒号namespace仍严格拒绝missing。历史签名report没有input digest，识别归档输入不证明当时逐字preview输入，原JSON/签名/图片不改写。
 
-最终工具摘要 `8b655dc37502725ba878cc01db9cf05d058cf3cd660f76d3c6a2e1a6c26b39d6`，22回归、加强碰撞单项1/1和类型检查通过，独立源码复核PASS。新目标 `artifacts/apps-a2-bill-backup-pre-candidate10-reviewed` apply/verify通过，1754文件/25集合，ID `runtime-backup:572c46b04b9f624b752f8c07532e099bc6ba8bc48049e9d86cef9258d9f1cb4f`；报告摘要见执行页，当前未执行该备份新根restore验收。
+最终工具摘要 `8b655dc37502725ba878cc01db9cf05d058cf3cd660f76d3c6a2e1a6c26b39d6`，22回归、加强碰撞单项1/1和类型检查通过，独立源码复核PASS。新目标 `artifacts/apps-a2-bill-backup-pre-candidate10-reviewed` apply/verify通过，1754文件/25集合，ID `runtime-backup:572c46b04b9f624b752f8c07532e099bc6ba8bc48049e9d86cef9258d9f1cb4f`；已restore到 `artifacts/apps-a2-bill-restore-check-candidate10`，2773可信映射、6归档/8构建签名/6预览签名/12PNG/2草稿/44新根引用核验通过，引用核验期间新根1754文件字节未变化；不可变归档/签名报告/PNG保留原字节，恢复数据库另增可信映射；恢复归档的新checkout正常npm ci/已安装build CLI/SDK重建通过，原6归档保留。报告摘要见执行页，范围SOURCE_EXEC，未启动恢复Runtime、二次切桌面配置或验收Agent编辑/last-good/native。
 
 实际旧工作副本依赖junction首轮安全拒绝已保留；限定排除规则与显式证据引用负例修复后，实施人/独立V各17/17、当时全仓655/655，实际完整备份/校验/恢复均已通过相应步骤。后续candidate.9另有694/694，不改写旧备份执行版本。备份ID为 `runtime-backup:c3131e247c1b340297f43e36efd9afad7780e0b5261c77bb3d3048f1a05cc1dd`；可核对hash与范围见执行页，不用步骤通过代签DATA-CUTOVER全部断言。
 
@@ -81,6 +81,25 @@ node scripts/apps-maintenance.mjs --directory "E:/new-apps-schema4" --mode gc --
 无增量且无未决操作时，依据已验证备份讨论旧格式恢复；有新增 succeeded/unknown、用户资产/保存版本/绑定或 authoring 状态增量时必须导出并停止盲目恢复旧库写入。先使用能读新格式的兼容代码核实数据；恢复旧插件不等于回退 schema，也不能撤销外部业务。维护 baseline/rollback 会比较新增 authoring 摘要和导出范围。
 
 GC 默认 dry-run；attempt/receipt/UI 状态、pending candidate、active/last-good/previous-good、保存历史和外部引用均参与保留。审阅最终绝对路径和同一 plan，停 writer 后才 apply；引用或状态变化、越界、符号链接、过期计划拒绝执行。关闭 view、删除库项与物理 purge 分开，保留仍活的历史/工作副本/源码。
+
+## A.2：离线验收证据资格审查
+
+仓库独立工具 [verify-a2-release-evidence.mjs](../scripts/verify-a2-release-evidence.mjs) 的SHA-256为 `c484ff4f3ce696e7210e3f3e7e5d0675dc3951a1bc61249e13c6a71bc5539795`，不在candidate.10安装包中。先准备包含真实卡记录及文件引用的离线manifest，再写全新输出路径：
+
+```powershell
+node scripts/verify-a2-release-evidence.mjs --manifest "E:/operator/offline-card-manifest.json" --output "E:/operator/evidence-review-new.json"
+```
+
+该工具只核对离线scope/model/candidate/commit/hash/bytes、重复身份/非PASS、旧CSV冻结字节与required集合，不执行测试、不独立证明断言，releaseApproved恒false。STATIC不能代签LIVE_HOST，文件bytes不能代签tokens；输出exit0只表示声明卡集合具备继续复核资格，缺失/冲突/篡改退出2，既有输出拒绝覆盖。DECLARED_TEST_SET单卡/局部集合不是发布资格，命名范围不得用缩小清单规避强制项。
+
+| 命名范围 | 强制最低卡集合 | 当前整体结论 |
+|---|---|---|
+| CORE | 原48卡+076/077/080，共51 | NOT_ACCEPTED |
+| AUTHORING | CORE+049..075，共78 | NOT_ACCEPTED |
+| BUSINESS-WRITE | CORE+078，共52 | NOT_ACCEPTED |
+| DATA-CUTOVER | CORE+073/079，共53 | NOT_ACCEPTED |
+
+required只允许增加；原48历史CSV仍42项reported remainingReal NOT_RUN，两种获准逐字序列化CRLF `b5b0a728fe4e7d42ed15e7122432ab7e4c6395aaf9a2042adcc61de90382eb92` / LF `5885e2375bc5711a36d90a635647966b27b850ebfe8b7ff0e95a7a342575c779`按选定字节核对，不任意归一化重写历史；A.2派生基线摘要 `f05edf24340f5c9fd904f33ae99dc98f1a0fd31c1ad4d760c95003391e073ceb`。本轮055/056/057/073/075/076/077七卡完整最低scope独立V通过，73卡仍NOT_RUN；维护267断言/独立12窄测试/typecheck和原706包检查分开。073 FIXTURE直接归档浏览器恢复不代签v2/native切库，075/076旧08:24源与trace的复验不发明原执行commit，077资格审查不代签R。详情/实际V身份见 [A.2执行记录](apps-a2-execution.md)。
 
 ## 历史 V1：schema2→3 迁移与夹具记录
 
