@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import {AppsPresentationService} from '../../packages/app-presentation/src/index.ts';
 import {AppsAuthoringService} from '../../packages/app-presentation/src/authoring.ts';
 import {APP_AUTHORING_DESCRIPTORS} from '../../packages/app-presentation/src/authoring-descriptors.ts';
-import type {AuthoringAttempt,AuthoringDraft,AuthoringView,BuildExecutionEvidence,BuildReceipt,FrameAuthorizationInput,PreviewReceipt,PreviewValidationEvidence,RenderReadyInput,UiStateSnapshot} from '../../packages/app-presentation/src/authoring-types.ts';
+import type {AuthoringAttempt,AuthoringDraft,AuthoringView,BuildExecutionEvidence,BuildReceipt,FrameAuthorizationInput,PreviewReceipt,PreviewValidationEvidence,RenderReadyInput,StartMountInput,UiStateSnapshot,ViewPublication} from '../../packages/app-presentation/src/authoring-types.ts';
 import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
 import {AppsRuntime} from '../../packages/app-runtime/src/index.ts';
 import {SourceComponentStore} from '../../packages/source-components/src/index.ts';
@@ -54,11 +54,13 @@ function unitPreview(f:ReturnType<typeof setup>,begin:BeginResult,receipt:BuildR
 async function preview(f:ReturnType<typeof setup>,begin:BeginResult,receipt:BuildReceipt,change?:(value:PreviewValidationEvidence)=>void){
   const evidence=unitPreview(f,begin,receipt,change),result=await f.authoring.recordPreview(session,{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,buildReceiptId:receipt.receiptId,reportRef:evidence.reportRef});return {...evidence,receipt:result};
 }
-async function prepared(f:ReturnType<typeof setup>,begin=f.authoring.begin(session,{mode:'new'}),title='First build'){
+function openInput(publication:ViewPublication):StartMountInput {return {viewId:publication.viewId,publicationId:publication.publicationId,attemptId:publication.attemptId,attemptEpoch:publication.attemptEpoch,buildId:publication.candidateBuildId,expectedViewRevision:publication.expectedViewRevision};}
+async function prepared(f:ReturnType<typeof setup>,begin=f.authoring.begin(session,{mode:'new'}),title='First build',open=true){
   project(begin,title);const built=await build(f,begin),tested=await preview(f,begin,built.receipt);
-  const publication=f.authoring.publish(session,{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,viewId:begin.view.viewId,expectedViewRevision:begin.attempt.expectedViewRevision,buildId:built.receipt.archiveBuildId!,buildReceiptId:built.receipt.receiptId,previewReceiptId:tested.receipt.receiptId});
+  let publication=f.authoring.publish(session,{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,viewId:begin.view.viewId,expectedViewRevision:begin.attempt.expectedViewRevision,buildId:built.receipt.archiveBuildId!,buildReceiptId:built.receipt.receiptId,previewReceiptId:tested.receipt.receiptId});
+  if(open)publication=f.authoring.startMount(session,openInput(publication));
   const identity:FrameAuthorizationInput={publicationId:publication.publicationId,attemptId:begin.attempt.attemptId,attemptEpoch:begin.attempt.epoch,buildId:publication.candidateBuildId,frameInstanceId:`frame-${begin.attempt.attemptId}`,documentNonce:`nonce-${begin.attempt.attemptId}`};
-  f.authoring.authorizeFrame(session,identity);const ready:RenderReadyInput={...identity,viewId:begin.view.viewId,checks:{rendered:true,bridgeReady:true,dataRead:true,unhandledErrors:[],assertionResults:structuredClone(assertions)}};
+  if(open)f.authoring.authorizeFrame(session,identity);const ready:RenderReadyInput={...identity,viewId:begin.view.viewId,checks:{rendered:true,bridgeReady:true,dataRead:true,unhandledErrors:[],assertionResults:structuredClone(assertions)}};
   return {begin,built,tested,publication,identity,ready};
 }
 
@@ -115,12 +117,71 @@ test('mounting holds the old view until one authorized document confirms render/
   assert.equal(f.authoring.confirmReady(session,candidate.ready).view.viewRevision,2);assert.throws(()=>f.authoring.confirmReady(session,{...candidate.ready,viewId:'another-view'}));
 });
 
+test('publish waits for an explicit open without a readiness deadline, frame grant or save',async t=>{
+  let now=new Date('2026-10-07T00:00:00.000Z');const f=setup(t,{clock:()=>now}),candidate=await prepared(f,undefined,'Waiting',false),publication=candidate.publication;
+  assert.equal(publication.state,'prepared');assert.equal(publication.readyDeadlineAt,null);assert.equal(publication.mountStartedAt,null);
+  assert.equal(f.store.get<AuthoringAttempt>('authoring_attempts',publication.attemptId)?.state,'publish_ready');
+  now=new Date(now.getTime()+60000);
+  const repeated=f.authoring.publish(session,{attemptId:publication.attemptId,epoch:publication.attemptEpoch,viewId:publication.viewId,expectedViewRevision:publication.expectedViewRevision,buildId:publication.candidateBuildId,buildReceiptId:publication.buildReceiptId,previewReceiptId:publication.previewReceiptId});assert.deepEqual(repeated,publication);
+  assert.throws(()=>f.authoring.authorizeFrame(session,candidate.identity),{code:'ATTEMPT_SUPERSEDED'});assert.throws(()=>f.authoring.confirmReady(session,candidate.ready),{code:'ATTEMPT_SUPERSEDED'});
+  assert.equal(f.authoring.acceptsFrame({...candidate.identity,protocolVersion:'2.0',sessionId:session,viewId:publication.viewId}),false);
+  assert.throws(()=>f.authoring.saveComponent(session,{viewId:publication.viewId,expectedViewRevision:publication.expectedViewRevision,userRequest:'Save before display',mode:'save_as'}),{code:'VIEW_CONFLICT'});
+  assert.deepEqual(f.authoring.failMount(session,publication.publicationId,'UI binding failed before open'),publication);
+  assert.equal(f.store.list('view_publications').length,1);assert.equal(f.store.list('components').length,0);const view=f.store.get<AuthoringView>('views',publication.viewId)!;assert.equal(view.activeBuildId,null);assert.equal(view.pendingPublicationId,publication.publicationId);
+});
+
+test('explicit open starts one fresh deadline after waiting and duplicate clicks never renew or grant a second frame',async t=>{
+  let now=new Date('2026-10-07T00:00:00.000Z');const f=setup(t,{clock:()=>now}),candidate=await prepared(f,undefined,'Waiting',false);
+  now=new Date(now.getTime()+60000);const opened=f.authoring.startMount(session,openInput(candidate.publication));assert.equal(opened.state,'mounting');assert.equal(opened.mountStartedAt,now.toISOString());assert.equal(opened.readyDeadlineAt,new Date(now.getTime()+15000).toISOString());
+  assert.equal(f.store.get<AuthoringAttempt>('authoring_attempts',opened.attemptId)?.state,'mounting');now=new Date(now.getTime()+1000);assert.deepEqual(f.authoring.startMount(session,openInput(opened)),opened);assert.equal(f.store.list('view_publications').length,1);
+  f.authoring.authorizeFrame(session,candidate.identity);const granted=f.store.get<ViewPublication>('view_publications',opened.publicationId)!;assert.deepEqual(f.authoring.startMount(session,openInput(opened)),granted);
+  assert.throws(()=>f.authoring.authorizeFrame(session,{...candidate.identity,frameInstanceId:'another-frame',documentNonce:'another-document'}),{code:'ATTEMPT_SUPERSEDED'});
+  assert.equal(f.authoring.confirmReady(session,candidate.ready).publication.state,'mounted');assert.throws(()=>f.authoring.startMount(session,openInput(opened)),{code:'ATTEMPT_SUPERSEDED'});
+});
+
+test('restart retains prepared publications while legacy in-flight mounting is interrupted without re-preparing',async t=>{
+  const f=setup(t),waiting=await prepared(f,undefined,'Waiting',false),mounting=await prepared(f);
+  const {mountStartedAt:_started,...legacy}=f.store.get<ViewPublication>('view_publications',mounting.publication.publicationId)!;f.store.put('view_publications',legacy.publicationId,legacy);
+  const restarted=new AppsAuthoringService(f.serviceOptions),result=restarted.recoverInterrupted();assert.deepEqual(result.interruptedAttemptIds,[mounting.begin.attempt.attemptId]);
+  assert.deepEqual(restarted.inspect(session,{publicationId:waiting.publication.publicationId}).publication,waiting.publication);assert.equal(f.store.get<AuthoringAttempt>('authoring_attempts',waiting.begin.attempt.attemptId)?.state,'publish_ready');
+  assert.equal(f.store.get<AuthoringView>('views',waiting.publication.viewId)?.pendingPublicationId,waiting.publication.publicationId);assert.equal(restarted.startMount(session,openInput(waiting.publication)).state,'mounting');
+  assert.equal(f.store.get<ViewPublication>('view_publications',legacy.publicationId)?.state,'interrupted');assert.throws(()=>restarted.startMount(session,openInput(legacy)),{code:'ATTEMPT_SUPERSEDED'});assert.equal(f.store.list('view_publications').length,2);
+});
+
+test('cancel and a newer edit supersede prepared publications without changing the last good view',async t=>{
+  const f=setup(t),first=await prepared(f),good=f.authoring.confirmReady(session,first.ready).view,waiting=await prepared(f,f.authoring.begin(session,{mode:'edit',viewId:good.viewId}),'Waiting',false);
+  f.authoring.cancel(session,{attemptId:waiting.publication.attemptId,expectedEpoch:waiting.publication.attemptEpoch,reason:'Cancel unopened component'});assert.equal(f.store.get<ViewPublication>('view_publications',waiting.publication.publicationId)?.state,'cancelled');assert.throws(()=>f.authoring.startMount(session,openInput(waiting.publication)),{code:'ATTEMPT_SUPERSEDED'});
+  const next=await prepared(f,f.authoring.begin(session,{mode:'edit',viewId:good.viewId}),'Next unopened',false);f.authoring.begin(session,{mode:'edit',viewId:good.viewId});assert.equal(f.store.get<ViewPublication>('view_publications',next.publication.publicationId)?.state,'superseded');assert.throws(()=>f.authoring.startMount(session,openInput(next.publication)),{code:'ATTEMPT_SUPERSEDED'});
+  const view=f.store.get<AuthoringView>('views',good.viewId)!;assert.equal(view.activeBuildId,good.activeBuildId);assert.equal(view.lastGoodBuildId,good.lastGoodBuildId);assert.equal(view.pendingPublicationId,null);assert.equal(f.store.list('components').length,0);
+});
+
+test('open rejects foreign or mismatched fixed identities and changed view CAS without touching prepared metadata',async t=>{
+  const f=setup(t),candidate=await prepared(f,undefined,'Waiting',false),input=openInput(candidate.publication),before=f.authoring.inspect(session,{publicationId:input.publicationId});
+  assert.throws(()=>f.authoring.startMount('other-session',input),{code:'VIEW_NOT_OWNED'});
+  for(const patch of [{viewId:'other-view'},{buildId:'f'.repeat(64)},{expectedViewRevision:input.expectedViewRevision+1}])assert.throws(()=>f.authoring.startMount(session,{...input,...patch}),{code:'PUBLICATION_TARGET_MISMATCH'});
+  assert.throws(()=>f.authoring.startMount(session,{...input,attemptEpoch:input.attemptEpoch+1}),{code:'ATTEMPT_SUPERSEDED'});assert.deepEqual(f.authoring.inspect(session,{publicationId:input.publicationId}),before);
+  f.store.put('authoring_attempts',input.attemptId,{...before.attempt,expectedViewRevision:before.attempt.expectedViewRevision+1});assert.throws(()=>f.authoring.startMount(session,input),{code:'ATTEMPT_SUPERSEDED'});f.store.put('authoring_attempts',input.attemptId,before.attempt);
+  f.store.put('authoring_drafts',before.draft.draftId,{...before.draft,sourceRevision:before.draft.sourceRevision+1});assert.throws(()=>f.authoring.startMount(session,input),{code:'ATTEMPT_SUPERSEDED'});f.store.put('authoring_drafts',before.draft.draftId,before.draft);assert.deepEqual(f.authoring.inspect(session,{publicationId:input.publicationId}),before);
+  f.store.put('views',before.view.viewId,{...before.view,viewRevision:before.view.viewRevision+1});assert.throws(()=>f.authoring.startMount(session,input),{code:'ATTEMPT_SUPERSEDED'});assert.deepEqual(f.store.get('view_publications',input.publicationId),candidate.publication);
+});
+
+test('opening revalidates receipt ownership, evidence bytes and immutable archive before starting any deadline',async t=>{
+  const f=setup(t),candidate=await prepared(f,undefined,'Waiting',false),input=openInput(candidate.publication),other=await prepared(f,undefined,'Other waiting',false),attempt=f.store.get<AuthoringAttempt>('authoring_attempts',input.attemptId)!;
+  // Receipts remain immutable; simulate corrupted mutable pointers to a real receipt owned by another attempt.
+  f.store.put('authoring_attempts',input.attemptId,{...attempt,previewReceiptId:other.tested.receipt.receiptId});f.store.put('view_publications',input.publicationId,{...candidate.publication,previewReceiptId:other.tested.receipt.receiptId});assert.throws(()=>f.authoring.startMount(session,input),{code:'BUILD_EVIDENCE_INVALID'});f.store.put('authoring_attempts',input.attemptId,attempt);f.store.put('view_publications',input.publicationId,candidate.publication);
+  const log=readFileSync(candidate.built.receipt.logRef.path);writeFileSync(candidate.built.receipt.logRef.path,'changed');assert.throws(()=>f.authoring.startMount(session,input),{code:'EVIDENCE_HASH_MISMATCH'});writeFileSync(candidate.built.receipt.logRef.path,log);
+  const wrongSource={...candidate.publication,source:{...candidate.publication.source,files:['wrong.html']}};f.store.put('view_publications',input.publicationId,wrongSource);assert.throws(()=>f.authoring.startMount(session,input),{code:'BUILD_EVIDENCE_INVALID'});f.store.put('view_publications',input.publicationId,candidate.publication);
+  const archived=join(f.sources.directory,'builds',candidate.publication.candidateBuildId,'project','dist','index.html');writeFileSync(archived,'changed archive');assert.throws(()=>f.authoring.startMount(session,input),{code:'BUILD_EVIDENCE_INVALID'});
+  assert.equal(f.store.get<ViewPublication>('view_publications',input.publicationId)?.readyDeadlineAt,null);assert.equal(f.store.get<AuthoringAttempt>('authoring_attempts',input.attemptId)?.state,'publish_ready');assert.equal(f.store.get<AuthoringView>('views',input.viewId)?.activeBuildId,null);
+});
+
 test('failed mounts and expired readiness preserve last good bytes and a recoverable edit workspace',async t=>{
   let now=new Date('2026-10-07T00:00:00.000Z');const f=setup(t,{clock:()=>now}),first=await prepared(f);const good=f.authoring.confirmReady(session,first.ready).view;
   const next=f.authoring.begin(session,{mode:'edit',viewId:good.viewId}),second=await prepared(f,next,'Second build');
   assert.equal(f.store.get<AuthoringView>('views',good.viewId)?.activeBuildId,good.activeBuildId);now=new Date(now.getTime()+16000);
-  assert.throws(()=>f.authoring.confirmReady(session,second.ready),{code:'FRAME_NOT_READY'});f.authoring.failMount(session,second.publication.publicationId,'Timed out while loading');
+  assert.throws(()=>f.authoring.confirmReady(session,second.ready),{code:'FRAME_NOT_READY'});assert.throws(()=>f.authoring.startMount(session,openInput(second.publication)),{code:'FRAME_NOT_READY'});assert.equal(f.store.get<ViewPublication>('view_publications',second.publication.publicationId)?.readyDeadlineAt,second.publication.readyDeadlineAt);f.authoring.failMount(session,second.publication.publicationId,'Timed out while loading');
   const view=f.store.get<AuthoringView>('views',good.viewId)!;assert.equal(view.activeBuildId,good.activeBuildId);assert.equal(view.lastGoodBuildId,good.lastGoodBuildId);assert.equal(view.source?.buildId,good.source?.buildId);assert.equal(view.pendingPublicationId,null);assert.ok(existsSync(join(next.draft.workspacePath,'src','Component.tsx')));
+  const restarted=new AppsAuthoringService({...f.serviceOptions});assert.equal(restarted.recoverInterrupted().interruptedAttemptIds.includes(second.publication.attemptId),false);assert.throws(()=>restarted.startMount(session,openInput(second.publication)),{code:'ATTEMPT_SUPERSEDED'});assert.equal(f.store.get<ViewPublication>('view_publications',second.publication.publicationId)?.state,'failed_mount');assert.equal(f.store.list('components').length,0);
 });
 
 test('new attempt supersedes old candidates and stale publication view CAS is never auto-retried',async t=>{
@@ -184,6 +245,35 @@ test('explicit save mutation repeat keys produce one component and changed inten
   const [first,concurrent]=await Promise.all([runtime.invoke(base),runtime.invoke({...base,invocationId:'save-native-2',traceId:'save-trace-2'})]);assert.equal(first.status,'ok');assert.ok(['ok','pending'].includes(concurrent.status));assert.equal(first.operation?.operationId,concurrent.operation?.operationId);
   const replayed=await runtime.invoke({...base,invocationId:'save-native-3',traceId:'save-trace-3'});assert.equal(replayed.status,'ok');assert.deepEqual((first as {data:JsonValue}).data,(replayed as {data:JsonValue}).data);assert.equal(f.store.list('components').length,1);assert.equal(f.store.list('operations').length,1);
   const conflict=await runtime.invoke({...base,invocationId:'changed-intent',input:{...(base.input as object),title:'Changed title'}});assert.equal(conflict.status,'failed');assert.equal((conflict as {error:{code:string}}).error.code,'IDEMPOTENCY_CONFLICT');assert.equal(f.store.list('components').length,1);
+});
+
+test('generic presentation save cannot bypass authoring readiness and delegates mounted saves without a loop',async t=>{
+  const f=setup(t),runtime=new AppsRuntime(f.store);f.presentation.authoring=f.authoring;runtime.register(f.presentation.provider());
+  runtime.addConnection({appId:'apps',connectionId:'presentation',displayName:'Presentation',config:{},configRevision:1,enabled:true});runtime.bind({sessionId:session,appId:'apps',connectionId:'presentation',enabled:true,boundAt:new Date().toISOString()});
+  let sequence=0;const invoke=(capabilityId:string,input:JsonValue)=>{const id=`generic-save-${++sequence}`;return runtime.invoke({protocolVersion:'1.0',appId:'apps',connectionId:'presentation',capabilityId,capabilityVersion:'1.0.0',invocationId:id,traceId:id,source:{kind:'agent',sessionId:session,nativeCallId:id},deadlineAt:new Date(Date.now()+10000).toISOString(),idempotencyKey:id,input});};
+  try{
+    const begin=f.authoring.begin(session,{mode:'new'}),save={viewId:begin.view.viewId,userRequest:'Explicitly save component',mode:'save_as'};
+    const unpublished=await invoke('apps.presentation.save_component',save);assert.equal(unpublished.status,'failed');assert.equal((unpublished as {error:{code:string}}).error.code,'BUILD_EVIDENCE_INVALID');
+    const candidate=await prepared(f,begin,'Waiting',false),before=f.presentation.getView(begin.view.viewId);
+    const waiting=await invoke('apps.presentation.save_component',save);assert.equal(waiting.status,'failed');assert.equal((waiting as {error:{code:string}}).error.code,'VIEW_CONFLICT');assert.deepEqual(f.presentation.getView(begin.view.viewId),before);
+    f.authoring.startMount(session,openInput(candidate.publication));f.authoring.authorizeFrame(session,candidate.identity);
+    const mounting=await invoke('apps.presentation.save_component',save);assert.equal(mounting.status,'failed');assert.equal((mounting as {error:{code:string}}).error.code,'VIEW_CONFLICT');assert.equal(f.store.list('components').length,0);assert.equal(f.store.list('component_versions').length,0);assert.equal(f.store.list('saved_assets').length,0);
+    const mounted=f.authoring.confirmReady(session,candidate.ready).view,legal=await invoke('apps.presentation.save_component',save);assert.equal(legal.status,'ok',JSON.stringify(legal));const saved=(legal as unknown as {data:{componentId:string;revision:number}}).data;assert.equal(saved.revision,1);assert.equal(f.store.list('components').length,1);
+    const delegated=await invoke('apps.authoring.save_component',{...save,mode:'update',componentId:saved.componentId,expectedRevision:1,expectedViewRevision:mounted.viewRevision});assert.equal(delegated.status,'ok',JSON.stringify(delegated));assert.equal((delegated as unknown as {data:{revision:number}}).data.revision,2);assert.equal(f.store.list('components').length,1);assert.equal(f.store.list('component_versions').length,2);
+    const next=await prepared(f,f.authoring.begin(session,{mode:'edit',viewId:mounted.viewId}),'Later waiting',false),lastGood=f.presentation.getView(mounted.viewId);assert.equal(lastGood?.activeBuildId,mounted.activeBuildId);
+    const pendingGood=await invoke('apps.presentation.save_component',save);assert.equal(pendingGood.status,'failed');assert.equal((pendingGood as {error:{code:string}}).error.code,'VIEW_CONFLICT');assert.deepEqual(f.presentation.getView(mounted.viewId),lastGood);assert.equal(f.store.list('component_versions').length,2);assert.equal(f.store.get<ViewPublication>('view_publications',next.publication.publicationId)?.state,'prepared');
+  }finally{await runtime.dispose();}
+});
+
+test('generic provider save retains static and legacy source behavior when the view has no authoring draft',async t=>{
+  const f=setup(t),runtime=new AppsRuntime(f.store);f.presentation.authoring=f.authoring;runtime.register(f.presentation.provider());
+  runtime.addConnection({appId:'apps',connectionId:'presentation',displayName:'Presentation',config:{},configRevision:1,enabled:true});runtime.bind({sessionId:session,appId:'apps',connectionId:'presentation',enabled:true,boundAt:new Date().toISOString()});
+  let sequence=0;const save=(viewId:string)=>{const id=`compat-save-${++sequence}`;return runtime.invoke({protocolVersion:'1.0',appId:'apps',connectionId:'presentation',capabilityId:'apps.presentation.save_component',capabilityVersion:'1.0.0',invocationId:id,traceId:id,source:{kind:'agent',sessionId:session,nativeCallId:id},deadlineAt:new Date(Date.now()+10000).toISOString(),idempotencyKey:id,input:{viewId,userRequest:'Explicit compatibility save',mode:'save_as'}});};
+  try{
+    const ordinary=f.presentation.createView(session,{title:'Static view',design:{kind:'table',columns:['title']}}),staticSaved=await save(ordinary.viewId);assert.equal(staticSaved.status,'ok',JSON.stringify(staticSaved));assert.equal((staticSaved as unknown as {data:{view:{source?:unknown}}}).data.view.source,undefined);
+    const projectPath=join(f.directory,'legacy-project');mkdirSync(join(projectPath,'dist'),{recursive:true});writeFileSync(join(projectPath,'dist','index.html'),'<h1>Legacy source</h1>');
+    const legacy=f.presentation.openSource(session,projectPath,{title:'Legacy source'});assert.equal(legacy.validationStatus,'legacy_unverified');const legacySaved=await save(legacy.viewId);assert.equal(legacySaved.status,'ok',JSON.stringify(legacySaved));assert.equal((legacySaved as unknown as {data:{view:{source:{buildId:string}}}}).data.view.source.buildId,legacy.source?.buildId);assert.equal(f.store.list('authoring_drafts').length,0);assert.equal(f.store.list('components').length,2);assert.equal(f.store.list('component_versions').length,2);
+  }finally{await runtime.dispose();}
 });
 
 test('rename/delete compare metadata revisions while leaving history, open copies and source bytes intact',async t=>{

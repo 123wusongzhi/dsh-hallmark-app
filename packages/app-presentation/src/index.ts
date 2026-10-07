@@ -161,6 +161,13 @@ export class AppsPresentationService {
     if(options.mode==='update'&&(!options.componentId||!Number.isSafeInteger(options.expectedRevision)||options.expectedRevision!<1))fail('EXPECTED_REVISION_REQUIRED','Update requires componentId and expectedRevision.');
     if(options.mode==='save_as'&&(options.componentId!==undefined||options.expectedRevision!==undefined))fail('INVALID_INPUT','Save-as does not accept update preconditions.');
     return this.store.transaction(()=>{
+      // The generic capability shares this write path with explicit authoring saves.
+      // Views outside authoring retain their established static/legacy save behavior.
+      if(this.store.list<{viewId:string}>('authoring_drafts').some(draft=>draft.viewId===view.viewId)){
+        if(view.pendingPublicationId)fail('VIEW_CONFLICT','Open and confirm the pending authoring publication before saving.');
+        const mounted=this.store.list<ViewPublication>('view_publications').find(publication=>publication.viewId===view.viewId&&publication.ownerSessionId===sessionId&&publication.state==='mounted'&&publication.committedViewRevision===view.viewRevision&&publication.candidateBuildId===view.activeBuildId);
+        if(view.validationStatus!=='verified'||!Number.isSafeInteger(view.viewRevision)||!view.source||view.activeBuildId!==view.source.buildId||!mounted||!this.sources?.verify(view.source.buildId).valid)fail('BUILD_EVIDENCE_INVALID','Authoring views require a confirmed mounted build before saving.');
+      }
       if(options.legacyComponentId!==undefined&&(options.mode!=='save_as'||options.legacyComponentId!==view.viewId))fail('INVALID_INPUT','Historical component identity must match its owning draft.');
       const componentId=options.mode==='save_as'?options.legacyComponentId??randomUUID():options.componentId!,previous=this.store.get<AppsComponent>('components',componentId);
       if(options.legacyComponentId!==undefined&&previous)fail('COMPONENT_CONFLICT','Historical component already exists. Reopen it before updating.');

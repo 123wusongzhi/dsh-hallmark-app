@@ -1,6 +1,8 @@
 # Hallmark × DSH 应用接入
 
-本项目在原Hallmark插件上覆盖更新，只修改应用工作台、组件区及原聊天 `@` 所需扩展。**candidate.15已官方同名12→15覆盖安装**；包778/778、类型/实际SDK与CLI/Runtime/诊断及独立33安装产物、144源输入、9774原核心文件两遍核对通过。实际Runtime15/schema4、四只读接口/Hallmark健康和原1270行会话前缀已核实；启动包装exit1与observer传输异常保留。正式验收为**33 PASS/0 FAIL/47 NOT_RUN**：新增034/035/036/039绑定12，037/038绑定14，原27张PASS绑定不变。Native内存/原输入/渲染、模型整链和四门禁仍未接受，R未签认。详见[A.2执行记录](docs/apps-a2-execution.md)与[维护手册](docs/apps-migration-runbook.md)；本轮起始main为ef54c46；最终提交/推送以Git历史与交付记录为准。
+本项目在原Hallmark插件上覆盖更新，只修改应用工作台、组件区及原聊天 `@` 所需扩展。**candidate.16已官方同名15→16覆盖安装**：801/801、类型、实际包内SDK/build/preview CLI、Runtime和诊断通过，144输入/33产物冻结；独立包31检查/17负例及官方两种ValidateOnly通过。实际Runtime16/schema4、健康/四GET和原1766行会话前缀核实，未迁库；首次启动形状错误exit1及后续正规化重开exit0分别保留。正式验收为**35 PASS/0 FAIL/45 NOT_RUN**：034/035/036/039绑定12，037/038绑定14，046/047绑定15，原33张PASS不迁移16。Native内存/原输入/点击展示、模型整链和四门禁仍未接受，R未签认。详见[A.2执行记录](docs/apps-a2-execution.md)与[维护手册](docs/apps-migration-runbook.md)；上一轮25文件已推送main `06595bbd883ad57061d990a8b30691908f62af13`，最终提交/推送以Git历史与交付记录为准。
+
+用户最新确认：在任何原会话用 `@` 选择应用；Agent实际构建和预览后准备候选，并在原聊天工具卡提供“打开组件”入口，等待用户点击。等待点击不计挂载超时或 failed_mount；点击实际打开后才开始 deadline、授权和展示确认。保持原DSH界面，不自动展开组件区；显示与明确保存仍分开。candidate.16已实现 prepared/startMount 源码契约并冻结：801/801、类型、包内SDK与实际build/preview CLI、Runtime和诊断通过，144输入/33产物及旧15字节守卫零差异；归档SHA-256为 `ea7d82c42d1a9efc73cc96aa354ff863cd9d513570877dd84d42ac6ea84475c6`。candidate.16已官方同名15→16覆盖安装；独立包31检查/17负例及两种ValidateOnly通过，实际Runtime16/schema4/健康/四GET和原1766行会话前缀核实；Native内存/原输入/点击展示仍待验，不将源码/夹具通过算作Native或正式卡验收。契约见[ADR-009](docs/apps-architecture-decisions.md)和[创作流程](docs/source-component-authoring.md)。
 
 ## 最新文档与体验入口
 
@@ -8,8 +10,8 @@
 
 | 内容 | 入口 | 完成范围 |
 |---|---|---|
-| A.2 当前实施与逐项进度 | [执行记录](docs/apps-a2-execution.md)、[24 项任务](docs/apps-a2-tasks.md)、[80 项对照](docs/apps-a2-progress.csv) | 正式33 PASS/47 NOT_RUN；15已同名覆盖，778项/144输入/33产物冻结，独立安装33/源144/核心9774零差异；新增6卡保留12/14执行身份，GUI/模型/四门禁待验 |
-| A.2 创作与维护操作 | [源码创作](docs/source-component-authoring.md)、[升级/备份恢复](docs/apps-migration-runbook.md)、[技能安装](docs/design-skills-install.md) | 包内命令/签名回执/v2/明确保存；仓库维护工具与恢复依赖规则，保留旧版本历史 |
+| A.2 当前实施与逐项进度 | [执行记录](docs/apps-a2-execution.md)、[24 项任务](docs/apps-a2-tasks.md)、[80 项对照](docs/apps-a2-progress.csv) | 正式35 PASS/45 NOT_RUN；16已同名15→16覆盖，801项/144输入/33产物冻结，独立包31检查/17负例；034–039保留12/14身份，046/047为15本地FIXTURE，原卡不迁16，Native/模型/四门禁待验 |
+| A.2 创作与维护操作 | [源码创作](docs/source-component-authoring.md)、[升级/备份恢复](docs/apps-migration-runbook.md)、[技能安装](docs/design-skills-install.md) | 16已冻结并安装手动打开契约；等待点击不计时，点击固定候选后验证展示，明确保存；实际原生点击/显示待验 |
 | Apps V1 候选实现 | [候选说明](docs/apps-v1-candidate.md)、[架构决策](docs/apps-architecture-decisions.md)、[迁移与回退](docs/apps-migration-runbook.md) | 现有实现与候选验收；不等于新增前端流程已实现 |
 | 需求、架构与逐项追踪 | [TODO](docs/requirements/01_TODO.md)、[规格](docs/requirements/02_SPEC.md)、[架构 A.1](docs/requirements/03_ARCHITECTURE.md)、[traceability.csv](docs/requirements/traceability.csv) | 同仓库保存的需求基线与最新架构补充 |
 | 最新桌面交互要求 | [需求整理](docs/apps-product-requirements-20261007.md)、[视觉范围](docs/apps-ui-design-reference.md) | 原聊天 `@` 引用、局部 UI 更新、明确保存与会话隔离 |

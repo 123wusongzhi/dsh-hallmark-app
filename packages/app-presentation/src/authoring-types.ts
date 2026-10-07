@@ -40,8 +40,8 @@ export interface PreviewValidationEvidence extends Omit<PreviewReceipt,'receiptI
 }
 export interface ViewPublication {
   publicationId:string;viewId:string;ownerSessionId:string;attemptId:string;attemptEpoch:number;expectedViewRevision:number;
-  candidateBuildId:string;priorActiveBuildId:string|null;state:'mounting'|'mounted'|'failed_mount'|'cancelled'|'superseded'|'interrupted';
-  readyDeadlineAt:string;evidenceRefs:FileEvidenceRef[];createdAt:string;updatedAt:string;
+  candidateBuildId:string;priorActiveBuildId:string|null;state:'prepared'|'mounting'|'mounted'|'failed_mount'|'cancelled'|'superseded'|'interrupted';
+  readyDeadlineAt:string|null;mountStartedAt?:string|null;evidenceRefs:FileEvidenceRef[];createdAt:string;updatedAt:string;
   buildReceiptId:string;previewReceiptId:string;source:SourceArtifact;frameInstanceId?:string;documentNonce?:string;
   committedViewRevision?:number;terminalReason?:string;
 }
@@ -62,6 +62,8 @@ export interface AuthoringAttemptInput {attemptId:string;epoch:number}
 export interface RecordBuildInput extends AuthoringAttemptInput {reportRef:FileEvidenceRef}
 export interface RecordPreviewInput extends AuthoringAttemptInput {buildReceiptId:string;reportRef:FileEvidenceRef}
 export interface PublishAuthoringInput extends AuthoringAttemptInput {viewId:string;expectedViewRevision:number;buildId:string;buildReceiptId:string;previewReceiptId:string;publicationId?:string}
+/** Only an explicit UI open starts the readiness deadline for this fixed publication. */
+export interface StartMountInput {viewId:string;publicationId:string;attemptId:string;attemptEpoch:number;buildId:string;expectedViewRevision:number}
 export interface FrameAuthorizationInput {
   publicationId:string;attemptId:string;attemptEpoch:number;buildId:string;frameInstanceId:string;documentNonce:string;
 }

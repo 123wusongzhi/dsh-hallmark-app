@@ -5,7 +5,7 @@ import {canonicalJson} from '../../app-contracts/src/index.ts';
 import type {CapabilityResult,ExecutionContext,JsonValue,ResourceRef} from '../../app-contracts/src/index.ts';
 import {distDigest} from '../../source-components/src/authoring-evidence.ts';
 import type {AppsComponent} from './types.ts';
-import type {AppsAuthoringOptions,AuthoringAssertion,AuthoringAttempt,AuthoringAttemptInput,AuthoringDraft,AuthoringState,AuthoringView,BeginAuthoringInput,BuildExecutionEvidence,BuildReceipt,CandidateFrameIdentity,FileEvidenceRef,FrameAuthorizationInput,ManageAuthoringComponentInput,PreviewReceipt,PreviewValidationEvidence,PublishAuthoringInput,RecordBuildInput,RecordPreviewInput,RenderReadyInput,SaveAuthoringInput,UiStateExportInput,UiStateRestoreInput,UiStateSnapshot,ViewPublication} from './authoring-types.ts';
+import type {AppsAuthoringOptions,AuthoringAssertion,AuthoringAttempt,AuthoringAttemptInput,AuthoringDraft,AuthoringState,AuthoringView,BeginAuthoringInput,BuildExecutionEvidence,BuildReceipt,CandidateFrameIdentity,FileEvidenceRef,FrameAuthorizationInput,ManageAuthoringComponentInput,PreviewReceipt,PreviewValidationEvidence,PublishAuthoringInput,RecordBuildInput,RecordPreviewInput,RenderReadyInput,SaveAuthoringInput,StartMountInput,UiStateExportInput,UiStateRestoreInput,UiStateSnapshot,ViewPublication} from './authoring-types.ts';
 export * from './authoring-types.ts';
 
 export class AuthoringError extends Error {
@@ -117,7 +117,7 @@ export class AppsAuthoringService {
       for(const previous of this.store.list<AuthoringAttempt>('authoring_attempts'))if(previous.draftId===next.draftId&&!terminal.has(previous.state)){
         this.store.put('authoring_attempts',previous.attemptId,{...previous,state:'superseded',terminalReason:'An explicit newer attempt replaced this generation.'});
         superseded.push({attemptId:previous.attemptId,epoch:previous.epoch});
-        if(previous.publicationId){const publication=this.store.get<ViewPublication>('view_publications',previous.publicationId);if(publication?.state==='mounting')this.store.put('view_publications',publication.publicationId,{...publication,state:'superseded',updatedAt:at});}
+        if(previous.publicationId){const publication=this.store.get<ViewPublication>('view_publications',previous.publicationId);if(publication?.state==='prepared'||publication?.state==='mounting')this.store.put('view_publications',publication.publicationId,{...publication,state:'superseded',updatedAt:at});}
       }
       this.store.put('views',view.viewId,{...view,pendingPublicationId:null});this.store.put('authoring_drafts',next.draftId,next);this.store.put('authoring_attempts',attemptId,attempt);return {draft:clone(next),attempt:clone(attempt),view:clone(view)};
     });
@@ -174,23 +174,44 @@ export class AppsAuthoringService {
   publish(sessionId:string,input:PublishAuthoringInput):ViewPublication {
     return this.store.transaction(()=>{
       const context=this.context(sessionId,input,true),{attempt,draft,view}=context;
-      if(attempt.publicationId){const previous=this.store.get<ViewPublication>('view_publications',attempt.publicationId)!;if(previous.viewId===input.viewId&&previous.candidateBuildId===input.buildId&&previous.expectedViewRevision===input.expectedViewRevision&&previous.buildReceiptId===input.buildReceiptId&&previous.previewReceiptId===input.previewReceiptId&&(!input.publicationId||previous.publicationId===input.publicationId))return previous;fail('VIEW_CONFLICT','Attempt already identifies another publication.');}
+      if(attempt.publicationId){const previous=this.store.get<ViewPublication>('view_publications',attempt.publicationId);if(previous&&previous.viewId===input.viewId&&previous.candidateBuildId===input.buildId&&previous.expectedViewRevision===input.expectedViewRevision&&previous.buildReceiptId===input.buildReceiptId&&previous.previewReceiptId===input.previewReceiptId&&(!input.publicationId||previous.publicationId===input.publicationId))return previous;fail('VIEW_CONFLICT','Attempt already identifies another publication.');}
       if(attempt.state!=='publish_ready')fail('ATTEMPT_STATE_INVALID','A matching PASS preview is required before publish.');
       if(input.viewId!==draft.viewId||view.viewRevision!==integer(input.expectedViewRevision,'expectedViewRevision')||attempt.expectedViewRevision!==input.expectedViewRevision||view.pendingPublicationId)fail('VIEW_CONFLICT','View revision or pending publication has changed. Keep the workspace and inspect.');
       const build=this.store.get<BuildReceipt>('build_receipts',input.buildReceiptId),preview=this.store.get<PreviewReceipt>('preview_receipts',input.previewReceiptId);
       if(!build||!preview||attempt.buildReceiptId!==build.receiptId||attempt.previewReceiptId!==preview.receiptId||build.attemptId!==attempt.attemptId||preview.attemptId!==attempt.attemptId||build.verdict!=='PASS'||preview.verdict!=='PASS'||preview.buildReceiptId!==build.receiptId||preview.buildId!==input.buildId||build.archiveBuildId!==input.buildId||!this.sources.verify(input.buildId).valid)fail('BUILD_EVIDENCE_INVALID','Publication requires matching immutable PASS build and preview evidence.');
       this.verifyReceiptFiles(attempt,build,preview);
       const source={buildId:input.buildId,directory:draft.workspacePath,entry:'index.html',files:[...this.sources.manifest(input.buildId)!.files]},at=this.stamp();
-      const publication:ViewPublication={publicationId:input.publicationId??randomUUID(),viewId:view.viewId,ownerSessionId:sessionId,attemptId:attempt.attemptId,attemptEpoch:attempt.epoch,expectedViewRevision:view.viewRevision,candidateBuildId:input.buildId,priorActiveBuildId:view.activeBuildId,state:'mounting',readyDeadlineAt:new Date(this.now().getTime()+(this.options.readyTimeoutMs??15000)).toISOString(),evidenceRefs:clone(attempt.evidenceRefs),createdAt:at,updatedAt:at,buildReceiptId:build.receiptId,previewReceiptId:preview.receiptId,source};
+      const publication:ViewPublication={publicationId:input.publicationId??randomUUID(),viewId:view.viewId,ownerSessionId:sessionId,attemptId:attempt.attemptId,attemptEpoch:attempt.epoch,expectedViewRevision:view.viewRevision,candidateBuildId:input.buildId,priorActiveBuildId:view.activeBuildId,state:'prepared',readyDeadlineAt:null,mountStartedAt:null,evidenceRefs:clone(attempt.evidenceRefs),createdAt:at,updatedAt:at,buildReceiptId:build.receiptId,previewReceiptId:preview.receiptId,source};
       if(this.store.get('view_publications',publication.publicationId))fail('VIEW_CONFLICT','Publication ID already exists.');
-      this.store.put('view_publications',publication.publicationId,publication);this.store.put('views',view.viewId,{...view,pendingPublicationId:publication.publicationId});this.buildRef('publication',publication.publicationId,input.buildId);this.transition(draft,{...attempt,publicationId:publication.publicationId},'mounting');return clone(publication);
+      this.store.put('view_publications',publication.publicationId,publication);this.store.put('views',view.viewId,{...view,pendingPublicationId:publication.publicationId});this.buildRef('publication',publication.publicationId,input.buildId);this.transition(draft,{...attempt,publicationId:publication.publicationId},'publish_ready');return clone(publication);
+    });
+  }
+  startMount(sessionId:string,input:StartMountInput):ViewPublication {
+    return this.store.transaction(()=>{
+      required(input.viewId,'viewId');required(input.buildId,'buildId');integer(input.expectedViewRevision,'expectedViewRevision');
+      const publication=this.store.get<ViewPublication>('view_publications',required(input.publicationId,'publicationId'));
+      if(!publication||publication.ownerSessionId!==sessionId)fail('VIEW_NOT_OWNED','Candidate publication does not belong to this session.');
+      const {attempt,draft,view}=this.context(sessionId,{attemptId:input.attemptId,epoch:input.attemptEpoch},true);
+      if(publication.viewId!==input.viewId||publication.attemptId!==input.attemptId||publication.attemptEpoch!==input.attemptEpoch||publication.candidateBuildId!==input.buildId||publication.expectedViewRevision!==input.expectedViewRevision)fail('PUBLICATION_TARGET_MISMATCH','Open must identify the fixed publication from this message.');
+      if(view.viewId!==publication.viewId||view.viewRevision!==publication.expectedViewRevision||attempt.expectedViewRevision!==publication.expectedViewRevision||draft.sourceRevision!==attempt.sourceRevision||view.pendingPublicationId!==publication.publicationId||attempt.publicationId!==publication.publicationId||!['prepared','mounting'].includes(publication.state)||attempt.state!==(publication.state==='prepared'?'publish_ready':'mounting'))fail('ATTEMPT_SUPERSEDED','This publication is no longer the pending view candidate.');
+      const build=this.store.get<BuildReceipt>('build_receipts',publication.buildReceiptId),preview=this.store.get<PreviewReceipt>('preview_receipts',publication.previewReceiptId);
+      if(!build||!preview||attempt.buildReceiptId!==build.receiptId||attempt.previewReceiptId!==preview.receiptId||build.receiptId!==publication.buildReceiptId||preview.receiptId!==publication.previewReceiptId||build.attemptId!==attempt.attemptId||preview.attemptId!==attempt.attemptId||build.sourceRevision!==attempt.sourceRevision||build.verdict!=='PASS'||preview.verdict!=='PASS'||preview.buildReceiptId!==build.receiptId||preview.buildId!==publication.candidateBuildId||build.archiveBuildId!==publication.candidateBuildId||publication.source.buildId!==publication.candidateBuildId||!this.sources.verify(publication.candidateBuildId).valid)fail('BUILD_EVIDENCE_INVALID','Opening requires the current matching immutable PASS build and preview evidence.');
+      const manifest=this.sources.manifest(publication.candidateBuildId)!;
+      if(publication.source.directory!==draft.workspacePath||publication.source.entry!==manifest.entry||canonicalJson(publication.source.files)!==canonicalJson(manifest.files))fail('BUILD_EVIDENCE_INVALID','Publication source no longer identifies this exact archived build and workspace.');
+      this.verifyReceiptFiles(attempt,build,preview);
+      if(publication.state==='mounting'){
+        if(!publication.readyDeadlineAt||!Number.isFinite(Date.parse(publication.readyDeadlineAt))||this.now().getTime()>Date.parse(publication.readyDeadlineAt))fail('FRAME_NOT_READY','Candidate readiness deadline expired.');
+        return clone(publication);
+      }
+      const at=this.stamp(),mounting:ViewPublication={...publication,state:'mounting',mountStartedAt:at,readyDeadlineAt:new Date(Date.parse(at)+(this.options.readyTimeoutMs??15000)).toISOString(),updatedAt:at};
+      this.store.put('view_publications',publication.publicationId,mounting);this.transition(draft,attempt,'mounting');return clone(mounting);
     });
   }
   private pending(sessionId:string,input:FrameAuthorizationInput){
     const publication=this.store.get<ViewPublication>('view_publications',required(input.publicationId,'publicationId'));if(!publication||publication.ownerSessionId!==sessionId)fail('VIEW_NOT_OWNED','Candidate publication does not belong to this session.');
     const context=this.context(sessionId,{attemptId:input.attemptId,epoch:input.attemptEpoch},true);
     if(publication.attemptId!==input.attemptId||publication.attemptEpoch!==input.attemptEpoch||publication.candidateBuildId!==input.buildId||publication.viewId!==context.view.viewId||publication.state!=='mounting'||context.attempt.state!=='mounting'||context.view.pendingPublicationId!==publication.publicationId||context.view.viewRevision!==publication.expectedViewRevision)fail('ATTEMPT_SUPERSEDED','Candidate identity is no longer the pending view publication.');
-    if(this.now().getTime()>Date.parse(publication.readyDeadlineAt))fail('FRAME_NOT_READY','Candidate readiness deadline expired.');
+    if(!publication.readyDeadlineAt||!Number.isFinite(Date.parse(publication.readyDeadlineAt))||this.now().getTime()>Date.parse(publication.readyDeadlineAt))fail('FRAME_NOT_READY','Candidate readiness deadline expired.');
     return {...context,publication};
   }
   authorizeFrame(sessionId:string,input:FrameAuthorizationInput):ViewPublication {
@@ -227,7 +248,7 @@ export class AppsAuthoringService {
       if(draft.epoch!==input.expectedEpoch)fail('ATTEMPT_SUPERSEDED','A newer attempt already owns the draft.');
       this.store.put('authoring_drafts',draft.draftId,{...draft,epoch:draft.epoch+1,status:'cancelled',updatedAt:this.stamp()});this.store.put('authoring_attempts',attempt.attemptId,{...attempt,state:'cancelled',terminalReason:input.reason});
       notify=true;
-      if(publication?.state==='mounting'){this.store.put('view_publications',publication.publicationId,{...publication,state:'cancelled',terminalReason:input.reason,updatedAt:this.stamp()});if(view.pendingPublicationId===publication.publicationId)this.store.put('views',view.viewId,{...view,pendingPublicationId:null});}
+      if(publication?.state==='prepared'||publication?.state==='mounting'){this.store.put('view_publications',publication.publicationId,{...publication,state:'cancelled',terminalReason:input.reason,updatedAt:this.stamp()});if(view.pendingPublicationId===publication.publicationId)this.store.put('views',view.viewId,{...view,pendingPublicationId:null});}
       return {status:'cancelled' as const,activeBuildId:view.activeBuildId,viewRevision:view.viewRevision};
     });
     if(notify)this.notifyCancellation(input.attemptId,input.expectedEpoch);

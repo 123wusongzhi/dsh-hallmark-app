@@ -1,8 +1,8 @@
 # Apps A.2 实施与验收记录
 
-本页记录2026-10-07的A.2实施与现场执行。**candidate.15已官方同名12→15覆盖安装**，实际Runtime15/schema4、四只读HTTP/Hallmark健康与原1270行会话前缀核对通过；启动包装exit1历史保留。15包778/778、类型/SDK/实际CLI/Runtime/诊断及独立安装33产物/144输入/9774原核心文件两遍核对通过。正式验收为**33 PASS/0 FAIL/47 NOT_RUN**：本次034/035/036/039绑定12，037/038绑定14，原27张PASS身份不变。13/14未安装；Native内存/@/渲染仍NOT_RUN，四门禁NOT_ACCEPTED、R未签认。
+本页记录2026-10-07的A.2实施与现场执行。**candidate.16已官方同名15→16覆盖安装**：801/801、类型、实际包内SDK/build/preview CLI、Runtime和诊断通过，144输入/33产物冻结；独立包31检查/17负例、两种官方ValidateOnly通过。实际Runtime16/schema4、健康/四GET和原1766行会话前缀核实，未迁库；首次启动清单形状错误exit1和派生正规化重开exit0均保留。正式验收为**35 PASS/0 FAIL/45 NOT_RUN**：034/035/036/039绑定12，037/038绑定14，046/047绑定15，原35张PASS身份不迁移16。13/14未安装；Native内存/原输入/点击展示与模型整链待验，四门禁NOT_ACCEPTED、R未签认。
 
-本轮起始main提交为 `ef54c46ec0178cb45149af65f0a7c8ceb5d29f51`；本次源码和说明的最终提交/推送以Git历史与交付记录为准。15仅比14增加4份版本元数据及安装器泛化，共5项冻结输入变化；安装器在替换前核对全部33项tar二进制SHA与packed版本，在替换后核对磁盘33项产物。官方12→15覆盖已完成，Runtime15832/schema4与Host端口19387的监听已实际观察；启动包装exit1及observer传输异常保留，实际只读重开核对PASS另列。13全仓green后被独立边界审查阻断、14未安装的历史保留；14正式037/038完整最低V与15独立安装后验均已完成，下表按各自scope列明。
+前轮起始main为 `ef54c46ec0178cb45149af65f0a7c8ceb5d29f51`；上一轮25文件已实际推送main `06595bbd883ad57061d990a8b30691908f62af13`；本次源码和说明的最终提交/推送以Git历史与交付记录为准。历史15仅比14增加4份版本元数据及安装器泛化，共5项冻结输入变化；安装器在替换前核对全部33项tar二进制SHA与packed版本，在替换后核对磁盘33项产物。官方12→15覆盖已完成，Runtime15832/schema4与Host端口19387的监听已实际观察；启动包装exit1及observer传输异常保留，实际只读重开核对PASS另列。13全仓green后被独立边界审查阻断、14未安装的历史保留；14正式037/038完整最低V与15独立安装后验均已完成，下表按各自scope列明。
 
 15归档SHA-256为 `0ae72a0fa7f02ea692cf861bc441f0464eb0a248ceddc9cd6f19468a03d29b64`，完整全仓命令记录 `ae6bfcf12b9a6d8a8eb3d0ce642b185698a82e14ce84277bc396f768e1e27aea`、verification-summary `6db8cf8f16e20acea8f588bbb712f9a27e1d47a19c220bc03f0d9fecf836e07d`、final-integrity `fd305d11193f7a75896179092151d5f72a2cd81b38b0a6ae3d3634449ec62650` 各按原实际产物记录；不覆盖14或迁移旧正式卡。
 
@@ -14,12 +14,47 @@
 | TST-035 | FIXTURE/actual-command；I/V各40/40、最终V1774/1774 | candidate.12；对象键重排保持dataset，数组/connection/projection变化区分dataset，major/schema拒绝与view/display身份分离 |
 | TST-036 / TST-039 | FIXTURE/actual-command；独立V完整最低范围通过 | candidate.12；真实2→3迁移与quarantine、实际React构建/双视口/引用GC；旧037/038完整V被阻断的报告与I事实原样保留 |
 | TST-037 / TST-038 | FIXTURE/actual-command；I/V各31/31、V20语义/12377检查/1955引用、30份V SQL副本 | candidate.14，144输入/33产物/d892；037=18、038=8、公共guards=5。独立V追加captured14 CLI输出wx碰撞8/8，不发明为原I31步骤；Native/真实业务/真实现场停写/R未验 |
+| TST-046 | 本地FIXTURE/实际命令；I/V各13/13、每轮三入口各30真实样本；V18语义/135811检查/38234引用 | candidate.15、执行commit06595bbd；10000行/1000能力，真实hrtime/HTTP/SQLite/packed SDK，UTF8候选上下文不是token/模型消费，不是现场延迟承诺 |
+| TST-047 | 材料/追踪FIXTURE；I及独立回放各204/204、V44/44/48803引用 | candidate.15；48历史路径全部可读，旧33身份与未运行范围保留；6项原source/build身份没有原归档执行hash链，不补原声明或放行四门禁 |
 | candidate.15 包/安装器 | 778/778实际exit0、类型/SDK与真实CLI/Runtime/诊断；独立29检查/17负例通过 | 144输入/33产物；14→15仅4份版本元数据与安装器5输入变化，独立包复核未重跑全仓CI、未把14正式卡转15 |
 | candidate.15 实际部署与后验 | 官方12→15同名覆盖exit0；实际Runtime15/schema4/四GET/健康/会话前缀核对；磁盘33/源144/核心9774两遍零差异 | 启动包装exit1、observer继承stdio问题与operatorExit=null保留；实际监听/只读重开证据PASS。后验不打开原SQLite、不操作GUI，不代签Native或TST-001整卡 |
+| candidate.16 包与静态独立复核 | 801/801、类型/实际SDK及build/preview CLI、Runtime/诊断actual exit0；独立包31检查/17负例、默认与显式ValidateOnly各exit0 | 144输入/33产物；19文件独立源码复核无阻断、ownTestsExecuted=0，仅静态，不计为Native或正式卡V |
+| candidate.16 实际部署与后验 | 官方15→16同名覆盖、三冷备核对、实际Runtime16/schema4/健康/四GET/历史前缀通过；33磁盘产物/144源码/9774原核心两遍零差异 | 未迁库/新增业务写；start首轮清单形状错误exit1和派生正规化重开exit0保留。Native内存/原输入/手动点击展示、正常app.quit/卸载与R待验 |
 
-本次正式卡按执行包分布为candidate.10十张、candidate.11十二张、candidate.12九张、candidate.14两张，共33张；不拼成candidate.15整套正式验收。旧12的037拒绝报告未控制真实入口、038导出/inspect早于冻结均为BLOCKED，旧I和V不可重写。14持久enrollment/decision、启动/HTTP/body完成/Provider/调度守卫补齐后，独立V验证真实拒绝和恢复边界；冻结rename索引1、第一条导出SQL索引2、输出索引22。I辅助runbook有1项SHA差异，其余176执行源码/config/requirements与V一致，177捕获源、144打包输入/33产物和d892归档独立冻结。原operation GET为纯SQL读；POST inspect可追加恢复账本/事件及原unknown状态，不重发或逆向业务写入，不能称SQLite零写。操作说明见[维护手册](apps-migration-runbook.md)。
+本次正式卡按执行包分布为candidate.10十张、candidate.11十二张、candidate.12九张、candidate.14两张、candidate.15两张，共35张；不拼成candidate.15整套正式验收。旧12的037拒绝报告未控制真实入口、038导出/inspect早于冻结均为BLOCKED，旧I和V不可重写。14持久enrollment/decision、启动/HTTP/body完成/Provider/调度守卫补齐后，独立V验证真实拒绝和恢复边界；冻结rename索引1、第一条导出SQL索引2、输出索引22。I辅助runbook有1项SHA差异，其余176执行源码/config/requirements与V一致，177捕获源、144打包输入/33产物和d892归档独立冻结。原operation GET为纯SQL读；POST inspect可追加恢复账本/事件及原unknown状态，不重发或逆向业务写入，不能称SQLite零写。操作说明见[维护手册](apps-migration-runbook.md)。
 
-| 版本域 | 当前实际部署candidate.15 | 实际证据 / 未决范围 |
+## 当前16部署与历史15范围
+
+14:54:09 UTC受控停止/三冷备实际exit0，14:54:31官方同名15→16覆盖exit0，回退备份 `artifacts/desktop-apps-rollbacks/20261007T145428Z-5faffa6da94b4c11a4a29b141ff54dc1` 私有保存。首轮start在launch前因清单singleton被误作array退出1；新派生v2只正规化输入shape，14:55:11实际重开exit0，原失败不覆盖。Runtime PID14488、桌面PID19344与Host监听进程66800实际观察，14:55:19只读重开检查为Runtime16/schema4、四HTTP200和Hallmark健康；冷备1766行原会话历史逐项作为当前1767行前缀保留。本轮未迁移数据目录或新增业务写/保存，受控停止不代签正常app.quit。
+
+| 当前版本域 | candidate.16实际状态 | 证据边界 |
+|---|---|---|
+| Bundle / Host磁盘 | `1.0.0-candidate.16`；33安装产物匹配 | 原同名15→16官方覆盖，插件原生内存/注册仍NOT_RUN |
+| Runtime | `1.0.0-candidate.16` / schema4；PID14488 | 四只读HTTP200、Hallmark健康，不代签原生frame |
+| 桌面 / Host监听 | DSH `0.2.0-rc.2`；桌面19344 / Host66800 | 实际重开，Native原输入/手动点击/显示与模型闭环待验 |
+| 16冻结包 / 后验 | 801/801；144输入 / 33产物；原核心9774两遍零差异 | 31包检查/17负例；289引用/331包索引、55审查子进程退出；原SQLite未打开，GUI未操作 |
+
+后验于14:56:17 UTC通过，独立freeze于14:56:23实际exit0/PID已退出。两次磁盘清单中33安装产物、144源输入和9774原核心文件均一致；最终289引用、331包索引及包/源码守卫通过。静态手动契约独立复核只读19文件，关闭两项P2源码问题且自身未执行测试或Native操作；不能把归档或磁盘后验当成模型调用/用户点击/展示确认或TST-001整卡。TST-045尚待16完整故障矩阵独立I/V，35/45不变。
+
+| 16部署/复核证据 | 原始材料（本机忽略目录） | SHA-256 |
+|---|---|---|
+| E-MANUAL-SOURCE-V | `evidence/apps-a2-20261007/manual-open-lifecycle/independent-review-a5822f6b-e534-4a96-8376-6c801ac59fb8/result.json` | `26b3ce2c7d79ae4334ddb53f6bb998e7f621d9c679b613c930835e66f84c2b53` |
+| E-V-PACK-16 | `evidence/apps-a2-20261007/formal-package-review/review16-2f309664-833f-4437-a282-2f375c17b8c9/package-installer-review.json` | `170e09790dc0d2d0677c9c5a64ac85e6b3590cfd4294097c007de94225c44c3c` |
+| E-V-PACK-16 / actual command | `evidence/apps-a2-20261007/formal-package-review/review16-2f309664-833f-4437-a282-2f375c17b8c9/review-actual-command.json` | `e6f96d622faedbb553743046e7ea83a1d9742f6b7c354e29530eeb8d02faed63` |
+| E-V-PACK-16 / official ValidateOnly | `evidence/apps-a2-20261007/formal-package-review/review16-2f309664-833f-4437-a282-2f375c17b8c9/official-validation-result.json` | `9824784ceba723a2740d7d94010146f3fe442dc8ff860c2b6eb4710ca204c7f7` |
+| E-V-PACK-16 / official actual command | `evidence/apps-a2-20261007/formal-package-review/review16-2f309664-833f-4437-a282-2f375c17b8c9/official-actual-command.json` | `c8d617a0a7a0b3d5653740def40c491c3b01c1ca8b0a9dc23eacb1662facf56d` |
+| E-COLD-16 | `evidence/apps-a2-20261007/cutover/candidate16-operation-75ee4cde-aefd-4d2b-971e-5e8d550793d3/stop-and-backup-result.json` | `b5db08b42e0bdf0bba10ff09595157295baeaddcc338bf7784772243926f20cb` |
+| E-INSTALL-16 | `evidence/apps-a2-20261007/cutover/candidate16-operation-75ee4cde-aefd-4d2b-971e-5e8d550793d3/install-result.json` | `a6b4ced3a43fb73f4fbd7b6b4ef5c831984cfae1d53740f167712c57ba23dc27` |
+| E-START-16 / first exit1 | `evidence/apps-a2-20261007/cutover/candidate16-operation-75ee4cde-aefd-4d2b-971e-5e8d550793d3/start-actual-command.json` | `7ccbef41de4467fefa8bec6f1ed19560f82359d9373d70e19273c60ecc27219d` |
+| E-START-16 / normalized exit0 | `evidence/apps-a2-20261007/cutover/candidate16-operation-75ee4cde-aefd-4d2b-971e-5e8d550793d3/start2-actual-command.json` | `50d27cd302fda4baeb2675bc64d86e4266f4adab3dbee9168a50a5515a990a5d` |
+| E-START-16 / dispatch | `evidence/apps-a2-20261007/cutover/candidate16-operation-75ee4cde-aefd-4d2b-971e-5e8d550793d3/start-dispatch.json` | `de9a0a1d17b92c580293be8c47edf2d264dc765717ba6634388c8d89569fc90d` |
+| E-RESTART-16 | `evidence/apps-a2-20261007/cutover/candidate16-operation-75ee4cde-aefd-4d2b-971e-5e8d550793d3/read-only-restart-check.json` | `bcc3131df2488812a05344286c8f34f600ca402a3db9f93ecc400a4c9e97446f` |
+| E-RESTART-16 / actual command | `evidence/apps-a2-20261007/cutover/candidate16-operation-75ee4cde-aefd-4d2b-971e-5e8d550793d3/read-only-check-command.json` | `706b5878f55b2986fd7d289710f03e7f1620f36e057a7407dc3832b02054737a` |
+| E-DISK-16 | `evidence/apps-a2-20261007/formal-package-review/postinstall16-dd8df5d6-a56e-4bad-8f3a-43589c3b3e07/result.json` | `ec73d920761bd087ad4fdff9d6419cf10a127e9bcbbc9d18f3e200e9f8aadd19` |
+| E-V-FREEZE-16 | `evidence/apps-a2-20261007/formal-package-review/freeze16-43ca61cf-790c-4de1-9ae7-57d9a88df4a0/freeze-result.json` | `f41035d61f151d10dd497e78d515d8841b9f1132f4493b2acab39db14674f76a` |
+| E-V-FREEZE-16 / actual command | `evidence/apps-a2-20261007/formal-package-review/freeze16-43ca61cf-790c-4de1-9ae7-57d9a88df4a0/actual-command.json` | `4981b0a4fbd2555431e024a6bdd16d898f1206255d012a5e6b3737a9706ad0c0` |
+
+| 版本域 | 历史实际部署candidate.15（当时） | 实际证据 / 未决范围 |
 |---|---|---|
 | Bundle / Host磁盘 | `1.0.0-candidate.15` | 官方同名12→15；33安装产物匹配，Host端口19387由47036监听；插件原生内存身份仍NOT_RUN |
 | Runtime | `1.0.0-candidate.15` / schema4 | PID15832；健康和四只读接口通过，未执行新业务写入 |
@@ -27,6 +62,54 @@
 | 冻结包 | 778/778；144输入 / 33产物 | 15归档0ae72a0f…，仅包/源码/隔离执行与安装磁盘范围 |
 
 13:14:04–13:14:38 UTC受控停止及冷备命令exit0；13:14:53–13:15:01官方同名安装exit0，原插件/配置回退备份保存在忽略目录 `artifacts/desktop-apps-rollbacks/20261007T131458Z-60985ee33fad41879efb6e894fadf01d`。启动命令实际已写Runtime/桌面启动记录，但observer继承stdio等待close，包装进程被精确停止后exit1；补充start-dispatch报告保留operatorExit=null。13:17:22独立只读检查确认四GET/监听和原1270行历史前缀全部相同，13:20:07独立后验两遍33/144/9774零差异。最后独立freeze又核对185交叉引用、330包索引、472私有文件守卫零差异，56个审查子进程均已退出。此范围不代签正常app.quit、原生注册、卸载、组件显示或现场数据切换。
+
+## 新增046/047验收与手动打开要求
+
+046/047仅按完整最低本地FIXTURE/实际命令范围通过独立V，正式表新增两卡为35 PASS/45 NOT_RUN；原33张PASS的全部825字段、前10列800值、113份冻结A.2输入与原48基线保留。24任务仍18 REVIEW/6 DOING，四门禁NOT_ACCEPTED，R未签认。两份新harness不属于144打包输入；本次结果使用当时冻结candidate.15，不能把后续candidate.16工作树冒充旧执行快照。
+
+TST-046使用20个应用/1000项能力和固定10000条中文数据，direct tools、SDK script、mixed三入口交替各30次，I与V均真实执行90个样本，每组30成功/0失败。I与V分别计算nearest-rank P50/P95，不合并样本：I为678.53/798.30、1101.53/1617.60、1155.86/1637.62 ms；V为711.51/819.24、1153.18/1672.42、1155.79/1758.35 ms。候选模型输入序列化UTF8为23175/8816/17804 bytes；实际查询投影单输出最大392 bytes，并核对16 KiB单输出预算。这里没有模型消费/token量测或加速承诺；含记录HTTP、SQLite和首次冷执行成本，SDK脚本回调/汇总为明确披露的fixture调用代码，不是新增产品执行器。V的135811检查、18语义及38234引用通过；首I失败与私有V相对元数据root错误校正保留，不改旧记录。
+
+TST-047实际逐项读取原48、冻结80和当前80，核对输入/输出、命令退出、版本/scope/断言、可读附件及包字节；I与独立回放各204/204，独立V44/44。执行时原表33 PASS/47 NOT_RUN、48路径全部可读且仅为历史，不自动继承为当前验收。known CSV archive→package-manifest→实际旧包字节只证明现在可读的已知包；055/056/073/075/076/077的原候选/source/build身份保留，`originalArchiveExecutionHashClaim=false`，没有原同祖先归档执行hash链。A.2 §08最低记录字段未要求统一candidateArchive顶层字段，不能以这个附加要求改旧33，也不能给旧记录补原声明。054原V的formalResult与archiveEvidence、059/060原V→父result→cards.recordRef保存真实耦合。未知archive/null候选和提供的hash冲突拒绝；旧candidate/scope不迁移15，资格CLI始终releaseApproved=false。旧reader失败及一次额外统一归档字段审查FAIL保留，新V按原完整最低范围复核并明确材料边界。
+
+用户最新确认：在任何原会话用 `@` 选择应用；Agent实际构建和预览后准备候选，并在原聊天工具卡提供“打开组件”入口，等待用户点击。等待点击不计挂载超时或 failed_mount；点击实际打开后才开始 deadline、授权和展示确认。保持原DSH界面，不自动展开组件区；显示与明确保存仍分开。candidate.16已实现 prepared/startMount 源码契约并冻结：801/801、类型、包内SDK与实际build/preview CLI、Runtime和诊断通过，144输入/33产物及旧15字节守卫零差异。candidate.16已官方同名15→16覆盖安装；独立包31检查/17负例及两种ValidateOnly通过，实际Runtime16/schema4/健康/四GET和原1766行会话前缀核实；Native内存/原输入/点击展示仍待验，不将源码/夹具通过算作Native或正式卡验收。契约见[ADR-009](apps-architecture-decisions.md)和[创作流程](source-component-authoring.md)。
+
+14:08附近candidate.15的原Agent确有真实构建和420/1040预览、8项互动通过，但原publication仍failed_mount，frameInstanceId字段缺省，未证明Native frame显示；用户中央聊天和右栏fallback截图是实际问题，不能归因于用户没有切聊天，也不能把官方mounted事件解释成右栏已经打开。Root随后只inspect原publication，HTTP200、零新发布/业务写；旧失败保留。16采用新的准备/点击流程；安装后需明确开始新attempt并实际构建/预览和手动点击，终态不会复活为成功，原失败不改写。
+
+candidate.16的 `apps.authoring.publish` 将 publication 保持为 `prepared`、attempt 为 `publish_ready`，`mountStartedAt/readyDeadlineAt` 均为空。固定publication GET保留当前已提交view源码，候选只在 `publication.source`。原聊天卡固定所属session/view/publication/attempt/epoch/build身份；Observer只通知，workspace不自动展开。用户点击经Host UI路由调用 `POST /v1/authoring/startMount`，`params` 必须同时提供 `viewId/publicationId/attemptId/attemptEpoch/buildId/expectedViewRevision`。Runtime重验当前代际、view CAS、签名build/preview与归档；首次有效点击才创建15秒期限，重复不续期，终态不复活。该路由不注册成模型能力。真正frame完成授权、数据/状态恢复和React提交后，才确认展示并提升active/last-good。
+
+prepared重启保留，取消或新attempt取代时终结所属prepared候选；旧mounting重启仍interrupted。保存共享路径对存在authoring draft的view选择性执行同一门禁，prepared/mounting或未确认构建不能绕过 `apps.authoring.save_component` 改用通用save保存；无authoring draft的旧static/legacy路径保持原行为。后端首次30/30针对性实际测试的typecheck exit2保留；后续保存门禁38/38与typecheck exit0仅证明源码/本地实际HTTP和隔离Chrome范围。完整包801/801和这些局部结果均不提升TST-045、Native/模型或四门禁；原35张卡仍按原候选绑定，不迁移16。
+
+| 16阶段证据 | 原始材料（本机忽略目录） | SHA-256 |
+|---|---|---|
+| E-MANUAL-BACKEND-I | `evidence/apps-a2-20261007/manual-open-lifecycle/implementation-0bb3c163-db41-4e49-8399-159dac8a3ecc/implementation-summary.json` | `55865beb91965f0d5f41591860bda8410c62eb49e1f7d5bf8bce026aa00aa70b` |
+| E-MANUAL-SAVE-I | `evidence/apps-a2-20261007/manual-open-lifecycle/generic-save-final-ad939fce-cc5c-46ff-a1af-ff5d90985877/generic-save-summary.json` | `284cc4f94ad0e1cc1ddd68942e3fc489e137869202762c3bed0dfb07fb8e52ad` |
+| E-MANUAL-SAVE-I / command | `evidence/apps-a2-20261007/manual-open-lifecycle/generic-save-final-ad939fce-cc5c-46ff-a1af-ff5d90985877/command-result.json` | `d75eb663e7ff510492f4fb03c3bdcfab4f212d565601a96c1bf673d01f072d0e` |
+| E-PACK-16 | `evidence/apps-a2-20261007/candidates/1.0.0-candidate.16/verification-summary.json` | `532fd3fd0acb58749143cd95d442b9d9dab416d5e9cd5bca8f9d768a4de54905` |
+| E-PACK-16 / actual command | `evidence/apps-a2-20261007/candidates/1.0.0-candidate.16/verification-actual-command.json` | `adb7d088199bff1ef54bea5a74268dbcdae212fbcc1c04cb150150a11ad4f753` |
+| E-FREEZE-16 | `evidence/apps-a2-20261007/candidates/1.0.0-candidate.16/final-integrity.json` | `46b3957a71ebecdaa1521fd06cea0bc0f170b43130c9d0db3f8ce0e6ff097e84` |
+| E-FREEZE-16 / actual command | `evidence/apps-a2-20261007/candidates/1.0.0-candidate.16/integrity-actual-command.json` | `976585bc53dd43657d53a9cdf04f71a4887d21107cc6177857a98d571ec983f8` |
+
+16归档 `artifacts/dsh-plugin-apps-bundle-1.0.0-candidate.16.tgz` SHA-256为 `ea7d82c42d1a9efc73cc96aa354ff863cd9d513570877dd84d42ac6ea84475c6`；源码144输入和33产物逐项冻结，执行期间源码/旧15材料守卫零差异。包摘要的installed=false、nativeAcceptance/realBusinessAcceptance=NOT_RUN按本次打包范围保留；待后续实际安装和原生记录另列，不回写旧包摘要。
+
+| 证据 | 原始材料（本机忽略目录） | SHA-256 |
+|---|---|---|
+| E-I-046 | `evidence/apps-a2-20261007/formal-runtime-benchmark/a2-runtime-benchmark-5f29805b-fb2f-4e5d-a385-f2650c3aab39/result.json` | `e08fb076c2fd387193ff1ab15d30ab80035bfd53dca021b9ef5c2aa21af2f8f9` |
+| E-FORMAL-046-15 | `evidence/apps-a2-20261007/formal-runtime-benchmark/a2-runtime-benchmark-5f29805b-fb2f-4e5d-a385-f2650c3aab39/TST-046/FIXTURE/result.json` | `f0a7dcdd9cebe095bda642425fac5d1e8601780f6fc097213860f0d13c1a5f9b` |
+| E-FREEZE-046 | `evidence/apps-a2-20261007/formal-runtime-benchmark/freeze-c63e63bd-b77f-4e5b-87aa-7cdd9fe9cd51/freeze-result.json` | `0f616716f70f8372e66eca2706a12d0d38ac3b8411b03dc6127e23720bb299ca` |
+| E-V-046 | `evidence/apps-a2-20261007/formal-runtime-benchmark/independent-v-046-075c36b1-8231-41b7-a158-80519fb2d087/review-summary-final.json` | `9f6d3a776247ce0cfe03c7a2243567d9cbf73a94e32365e3f3788c0e9000c29b` |
+| E-V-046 / command | `evidence/apps-a2-20261007/formal-runtime-benchmark/independent-v-046-075c36b1-8231-41b7-a158-80519fb2d087/review-stage2-command-result.json` | `fbdd6342089e71c74ffc130142c826ce01aae699b06c80d6136b722a933a73ed` |
+| E-V-046 / index | `evidence/apps-a2-20261007/formal-runtime-benchmark/independent-v-046-075c36b1-8231-41b7-a158-80519fb2d087/final-v-artifact-index.json` | `f4e55afbcc23985612be4b0bc105a446c6b60cbbe31b8afd3db907a7f68aea08` |
+| E-HARNESS-046 | `test/acceptance/runtime-benchmark-a2.mjs` | `ed764f964cf0ba9f3f3dc83ddcff7067bd7d55bc28a7eb90112f92b802608e4b` |
+| E-I-047 | `evidence/apps-a2-20261007/formal-release-traceability/a2-release-traceability-52433dd7-3e3e-4ae3-aba4-9776dba3b0a8/result.json` | `440fb5d9de2322ec3c0620d44cf6eff033ea108fe11abfd153fd74bf98170636` |
+| E-FORMAL-047-15 | `evidence/apps-a2-20261007/formal-release-traceability/a2-release-traceability-52433dd7-3e3e-4ae3-aba4-9776dba3b0a8/TST-047/FIXTURE/result.json` | `2d015d2eab324a469dcdda7b575e8dc98b457d1a217bff0b6f8edb73fdf4eca4` |
+| E-FREEZE-047 | `evidence/apps-a2-20261007/formal-release-traceability/a2-release-traceability-52433dd7-3e3e-4ae3-aba4-9776dba3b0a8/artifact-freeze.json` | `467569c6d1523d5116e2f6ee202f977b90ff8a1478e7463a995ca75e8df8f6e6` |
+| E-V-047 | `evidence/apps-a2-20261007/formal-release-traceability/independent-v-047-d4b952cb-1727-492a-a549-78e37e801e67/review-summary-final.json` | `1919ab4c4badc40a2208867b54d6cc35bc0c5ddd899a223fe045d7f1d86e9931` |
+| E-V-047 / command | `evidence/apps-a2-20261007/formal-release-traceability/independent-v-047-d4b952cb-1727-492a-a549-78e37e801e67/review-actual-command.json` | `6eb7dbac27b5ec04ed981ecff33e535287c8504625a4ff7c5fcd8ec2eb152587` |
+| E-HARNESS-047 | `test/acceptance/release-traceability-a2.mjs` | `041e185ca2b7ae613c2cdb1dbe6cd823f458888ba74221583fbd21115bd935c3` |
+| E-NATIVE-15 / inspect | `evidence/apps-a2-20261007/native-resume15-4b4d2611-7e1c-409f-8422-d877c4ddd189/publication-inspection.private.json` | `10af8e8ab95355b3b8abef795931ac6642d40f478397ba3900ec0c7f4e5c2943` |
+| E-NATIVE-15 / build | `artifacts/apps-a2-bill-runtime-restored/authoring-evidence/build-f6fff6a9-cb89-4632-978a-5e10f5955e63.json` | `96061e7e37e34b8dab8adc37fbd6dc28baafa06cc9e223dafd2f3e87c4969313` |
+| E-NATIVE-15 / preview | `artifacts/apps-a2-bill-runtime-restored/authoring-evidence/preview-e91a1573-2df3-44fa-97a8-b4ae3b08da85.json` | `3b8f0d2097f8984d7e329a9b9887ffa5bcdb9d3a4ade780c97d1553ab5cfb953` |
+| E-DELIVERY-15 | `evidence/apps-a2-20261007/cutover/candidate15-delivery-c5face90-1ecf-4428-9896-7b10f83d8fe9/delivery-result.json` | `0bd46cb8b79379307dc4c92d30c90e139163f267a208525812a467e87a6d1d7d` |
 
 ## 历史候选与输入记录
 
@@ -486,7 +569,7 @@ candidate.11最终包验证独立记录为 `candidate11-final-verification.json`
 
 | 范围 | 当前结论 | 尚需的实际证据 |
 |---|---|---|
-| CORE | **NOT_ACCEPTED** | candidate.15已官方同名覆盖，独立33产物/144输入/9774原核心两遍零差异，实际Runtime15四GET正常；33正式卡保留10/11/12/14各自身份，旧10的011 FAIL与旧12的037/038 BLOCKED历史保留；原生注册/插件内存、其余逐卡、卸载零残留/数据保留及080仍待验 |
+| CORE | **NOT_ACCEPTED** | candidate.15已官方同名覆盖，独立33产物/144输入/9774原核心两遍零差异，实际Runtime15四GET正常；35正式卡保留10/11/12/14/15各自身份，旧10的011 FAIL与旧12的037/038 BLOCKED历史保留；原生注册/插件内存、其余逐卡、卸载零残留/数据保留及080仍待验 |
 | AUTHORING | **NOT_ACCEPTED** | 025/026普通源码/保存分离、054/055/056/057最低scope V通过；059/060完整FIXTURE独立V通过；9真实源码/预览/读图后挂载失败、旧pub重启interrupted。10阶段GUI/内存未验的历史保留；当前15原生插件内存、实际mounted/原输入附加/明确保存/另会话重开仍待人工验收，058完整LIVE_MODEL未完成 |
 | BUSINESS-WRITE | **NOT_ACCEPTED** | 历史价格与库存的4个授权写动作/公开状态/独立读回恢复已通过SCRIPT/REAL_BUSINESS范围；当前15上品、原生UI/模型业务操作及完整TST-078范围仍未完成，无新业务写 |
 | DATA-CUTOVER | **NOT_ACCEPTED** | 最终1754文件备份新根restore/2773映射/源码签名PNG引用与普通npm ci重建SOURCE_EXEC通过，073最低FIXTURE卡V通过；12三冷备与安装不构成切库验收；未再次切桌面profile/dataDirectory，TST-079完整切库/运行历史草稿对账/条件回退仍待验，首失败与中间HOLD保留 |

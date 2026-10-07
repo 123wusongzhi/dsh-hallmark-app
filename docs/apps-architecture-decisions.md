@@ -18,6 +18,7 @@ G0 允许在隔离开发路径进入 P1，关闭未核实的宿主功能并保�
 | ADR-006 | 原业务事实留原应用，Runtime 管理缓存与资产 | Hallmark 保留真实 HTTP 与默认数据目录；Notes 有独立原应用数据源。快照必须标来源、时间与 stale。 |
 | ADR-007 | 优先 DSH 原生接入；MCP 为未来适配 | 不增加第二 Agent Loop、聊天历史、安装器或权限体系。未核实扩展点直接降级，不猜方法名。 |
 | ADR-008 | 停止旧写入 → 离线迁移 → 验证 → 单写切换 | P5 才允许切换演练；实现真实迁移命令与全资产备份后执行。当前运行服务继续使用现有数据。 |
+| ADR-009 | 构建和预览通过 → 准备组件 → 用户点击 → 验证原生展示 | Agent 在原聊天提供固定发布身份的“打开组件”卡片。等待点击不启动挂载计时、不自动展开；点击才由 UI 开始同一候选的挂载检查。保存仍须明确请求。 |
 
 | 事实或资产 | 唯一所有者 |
 |---|---|
@@ -30,6 +31,10 @@ G0 允许在隔离开发路径进入 P1，关闭未核实的宿主功能并保�
 | 模型实际输入、原生会话历史 | DSH 正式会话机制 |
 
 应用交付包含两个半部：P2 Provider 承载业务，P1 原生插件贡献目录与工具/界面投影。两组状态分别表示 `runtimeState` 与 `hostProjectionState`；后端 ready 不意味着宿主 attached。Provider 注册、就绪、停止接收、排空和停止的职责不能由 Host 窗口关闭替代。
+
+ADR-009 是本轮针对桌面挂载问题的增量契约。`publish` 产生 `prepared`，`readyDeadlineAt` 与 `mountStartedAt` 为空；重启保留尚未打开的准备记录。候选保存在 `publication.source`，当前 `activeBuildId`、`lastGoodBuildId` 和已展示源码在等待期间保持原值。原聊天卡片固定 `sessionId/viewId/publicationId/buildId`，不跟随最新焦点或另一个发布；原生 `sidebarRight.mounted` 表示当前中央会话，仍作为所属会话的导航保护。
+
+点击后 Client 经 Host 的 UI 路由调用 `POST /v1/authoring/startMount`，带 `sessionId` 和 `params` 中的 `viewId/publicationId/attemptId/attemptEpoch/buildId/expectedViewRevision`。Runtime 重新核验当前草稿代际、视图版本、构建/预览回执和归档，原子转入 `mounting` 并首次设定截止时间；相同点击不续期，终态不能复活。此操作不注册为模型能力。只有真实 frame 的授权、数据读取、React 提交和必要断言确认后才提升 `active/lastGood`，才称“已展示”；超时保留上一成功版本。candidate.16 已通过 801 项完整测试、类型和实际包内命令检查，并由官方管理器覆盖原同名插件、重开桌面；实际 Runtime16/schema4/健康和原会话历史前缀已核实，独立磁盘检查确认 33 个产物、144 项源码输入及 9774 个原核心文件一致。原生插件内存、用户点击后的真实组件显示与原输入附加仍待验，不能用后台或磁盘检查代签实际显示；正式状态见 [A.2 执行记录](apps-a2-execution.md)。
 
 动态 Schema 默认采用固定 `apps_list` / `apps_describe` / `apps_invoke` / `apps_inspect` 网关。只有支持状态、live 证据等级和真实签名同时具备才启用动态工作集。门禁阻止调用不等于按需发现。
 

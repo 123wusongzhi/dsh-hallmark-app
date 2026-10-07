@@ -26,6 +26,17 @@ function inProcessTransport(runtime: AppsRuntime): AppsHostTransport {
 }
 function connection(runtime: AppsRuntime,appId: string,connectionId: string,sessionId: string) {runtime.addConnection({appId,connectionId,displayName:connectionId,enabled:true,config:{},configRevision:1});runtime.bind({appId,connectionId,sessionId,enabled:true,boundAt:new Date().toISOString()});}
 
+test('manual startMount crosses the original-session UI route only, with fixed identity and no extra gateway tool',async()=>{
+  const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),f=context(),calls:{operation:string;sessionId:string;params:unknown}[]=[];
+  const transport={...inProcessTransport(runtime),async authoringAction(operation:string,sessionId:string,params:unknown){calls.push({operation,sessionId,params});return {publicationId:'P1',state:'mounting'};}} as AppsHostTransport;
+  const host=new AppsHost(f.ctx,transport);await host.start();const params={viewId:'V',publicationId:'P1',attemptId:'attempt',attemptEpoch:1,buildId:'build',expectedViewRevision:4};
+  const request=(sessionId:string,extra:Record<string,unknown>={})=>new Request('http://dsh.invalid/api/dsh-apps',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'authoring',operation:'startMount',sessionId,params,...extra})});
+  try{const response=await host.ui(request('A'));assert.equal(response.status,200);assert.deepEqual(await response.json(),{publicationId:'P1',state:'mounting'});assert.deepEqual(calls,[{operation:'startMount',sessionId:'A',params}]);
+    assert.equal((await host.ui(request('unknown'))).status,400);assert.equal((await host.ui(request('A',{foreignSessionId:'B'}))).status,400);assert.equal(calls.length,1);
+    assert.equal(f.tools.size,4);assert.equal([...f.tools.keys()].some(name=>name.includes('startMount')),false);
+  }finally{await host.dispose();await runtime.dispose();store.close();}
+});
+
 test('one fixed gateway, 1000 schema catalogue stays outside default tools and connection ambiguity dispatches nothing',async()=>{
   const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),calls:ExecutionContext[]=[];runtime.register(provider('hallmark',calls,1000));runtime.register(provider('notes',calls));connection(runtime,'hallmark','H1','A');connection(runtime,'hallmark','H2','A');connection(runtime,'notes','N1','B');
   const f=context(),host=new AppsHost(f.ctx,inProcessTransport(runtime));await host.start();const removeH=host.attachApp('hallmark'),removeN=host.attachApp('notes');

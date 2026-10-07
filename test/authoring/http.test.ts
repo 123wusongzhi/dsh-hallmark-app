@@ -7,7 +7,7 @@ import {join,resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {composeAppsRuntime} from '../../packages/service/src/apps-main.ts';
 import {createAppsServer} from '../../packages/service/src/apps-server.ts';
-import type {AuthoringDraft,AuthoringAttempt,AuthoringView,BuildReceipt,PreviewReceipt,ViewPublication} from '../../packages/app-presentation/src/authoring-types.ts';
+import type {AuthoringDraft,AuthoringAttempt,AuthoringView,BuildReceipt,PreviewReceipt,StartMountInput,ViewPublication} from '../../packages/app-presentation/src/authoring-types.ts';
 // @ts-expect-error Actual isolated browser runner is also exported by the standalone CLI.
 import {runAuthoringPreview} from '../../scripts/apps-authoring-preview.mjs';
 
@@ -24,6 +24,7 @@ function project(workspace:string,title:string){
  const html=`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><h1>${title}</h1><button id="toggle">Select</button><output id="result">unselected</output><script>window.addEventListener('message',e=>{if(e.source!==parent||e.origin!==location.origin)return;const m=e.data;if(m.type==='hello')parent.postMessage({channel:m.channel,protocolVersion:'2.0',sessionId:m.sessionId,viewId:m.viewId,buildId:m.buildId,frameInstanceId:m.frameInstanceId,requestId:'data',method:'getData',params:null},location.origin);});parent.postMessage({channel:'dsh.apps.component.v2',type:'hello',protocolVersion:'2.0',requestId:'hello',documentNonce:'document'},location.origin);document.querySelector('#toggle').onclick=()=>document.querySelector('#result').textContent='selected';</script>`;
  writeFileSync(join(workspace,'package-lock.json'),'{}');writeFileSync(join(workspace,'input.html'),html);writeFileSync(join(workspace,'build.mjs'),"import{mkdirSync,copyFileSync}from'node:fs';mkdirSync('dist',{recursive:true});copyFileSync('input.html','dist/index.html');");
 }
+function openInput(publication:ViewPublication):StartMountInput{return {viewId:publication.viewId,publicationId:publication.publicationId,attemptId:publication.attemptId,attemptEpoch:publication.attemptEpoch,buildId:publication.candidateBuildId,expectedViewRevision:publication.expectedViewRevision};}
 test('HTTP authoring validates real receipt schemas, authorizes candidate document, commits once and keeps fixed historical publications',{skip:!existsSync(browser),timeout:60000},async()=>{
  const f=await setup();try{
   const prepare=async(mode:'new'|'edit',viewId?:string,title='First')=>{
@@ -40,9 +41,17 @@ test('HTTP authoring validates real receipt schemas, authorizes candidate docume
   };
   const first=await prepare('new'),viewId=first.begin.view.viewId;
   const fixed=(value:typeof first)=>`/v1/views/${viewId}?${new URLSearchParams({sessionId:'original',publicationId:value.publication.publicationId,buildId:value.publication.candidateBuildId})}`;
-  const pending=await f.call(fixed(first));assert.equal(pending.body.source.buildId,first.publication.candidateBuildId);assert.equal(pending.body.activeBuildId,null);assert.equal(pending.body.publication.state,'mounting');assert.equal(f.presentation.getView(viewId)?.source,undefined);
+  const pending=await f.call(fixed(first));assert.equal(pending.status,200);assert.equal(pending.body.source,undefined);assert.equal(pending.body.publication.source.buildId,first.publication.candidateBuildId);assert.equal(pending.body.activeBuildId,null);assert.equal(pending.body.publication.state,'prepared');assert.equal(pending.body.publication.readyDeadlineAt,null);assert.equal(pending.body.publication.mountStartedAt,null);assert.equal(f.presentation.getView(viewId)?.source,undefined);
   const unauthorized=await f.call('/v1/component-extension',{...first.identity,channel:'dsh.apps.component.v2',type:'extension',feature:'renderReadyV1',action:'ready',requestId:'not-granted',params:{}});assert.equal(unauthorized.status,400);
   assert.equal((await f.call('/v1/authoring/authorizeFrame',{sessionId:'foreign',params:first.params})).status,400);
+  const notOpened=await f.call('/v1/authoring/authorizeFrame',{sessionId:'original',params:first.params});assert.equal(notOpened.status,400);assert.equal(notOpened.body.error.code,'ATTEMPT_SUPERSEDED');
+  const target=openInput(first.publication);
+  for(const params of [{...target,unexpected:true},{...target,expectedViewRevision:undefined}])assert.equal((await f.call('/v1/authoring/startMount',{sessionId:'original',params})).status,400);
+  const foreign=await f.call('/v1/authoring/startMount',{sessionId:'foreign',params:target});assert.equal(foreign.status,400);assert.equal(foreign.body.error.code,'VIEW_NOT_OWNED');
+  const mismatched=await f.call('/v1/authoring/startMount',{sessionId:'original',params:{...target,buildId:'f'.repeat(64)}});assert.equal(mismatched.status,400);assert.equal(mismatched.body.error.code,'PUBLICATION_TARGET_MISMATCH');
+  assert.deepEqual((await f.call(fixed(first))).body,pending.body);assert.equal(f.store.list('view_publications').length,1);assert.equal(f.store.list<{namespace:string}>('provider_records').filter(value=>value.namespace==='frame_grants').length,0);
+  const opened=await f.call('/v1/authoring/startMount',{sessionId:'original',params:target});assert.equal(opened.status,200);assert.equal(opened.body.state,'mounting');assert.equal(Date.parse(opened.body.readyDeadlineAt)-Date.parse(opened.body.mountStartedAt),15000);
+  const repeated=await Promise.all([f.call('/v1/authoring/startMount',{sessionId:'original',params:target}),f.call('/v1/authoring/startMount',{sessionId:'original',params:target})]);for(const result of repeated){assert.equal(result.status,200);assert.deepEqual(result.body,opened.body);}assert.equal(f.store.list('view_publications').length,1);const mounting=await f.call(fixed(first));assert.equal(mounting.body.publication.state,'mounting');assert.equal(mounting.body.source.buildId,first.publication.candidateBuildId);assert.equal(mounting.body.activeBuildId,null);assert.equal(f.presentation.getView(viewId)?.source,undefined);
   const grant=await f.call('/v1/authoring/authorizeFrame',{sessionId:'original',params:first.params});assert.deepEqual(grant.body.features,['renderReadyV1','uiStateV1']);
   const extension={...first.identity,channel:'dsh.apps.component.v2',type:'extension',feature:'renderReadyV1',action:'ready',requestId:'ready',params:{documentNonce:first.params.documentNonce,checks:{rendered:true,bridgeReady:true,dataRead:true,unhandledErrors:[],assertionResults:first.preview.assertionResults}}};
   const bad=await f.call('/v1/component-extension',{...extension,params:{...extension.params,checks:{...extension.params.checks,dataRead:false}}});assert.equal(bad.body.error.code,'FRAME_RUNTIME_ERROR');assert.equal(f.presentation.getView(viewId)?.source,undefined);
@@ -50,7 +59,9 @@ test('HTTP authoring validates real receipt schemas, authorizes candidate docume
   assert.equal((await f.call(fixed(first))).body.viewRevision,revision);
   const ui=await f.call('/v1/component-extension',{...extension,feature:'uiStateV1',action:'write',params:{uiStateSchemaVersion:1,expectedStateRevision:0,value:{search:'saved'},selectionEvidence:[]}});assert.equal(ui.body.result.stateRevision,1);
   const second=await prepare('edit',viewId,'Second');assert.equal(f.presentation.getView(viewId)?.source?.buildId,first.publication.candidateBuildId);
-  await f.call('/v1/authoring/authorizeFrame',{sessionId:'original',params:second.params});
+  const secondPending=await f.call(fixed(second));assert.equal(secondPending.status,200);assert.equal(secondPending.body.publication.state,'prepared');assert.equal(secondPending.body.publication.source.buildId,second.publication.candidateBuildId);assert.equal(secondPending.body.source.buildId,first.publication.candidateBuildId);assert.equal(secondPending.body.activeBuildId,first.publication.candidateBuildId);assert.equal(secondPending.body.lastGoodBuildId,first.publication.candidateBuildId);assert.deepEqual(secondPending.body.source,f.presentation.getView(viewId)?.source);
+  assert.equal((await f.call('/v1/authoring/startMount',{sessionId:'original',params:openInput(first.publication)})).status,400);assert.equal(f.store.list('view_publications').length,2);assert.equal((await f.call('/v1/authoring/startMount',{sessionId:'original',params:openInput(second.publication)})).body.state,'mounting');
+  assert.equal((await f.call('/v1/authoring/authorizeFrame',{sessionId:'original',params:second.params})).status,200);
   const ready2=await f.call('/v1/component-extension',{...extension,...second.identity,params:{documentNonce:second.params.documentNonce,checks:{...extension.params.checks,assertionResults:second.preview.assertionResults}}});assert.equal(ready2.body.result.view.viewRevision,revision+1);
   const historical=await f.call(fixed(first));assert.equal(historical.body.source.buildId,first.publication.candidateBuildId);assert.equal(historical.body.viewRevision,revision);assert.equal(f.presentation.getView(viewId)?.source?.buildId,second.publication.candidateBuildId);
   const retired=await f.call('/v1/authoring/retireFrame',{sessionId:'original',params:{viewId,buildId:second.params.buildId,frameInstanceId:second.params.frameInstanceId,documentNonce:second.params.documentNonce}});assert.equal(retired.body.retired,true);

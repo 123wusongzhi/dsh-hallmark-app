@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {APP_AUTHORING_DESCRIPTORS,AUTHORING_BUILD_RECEIPT_SCHEMA,AUTHORING_PREVIEW_RECEIPT_SCHEMA} from '../../packages/app-presentation/src/authoring-descriptors.ts';
+import {APP_AUTHORING_DESCRIPTORS,AUTHORING_BUILD_RECEIPT_SCHEMA,AUTHORING_PREVIEW_RECEIPT_SCHEMA,AUTHORING_PUBLICATION_SCHEMA} from '../../packages/app-presentation/src/authoring-descriptors.ts';
 import {compileSchema,validateDescriptor} from '../../packages/app-contracts/src/index.ts';
 import type {JsonSchema} from '../../packages/app-contracts/src/index.ts';
 
@@ -11,6 +11,15 @@ test('six authoring metadata capabilities and explicit save expose compilable st
   for(const descriptor of APP_AUTHORING_DESCRIPTORS){assert.deepEqual(validateDescriptor(descriptor),[],descriptor.capabilityId);assert.equal(descriptor.version,'1.0.0');assert.equal(descriptor.effect==='mutation',descriptor.capabilityId==='apps.authoring.save_component');assert.equal(descriptor.execution.idempotency,descriptor.effect==='mutation'?'runtime_dedup':'not_applicable');compileSchema(descriptor.inputSchema);compileSchema(descriptor.outputSchema);}
   const begin=compileSchema(APP_AUTHORING_DESCRIPTORS[0].inputSchema);assert.deepEqual(begin({mode:'new'}),[]);assert.ok(begin({mode:'edit'}).length);assert.ok(begin({mode:'open_saved'}).length);assert.deepEqual(begin({mode:'edit',viewId:'v'}),[]);
   const save=compileSchema(APP_AUTHORING_DESCRIPTORS[6].inputSchema);assert.deepEqual(save({viewId:'v',expectedViewRevision:2,userRequest:'Save as Profit',mode:'save_as'}),[]);assert.ok(save({viewId:'v',expectedViewRevision:2,userRequest:'Save',mode:'save_as',componentId:'component',expectedRevision:1}).length);assert.ok(save({viewId:'v',expectedViewRevision:2,userRequest:'Update',mode:'update',componentId:'component'}).length);
+});
+
+test('publication contracts expose waiting state and nullable deadline while retaining legacy mounting rows',()=>{
+  const at='2026-10-07T00:00:00.000Z',buildId='a'.repeat(64),validate=compileSchema(AUTHORING_PUBLICATION_SCHEMA),base={publicationId:'p',viewId:'v',ownerSessionId:'s',attemptId:'a',attemptEpoch:1,expectedViewRevision:1,candidateBuildId:buildId,priorActiveBuildId:null,evidenceRefs:[],createdAt:at,updatedAt:at,buildReceiptId:'b',previewReceiptId:'pr',source:{buildId,directory:'E:/workspace',entry:'index.html',files:['index.html']}};
+  assert.deepEqual(validate({...base,state:'prepared',readyDeadlineAt:null,mountStartedAt:null}),[]);
+  assert.deepEqual(validate({...base,state:'mounting',readyDeadlineAt:at,mountStartedAt:at}),[]);
+  assert.deepEqual(validate({...base,state:'mounting',readyDeadlineAt:at}),[]);
+  assert.ok(validate({...base,state:'prepared'}).length);assert.ok(validate({...base,state:'waiting',readyDeadlineAt:null}).length);
+  assert.equal(APP_AUTHORING_DESCRIPTORS.some(value=>value.capabilityId==='apps.authoring.startMount'),false);
 });
 
 test('receipt field/required sets match the approved A.2 templates rather than parallel formats',()=>{

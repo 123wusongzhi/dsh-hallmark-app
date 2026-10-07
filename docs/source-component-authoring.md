@@ -1,6 +1,10 @@
 # 制作、验证和保存源码组件
 
-正式验收为**33 PASS/0 FAIL/47 NOT_RUN**：新034/035/036/039绑定12，037/038绑定14，原27张10/11/12 PASS不改。candidate.15已官方12→15覆盖，778/778、类型/SDK/实际CLI/Runtime/诊断和144输入/33产物冻结；独立安装33/源144/原核心9774两遍零差异，实际Runtime15/schema4/健康/四GET/会话前缀核实，启动包装exit1保留。Native内存/原输入/挂载、模型整链和四门禁仍未接受，R未签认，见[A.2执行页](apps-a2-execution.md)。
+正式验收为**35 PASS/0 FAIL/45 NOT_RUN**：034/035/036/039绑定12，037/038绑定14，046/047绑定15，原35张PASS身份不迁移16。candidate.16已官方同名15→16覆盖安装，801/801、类型/实际SDK/build/preview CLI/Runtime/诊断和144输入/33产物冻结；独立包31检查/17负例及两种ValidateOnly通过，实际Runtime16/schema4/健康/四GET和原1766行会话前缀核实，未迁库。首次start exit1与后续正规化重开exit0保留。Native内存/原输入/点击展示、模型整链和四门禁仍未接受，R未签认，见[A.2执行页](apps-a2-execution.md)。
+
+新增TST-046/047的完整最低本地FIXTURE/实际命令已独立V通过，绑定candidate.15；原33卡保留各自10/11/12/14身份，6项旧source/build材料没有原归档执行hash链，不补原声明、不迁移15，具体I/V/hash与边界见[A.2执行记录](apps-a2-execution.md)。
+
+用户最新确认：在任何原会话用 `@` 选择应用；Agent实际构建和预览后准备候选，并在原聊天工具卡提供“打开组件”入口，等待用户点击。等待点击不计挂载超时或 failed_mount；点击实际打开后才开始 deadline、授权和展示确认。保持原DSH界面，不自动展开组件区；显示与明确保存仍分开。candidate.16已实现 prepared/startMount 源码契约并冻结：801/801、类型、包内SDK与实际build/preview CLI、Runtime和诊断通过，144输入/33产物及旧15字节守卫零差异。candidate.16已官方同名15→16覆盖安装；独立包31检查/17负例及两种ValidateOnly通过，实际Runtime16/schema4/健康/四GET和原1766行会话前缀核实；Native内存/原输入/点击展示仍待验，不将源码/夹具通过算作Native或正式卡验收。契约见[ADR-009](apps-architecture-decisions.md)与下文。
 
 A.2 使用原 DSH 会话、原文件/命令工具和 Apps 网关。用户在任意原输入框 `@` 选择应用后手动发送要求；Agent 编辑普通 React/TSX/CSS，完成真实构建、双视口反馈、候选就绪和明确保存。只更新应用/组件区域，不建立另一套聊天。当前包内路径与运行身份必须来自正在处理该原会话的 Host，不能照抄旧开发机路径。
 
@@ -110,7 +114,33 @@ runner 从同一冻结 build 使用 v2 Host 载入，实际执行 420/1040 CSS �
 
 Agent 必须实际打开两张 PNG，检查长标题、缺图/空数据、层级、窄栏溢出和宽页布局，再读报告。如果反馈有问题，编辑源码并创建下一 attempt，重建/重测；不能只看“无错误”就宣称视觉合格。将预览 CLI 返回的 reportRef、同一 attemptId/epoch 和 buildReceiptId 交给 `apps.authoring.record_preview`，不自行拼预览回执或缩略图。
 
-## A.2：候选确认和明确保存
+## candidate.16：准备候选、用户点击与实际展示
+
+16源码和包已冻结并官方覆盖安装，原生点击/展示尚待验收。真实build与record_build、双视口预览/看图和record_preview保持上文流程；PASS后仍调用 `apps.authoring.publish`，但只准备固定候选，不立即挂载。返回publication.state=`prepared`、attempt.state=`publish_ready`，`mountStartedAt` 与 `readyDeadlineAt` 为null。候选在 `publication.source`，固定publication GET保留当前view源码、activeBuildId和lastGoodBuildId；等待期间没有计时，Observer仅通知，workspace不自动展开。
+
+Agent在原聊天工具卡提供“打开组件”入口，固定同一session/view/publication/attempt/epoch/build；原历史卡不跟随最新focus或另一次发布。用户点击后，Client经Host的UI路由调用：
+
+```json
+{
+  "sessionId": "<所属原会话>",
+  "params": {
+    "viewId": "<固定视图>",
+    "publicationId": "<固定候选>",
+    "attemptId": "<原尝试>",
+    "attemptEpoch": 1,
+    "buildId": "<同一构建>",
+    "expectedViewRevision": 1
+  }
+}
+```
+
+路由为 `POST /v1/authoring/startMount`；params中六个字段全部必需。版本和epoch须使用实际记录，示例中的1不能照抄。Runtime重验所属会话、当前attempt/source代际、viewRevision、签名build/preview回执及归档，原子从prepared转mounting；首次有效点击创建15秒期限，相同/并发点击只保留首次期限，不续期，取消/失败/被取代的终态不能复活。此路由**不注册为模型能力**，Agent不能调用另一次publish、生成ready或自动打开替代用户点击。
+
+实际frame仍须完成授权、features协商、真实数据读取、UI状态恢复和React提交，再按固定frame/document nonce与attempt身份回传renderReady。通过校验才提交view revision并提升active/last-good，才称“已展示”。超时/错误保留旧可用界面和工作副本；prepared重启保留，旧mounting重启interrupted，取消或新attempt取代也覆盖prepared。当前15的原failed_mount保留；使用16时需明确新attempt、重新实际build/preview，不能复活原失败publication。
+
+明确保存仍单独执行。存在authoring draft时，共享presentation save门禁也拒绝prepared/mounting、未确认构建或不匹配已展示源码，不能改用通用save绕过；无authoring draft的旧static/legacy保存兼容保留。后端30/30与保存门禁38/38仅为本地实际命令/HTTP及隔离Chrome范围，首次typecheck失败与后续通过各自保留；801项包检查不代签Native展示、TST-045或四门禁。16包/局部证据hash见[执行记录](apps-a2-execution.md)。
+
+## 此前candidate.15已安装包的历史流程：候选确认和明确保存
 
 record_preview PASS 后调用 `apps.authoring.publish`，带同一 attemptId/epoch、viewId、expectedViewRevision、buildId、buildReceiptId、previewReceiptId。publish 返回 mounting，不等于已经显示成功。
 
@@ -118,7 +148,9 @@ record_preview PASS 后调用 `apps.authoring.publish`，带同一 attemptId/epo
 
 实际 frame 完成授权、features 协商、数据读取、UI 状态恢复和 React commit 后，才以准确 frame/document nonce/attempt 身份回传 renderReady。Host/Runtime 校验通过才提升 active/last-good 并产生 committedViewRevision；onLoad 不能替代就绪。运行错、超时、取消或过期候选保留旧可用界面；无旧构建则显示真实空态。通过 `apps.authoring.inspect` 只读查询原 attempt/publication；不猜新的请求身份重试覆盖。
 
-### candidate.10：原会话候选发现与唯一文档
+### 历史candidate.10–15：原会话候选发现与唯一文档
+
+下述自动发现/驱动展示记录保留10–15实现范围；16改为通知和用户点击，操作流程以上一节及ADR-009为准。此历史段不是16的自动展开承诺。
 
 该实现修复candidate.9真实创作已完成构建/预览却未出现正式候选frame的断点，不另建聊天或Agent循环。客户端root常驻 [NativePublicationObserver](../packages/plugin-apps/client/native-publication.tsx)，只订阅官方 `sidebarRight.mounted` 的实际会话；每次只执行一个所属views读取，完成后约1秒再读。读取新的pendingPublicationId时，使用固定publicationId GET检查session/view/publication身份、mounting状态和未过期deadline；切会话/卸载会中止读取，A的晚回执不能打开B的右栏。发现过程不publish、不自动创建新attempt或执行业务写。
 

@@ -138,6 +138,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       if(req.method==='POST'&&authoringAction){
         const input=await body(req);strict(input,['sessionId','params'],['sessionId','params']);const sessionId=String(input.sessionId),params=input.params as Record<string,unknown>,authoring=presentation.authoring;if(!authoring)throw new Error('AUTHORING_UNAVAILABLE');
         switch(authoringAction[1]){
+          case 'startMount':strict(params,['viewId','publicationId','attemptId','attemptEpoch','buildId','expectedViewRevision'],['viewId','publicationId','attemptId','attemptEpoch','buildId','expectedViewRevision']);return send(res,200,authoring.startMount(sessionId,params as never));
           case 'markBuilding':strict(params,['attemptId','epoch'],['attemptId','epoch']);return send(res,200,authoring.markBuilding(sessionId,params as never));
           case 'authorizeFrame':{
             strict(params,['publicationId','attemptId','attemptEpoch','viewId','buildId','frameInstanceId','documentNonce','clientFeatures'],['publicationId','attemptId','attemptEpoch','viewId','buildId','frameInstanceId','documentNonce']);
@@ -233,7 +234,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
         if(publicationId){
           const publication=runtime.store.get<import('../../app-presentation/src/authoring-types.ts').ViewPublication>('view_publications',publicationId);
           if(!publication||publication.ownerSessionId!==sessionId||publication.viewId!==viewId||buildId&&publication.candidateBuildId!==buildId)throw Object.assign(new Error('Publication target does not belong to this message and session.'),{code:'PUBLICATION_TARGET_MISMATCH'});
-          if(publication.state==='mounting'&&current.pendingPublicationId===publication.publicationId&&current.viewRevision===publication.expectedViewRevision&&(!revision||revision===publication.expectedViewRevision))return send(res,200,{...current,source:publication.source,publication});
+          if((publication.state==='prepared'||publication.state==='mounting')&&current.pendingPublicationId===publication.publicationId&&current.viewRevision===publication.expectedViewRevision&&(!revision||revision===publication.expectedViewRevision))return send(res,200,{...current,...(publication.state==='mounting'?{source:publication.source}:{}),publication});
           if(publication.state==='mounted'&&publication.committedViewRevision&&(!revision||revision===publication.committedViewRevision)){
             const snapshot=runtime.store.list<{namespace:string;value:AppsView}>('provider_records').find(row=>row.namespace==='view_revisions'&&row.value.ownerSessionId===sessionId&&row.value.viewId===viewId&&row.value.viewRevision===publication.committedViewRevision&&row.value.source?.buildId===publication.candidateBuildId)?.value;
             if(snapshot)return send(res,200,{...snapshot,publication});
