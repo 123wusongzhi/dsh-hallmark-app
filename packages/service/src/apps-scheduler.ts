@@ -11,7 +11,7 @@ export interface AppsSchedule extends AppsScheduleInput {
   executionState?:'running'|'settled';lastWorkerId?:string;
 }
 interface PlanRecord {appId:'apps';connectionId:'presentation';namespace:'apps_schedules';recordId:string;value:AppsSchedule}
-export interface AppsSchedulerOptions {store:PresentationStore;refresh:(binding:DatasetBinding,source:InvocationSource)=>Promise<DatasetSnapshot>;describe:(capabilityId:string)=>CapabilityDescriptor|undefined;isConnectionEnabled:(appId:string,connectionId:string)=>boolean;now?:()=>Date;report?:(error:unknown)=>void;intervalMs?:number}
+export interface AppsSchedulerOptions {store:PresentationStore;refresh:(binding:DatasetBinding,source:InvocationSource)=>Promise<DatasetSnapshot>;describe:(capabilityId:string)=>CapabilityDescriptor|undefined;isConnectionEnabled:(appId:string,connectionId:string)=>boolean;admit?:()=>void;now?:()=>Date;report?:(error:unknown)=>void;intervalMs?:number}
 const id=(scheduleId:string)=>canonicalJson(['apps','presentation','apps_schedules',scheduleId]);
 const error=(code:string):never=>{throw new Error(code);};
 const nonempty=(value:unknown):value is string=>typeof value==='string'&&!!value.trim();
@@ -73,6 +73,7 @@ export class AppsSnapshotScheduler {
   async tick(now=this.options.now?.()??new Date()):Promise<void>{if(!this.worker.online)error('SCHEDULER_UNAVAILABLE');await this.worker.tick(now);}
   private async run(now:Date):Promise<void> {
     if(!Number.isFinite(now.getTime()))error('INVALID_SCHEDULE_CLOCK');
+    try{this.options.admit?.();}catch{return;}
     const groups=new Map<string,AppsSchedule[]>();
     for(const plan of this.list())if(plan.enabled&&plan.nextRunAt&&(Date.parse(plan.nextRunAt)<=now.getTime()||plan.executionState==='running'&&plan.lastWorkerId!==this.workerId)){
       const dataset=datasetId(plan.binding),plans=groups.get(dataset)??[];plans.push(plan);groups.set(dataset,plans);

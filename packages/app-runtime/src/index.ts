@@ -50,7 +50,7 @@ class ConnectionQueue {
 
 export class AppsRuntime {
   readonly store: RuntimeStore;
-  readonly runtimeVersion = '1.0.0-candidate.12';
+  readonly runtimeVersion = '1.0.0-candidate.15';
   readonly transportMajor = 1;
   readonly catalogSchemaVersion = 1;
   #providers = new Map<string, RegisteredProvider>();
@@ -63,7 +63,9 @@ export class AppsRuntime {
   #connections = new Map<string,ConnectionLifecycle>();
   #connectionHooks = new Map<string,ConnectionLifecycleHooks>();
   #log: (event: Record<string, unknown>) => void;
-  constructor(store: RuntimeStore, options: {log?: (event: Record<string, unknown>) => void} = {}) {this.store=store;this.#log=options.log??(()=>{});}
+  #admit:()=>void;
+  constructor(store: RuntimeStore, options: {log?: (event: Record<string, unknown>) => void;admit?:()=>void} = {}) {this.store=store;this.#log=options.log??(()=>{});this.#admit=options.admit??(()=>{});}
+  assertAdmission():void {this.#admit();}
   get catalogDigest(): string { return this.#catalogDigest??=digest([...this.#capabilities.values()].map(row=>({appId:row.appId,descriptor:row.descriptor})).sort((a,b)=>a.descriptor.capabilityId.localeCompare(b.descriptor.capabilityId))); }
   identity() { return {runtimeVersion:this.runtimeVersion,transportMajor:1,catalogSchemaVersion:1,databaseSchemaVersion:DATABASE_SCHEMA_VERSION,catalogDigest:this.catalogDigest}; }
   handshake(actual: {transportMajor: number; catalogSchemaVersion: number}) {
@@ -166,6 +168,7 @@ export class AppsRuntime {
   async invoke(request: InvocationRequest, signal?: AbortSignal): Promise<CapabilityResult> {
     const errors=validateInvocation(request);
     if(errors.length)return failure({invocationId:request?.invocationId??'invalid',traceId:request?.traceId??'invalid'},request?.protocolVersion!=='1.0'?'INCOMPATIBLE_PROTOCOL':'INVALID_INPUT',errors.join('; '));
+    try{this.assertAdmission();}catch(error){return failure(request,(error as {code?:string}).code??'RUNTIME_ADMISSION_BLOCKED',error instanceof Error?error.message:String(error),'unavailable','never');}
     const attemptHash=digest(request);
     const current=this.#inflight.get(request.invocationId);
     if(current){const existing=this.store.get<InvocationRecord>('invocations',request.invocationId);return existing?.requestHash===attemptHash?current:failure(request,'INVOCATION_CONFLICT','Invocation ID already identifies another request.');}
@@ -228,6 +231,7 @@ export class AppsRuntime {
     try {
       release=await queue.acquire(mutation||entry.descriptor.execution.concurrency==='exclusive',controller.signal);
       if(controller.signal.aborted)throw new Error('ABORTED');
+      this.assertAdmission();
       if(this.getConnection(request.appId,request.connectionId)?.configRevision!==connection.configRevision)throw new Error('CONNECTION_REVISION_CHANGED');
       releaseConnection=this.lifecycle(request.appId,request.connectionId).enter();
       if(mutation){

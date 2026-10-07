@@ -7,8 +7,14 @@ param(
 # The official plugin manager replaces the same plugin. This script never stops Desktop or migrates app.db.
 $ErrorActionPreference = 'Stop'
 $projectDirectory = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
-if (-not $PackageManifestPath) { $PackageManifestPath = Join-Path $projectDirectory 'evidence/apps-a2-20261007/candidates/1.0.0-candidate.12/package-manifest.json' }
+if (-not $PackageManifestPath) {
+  $sourceBundleVersion = (Get-Content -LiteralPath (Join-Path $projectDirectory 'bundles/apps/package.json') -Raw | ConvertFrom-Json).version
+  if ($sourceBundleVersion -notmatch '^1\.0\.0-candidate\.[0-9]+$') { throw 'Invalid source bundle version.' }
+  $PackageManifestPath = Join-Path $projectDirectory ('evidence/apps-a2-20261007/candidates/' + $sourceBundleVersion + '/package-manifest.json')
+}
 $release = Get-Content -LiteralPath $PackageManifestPath -Raw | ConvertFrom-Json
+$candidateVersion = $release.package.version
+if ($candidateVersion -notmatch '^1\.0\.0-candidate\.[0-9]+$') { throw 'Invalid candidate version.' }
 $buildPath = Join-Path (Split-Path -Parent $PackageManifestPath) 'build-manifest.json'
 $build = Get-Content -LiteralPath $buildPath -Raw | ConvertFrom-Json
 $archive = [IO.Path]::GetFullPath((Join-Path $projectDirectory $release.archive))
@@ -18,12 +24,42 @@ $profile = if ($ProfileDirectory) { [IO.Path]::GetFullPath($ProfileDirectory) } 
 if (-not $profile.Equals($officialProfile, [StringComparison]::OrdinalIgnoreCase)) { throw 'Profile backup target must match the official CLI desktop profile.' }
 $cli = Join-Path $DesktopDirectory 'resources/runtime/cli/bin/dsh.cmd'
 $packageName = 'dsh-plugin-apps-bundle'
-if ($release.package.name -ne $packageName -or $release.package.version -ne '1.0.0-candidate.12' -or $build.versions.bundleVersion -ne '1.0.0-candidate.12' -or $build.versions.hostPluginVersion -ne '1.0.0-candidate.12' -or $build.versions.runtimeVersion -ne '1.0.0-candidate.12' -or $build.versions.databaseSchemaVersion -ne 4) { throw 'Candidate identity mismatch.' }
+if ($release.package.name -ne $packageName -or $build.bundleVersion -ne $candidateVersion -or $build.versions.bundleVersion -ne $candidateVersion -or $build.versions.hostPluginVersion -ne $candidateVersion -or $build.versions.runtimeVersion -ne $candidateVersion -or $build.versions.databaseSchemaVersion -ne 4) { throw 'Candidate identity mismatch.' }
 if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $release.sha256) { throw 'Candidate archive hash mismatch.' }
 $archiveEntries = @(& tar -tf $archive)
 if ($LASTEXITCODE -ne 0 -or @($archiveEntries | Where-Object { -not $_.StartsWith('package/') -or $_.Contains('\') -or $_.Split('/').Contains('..') }).Count -gt 0) { throw 'Unsafe candidate archive.' }
 $packedManifest = (& tar -xOf $archive 'package/package.json' | Out-String) | ConvertFrom-Json
-if ($LASTEXITCODE -ne 0 -or $packedManifest.name -ne $packageName -or $packedManifest.version -ne '1.0.0-candidate.12') { throw 'Packed manifest identity mismatch.' }
+if ($LASTEXITCODE -ne 0 -or $packedManifest.name -ne $packageName -or $packedManifest.version -ne $candidateVersion) { throw 'Packed manifest identity mismatch.' }
+$packedVersions = (& tar -xOf $archive 'package/versions.json' | Out-String) | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0 -or $packedVersions.bundleVersion -ne $candidateVersion -or $packedVersions.hostPluginVersion -ne $candidateVersion -or $packedVersions.runtimeVersion -ne $candidateVersion -or $packedVersions.databaseSchemaVersion -ne 4) { throw 'Packed versions identity mismatch.' }
+# Read binary tar output directly; a PowerShell text pipeline would alter JavaScript/map bytes.
+function Get-PackedArtifactSha256([string]$RelativePath) {
+  $start = New-Object Diagnostics.ProcessStartInfo
+  $start.FileName = 'tar.exe'
+  $start.Arguments = '-xOf "' + $archive + '" "package/' + $RelativePath + '"'
+  $start.UseShellExecute = $false
+  $start.CreateNoWindow = $true
+  $start.RedirectStandardOutput = $true
+  $start.RedirectStandardError = $true
+  $process = New-Object Diagnostics.Process
+  $process.StartInfo = $start
+  $buffer = New-Object IO.MemoryStream
+  $digest = [Security.Cryptography.SHA256]::Create()
+  try {
+    if (-not $process.Start()) { throw 'Cannot start packed artifact validation.' }
+    $errorRead = $process.StandardError.ReadToEndAsync()
+    $process.StandardOutput.BaseStream.CopyTo($buffer)
+    $process.WaitForExit()
+    if ($process.ExitCode -ne 0) { throw ('Cannot read packed artifact: ' + $RelativePath + ': ' + $errorRead.Result) }
+    return [BitConverter]::ToString($digest.ComputeHash($buffer.ToArray())).Replace('-', '').ToLowerInvariant()
+  } finally { $digest.Dispose(); $buffer.Dispose(); $process.Dispose() }
+}
+$artifactProperties = @($build.artifacts.PSObject.Properties)
+if ($artifactProperties.Count -eq 0 -or $archiveEntries.Count -ne $artifactProperties.Count) { throw 'Packed artifact inventory mismatch.' }
+foreach ($artifact in $artifactProperties) {
+  if ($artifact.Name -notmatch '^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$' -or $artifact.Name.Split('/').Contains('..') -or $artifact.Value -notmatch '^[0-9a-f]{64}$' -or @($archiveEntries | Where-Object { $_ -ceq ('package/' + $artifact.Name) }).Count -ne 1) { throw 'Invalid packed artifact inventory.' }
+  if ((Get-PackedArtifactSha256 $artifact.Name) -cne $artifact.Value) { throw ('Packed artifact hash mismatch: ' + $artifact.Name) }
+}
 $profileManifest = Get-Content -LiteralPath (Join-Path $profile 'package.json') -Raw | ConvertFrom-Json
 if ($profileManifest.name -ne 'dsh-profile-desktop') { throw 'Unexpected Desktop profile identity.' }
 $oldDependency = $profileManifest.dependencies.$packageName
@@ -88,10 +124,10 @@ $rollbackScript | Set-Content -LiteralPath (Join-Path $resolvedBackup 'rollback.
 & $cli plugin --profile desktop add ('file:' + $archive.Replace('\','/')) '--registry=https://registry.npmjs.org' '--ignore-scripts' 2>&1 | Tee-Object -FilePath (Join-Path $resolvedBackup 'install.log')
 if ($LASTEXITCODE -ne 0) { throw ('Official update failed. Preserve output and use rollback: ' + (Join-Path $resolvedBackup 'rollback.ps1')) }
 $installedManifest = Get-Content -LiteralPath (Join-Path $installedDirectory 'package.json') -Raw | ConvertFrom-Json
-if ($installedManifest.version -ne '1.0.0-candidate.12') { throw 'Disk package version mismatch after manager update.' }
-foreach ($artifact in @('lib/index.js', 'client/client.js', 'lib/runtime.js', 'lib/apps-authoring-build.js', 'lib/apps-authoring-preview.js')) {
-  if ((Get-FileHash -LiteralPath (Join-Path $installedDirectory $artifact) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $build.artifacts.$artifact) { throw ('Installed artifact hash mismatch: ' + $artifact) }
+if ($installedManifest.version -ne $candidateVersion) { throw 'Disk package version mismatch after manager update.' }
+foreach ($artifact in $artifactProperties) {
+  if ((Get-FileHash -LiteralPath (Join-Path $installedDirectory $artifact.Name) -Algorithm SHA256).Hash.ToLowerInvariant() -cne $artifact.Value) { throw ('Installed artifact hash mismatch: ' + $artifact.Name) }
 }
 $record.installed = $true
 $record | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $resolvedBackup 'backup.json') -Encoding utf8
-Write-Output ('Updated the original desktop plugin. Reopen and verify Host12/Runtime12/schema4; rollback: ' + (Join-Path $resolvedBackup 'rollback.ps1'))
+Write-Output ('Updated the original desktop plugin to ' + $candidateVersion + '. Reopen and verify matching Host/Runtime/schema4; rollback: ' + (Join-Path $resolvedBackup 'rollback.ps1'))

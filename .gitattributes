@@ -1,2 +1,4 @@
 # Preserve the audit input package byte-for-byte across Windows checkouts.
 docs/requirements/A2/** -text
+# Keep the frozen acceptance harness identical to the bytes executed by I/V.
+test/acceptance/state-owner-boundaries-a2.mjs -text

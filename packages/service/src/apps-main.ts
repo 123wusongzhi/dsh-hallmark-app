@@ -16,14 +16,16 @@ import {AppsSnapshotScheduler} from './apps-scheduler.ts';
 import {AuthoringEvidenceRunner} from '../../source-components/src/authoring-evidence.ts';
 import {EvidencePathResolver} from '../../source-components/src/evidence-relocation.ts';
 import {canonicalJson} from '../../app-contracts/src/index.ts';
+import {cutoverAdmission} from './cutover-admission.ts';
 import type { AppProvider, ExecutionContext, ResourceRef, DatasetBinding, CapabilityResult } from '../../app-contracts/src/index.ts';
 
 export interface AppsConfiguration { connections:AppConnection[]; legacyHallmarkConnectionId?:string; }
 export function composeAppsRuntime(directory:string,configuration:AppsConfiguration) {
+  const admit=cutoverAdmission(directory);admit();
   const lease=new RuntimeWriterLease(directory);let store:RuntimeStore;
   try{store=new RuntimeStore(join(directory,'apps.db'));}catch(error){lease.release();throw error;}
   const signals=new AsyncLocalStorage<AbortSignal>(),clients=new Map<string,HallmarkClient>(),ports=new Map<string,HallmarkStorePort>(),brokers=new Map<string,TaskBroker>();
-  const runtime=new AppsRuntime(store,{log(event){mkdirSync(join(directory,'logs'),{recursive:true});appendFileSync(join(directory,'logs',`${new Date().toISOString().slice(0,10)}.jsonl`),JSON.stringify(event)+'\n');}});
+  const runtime=new AppsRuntime(store,{admit,log(event){mkdirSync(join(directory,'logs'),{recursive:true});appendFileSync(join(directory,'logs',`${new Date().toISOString().slice(0,10)}.jsonl`),JSON.stringify(event)+'\n');}});
   const generation=(id:string,revision?:number)=>{const active=runtime.getConnection('hallmark',id);if(!active||revision!==undefined&&revision!==active.configRevision)throw new Error('CONFIG_REVISION_CONFLICT');return active.configRevision;};
   const cacheKey=(id:string,revision:number)=>canonicalJson([id,revision]);
   const clientFor=(connectionId:string,revision?:number)=>{
@@ -46,7 +48,7 @@ export function composeAppsRuntime(directory:string,configuration:AppsConfigurat
     const resolvers:Record<string,(binding:DatasetBinding,result:CapabilityResult)=>ResourceRef[]>={hallmark:resolveHallmarkResources,notes:resolveNotesResources};
     return resolvers[binding.appId]?.(binding,result)??[];
   }});
-  scheduler=new AppsSnapshotScheduler({store,refresh:(binding,source)=>presentation.refreshBinding(binding,source),describe:id=>runtime.describe(id),isConnectionEnabled:(appId,id)=>runtime.getConnection(appId,id)?.enabled===true});
+  scheduler=new AppsSnapshotScheduler({store,admit,refresh:(binding,source)=>presentation.refreshBinding(binding,source),describe:id=>runtime.describe(id),isConnectionEnabled:(appId,id)=>runtime.getConnection(appId,id)?.enabled===true});
   const paths=new EvidencePathResolver({root:directory,store}),resolveEvidencePath=(path:string)=>paths.resolve(path);
   const evidenceRunner=new AuthoringEvidenceRunner(join(directory,'authoring-evidence'),{resolvePath:resolveEvidencePath});
   const authoring=presentation.configureAuthoring({evidenceRoot:evidenceRunner.root,resolveEvidencePath,onCancel:(attemptId,epoch)=>evidenceRunner.cancel(attemptId,epoch),validateBuildEvidence:(ref,context)=>evidenceRunner.verifyBuild(ref,context.sources,{allowFailure:true}),validatePreviewEvidence:(ref,context)=>evidenceRunner.verifyPreview(ref,context.sources)});

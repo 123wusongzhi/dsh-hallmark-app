@@ -1,20 +1,16 @@
 # Apps 数据升级、备份、回退与清理
 
-A.2 Runtime使用schema4；当前candidate.12已于11:37:55 UTC通过官方管理器覆盖原同名插件；冷备恢复、33项安装产物/143冻结输入与9774核心文件字节不变已核对。首次启动超时并出现EACCES19387，原日志保留；11:44:02 UTC仅重试桌面后启动，11:45:55 UTC核实Runtime12/schema4、四只读HTTP200及Hallmark健康。Host插件内存身份、原生GUI/@/组件挂载仍NOT_RUN，原22张正式PASS仍绑定10/11；新增12五卡另列，不自动迁移。 前轮candidate.10曾通过官方插件管理器覆盖原同名插件并正常重开桌面，五安装hash/143冻结源输入及实际Runtime7/健康/唯一writer核对通过。candidate.7的schema3→4、116资产/原集合保留、284文件/25集合备份、404映射新根恢复，以及更新9前294文件备份均保留原范围；本轮最终严格备份另为1754文件/25集合apply/verify通过。**低层步骤与全部数据切换验收分开记录。** 本轮该备份已恢复新根并完成2773映射、归档/签名/PNG/草稿引用核验及普通npm ci/安装CLI重建（SOURCE_EXEC），未再次切换桌面dataDirectory；GUI/原生内存/新创作、完整历史/草稿对账、附件/条件回退/上品仍待验，见 [A.2执行记录](apps-a2-execution.md)。
-
-08:41:55 UTC桌面完全退出后核实任务所属旧Runtime38844，使用Windows Stop-Process停止，非graceful SIGTERM；完成最终备份后08:52:03 UTC安装10、08:52:34 UTC正常重开。当时新Runtime62564是36994唯一listener，旧38844已退；profile/dataDirectory未再切换。该旧10阶段Runtime JS为 `2264139fc4404a11dbe9fdde00a374b541d1bda1544ef784483bfb6547cc9844`，协议/schema和冻结包未变更；706项包检查不代签之后独立维护工具修复或原生GUI。
-
-5份验收/审查文件和7份说明已推送a635ec4，前轮16文件已推送0824a4a；之后三个API/SDK、Runtime写入边界和模型预算harness及候选12说明已实际推送13f80f2。054/059/060完整FIXTURE已独立V通过（当前共27PASS/0FAIL/53NOT_RUN，新12五卡021/022/024/025/026、新11十二卡（核心四卡、013–015、017–020与023）和旧10其他十卡分别绑定）；candidate.11（Bundle/Host/Runtime11、schema4）归档已冻结，最终包检查727/727、类型/实际SDK/CLI/只读smoke及包内诊断通过，包独立V有限复核通过、003/004/011/012新11完整FIXTURE已独立V通过且未部署，003/004/012旧10 FIXTURE已V通过、011旧10 FAIL保留，旧10证据不可自动提升为后续候选；054的V只读SQL检视生成隔离SHM/空WAL的偏差已保留并更正，主DB和307原I文件字节不变，未触及现场或本页1754文件恢复核验结论。
-
-本页先列当前 schema3→4 和 schema4 全量备份命令，后面保留旧 schema2→3 的 V1 历史。不要把旧目标 schema3 命令直接当成 A.2 Runtime 可运行数据。
-
-本轮新增TST-021/022/024/025/026五卡完整最低FIXTURE/actual-command独立V通过，当前27 PASS/0 FAIL/53 NOT_RUN：12五卡、11十二卡、10十卡各保留执行身份。TST-024 I64/64、V125/125及独立回放64/64/exit0已通过；016、Native/@/组件挂载和R未签认。新增script-run、error-contracts、source-view-save三个公开harness不属于143打包输入或既有774项CI glob，candidate.12归档/产物未改，本轮不重打包或重装，也未新跑全仓CI。上一轮候选12源码/部署/说明与API/SDK、Runtime写入边界、模型预算harness已实际推送main `13f80f2cb351e979fc410c2b833e37860ceaf32e`；本轮三harness与7份说明增量的提交/推送以Git历史和最终交付为准。
+正式验收为**33 PASS/0 FAIL/47 NOT_RUN**：034/035/036/039绑定12，037/038的完整最低FIXTURE/actual-command绑定14，旧12被阻断的历史保留。candidate.15已官方12→15覆盖安装，包778/778与144输入/33产物冻结；独立安装33/源144/核心9774两遍零差异，实际Runtime15/schema4/四GET/健康与原会话前缀核实，启动包装exit1保留。下文持久准入/回退守卫来自14已冻结源码，15仅版本元数据和安装器5项源输入变化；不把14正式卡迁到15，也不代签真实切库、Native、R或四门禁。
 
 ## A.2：离线检查与工具身份
 
-后续12已补profit公共Provider→UI provenance/行展开（2新增/33相关/type通过）与传输/Bridge局部源码回归；同view重开Pane缓存路径已定位、最小修复6项React局部回归/29项相关/type通过，已纳入12冻结包774/774并官方同名安装，桌面retry和四GET/Runtime12检查完成。原22张正式PASS仍绑定10/11；新增12五卡另列，不自动迁移。原Bill会话8轮failed_mount历史保留，源码诊断不证明现场因果。已受控停止桌面/Runtime，首记录脚本裸布尔字面量exit1原样保留；新增恢复不重停/不覆盖旧备份，三冷备2202 Runtime+396桌面Roaming+1原会话共2599文件核对通过，totalBytes原null不改。首次start超时及EACCES保留，exact桌面retry后恢复；原会话1269→1270仅end-seed且旧JSON前缀一致。不记作正式正常退出或数据切库验收，profile/dataDirectory未迁移；用户已授权退出/重启无需重复许可，Native/@/组件挂载仍待用户。
+当前[install-desktop-apps.ps1](../scripts/install-desktop-apps.ps1)从明确传入的 `-PackageManifestPath` 读取candidate身份；省略时只使用源码Bundle版本对应的manifest。替换前核对schema4、Bundle/Host/Runtime相同版本、归档SHA、packed身份及全部33项tar成员的二进制SHA，拒绝错版本/多余成员/修改字节；安装后再次核对磁盘33项产物。`-ValidateOnly`仅检查，不停止桌面或安装；实际替换仍由官方desktop profile插件管理器执行并保留原包/配置回退备份。此次已官方12→15覆盖；该脚本不停止Runtime、不迁移app.db、不代签原生内存或现场切库。历史固定12/10安装器快照保留，详情见[执行记录](apps-a2-execution.md)。
 
-桌面安装入口按版本固定：当前公开 [install-desktop-apps.ps1](../scripts/install-desktop-apps.ps1) 已固定candidate.12/Runtime12（SHA cb44b9f74f0ea45ee23e284dba60905150bf40f87c0ea7afef227be242551320），纳入12冻结输入并已用于官方同名覆盖。candidate.11计划时的旧公开脚本固定10/Runtime7（原SHA453c6a…），当时不能仅传入11 manifest安装11，旧冻结输入保留。candidate.11使用固定11版本的私有官方CLI适配计划，保留原同名插件替换、桌面退出守卫、路径/备份/hash检查；10:25:22.955 UTC首计划与10:34:25.585 UTC最新计划均只通过ValidateOnly；最新私有计划校正显示版本标签及固定constants/root，原guard保留，旧1e9计划原样保留。`installed=false`、`desktopRunning=true`，没有停止桌面/Runtime或安装11。candidate.11原安装器快照及143冻结sourceInputs未改；当前12安装器是后续独立版本，不反写旧11证据；计划证据见 [执行记录](apps-a2-execution.md)。
+先核对明确manifest的官方安装计划；此命令不停止/安装桌面：
+
+```powershell
+.\scripts\install-desktop-apps.ps1 -PackageManifestPath "evidence/apps-a2-20261007/candidates/1.0.0-candidate.15/package-manifest.json" -ValidateOnly
+```
 
 命令从核实过源码/版本的本仓库根目录执行，Node须支持node:sqlite与原生TypeScript。安装包build/preview CLI使用Host guidance返回的Node方式；本页的 `migrate-apps-schema4.mjs`、`backup-apps.mjs` 是**仓库维护工具**。完整备份模块/CLI不在candidate.10的143打包sourceInputs或安装入口，须独立记源码/hash/日志，不能拼接不存在的已安装lib备份命令。
 
@@ -77,18 +73,35 @@ source、dist、package.json 和原锁文件仍保存。原锁/依赖路径适�
 
 ## A.2：唯一 writer、入口切换与条件回退
 
-离线迁移/恢复核对完成后，保存新库 rollback baseline，审阅原格式和新 schema4 的增量，再按 [A.2 验收范围](requirements/A2/docs/03_ACCEPTANCE.md)记录 CORE、AUTHORING、BUSINESS-WRITE、DATA-CUTOVER。maintenance CLI 识别既有 schema3/4 并只读检查；GC apply 前按真实格式取得 lease，不隐式迁移。
+离线迁移/恢复核对完成后，保存新库rollback baseline，审阅原格式/schema4增量，按[A.2验收范围](requirements/A2/docs/03_ACCEPTANCE.md)记录四范围。maintenance CLI的**数据库检查使用只读schema3/4连接**，不隐式迁移；这不等于所有命令无文件副作用。GC apply取得Runtime writer lease后按真实格式写库/删除获准资产；candidate.14的cutover/rollback还会持久修改目标目录的准入文件，必须先阅读下文。当前15包含该守卫；旧12没有持久准入控制，旧12运行结果不能代签新守卫或现场门禁。
 
 ```powershell
 node scripts/apps-maintenance.mjs --directory "E:/new-apps-schema4" --mode baseline --output "E:/operator/schema4-rollback-baseline.json"
 node scripts/apps-maintenance.mjs --directory "E:/new-apps-schema4" --mode gc --output "E:/operator/schema4-gc-plan.json"
 ```
 
+**新cutover与rollback会先冻结目标准入。** 工具取得独立cutover-control lease，创建/核对 `cutover-enrollment.json` 并以新临时文件/原子替换写入 `cutover-admission.json` 的 `allowed:false`，随后才读库检查/导出。enrollment保存目标曾参与准入控制的身份；删除decision文件不能令已enroll的目标冷启动放行。缺失、非法、不同目录/数据库/登记身份或拒绝决定会阻止启动，新普通HTTP入口返回503。不要删除这些控制文件、手写allowed:true或删除lease绕过冻结。
+
+以下命令只示范当前源码参数；directory、cutover时间和evidence须替换为已核实的实际值，output必须全新文件：
+
+```powershell
+node scripts/apps-maintenance.mjs --directory "E:/new-apps-schema4" --mode cutover --evidence "E:/operator/cutover-evidence.json" --output "E:/operator/cutover-decision-new.json"
+node scripts/apps-maintenance.mjs --directory "E:/new-apps-schema4" --mode rollback --baseline "E:/operator/schema4-rollback-baseline.json" --cutover-at "2026-10-07T00:00:00.000Z" --output "E:/operator/rollback-deltas-new.json"
+```
+
+cutover evidence严格包含 `oldWriterStopped`、`runtimeWriterCount`、G0..G4的 `gateStates`、`unresolvedOperationIds`、`migrationStatus`；所有值必须来自实际停写/排空/逐卡记录。检查还读取库中queued/dispatching/pending/unknown，不能仅从传入清单删掉未决项。拒绝为exit2并持久保持allowed:false；仅完整检查通过、报告成功写出后才记录允许决定。报告以wx写入，输出碰撞/命令异常不会取消已写冻结；保留失败材料并使用新output，不能把日志中某段allowed:true当最终准入已提交。
+
+rollback在导出前持久冻结新入口，输出分支A/B、未决原operation及操作/资产/绑定/authoring增量；评估后**仍保持冻结**，不自动恢复旧库或打开旧writer。运行中冻结只保留既有operation的 `GET /v1/operations/{id}`、`POST /v1/operations/{id}/inspect` 核实，不允许新业务、直接storage写、创作/配置/调度分发。GET是纯SQL读取；POST inspect可以追加recovery ledger、unknown inspectevents和恢复状态等内部SQLite记录，但只核实原operation，不能重发外部业务或自动补偿，绝不是“冻结后SQLite全零写”。尚未派发的请求在初始入口、完整body读取后、Provider派发和调度边界再次检查；已经在途的工作须按原身份核实并等待实际排空。
+
+CLI不会停止桌面/Runtime/旧业务服务，不证明旧进程已停、不代替drain、唯一writer/平台效果或现场验收。SQLite readOnly只限制SQL写入，WAL库读取可能生成SHM/空WAL侧文件，不承诺目录零新增，须记录并保留原事实。14源码已补decision缺失冷启动、stale lease并发回收单writer、半请求体跨rollback零新增direct storage写及wx碰撞保留冻结边界；窄独立review不是037/038正式I/V或R签认。原12的037报告未控制入口、038导出早于冻结的BLOCKED记录不可改写。
+
 确认目标 Runtime 可由准确安装包读取，配置指向新 dataDirectory/明确 serviceUrl，实际新 Runtime 单 writer；核对旧进程/监听关闭、来源/绑定/组件/history/操作和所有资产，再正常重开官方桌面并读取实际内存 identity。配置切换不是改价/库存/上品的业务验收，scope 分开记录。脚本不会自动代办服务停启或桌面配置修改。
 
 无增量且无未决操作时，依据已验证备份讨论旧格式恢复；有新增 succeeded/unknown、用户资产/保存版本/绑定或 authoring 状态增量时必须导出并停止盲目恢复旧库写入。先使用能读新格式的兼容代码核实数据；恢复旧插件不等于回退 schema，也不能撤销外部业务。维护 baseline/rollback 会比较新增 authoring 摘要和导出范围。
 
 GC 默认 dry-run；attempt/receipt/UI 状态、pending candidate、active/last-good/previous-good、保存历史和外部引用均参与保留。审阅最终绝对路径和同一 plan，停 writer 后才 apply；引用或状态变化、越界、符号链接、过期计划拒绝执行。关闭 view、删除库项与物理 purge 分开，保留仍活的历史/工作副本/源码。
+
+14的037/038完整最低FIXTURE/actual-command已由I/V各31/31和最终V20语义/12377检查复核；独立V另执行captured14 maintenance CLI wx碰撞8/8。freeze先于实际导出SQL的顺序为rename1→SQL2→output22。14正式卡仍绑定d892/144输入/33产物；15包/安装器及实际部署后验另有独立证据，不自动移植该卡。旧12的037入口未控制、038未先冻结的完整V BLOCKED历史保留；上述隔离通过不替代现场停写/drain或TST-079。
 
 ## A.2：离线验收证据资格审查
 
@@ -107,7 +120,23 @@ node scripts/verify-a2-release-evidence.mjs --manifest "E:/operator/offline-card
 | BUSINESS-WRITE | CORE+078，共52 | NOT_ACCEPTED |
 | DATA-CUTOVER | CORE+073/079，共53 | NOT_ACCEPTED |
 
-required只允许增加；原48历史CSV仍42项reported remainingReal NOT_RUN，两种获准逐字序列化CRLF `b5b0a728fe4e7d42ed15e7122432ab7e4c6395aaf9a2042adcc61de90382eb92` / LF `5885e2375bc5711a36d90a635647966b27b850ebfe8b7ff0e95a7a342575c779`按选定字节核对，不任意归一化重写历史；A.2派生基线摘要 `f05edf24340f5c9fd904f33ae99dc98f1a0fd31c1ad4d760c95003391e073ceb`。本轮003/004/011/012/013/014/015/017/018/019/020/021/022/023/024/025/026/054/055/056/057/059/060/073/075/076/077二十七卡完整最低scope独立V通过，011旧10基线FAIL原样保留，四张核心卡已在新11真实重跑并独立V通过，当前58卡仍NOT_RUN；维护267断言/独立12窄测试/typecheck和原706包检查分开。073 FIXTURE直接归档浏览器恢复不代签v2/native切库，075/076旧08:24源与trace的复验不发明原执行commit，077资格审查不代签R。详情/实际V身份见 [A.2执行记录](apps-a2-execution.md)。
+required只允许增加；原48历史CSV仍42项reported remainingReal NOT_RUN，两种获准逐字序列化CRLF `b5b0a728fe4e7d42ed15e7122432ab7e4c6395aaf9a2042adcc61de90382eb92` / LF `5885e2375bc5711a36d90a635647966b27b850ebfe8b7ff0e95a7a342575c779`按选定字节核对，不任意归一化重写历史；A.2派生基线摘要 `f05edf24340f5c9fd904f33ae99dc98f1a0fd31c1ad4d760c95003391e073ceb`。本轮003/004/011/012/013/014/015/017/018/019/020/021/022/023/024/025/026/054/055/056/057/059/060/073/075/076/077二十七卡完整最低scope独立V通过，011旧10基线FAIL原样保留，四张核心卡已在新11真实重跑并独立V通过，当前47卡仍NOT_RUN；维护267断言/独立12窄测试/typecheck和原706包检查分开。073 FIXTURE直接归档浏览器恢复不代签v2/native切库，075/076旧08:24源与trace的复验不发明原执行commit，077资格审查不代签R。详情/实际V身份见 [A.2执行记录](apps-a2-execution.md)。
+
+## A.2 历史验证范围
+
+A.2 Runtime使用schema4；前轮candidate.12已于11:37:55 UTC通过官方管理器覆盖原同名插件；冷备恢复、33项安装产物/143冻结输入与9774核心文件字节不变已核对。首次启动超时并出现EACCES19387，原日志保留；11:44:02 UTC仅重试桌面后启动，11:45:55 UTC核实Runtime12/schema4、四只读HTTP200及Hallmark健康。Host插件内存身份、原生GUI/@/组件挂载仍NOT_RUN，原22张正式PASS仍绑定10/11；新增12五卡另列，不自动迁移。 前轮candidate.10曾通过官方插件管理器覆盖原同名插件并正常重开桌面，五安装hash/143冻结源输入及实际Runtime7/健康/唯一writer核对通过。candidate.7的schema3→4、116资产/原集合保留、284文件/25集合备份、404映射新根恢复，以及更新9前294文件备份均保留原范围；本轮最终严格备份另为1754文件/25集合apply/verify通过。**低层步骤与全部数据切换验收分开记录。** 本轮该备份已恢复新根并完成2773映射、归档/签名/PNG/草稿引用核验及普通npm ci/安装CLI重建（SOURCE_EXEC），未再次切换桌面dataDirectory；GUI/原生内存/新创作、完整历史/草稿对账、附件/条件回退/上品仍待验，见 [A.2执行记录](apps-a2-execution.md)。
+
+08:41:55 UTC桌面完全退出后核实任务所属旧Runtime38844，使用Windows Stop-Process停止，非graceful SIGTERM；完成最终备份后08:52:03 UTC安装10、08:52:34 UTC正常重开。当时新Runtime62564是36994唯一listener，旧38844已退；profile/dataDirectory未再切换。该旧10阶段Runtime JS为 `2264139fc4404a11dbe9fdde00a374b541d1bda1544ef784483bfb6547cc9844`，协议/schema和冻结包未变更；706项包检查不代签之后独立维护工具修复或原生GUI。
+
+5份验收/审查文件和7份说明已推送a635ec4，前轮16文件已推送0824a4a；之后三个API/SDK、Runtime写入边界和模型预算harness及候选12说明已实际推送13f80f2。054/059/060完整FIXTURE已独立V通过（该阶段共27PASS/0FAIL/53NOT_RUN，新12五卡021/022/024/025/026、新11十二卡（核心四卡、013–015、017–020与023）和旧10其他十卡分别绑定）；candidate.11（Bundle/Host/Runtime11、schema4）归档已冻结，最终包检查727/727、类型/实际SDK/CLI/只读smoke及包内诊断通过，包独立V有限复核通过、003/004/011/012新11完整FIXTURE已独立V通过且未部署，003/004/012旧10 FIXTURE已V通过、011旧10 FAIL保留，旧10证据不可自动提升为后续候选；054的V只读SQL检视生成隔离SHM/空WAL的偏差已保留并更正，主DB和307原I文件字节不变，未触及现场或本页1754文件恢复核验结论。
+
+本页先列当前 schema3→4 和 schema4 全量备份命令，后面保留旧 schema2→3 的 V1 历史。不要把旧目标 schema3 命令直接当成 A.2 Runtime 可运行数据。
+
+前轮五卡增量：TST-021/022/024/025/026完整最低FIXTURE/actual-command独立V通过，该阶段27 PASS/0 FAIL/53 NOT_RUN：12五卡、11十二卡、10十卡各保留执行身份。TST-024 I64/64、V125/125及独立回放64/64/exit0已通过；016、Native/@/组件挂载和R未签认。新增script-run、error-contracts、source-view-save三个公开harness不属于143打包输入或既有774项CI glob，candidate.12归档/产物未改，该五卡批次未重打包、重装或重跑全仓CI；后续14新包778项另列。上一轮候选12源码/部署/说明与API/SDK、Runtime写入边界、模型预算harness已实际推送main `13f80f2cb351e979fc410c2b833e37860ceaf32e`；本轮三harness与7份说明增量的提交/推送以Git历史和最终交付为准。
+
+后续12已补profit公共Provider→UI provenance/行展开（2新增/33相关/type通过）与传输/Bridge局部源码回归；同view重开Pane缓存路径已定位、最小修复6项React局部回归/29项相关/type通过，已纳入12冻结包774/774并官方同名安装，桌面retry和四GET/Runtime12检查完成。原22张正式PASS仍绑定10/11；新增12五卡另列，不自动迁移。原Bill会话8轮failed_mount历史保留，源码诊断不证明现场因果。已受控停止桌面/Runtime，首记录脚本裸布尔字面量exit1原样保留；新增恢复不重停/不覆盖旧备份，三冷备2202 Runtime+396桌面Roaming+1原会话共2599文件核对通过，totalBytes原null不改。首次start超时及EACCES保留，exact桌面retry后恢复；原会话1269→1270仅end-seed且旧JSON前缀一致。不记作正式正常退出或数据切库验收，profile/dataDirectory未迁移；用户已授权退出/重启无需重复许可，Native/@/组件挂载仍待用户。
+
+历史桌面安装入口按版本固定：当时公开 [install-desktop-apps.ps1](../scripts/install-desktop-apps.ps1) 已固定candidate.12/Runtime12（SHA cb44b9f74f0ea45ee23e284dba60905150bf40f87c0ea7afef227be242551320），纳入12冻结输入并已用于官方同名覆盖。candidate.11计划时的旧公开脚本固定10/Runtime7（原SHA453c6a…），当时不能仅传入11 manifest安装11，旧冻结输入保留。candidate.11使用固定11版本的私有官方CLI适配计划，保留原同名插件替换、桌面退出守卫、路径/备份/hash检查；10:25:22.955 UTC首计划与10:34:25.585 UTC最新计划均只通过ValidateOnly；最新私有计划校正显示版本标签及固定constants/root，原guard保留，旧1e9计划原样保留。`installed=false`、`desktopRunning=true`，没有停止桌面/Runtime或安装11。candidate.11原安装器快照及143冻结sourceInputs未改；当时12安装器是后续独立版本，不反写旧11证据；计划证据见 [执行记录](apps-a2-execution.md)。
 
 ## 历史 V1：schema2→3 迁移与夹具记录
 

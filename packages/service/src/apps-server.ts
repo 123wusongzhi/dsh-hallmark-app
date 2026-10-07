@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { body, send, sameToken, loopback } from './http.ts';
+import { body as readBody, send, sameToken, loopback } from './http.ts';
 import { TOOL_DEFINITIONS, validate } from '../../contracts/src/index.ts';
 import type { ToolResult } from '../../contracts/src/index.ts';
 import type { BridgeIdentity, CapabilityResult, InvocationRequest, InvocationSource, JsonValue, SessionAppBinding } from '../../app-contracts/src/index.ts';
@@ -26,6 +26,7 @@ function legacyResult(result:CapabilityResult):ToolResult {
 }
 export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsPresentationService;token:string;port?:number;allowedOrigins?:string[];health?:()=>Promise<unknown>;scheduler?:AppsSnapshotScheduler}) {
   const {runtime,presentation}=options;if(options.token.length<32)throw new Error('SERVICE_KEY_TOO_SHORT');
+  const body=async(req:Parameters<typeof readBody>[0])=>{const input=await readBody(req);runtime.assertAdmission();return input;};
   const nativeBindings=new NativeAppBindings(runtime);
   const frameKey=(value:{sessionId:string;viewId:string;frameInstanceId:string})=>canonicalJson(['apps','presentation','frame_grants',value.sessionId,value.viewId,value.frameInstanceId]);
   type Grant={identity:BridgeIdentity;documentNonce:string;features:string[];candidate?:CandidateFrameIdentity;retired?:boolean};
@@ -112,6 +113,9 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       if(!sameToken(options.token,(req.headers.authorization??'').replace(/^Bearer /,'')))return send(res,401,{error:'UNAUTHORIZED'});
       if(req.url?.match(/%2f|\.\./i))return send(res,400,{error:'INVALID_PATH'});
       const url=new URL(req.url??'/',`http://127.0.0.1:${port}`),path=url.pathname;
+      // Freeze ordinary entry points while retaining inspection of an existing operation.
+      const operationInspection=path.match(/^\/v1\/operations\/[^/]+(\/inspect)?$/);
+      if(!(operationInspection&&(req.method==='GET'&&!operationInspection[1]||req.method==='POST'&&operationInspection[1]==='/inspect')))runtime.assertAdmission();
       if(path.startsWith('/ui/')||/^\/sessions\/[^/]+\/views/.test(path)){
         const input=req.method==='POST'?await body(req):{};
         const result=await legacyPresentation.handle(path,req.method??'GET',input,url.searchParams.get('sessionId')??undefined);if(result!==undefined)return send(res,200,result);
@@ -217,7 +221,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
         try{const response=await host.handle(input);return send(res,response?200:400,response??{error:{code:'INVALID_BRIDGE_MESSAGE',retryPolicy:'never'}});}finally{host.dispose();}
       }
       const invocation=path.match(/^\/v1\/invocations\/([^/]+)$/);if(req.method==='GET'&&invocation){const record=runtime.store.get<InvocationRecord>('invocations',decodeURIComponent(invocation[1]));return send(res,record?200:404,record??{error:'INVOCATION_NOT_FOUND'});}
-      const operation=path.match(/^\/v1\/operations\/([^/]+)(\/inspect)?$/);if(operation){const id=decodeURIComponent(operation[1]);if(req.method==='POST'&&operation[2]){const input=await body(req);strict(input,[]);return send(res,200,await runtime.inspect(id,controller.signal));}if(req.method==='GET'&&!operation[2]){const record=runtime.store.get<RuntimeOperation>('operations',id);return send(res,record?200:404,record?{...record,events:runtime.store.list<{operationId:string}>('operation_events').filter(row=>row.operationId===id)}:{error:'OPERATION_NOT_FOUND'});}}
+      const operation=path.match(/^\/v1\/operations\/([^/]+)(\/inspect)?$/);if(operation){const id=decodeURIComponent(operation[1]);if(req.method==='POST'&&operation[2]){const input=await readBody(req);strict(input,[]);return send(res,200,await runtime.inspect(id,controller.signal));}if(req.method==='GET'&&!operation[2]){const record=runtime.store.get<RuntimeOperation>('operations',id);return send(res,record?200:404,record?{...record,events:runtime.store.list<{operationId:string}>('operation_events').filter(row=>row.operationId===id)}:{error:'OPERATION_NOT_FOUND'});}}
       if(path==='/v1/session-bindings'){if(req.method==='GET')return send(res,200,{bindings:runtime.sessionBindings(url.searchParams.get('sessionId')??'')});if(req.method==='POST'){const input=await body(req);strict(input,['sessionId','appId','connectionId','enabled','boundAt'],['sessionId','appId','connectionId','enabled','boundAt']);return send(res,200,runtime.bind(input as unknown as SessionAppBinding));}}
       if(path==='/v1/connections'){if(req.method==='GET')return send(res,200,{connections:runtime.listConnections(url.searchParams.get('appId')??undefined)});if(req.method==='POST'){const input=await body(req);strict(input,['appId','connectionId','displayName','config','configRevision','enabled'],['appId','connectionId','displayName','config','configRevision','enabled']);return send(res,200,runtime.addConnection(input as unknown as AppConnection));}if(req.method==='PATCH'){const input=await body(req);strict(input,['appId','connectionId','displayName','config','expectedConfigRevision','enabled','drainTimeoutMs'],['appId','connectionId','expectedConfigRevision']);return send(res,200,await runtime.updateConnection(input as never,controller.signal));}}
       if(req.method==='POST'&&path==='/v1/views/open'){const input=await body(req);strict(input,['sessionId','title','directory','design','bindings','viewId','componentId','revision'],['sessionId']);const sessionId=String(input.sessionId);const view=input.componentId?presentation.openComponent(sessionId,String(input.componentId),{revision:input.revision as number|undefined,directory:input.directory as string|undefined}):input.directory?presentation.openSource(sessionId,String(input.directory),input as never):presentation.createView(sessionId,input as never);return send(res,200,view);}

@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-apps-bundle",
-  "version": "1.0.0-candidate.12",
+  "version": "1.0.0-candidate.15",
   "description": "Apps A.2 candidate: native chat references, verified component authoring and one companion Runtime",
   "type": "module",
   "main": "./lib/index.js",

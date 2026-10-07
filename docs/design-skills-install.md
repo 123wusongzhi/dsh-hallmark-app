@@ -1,12 +1,6 @@
 # DSH 组件设计技能安装与使用
 
-当前candidate.12已于11:37:55 UTC通过官方管理器覆盖原同名插件；冷备恢复、33项安装产物/143冻结输入与9774核心文件字节不变已核对。首次启动超时并出现EACCES19387，原日志保留；11:44:02 UTC仅重试桌面后启动，11:45:55 UTC核实Runtime12/schema4、四只读HTTP200及Hallmark健康。Host插件内存身份、原生GUI/@/组件挂载仍NOT_RUN，原22张正式PASS仍绑定10/11；新增12五卡另列，不自动迁移。 A.2的 `hallmark-component-design` 已更新到DSH技能目录，旧版备份/hash及其余上游技能保留。candidate.7原生发现/只读和candidate.9真实源码/构建/预览/读图迭代历史不改，9原生挂载失败。前轮candidate.10通过官方插件管理器覆盖原同名插件并正常重开桌面，安装文件/冻结源输入与实际Runtime健康核对通过；该10阶段GUI/原生插件内存未验的历史保留；当前12新技能调用与新组件挂载仍待实际验收，已有原会话新turn不代签成功。706包检查、26视觉fixture与实际CLI双视口不代签该范围，见 [A.2执行记录](apps-a2-execution.md)。
-
-TST-023完整最低FIXTURE已由I15/15和独立V17/17验证真实UTF-8字节预算、handle完整分页及query_only spill拒绝；017–020完整FIXTURE由I25/25/V38/38验证幂等、unknown只读恢复、取消与严格CAS。两组都是candidate11隔离执行，原DSH/真实模型原话与桌面创作另验；013–015完整最低FIXTURE/actual-command已独立V通过；上述11证据均冻结于11后续修复开始前。随后profit公共Provider→UI局部2新增/33相关/type通过、传输/Bridge局部回归另记；Pane同view重开最小修复6项React局部回归/29相关/type通过，但源码诊断不证明原桌面挂载因果；12冻结包774/774和实际同名安装/桌面retry已完成，原生输入/组件挂载、模型技能实际消费仍待验。
-
-TST-054草稿账本FIXTURE、055/056/057源码构建/归档/预览最低完整scope、059/060候选/代际FIXTURE及073/075/076/077维护卡已独立V通过，当前完整最低scope总体27卡PASS/0FAIL/53NOT_RUN（新12五卡021/022/024/025/026、新11十二卡（核心四卡、013–015、017–020与023）、旧10其他十卡分别绑定；旧10 011 FAIL保留）。candidate.11（Bundle/Host/Runtime11、schema4）归档已冻结，最终包检查727/727、类型/实际SDK/CLI/只读smoke及包内诊断通过，包独立V有限复核通过、003/004/011/012新11完整FIXTURE已独立V通过且未部署，旧10结果不自动迁移。054 I52/52、059/060 I40/40，均由独立V核对原始证据；5份验收/审查文件及7份说明已推送a635ec4，前轮16文件已推送0824a4a；之后三个独立harness与候选12说明已实际推送13f80f2。SOURCE_EXEC预览与实际安装文件核对不证明新原Agent已读取技能、完整截图反馈或设计质量；TST-058整卡仍NOT_RUN，原技能正文/hash及上游技能本轮未改，用户“先不要保存”继续有效。
-
-本轮新增TST-021/022/024/025/026五卡完整最低FIXTURE/actual-command独立V通过，当前27 PASS/0 FAIL/53 NOT_RUN：12五卡、11十二卡、10十卡各保留执行身份。TST-024 I64/64、V125/125及独立回放64/64/exit0已通过；016、Native/@/组件挂载和R未签认。新增script-run、error-contracts、source-view-save三个公开harness不属于143打包输入或既有774项CI glob，candidate.12归档/产物未改，本轮不重打包或重装，也未新跑全仓CI。上一轮候选12源码/部署/说明与API/SDK、Runtime写入边界、模型预算harness已实际推送main `13f80f2cb351e979fc410c2b833e37860ceaf32e`；本轮三harness与7份说明增量的提交/推送以Git历史和最终交付为准。
+正式验收为**33 PASS/0 FAIL/47 NOT_RUN**：新034/035/036/039绑定12，037/038绑定14，原27张PASS身份保留。candidate.15已官方12→15覆盖，778/778/144输入33产物冻结，独立安装33/源144/原核心9774两遍零差异；实际Runtime15/schema4/健康/四GET/会话前缀核实，启动包装exit1保留。这些结果不代签模型实际读取技能、Native内存/显示或设计质量，四门禁NOT_ACCEPTED、R未签认，见[A.2执行页](apps-a2-execution.md)。
 
 ## A.2：已更新内容及证据范围
 
@@ -54,6 +48,16 @@ Impeccable、shadcn 等设计方法可用于普通 React 组件；来源/许可�
 - [ ] 候选显示确认、明确保存、历史/冲突和另一会话重开；candidate.9五条failed_mount和一条过deadline的mounting，无mounted；用户本轮明确暂不保存。
 
 这些是AUTHORING/LIVE_HOST/LIVE_MODEL待验项，不是额外业务写授权。本次流水价格54.80→54.79、库存201→200的四个mutation各一次Source写，全部succeeded并独立读回；candidate.9只inspect旧库存原operation后恢复200，未重发测试。流水最终PASS，原STOPPED历史保留；范围为脚本/真实业务，不代签原生UI或模型业务操作，上品另验。
+
+## A.2 历史验证范围
+
+前轮candidate.12已于11:37:55 UTC通过官方管理器覆盖原同名插件；冷备恢复、33项安装产物/143冻结输入与9774核心文件字节不变已核对。首次启动超时并出现EACCES19387，原日志保留；11:44:02 UTC仅重试桌面后启动，11:45:55 UTC核实Runtime12/schema4、四只读HTTP200及Hallmark健康。Host插件内存身份、原生GUI/@/组件挂载仍NOT_RUN，原22张正式PASS仍绑定10/11；新增12五卡另列，不自动迁移。 A.2的 `hallmark-component-design` 已更新到DSH技能目录，旧版备份/hash及其余上游技能保留。candidate.7原生发现/只读和candidate.9真实源码/构建/预览/读图迭代历史不改，9原生挂载失败。前轮candidate.10通过官方插件管理器覆盖原同名插件并正常重开桌面，安装文件/冻结源输入与实际Runtime健康核对通过；该10阶段GUI/原生插件内存未验的历史保留；当前15新技能调用与新组件挂载仍待实际验收，已有原会话新turn不代签成功。706包检查、26视觉fixture与实际CLI双视口不代签该范围，见 [A.2执行记录](apps-a2-execution.md)。
+
+TST-023完整最低FIXTURE已由I15/15和独立V17/17验证真实UTF-8字节预算、handle完整分页及query_only spill拒绝；017–020完整FIXTURE由I25/25/V38/38验证幂等、unknown只读恢复、取消与严格CAS。两组都是candidate11隔离执行，原DSH/真实模型原话与桌面创作另验；013–015完整最低FIXTURE/actual-command已独立V通过；上述11证据均冻结于11后续修复开始前。随后profit公共Provider→UI局部2新增/33相关/type通过、传输/Bridge局部回归另记；Pane同view重开最小修复6项React局部回归/29相关/type通过，但源码诊断不证明原桌面挂载因果；12冻结包774/774和实际同名安装/桌面retry已完成，原生输入/组件挂载、模型技能实际消费仍待验。
+
+TST-054草稿账本FIXTURE、055/056/057源码构建/归档/预览最低完整scope、059/060候选/代际FIXTURE及073/075/076/077维护卡已独立V通过，该阶段完整最低scope总体27卡PASS/0FAIL/53NOT_RUN（新12五卡021/022/024/025/026、新11十二卡（核心四卡、013–015、017–020与023）、旧10其他十卡分别绑定；旧10 011 FAIL保留）。candidate.11（Bundle/Host/Runtime11、schema4）归档已冻结，最终包检查727/727、类型/实际SDK/CLI/只读smoke及包内诊断通过，包独立V有限复核通过、003/004/011/012新11完整FIXTURE已独立V通过且未部署，旧10结果不自动迁移。054 I52/52、059/060 I40/40，均由独立V核对原始证据；5份验收/审查文件及7份说明已推送a635ec4，前轮16文件已推送0824a4a；之后三个独立harness与候选12说明已实际推送13f80f2。SOURCE_EXEC预览与实际安装文件核对不证明新原Agent已读取技能、完整截图反馈或设计质量；TST-058整卡仍NOT_RUN，原技能正文/hash及上游技能本轮未改，用户“先不要保存”继续有效。
+
+前轮五卡增量：TST-021/022/024/025/026完整最低FIXTURE/actual-command独立V通过，该阶段27 PASS/0 FAIL/53 NOT_RUN：12五卡、11十二卡、10十卡各保留执行身份。TST-024 I64/64、V125/125及独立回放64/64/exit0已通过；016、Native/@/组件挂载和R未签认。新增script-run、error-contracts、source-view-save三个公开harness不属于143打包输入或既有774项CI glob，candidate.12归档/产物未改，该五卡批次未重打包、重装或重跑全仓CI；后续14新包778项另列。上一轮候选12源码/部署/说明与API/SDK、Runtime写入边界、模型预算harness已实际推送main `13f80f2cb351e979fc410c2b833e37860ceaf32e`；本轮三harness与7份说明增量的提交/推送以Git历史和最终交付为准。
 
 ## 历史 0.2.3：五技能初次安装与旧 ViewSpec 用法
 
