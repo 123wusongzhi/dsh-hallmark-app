@@ -7,12 +7,21 @@ export function valueAt(value: unknown, path: string): unknown {
   return current;
 }
 export function payloadRows(payload: unknown): Row[] {
-  if (Array.isArray(payload)) return payload.filter(value => value && typeof value === 'object');
-  if (!payload || typeof payload !== 'object') return [];
-  const root = payload as any;
-  for (const key of ['products','rows','items','results']) if (Array.isArray(root[key])) return payloadRows(root[key]);
-  if (root.result && typeof root.result === 'object') return payloadRows(root.result);
-  return [root];
+  const visited=new Set<object>();
+  const unpack=(value:unknown):Row[]=>{
+    if(Array.isArray(value))return value.filter((row):row is Row=>row!==null&&typeof row==='object'&&!Array.isArray(row));
+    if(!value||typeof value!=='object'||visited.has(value))return [];
+    visited.add(value);const root=value as Row;
+    for(const key of ['products','rows','items','results'])if(Object.hasOwn(root,key)&&Array.isArray(root[key])){
+      const rows=unpack(root[key]);
+      // A result can keep non-computable rows separately; retain those original rows too.
+      return Object.hasOwn(root,'unable')&&Array.isArray(root.unable)?[...rows,...unpack(root.unable)]:rows;
+    }
+    for(const key of ['payload','result'])if(Object.hasOwn(root,key)&&root[key]!==null&&typeof root[key]==='object')return unpack(root[key]);
+    if(Object.hasOwn(root,'unable')&&Array.isArray(root.unable))return unpack(root.unable);
+    return [root];
+  };
+  return unpack(payload);
 }
 export function mappedValue(row: Row, field: string, binding?: DataBinding): unknown {
   return valueAt(row,binding?.fieldMap?.[field] ?? field);
@@ -46,5 +55,6 @@ export function toolViewId(props: {phase?:string;block?:{meta?:unknown}}): strin
 }
 export function refreshDatasetKeys(spec: ViewSpec): string[] { return [...new Set(spec.bindings.map(binding => binding.datasetKey).filter((key):key is string => typeof key === 'string' && /^(?:(?:store_products|profit|query|category|collected):.+|dataset:v1:[a-f0-9]{64})$/.test(key)))]; }
 export function profitBasis(widget:WidgetSpec,binding:BindingData|undefined): string | undefined {
-  return binding?.metricBasis ?? (typeof (binding?.payload as any)?.metricBasis === 'string' ? (binding!.payload as any).metricBasis : undefined);
+  const candidates=[binding?.metricBasis,valueAt(binding?.payload,'metricBasis'),binding?.provenance?.metricBasis];
+  return candidates.find((basis):basis is string=>typeof basis==='string'&&!!basis.trim());
 }

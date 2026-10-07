@@ -47,7 +47,7 @@ const documentNonce=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
 export function createAppsClient(options:{window?:Window;timeoutMs?:number;clientFeatures?:ComponentFeature[]}={}): AppsComponentClient {
   const current=options.window??window, origin=current.location.origin;
   const clientNonce=globalThis.crypto?.randomUUID?.()??`${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const pending=new Map<string,{resolve:(value:unknown)=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
+  const pending=new Map<string,{resolve:(value:unknown)=>void;reject:(error:Error,submissionUncertain?:boolean)=>void;timer:ReturnType<typeof setTimeout>}>();
   const listeners=new Set<(event:ComponentEvent)=>void>();
   const helloRequestId=`hello-${documentNonce}-${Math.random().toString(36).slice(2)}`;
   let identity:ComponentHello|undefined, disposed=false, sequence=0;
@@ -86,9 +86,18 @@ export function createAppsClient(options:{window?:Window;timeoutMs?:number;clien
     const request={channel:COMPONENT_CHANNEL,protocolVersion,sessionId,viewId,buildId,frameInstanceId,requestId:`${clientNonce}-${++sequence}`,method,params};
     if(new TextEncoder().encode(JSON.stringify(request)).length>identity!.maxMessageBytes)throw new ComponentBridgeError(failure('BRIDGE_MESSAGE_TOO_LARGE','Component request exceeds the negotiated byte limit.'));
     return new Promise<T>((resolve,reject)=>{
-      const withInspection=(error:Error)=>{if(method==='requestAgent'){const source=error instanceof ComponentBridgeError?error.failure:failure('BRIDGE_SUBMISSION_UNKNOWN',error.message);return new ComponentBridgeError({...source,retryPolicy:'inspect_only',details:{...((source.details&&typeof source.details==='object'&&!Array.isArray(source.details))?source.details:{}),sessionId,viewId,buildId,frameInstanceId,requestId:request.requestId}});}return error;};
-      const timer=setTimeout(()=>{pending.delete(request.requestId);reject(withInspection(new ComponentBridgeError(failure('BRIDGE_TIMEOUT','Host response timed out.'))));},options.timeoutMs??30000);
-      pending.set(request.requestId,{resolve:value=>resolve(value as T),reject:error=>reject(withInspection(error)),timer});
+      const withInspection=(error:Error,submissionUncertain=false)=>{
+        const source=error instanceof ComponentBridgeError?error.failure:failure('BRIDGE_SUBMISSION_UNKNOWN',error.message);
+        if(method==='requestAgent')return new ComponentBridgeError({...source,retryPolicy:'inspect_only',details:{...((source.details&&typeof source.details==='object'&&!Array.isArray(source.details))?source.details:{}),sessionId,viewId,buildId,frameInstanceId,requestId:request.requestId}});
+        if(method!=='invokeCapability'||!submissionUncertain)return error;
+        const input=params!==null&&typeof params==='object'&&!Array.isArray(params)?params:{},mutation=typeof input.idempotencyKey==='string'&&input.idempotencyKey.length>0;
+        const details:Record<string,JsonValue>={sessionId,viewId,buildId,frameInstanceId,requestId:request.requestId};
+        for(const key of ['appId','connectionId','capabilityId','capabilityVersion','idempotencyKey'])if(typeof input[key]==='string')details[key]=input[key];
+        if(mutation)details.doNotResubmitMutation=true;
+        return new ComponentBridgeError({...source,retryPolicy:mutation?'inspect_only':'read_retry',details});
+      };
+      const timer=setTimeout(()=>{pending.delete(request.requestId);reject(withInspection(new ComponentBridgeError(failure('BRIDGE_TIMEOUT','Host response timed out.')),true));},options.timeoutMs??30000);
+      pending.set(request.requestId,{resolve:value=>resolve(value as T),reject:(error,submissionUncertain)=>reject(withInspection(error,submissionUncertain)),timer});
       try{current.parent.postMessage(request,origin);}catch(error){clearTimeout(timer);pending.delete(request.requestId);reject(withInspection(error instanceof Error?error:new Error(String(error))));}
     });
   };
@@ -101,5 +110,5 @@ export function createAppsClient(options:{window?:Window;timeoutMs?:number;clien
     if(bytes>Math.min(identity!.maxMessageBytes,feature==='uiStateV1'?65536:identity!.maxMessageBytes))throw new ComponentBridgeError(failure('BRIDGE_MESSAGE_TOO_LARGE','Extension exceeds the negotiated byte limit.'));
     return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(request.requestId);reject(new ComponentBridgeError(failure('BRIDGE_TIMEOUT','Extension response timed out.')));},options.timeoutMs??30000);pending.set(request.requestId,{resolve:value=>resolve(value as JsonValue),reject,timer});try{current.parent.postMessage(request,origin);}catch(error){clearTimeout(timer);pending.delete(request.requestId);reject(error);}});
   };
-  return {hello:()=>ready,getData:()=>call('getData'),getContext:()=>call('getContext'),refresh:bindingIds=>call('refresh',bindingIds?{bindingIds}:null),attachSelection:selection=>call('attachSelection',selection as unknown as JsonValue),resize:height=>call('resize',{height}),invokeCapability:input=>call('invokeCapability',input),updateContext:context=>call('updateContext',context as unknown as JsonValue),requestAgent:input=>call('requestAgent',input as unknown as JsonValue),renderReady:input=>extension('renderReadyV1','ready',{...input,documentNonce} as unknown as JsonValue),readUiState:uiStateSchemaVersion=>extension('uiStateV1','read',{uiStateSchemaVersion}),writeUiState:input=>extension('uiStateV1','write',input as unknown as JsonValue),subscribe:listener=>{listeners.add(listener);return()=>listeners.delete(listener);},dispose:()=>{if(disposed)return;disposed=true;clearTimeout(helloTimer);const error=new ComponentBridgeError(failure('BRIDGE_CLOSED','Component is closed.'));rejectHello(error);current.removeEventListener('message',receive);for(const request of pending.values()){clearTimeout(request.timer);request.reject(error);}pending.clear();listeners.clear();}};
+  return {hello:()=>ready,getData:()=>call('getData'),getContext:()=>call('getContext'),refresh:bindingIds=>call('refresh',bindingIds?{bindingIds}:null),attachSelection:selection=>call('attachSelection',selection as unknown as JsonValue),resize:height=>call('resize',{height}),invokeCapability:input=>call('invokeCapability',input),updateContext:context=>call('updateContext',context as unknown as JsonValue),requestAgent:input=>call('requestAgent',input as unknown as JsonValue),renderReady:input=>extension('renderReadyV1','ready',{...input,documentNonce} as unknown as JsonValue),readUiState:uiStateSchemaVersion=>extension('uiStateV1','read',{uiStateSchemaVersion}),writeUiState:input=>extension('uiStateV1','write',input as unknown as JsonValue),subscribe:listener=>{listeners.add(listener);return()=>listeners.delete(listener);},dispose:()=>{if(disposed)return;disposed=true;clearTimeout(helloTimer);const error=new ComponentBridgeError(failure('BRIDGE_CLOSED','Component is closed.'));rejectHello(error);current.removeEventListener('message',receive);for(const request of pending.values()){clearTimeout(request.timer);request.reject(error,true);}pending.clear();listeners.clear();}};
 }

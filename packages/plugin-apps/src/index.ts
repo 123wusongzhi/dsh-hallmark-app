@@ -1,6 +1,7 @@
 import {createHash,randomUUID} from 'node:crypto';
 import {canonicalJson, compileSchema, validateResult} from '../../app-contracts/src/index.ts';
-import type {BridgeRequest, CapabilityResult, ComponentAgentIntent, JsonSchema, JsonValue, SessionAppBinding, HostProjectionState} from '../../app-contracts/src/index.ts';
+import type {BridgeRequest, CapabilityDescriptor, CapabilityResult, ComponentAgentIntent, FailureInfo, InvocationRequest, JsonSchema, JsonValue, SessionAppBinding, HostProjectionState} from '../../app-contracts/src/index.ts';
+import {recoverInvocationResult,runtimeHttpError} from '../../app-sdk/src/index.ts';
 import {hostFeatureModes, requireHostCapability, type HostCapabilityMatrix, type NativeSessionAdapterMode} from '../../dsh-compat/src/index.ts';
 import type {AppsHostTransport, RuntimeApp, ModelProjection} from './transport.ts';
 import {nativeInputReceipt} from '../../dsh-compat/src/native-receipt.ts';
@@ -112,8 +113,8 @@ export class AppsHost {
     if (this.ctx.agents.get(sessionId) || this.nativeSessions?.get(sessionId)) return true;
     try {return (await this.ctx.sessionQuery?.readTitleSnapshot(sessionId, signal))?.session.id === sessionId;} catch {return false;}
   }
-  private async handshake() {
-    const identity = await this.transport.identity();
+  private async handshake(signal?:AbortSignal) {
+    const identity = await this.transport.identity(signal);
     if (identity.transportMajor !== 1 || identity.catalogSchemaVersion !== 1) throw Object.assign(new Error('INCOMPATIBLE_PROTOCOL'),{details:{expected:{transportMajor:1,catalogSchemaVersion:1},actual:{transportMajor:identity.transportMajor,catalogSchemaVersion:identity.catalogSchemaVersion}}});
     return identity;
   }
@@ -177,17 +178,18 @@ export class AppsHost {
   }
   async call(name: string, input: Record<string,JsonValue>, sessionId: string, signal?: AbortSignal, nativeCallId?: string, onRuntimeResult?: () => void): Promise<unknown> {
     if (this.closed) return fail('APPS_HOST_CLOSED', 'Apps Host 已卸载。');
+    const invocationId=typeof input.invocationId==='string'?input.invocationId:name==='apps_invoke'?randomUUID():'host',traceId=typeof input.traceId==='string'?input.traceId:name==='apps_invoke'?randomUUID():'host';
+    let submitted:InvocationRequest|undefined,descriptor:CapabilityDescriptor|undefined;
     try {
-      await this.handshake();
+      await this.handshake(signal);
       if (name === 'apps_list') return {status: 'ok', ...(await this.directory(signal)), capabilities: await this.transport.discover(input as {appId?: string;query?: string;cursor?: string;limit?: number}, signal)};
       if (name === 'apps_describe') {const descriptor = await this.transport.describe(String(input.capabilityId), typeof input.version === 'string' ? input.version : undefined);return descriptor ? {status: 'ok', descriptor} : fail('CAPABILITY_NOT_FOUND', '精确能力未登记。');}
       if (name === 'apps_inspect') return await this.transport.inspect(String(input.operationId), signal);
       if (name !== 'apps_invoke') return fail('CAPABILITY_NOT_FOUND', '网关未登记。');
-      const invocationId = typeof input.invocationId === 'string' ? input.invocationId : randomUUID(), traceId = typeof input.traceId === 'string' ? input.traceId : randomUUID();
       const appId = String(input.appId);
       if (!this.attachments.has(appId)) return fail('HOST_PROJECTION_DETACHED', '此应用的DSH原生投影未挂载。', invocationId, traceId);
       const capabilityId=String(input.capabilityId),capabilityVersion=String(input.capabilityVersion);
-      const descriptor = await this.transport.describe(capabilityId,capabilityVersion);
+      descriptor = await this.transport.describe(capabilityId,capabilityVersion);
       if (!descriptor){
         const registeredVersion=(await this.transport.describe(capabilityId))?.version??null;
         return fail('CAPABILITY_NOT_FOUND',`精确能力版本未登记（请求 ${capabilityVersion}；当前 ${registeredVersion??'未登记'}）。`,invocationId,traceId,{expected:{appId,capabilityId,capabilityVersion},actual:{capabilityVersion:registeredVersion}});
@@ -196,10 +198,29 @@ export class AppsHost {
       const candidates = connections.filter(row => row.enabled && bindings.some(binding => binding.appId === appId && binding.connectionId === row.connectionId && binding.enabled));
       const matches = typeof input.connectionId === 'string' ? candidates.filter(row => row.connectionId === input.connectionId) : candidates;
       if (matches.length !== 1) return {invocationId, traceId, status: 'needs_clarification', missing: ['connectionId'], candidates: candidates.map(row => ({appId, connectionId: row.connectionId, displayName: row.displayName})), question: '请明确一个在当前会话启用的connectionId。'};
-      const result = await this.transport.invoke({protocolVersion: '1.0', invocationId, traceId, appId, connectionId: matches[0].connectionId, capabilityId: descriptor.capabilityId, capabilityVersion: descriptor.version, input: input.input, source: {kind: 'agent', sessionId, nativeCallId: nativeCallId ?? invocationId}, deadlineAt: typeof input.deadlineAt === 'string' ? input.deadlineAt : new Date(Date.now() + Math.min(90000, descriptor.execution.timeoutMs)).toISOString(), ...(typeof input.idempotencyKey === 'string' ? {idempotencyKey: input.idempotencyKey} : {}), ...(typeof input.expectedResourceRevision === 'string' ? {expectedResourceRevision: input.expectedResourceRevision} : {})}, signal);
+      if(signal?.aborted)return {invocationId,traceId,status:'cancelled',error:{code:'CANCELLED_BEFORE_DISPATCH',message:'Capability invocation was not submitted.',retryPolicy:'never'}};
+      submitted={protocolVersion: '1.0', invocationId, traceId, appId, connectionId: matches[0].connectionId, capabilityId: descriptor.capabilityId, capabilityVersion: descriptor.version, input: input.input, source: {kind: 'agent', sessionId, nativeCallId: nativeCallId ?? invocationId}, deadlineAt: typeof input.deadlineAt === 'string' ? input.deadlineAt : new Date(Date.now() + Math.min(90000, descriptor.execution.timeoutMs)).toISOString(), ...(typeof input.idempotencyKey === 'string' ? {idempotencyKey: input.idempotencyKey} : {}), ...(typeof input.expectedResourceRevision === 'string' ? {expectedResourceRevision: input.expectedResourceRevision} : {})};
+      const result = await this.transport.invoke(submitted, signal);
       onRuntimeResult?.();
-      const errors = validateResult(result, descriptor.outputSchema);return errors.length ? fail('OUTPUT_SCHEMA_INVALID', errors.join('; '), invocationId, traceId) : result;
-    } catch (error) {return fail(error instanceof Error && error.message === 'INCOMPATIBLE_PROTOCOL' ? 'INCOMPATIBLE_PROTOCOL' : 'RUNTIME_UNAVAILABLE', error instanceof Error ? error.message : 'Runtime unavailable','host','host',(error as {details?: JsonValue})?.details);}
+      const identityMatches=result?.invocationId===invocationId&&result?.traceId===traceId;
+      const errors = [...validateResult(result, descriptor.outputSchema),...(identityMatches?[]:['$.invocationId/traceId: response does not identify the original invocation'])];
+      if(!errors.length)return result;
+      if(descriptor.effect==='mutation'){
+        const error:FailureInfo={code:'OUTPUT_SCHEMA_INVALID',message:errors.join('; '),retryPolicy:'inspect_only',details:{invocationId,doNotResubmitMutation:true}};
+        const operation=result?.operation;
+        if(identityMatches&&operation&&typeof operation.operationId==='string'&&operation.operationId)return {invocationId,traceId,status:'unknown',operation:{operationId:operation.operationId,state:'unknown'},error};
+        return {invocationId,traceId,status:'unavailable',error};
+      }
+      return fail('OUTPUT_SCHEMA_INVALID', errors.join('; '), invocationId, traceId);
+    } catch (error) {
+      if(error instanceof Error&&error.message==='INCOMPATIBLE_PROTOCOL')return fail('INCOMPATIBLE_PROTOCOL',error.message,invocationId,traceId,(error as {details?:JsonValue}).details);
+      const rejected=runtimeHttpError(error,{invocationId,traceId});if(rejected)return rejected;
+      if(submitted&&descriptor?.effect==='mutation'){
+        try{const recovered=await recoverInvocationResult(this.transport,submitted,signal);if(recovered&&!validateResult(recovered,descriptor.outputSchema).length){onRuntimeResult?.();return recovered;}}catch{/* Only an original read is allowed; never repeat invoke. */}
+      }
+      const uncertainMutation=!!submitted&&descriptor?.effect==='mutation';
+      return {invocationId,traceId,status:'unavailable',error:{code:'RUNTIME_UNAVAILABLE',message:error instanceof Error?error.message:'Runtime unavailable',retryPolicy:uncertainMutation?'inspect_only':'read_retry',details:{invocationId,doNotResubmitMutation:uncertainMutation,submitted:!!submitted}}};
+    }
   }
   async bind(sessionId: string, appId: string, connectionId: string, enabled: boolean, signal?: AbortSignal) {
     if (!await this.knownSession(sessionId, signal)) return fail('INVALID_SESSION', '没有此本机会话。');
@@ -209,8 +230,8 @@ export class AppsHost {
   requestAgent() {return requireHostCapability(this.capabilities, 'requestAgent') ?? fail('UNSUPPORTED_HOST_CAPABILITY', '此独立入口不接收输入。需通过完整组件bridge身份、requestId与revision显式请求。');}
   updateContext() {return requireHostCapability(this.capabilities, 'persistentContext') ?? fail('UNSUPPORTED_HOST_CAPABILITY', '此独立入口不接收上下文。需通过完整组件bridge身份与revision显式发布。');}
   hostCapabilities() {this.refreshNativeAdapter();return {updateContext:this.nativeReady&&!this.closed,requestAgent:this.nativeReady&&!this.closed,nativeSessionAdapter:this.nativeSessionAdapter,adapterReady:this.nativeReady&&!this.closed,hostVersion:this.nativeSessionAdapter==='dsh-0.2.0-rc.2'?'0.2.0-rc.2':null};}
-  private bridgePacket(request:BridgeRequest,value:{result?:JsonValue;error?:{code:string;message:string;retryPolicy:'never'}}):JsonValue {
-    return {channel:'dsh.apps.component.v2',protocolVersion:'2.0',sessionId:request.sessionId,viewId:request.viewId,buildId:request.buildId,frameInstanceId:request.frameInstanceId,requestId:request.requestId,...value};
+  private bridgePacket(request:BridgeRequest,value:{result?:JsonValue;error?:FailureInfo}):JsonValue {
+    return JSON.parse(canonicalJson({channel:'dsh.apps.component.v2',protocolVersion:'2.0',sessionId:request.sessionId,viewId:request.viewId,buildId:request.buildId,frameInstanceId:request.frameInstanceId,requestId:request.requestId,...value})) as JsonValue;
   }
   private validateIntent(intent:ComponentAgentIntent,request:BridgeRequest,expectedHash?:string) {
     const identity={protocolVersion:request.protocolVersion,sessionId:request.sessionId,viewId:request.viewId,buildId:request.buildId,frameInstanceId:request.frameInstanceId};
@@ -271,7 +292,16 @@ export class AppsHost {
     this.refreshNativeAdapter();
     if(['requestAgent','updateContext'].includes(request.method)&&!this.nativeReady)return this.bridgePacket(request,{error:{code:'UNSUPPORTED_HOST_CAPABILITY',message:'正式DSH会话适配未启用或缺必要服务。可附加所选内容后由用户发送。',retryPolicy:'never'}});
     if(!this.transport.componentBridge)return this.bridgePacket(request,{error:{code:'UNSUPPORTED_HOST_CAPABILITY',message:'当前Runtime未提供组件bridge接口。',retryPolicy:'never'}});
-    const packet=await this.transport.componentBridge(request,signal);
+    if(signal.aborted)return this.bridgePacket(request,{error:{code:'CANCELLED_BEFORE_DISPATCH',message:'Component request was not submitted.',retryPolicy:'never'}});
+    let packet:JsonValue;
+    try{packet=await this.transport.componentBridge(request,signal);}
+    catch(error){
+      const rejected=runtimeHttpError(error,{invocationId:request.requestId,traceId:request.requestId});
+      if(rejected&&'error'in rejected)return this.bridgePacket(request,{error:rejected.error});
+      const params=request.params&&typeof request.params==='object'&&!Array.isArray(request.params)?request.params:{};
+      const potentialWrite=request.method==='requestAgent'||request.method==='updateContext'||request.method==='invokeCapability'&&typeof params.idempotencyKey==='string'&&params.idempotencyKey.length>0;
+      return this.bridgePacket(request,{error:{code:'RUNTIME_UNAVAILABLE',message:'Runtime response unavailable; retain this original component request.',retryPolicy:potentialWrite?'inspect_only':'read_retry',details:{requestId:request.requestId,method:request.method,sessionId:request.sessionId,viewId:request.viewId,buildId:request.buildId,frameInstanceId:request.frameInstanceId,params:request.params,doNotResubmitMutation:potentialWrite}}});
+    }
     if(request.method!=='requestAgent'||!packet||typeof packet!=='object'||Array.isArray(packet)||packet.error)return packet;
     if(packet.channel!=='dsh.apps.component.v2'||packet.requestId!==request.requestId||packet.sessionId!==request.sessionId||packet.viewId!==request.viewId||packet.buildId!==request.buildId||packet.frameInstanceId!==request.frameInstanceId||!packet.result||typeof packet.result!=='object'||Array.isArray(packet.result))throw new Error('INVALID_AGENT_BRIDGE_RESPONSE');
     const intent=this.validateIntent(packet.result as unknown as ComponentAgentIntent,request);

@@ -1,20 +1,22 @@
 # Apps 数据升级、备份、回退与清理
 
-A.2 Runtime使用schema4；candidate.10现已通过官方插件管理器覆盖原同名插件并正常重开桌面，五安装hash/143冻结源输入及实际Runtime7/健康/唯一writer核对通过。candidate.7的schema3→4、116资产/原集合保留、284文件/25集合备份、404映射新根恢复，以及更新9前294文件备份均保留原范围；本轮最终严格备份另为1754文件/25集合apply/verify通过。**低层步骤与全部数据切换验收分开记录。** 本轮该备份已恢复新根并完成2773映射、归档/签名/PNG/草稿引用核验及普通npm ci/安装CLI重建（SOURCE_EXEC），未再次切换桌面dataDirectory；GUI/原生内存/新创作、完整历史/草稿对账、附件/条件回退/上品仍待验，见 [A.2执行记录](apps-a2-execution.md)。
+A.2 Runtime使用schema4；当前candidate.12已于11:37:55 UTC通过官方管理器覆盖原同名插件；冷备恢复、33项安装产物/143冻结输入与9774核心文件字节不变已核对。首次启动超时并出现EACCES19387，原日志保留；11:44:02 UTC仅重试桌面后启动，11:45:55 UTC核实Runtime12/schema4、四只读HTTP200及Hallmark健康。Host插件内存身份、原生GUI/@/组件挂载仍NOT_RUN，22张正式PASS仍绑定原10/11，不迁移12。 前轮candidate.10现已通过官方插件管理器覆盖原同名插件并正常重开桌面，五安装hash/143冻结源输入及实际Runtime7/健康/唯一writer核对通过。candidate.7的schema3→4、116资产/原集合保留、284文件/25集合备份、404映射新根恢复，以及更新9前294文件备份均保留原范围；本轮最终严格备份另为1754文件/25集合apply/verify通过。**低层步骤与全部数据切换验收分开记录。** 本轮该备份已恢复新根并完成2773映射、归档/签名/PNG/草稿引用核验及普通npm ci/安装CLI重建（SOURCE_EXEC），未再次切换桌面dataDirectory；GUI/原生内存/新创作、完整历史/草稿对账、附件/条件回退/上品仍待验，见 [A.2执行记录](apps-a2-execution.md)。
 
-08:41:55 UTC桌面完全退出后核实任务所属旧Runtime38844，使用Windows Stop-Process停止，非graceful SIGTERM；完成最终备份后08:52:03 UTC安装10、08:52:34 UTC正常重开。新Runtime62564是36994唯一listener，旧38844已退；profile/dataDirectory未再切换。Runtime JS仍 `2264139fc4404a11dbe9fdde00a374b541d1bda1544ef784483bfb6547cc9844`，协议/schema和冻结包未变更；706项包检查不代签之后独立维护工具修复或原生GUI。
+08:41:55 UTC桌面完全退出后核实任务所属旧Runtime38844，使用Windows Stop-Process停止，非graceful SIGTERM；完成最终备份后08:52:03 UTC安装10、08:52:34 UTC正常重开。当时新Runtime62564是36994唯一listener，旧38844已退；profile/dataDirectory未再切换。该旧10阶段Runtime JS为 `2264139fc4404a11dbe9fdde00a374b541d1bda1544ef784483bfb6547cc9844`，协议/schema和冻结包未变更；706项包检查不代签之后独立维护工具修复或原生GUI。
 
-5份验收/审查文件和7份说明已推送a635ec4，本轮增量包含草稿账本/发布/核心边界harness与诊断回归；提交与推送以Git历史和最终交付为准。054/059/060完整FIXTURE已独立V通过（当前共14PASS/0FAIL/66NOT_RUN，新11核心四卡与旧10其他十卡分别绑定）；candidate.11（Bundle/Host/Runtime11、schema4）归档已冻结，最终包检查727/727、类型/实际SDK/CLI/只读smoke及包内诊断通过，包独立V有限复核通过、003/004/011/012新11完整FIXTURE已独立V通过且未部署，003/004/012旧10 FIXTURE已V通过、011旧10 FAIL保留，旧10证据不可自动提升为后续候选；054的V只读SQL检视生成隔离SHM/空WAL的偏差已保留并更正，主DB和307原I文件字节不变，未触及现场或本页1754文件恢复核验结论。
+5份验收/审查文件和7份说明已推送a635ec4，前轮16文件已推送0824a4a；之后三个API/SDK、Runtime写入边界和模型预算harness及说明增量的提交/推送以Git历史和最终交付为准。054/059/060完整FIXTURE已独立V通过（当前共22PASS/0FAIL/58NOT_RUN，新11十二卡（核心四卡、013–015、017–020与023）和旧10其他十卡分别绑定）；candidate.11（Bundle/Host/Runtime11、schema4）归档已冻结，最终包检查727/727、类型/实际SDK/CLI/只读smoke及包内诊断通过，包独立V有限复核通过、003/004/011/012新11完整FIXTURE已独立V通过且未部署，003/004/012旧10 FIXTURE已V通过、011旧10 FAIL保留，旧10证据不可自动提升为后续候选；054的V只读SQL检视生成隔离SHM/空WAL的偏差已保留并更正，主DB和307原I文件字节不变，未触及现场或本页1754文件恢复核验结论。
 
 本页先列当前 schema3→4 和 schema4 全量备份命令，后面保留旧 schema2→3 的 V1 历史。不要把旧目标 schema3 命令直接当成 A.2 Runtime 可运行数据。
 
 ## A.2：离线检查与工具身份
 
-桌面安装入口按版本固定：公开 [install-desktop-apps.ps1](../scripts/install-desktop-apps.ps1) 固定candidate.10/Runtime7，不能仅传入candidate.11 manifest就安装11。candidate.11使用固定11版本的私有官方CLI适配计划，保留原同名插件替换、桌面退出守卫、路径/备份/hash检查；2026-10-07 10:25:22.955 UTC仅ValidateOnly通过，`installed=false`、`desktopRunning=true`，没有停止桌面/Runtime或安装11。公开原安装器及candidate.11的143冻结sourceInputs未改；计划证据见 [执行记录](apps-a2-execution.md)。
+后续12已补profit公共Provider→UI provenance/行展开（2新增/33相关/type通过）与传输/Bridge局部源码回归；同view重开Pane缓存路径已定位、最小修复6项React局部回归/29项相关/type通过，已纳入12冻结包774/774并官方同名安装，桌面retry和四GET/Runtime12检查完成。22张正式PASS仍绑定原10/11，不迁移。原Bill会话8轮failed_mount历史保留，源码诊断不证明现场因果。已受控停止桌面/Runtime，首记录脚本裸布尔字面量exit1原样保留；新增恢复不重停/不覆盖旧备份，三冷备2202 Runtime+396桌面Roaming+1原会话共2599文件核对通过，totalBytes原null不改。首次start超时及EACCES保留，exact桌面retry后恢复；原会话1269→1270仅end-seed且旧JSON前缀一致。不记作正式正常退出或数据切库验收，profile/dataDirectory未迁移；用户已授权退出/重启无需重复许可，Native/@/组件挂载仍待用户。
+
+桌面安装入口按版本固定：当前公开 [install-desktop-apps.ps1](../scripts/install-desktop-apps.ps1) 已固定candidate.12/Runtime12（SHA cb44b9f74f0ea45ee23e284dba60905150bf40f87c0ea7afef227be242551320），纳入12冻结输入并已用于官方同名覆盖。candidate.11计划时的旧公开脚本固定10/Runtime7（原SHA453c6a…），当时不能仅传入11 manifest安装11，旧冻结输入保留。candidate.11使用固定11版本的私有官方CLI适配计划，保留原同名插件替换、桌面退出守卫、路径/备份/hash检查；10:25:22.955 UTC首计划与10:34:25.585 UTC最新计划均只通过ValidateOnly；最新私有计划校正显示版本标签及固定constants/root，原guard保留，旧1e9计划原样保留。`installed=false`、`desktopRunning=true`，没有停止桌面/Runtime或安装11。candidate.11原安装器快照及143冻结sourceInputs未改；当前12安装器是后续独立版本，不反写旧11证据；计划证据见 [执行记录](apps-a2-execution.md)。
 
 命令从核实过源码/版本的本仓库根目录执行，Node须支持node:sqlite与原生TypeScript。安装包build/preview CLI使用Host guidance返回的Node方式；本页的 `migrate-apps-schema4.mjs`、`backup-apps.mjs` 是**仓库维护工具**。完整备份模块/CLI不在candidate.10的143打包sourceInputs或安装入口，须独立记源码/hash/日志，不能拼接不存在的已安装lib备份命令。
 
-操作前确认实际 schema、源数据/资产根、新目标路径、连接版本和当前进程。冻结源入口并停止所有 Runtime writer，等待实际执行排空；对 queued/dispatching/pending/unknown 按原 operationId/taskId/requestId 只读核实。未决结果不能靠重发写入或删除记录“解决”。正常退出官方桌面后再执行官方同名插件更新；不要强关用户会话，也不要凭旧 URL 假定服务停止。
+操作前确认实际 schema、源数据/资产根、新目标路径、连接版本和当前进程。冻结源入口并停止所有 Runtime writer，等待实际执行排空；对 queued/dispatching/pending/unknown 按原 operationId/taskId/requestId 只读核实。未决结果不能靠重发写入或删除记录“解决”。优先正常退出官方桌面，再执行官方同名插件更新；本次用户已授权受控停止/重启，若无app.quit端点且Native工具关闭，须核实任务进程、保存完成会话/配置并停写冷备后受控停止，不将Stop-Process记为正常退出验收。不要凭旧 URL 假定服务停止。
 
 `--offline-confirmed` / `--offline` 是操作者明确的停写声明，不会停止进程、屏蔽入口或保证所有业务网络写入都已停。writer lease 还须核对 PID/进程/监听；遇到残留先查所有者，不能删除 lease 绕过唯一 writer。源、备份、目标不能重叠；目标必须新目录，失败产物留作诊断，不覆盖或递归清空来重试。
 
@@ -103,7 +105,7 @@ node scripts/verify-a2-release-evidence.mjs --manifest "E:/operator/offline-card
 | BUSINESS-WRITE | CORE+078，共52 | NOT_ACCEPTED |
 | DATA-CUTOVER | CORE+073/079，共53 | NOT_ACCEPTED |
 
-required只允许增加；原48历史CSV仍42项reported remainingReal NOT_RUN，两种获准逐字序列化CRLF `b5b0a728fe4e7d42ed15e7122432ab7e4c6395aaf9a2042adcc61de90382eb92` / LF `5885e2375bc5711a36d90a635647966b27b850ebfe8b7ff0e95a7a342575c779`按选定字节核对，不任意归一化重写历史；A.2派生基线摘要 `f05edf24340f5c9fd904f33ae99dc98f1a0fd31c1ad4d760c95003391e073ceb`。本轮003/004/011/012/054/055/056/057/059/060/073/075/076/077十四卡完整最低scope独立V通过，011旧10基线FAIL原样保留，四张核心卡已在新11真实重跑并独立V通过，当前66卡仍NOT_RUN；维护267断言/独立12窄测试/typecheck和原706包检查分开。073 FIXTURE直接归档浏览器恢复不代签v2/native切库，075/076旧08:24源与trace的复验不发明原执行commit，077资格审查不代签R。详情/实际V身份见 [A.2执行记录](apps-a2-execution.md)。
+required只允许增加；原48历史CSV仍42项reported remainingReal NOT_RUN，两种获准逐字序列化CRLF `b5b0a728fe4e7d42ed15e7122432ab7e4c6395aaf9a2042adcc61de90382eb92` / LF `5885e2375bc5711a36d90a635647966b27b850ebfe8b7ff0e95a7a342575c779`按选定字节核对，不任意归一化重写历史；A.2派生基线摘要 `f05edf24340f5c9fd904f33ae99dc98f1a0fd31c1ad4d760c95003391e073ceb`。本轮003/004/011/012/013/014/015/017/018/019/020/023/054/055/056/057/059/060/073/075/076/077二十二卡完整最低scope独立V通过，011旧10基线FAIL原样保留，四张核心卡已在新11真实重跑并独立V通过，当前58卡仍NOT_RUN；维护267断言/独立12窄测试/typecheck和原706包检查分开。073 FIXTURE直接归档浏览器恢复不代签v2/native切库，075/076旧08:24源与trace的复验不发明原执行commit，077资格审查不代签R。详情/实际V身份见 [A.2执行记录](apps-a2-execution.md)。
 
 ## 历史 V1：schema2→3 迁移与夹具记录
 

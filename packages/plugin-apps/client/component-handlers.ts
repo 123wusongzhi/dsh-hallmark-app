@@ -1,7 +1,7 @@
-import type {BridgeRequest,JsonValue,SelectionEnvelope} from '../../app-contracts/src/index.ts';
+import type {BridgeRequest,FailureInfo,JsonValue,SelectionEnvelope} from '../../app-contracts/src/index.ts';
 import type {ComponentHandlerFactory} from '../../dsh-plugin/client/component-handlers.ts';
 import type {ComponentResponse} from '../../component-runtime/src/apps-client.ts';
-import {COMPONENT_CHANNEL,sameBridgeIdentity} from '../../component-runtime/src/apps-client.ts';
+import {COMPONENT_CHANNEL,ComponentBridgeError,sameBridgeIdentity} from '../../component-runtime/src/apps-client.ts';
 import {selectionInputBridge} from '../../dsh-plugin/client/selection.ts';
 import type {ComponentExtensionRequest} from '../../component-runtime/src/host.ts';
 import type {ExtendedComponentHandlers} from '../../dsh-plugin/client/component-frame.tsx';
@@ -9,6 +9,7 @@ export interface PublicationFrame {publicationId:string;attemptId:string;attempt
 
 function fail(code:string,message:string):never {throw Object.assign(new Error(message),{code});}
 function record(value:unknown):Record<string,unknown> {return value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};}
+function isFailure(value:unknown):value is FailureInfo {const item=record(value);return typeof item.code==='string'&&typeof item.message==='string'&&['never','read_retry','inspect_only'].includes(String(item.retryPolicy));}
 /** Browser transport carries the complete parent-owned identity to the native Host proxy. */
 export const createAppsComponentHandlers:ComponentHandlerFactory=(identity,signal)=>createAppsPresentationHandlers(identity,signal,undefined,false);
 export async function createAppsPresentationHandlers(identity:Parameters<ComponentHandlerFactory>[0],signal:AbortSignal,publication?:PublicationFrame,extensionsEnabled=true):Promise<ExtendedComponentHandlers>{
@@ -22,12 +23,24 @@ export async function createAppsPresentationHandlers(identity:Parameters<Compone
   if(extensionsEnabled)try{const response=await fetch('/api/dsh-apps?resource=componentFeatures',{credentials:'same-origin',signal}),value=record(await response.json());if(response.ok&&Array.isArray(value.features))extensionFeatures=value.features.filter((feature):feature is string=>feature==='renderReadyV1'||feature==='uiStateV1');}catch(error){if(signal.aborted)throw error;}
   const call=async(request:BridgeRequest):Promise<JsonValue>=>{
     if(request.sessionId!==identity.sessionId||request.viewId!==identity.viewId||request.buildId!==identity.buildId)fail('BRIDGE_IDENTITY_STALE','The component owner or build changed. Reopen it.');
-    const response=await fetch('/api/dsh-apps',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'componentBridge',request}),signal});
-    const value=await response.json() as ComponentResponse;
-    if(!response.ok)fail(record(value.error).code as string??'BRIDGE_PROXY_UNAVAILABLE',record(value.error).message as string??'Apps component proxy is unavailable.');
-    if(value.channel!==COMPONENT_CHANNEL||value.requestId!==request.requestId||!sameBridgeIdentity(request,value))fail('INVALID_BRIDGE_RESPONSE','Apps proxy returned a different component identity.');
-    if(value.error)fail(value.error.code,value.error.message);
-    if(!Object.hasOwn(value,'result'))fail('INVALID_BRIDGE_RESPONSE','Apps proxy returned no component result.');
+    if(signal.aborted)throw new ComponentBridgeError({code:'BRIDGE_CLOSED',message:'The component was closed before the proxy request.',retryPolicy:'never'});
+    const body=JSON.stringify({action:'componentBridge',request});
+    const uncertain=(code:string,message:string)=>{
+      const input=record(request.params),mutation=request.method==='requestAgent'||request.method==='invokeCapability'&&typeof input.idempotencyKey==='string'&&input.idempotencyKey.length>0;
+      const details:Record<string,JsonValue>={sessionId:request.sessionId,viewId:request.viewId,buildId:request.buildId,frameInstanceId:request.frameInstanceId,requestId:request.requestId};
+      if(request.method==='invokeCapability')for(const key of ['appId','connectionId','capabilityId','capabilityVersion','idempotencyKey'])if(typeof input[key]==='string')details[key]=input[key];
+      if(mutation)details.doNotResubmitMutation=true;
+      return new ComponentBridgeError({code,message,retryPolicy:mutation?'inspect_only':request.method==='invokeCapability'||['getData','getContext','refresh'].includes(request.method)?'read_retry':'never',details});
+    };
+    let response:Response,value:ComponentResponse;
+    try {response=await fetch('/api/dsh-apps',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body,signal});value=await response.json() as ComponentResponse;}
+    catch(error){throw uncertain('BRIDGE_PROXY_UNAVAILABLE',error instanceof Error?error.message:'Apps component proxy response is unavailable.');}
+    const packet=record(value),hasBridgeEnvelope=['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId'].some(key=>Object.hasOwn(packet,key));
+    if(hasBridgeEnvelope&&(value.channel!==COMPONENT_CHANNEL||value.requestId!==request.requestId||!sameBridgeIdentity(request,value)))throw uncertain('INVALID_BRIDGE_RESPONSE','Apps proxy returned a different component identity. Inspect this original request only.');
+    if(!response.ok){if(isFailure(packet.error))throw new ComponentBridgeError(packet.error);fail(record(packet.error).code as string??'BRIDGE_PROXY_UNAVAILABLE',record(packet.error).message as string??'Apps component proxy is unavailable.');}
+    if(!hasBridgeEnvelope)throw uncertain('INVALID_BRIDGE_RESPONSE','Apps proxy returned no correlated component response.');
+    if(value.error){if(!isFailure(value.error))throw uncertain('INVALID_BRIDGE_RESPONSE','Apps proxy returned an invalid component failure.');throw new ComponentBridgeError(value.error);}
+    if(!Object.hasOwn(value,'result'))throw uncertain('INVALID_BRIDGE_RESPONSE','Apps proxy returned no component result.');
     return value.result!;
   };
   const extension=async(request:ComponentExtensionRequest)=>{

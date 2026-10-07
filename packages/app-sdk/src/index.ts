@@ -1,11 +1,38 @@
 import { randomUUID } from 'node:crypto';
-import { canonicalJson } from '../../app-contracts/src/index.ts';
+import { canonicalJson, validateResult } from '../../app-contracts/src/index.ts';
 import type { AppRef, CapabilityDescriptor, CapabilityResult, InvocationRequest, InvocationSource, JsonSchema, JsonValue } from '../../app-contracts/src/index.ts';
 export interface RuntimeTransport {
   identity(signal?:AbortSignal): Promise<{transportMajor:number;catalogSchemaVersion:number;catalogDigest:string}>;
   describe(id:string,version?:string): Promise<CapabilityDescriptor|undefined>;
   invoke(request:InvocationRequest,signal?:AbortSignal):Promise<CapabilityResult>;
   inspect(operationId:string,signal?:AbortSignal):Promise<CapabilityResult>;
+  getInvocation?(invocationId:string,signal?:AbortSignal):Promise<InvocationRecoveryRecord>;
+}
+export interface InvocationRecoveryRecord {invocationId:string;request?:InvocationRequest;result?:CapabilityResult;operationId?:string}
+/** A server error response is evidence; a missing response is not a business rejection. */
+export function runtimeHttpError(error:unknown,identity:{invocationId:string;traceId:string}):CapabilityResult|undefined {
+  const detail=error as {statusCode?:number;details?:unknown};
+  if(!Number.isInteger(detail?.statusCode)||detail.statusCode!<400||detail.statusCode!>499)return;
+  const value=detail.details as CapabilityResult;
+  if(value&&typeof value==='object'&&!validateResult(value).length&&value.invocationId===identity.invocationId&&value.traceId===identity.traceId)return value;
+  const problem=(value as unknown as {error?:unknown})?.error;
+  if(problem&&typeof problem==='object'){
+    const failure=problem as {code?:unknown;message?:unknown;retryPolicy?:unknown;details?:JsonValue};
+    if(typeof failure.code==='string'&&typeof failure.message==='string'&&failure.retryPolicy==='never')return {...identity,status:'failed',error:{code:failure.code,message:failure.message,retryPolicy:'never',...(failure.details===undefined?{}:{details:failure.details})}};
+  }
+  if(typeof problem==='string')return {...identity,status:'failed',error:{code:problem,message:problem,retryPolicy:'never'}};
+}
+/** Only the original attempt is read. An unavailable read cannot supply an operation ID. */
+export async function recoverInvocationResult(transport:Pick<RuntimeTransport,'getInvocation'>,request:InvocationRequest,signal?:AbortSignal):Promise<CapabilityResult|undefined> {
+  if(!transport.getInvocation)return;
+  const record=await transport.getInvocation(request.invocationId,signal);
+  if(!record||record.invocationId!==request.invocationId||record.request&&canonicalJson(record.request)!==canonicalJson(request))return;
+  if(record.result){
+    const result=record.result;
+    if(validateResult(result).length||result.invocationId!==request.invocationId||result.traceId!==request.traceId||record.operationId&&result.operation&&record.operationId!==result.operation.operationId)return;
+    return result;
+  }
+  if(typeof record.operationId==='string'&&record.operationId)return {invocationId:request.invocationId,traceId:request.traceId,status:'unknown',operation:{operationId:record.operationId,state:'unknown'},error:{code:'OUTCOME_UNKNOWN',message:'Read-only inspection is required after losing the response.',retryPolicy:'inspect_only'}};
 }
 export class AppsClient {
   readonly transport:RuntimeTransport;
@@ -19,11 +46,15 @@ export class AppsClient {
     const signal=AbortSignal.any([AbortSignal.timeout(Math.max(0,Math.min(remaining,2147483647))),...(options.signal?[options.signal]:[])]);
     if(signal.aborted||remaining<=0)return {invocationId,traceId,status:'cancelled',error:{code:'CANCELLED_BEFORE_DISPATCH',message:'Call cancelled before Runtime dispatch.',retryPolicy:'never'}};
     let identity:Awaited<ReturnType<RuntimeTransport['identity']>>;
-    try{identity=await this.transport.identity(signal);}catch{return {invocationId,traceId,status:signal.aborted?'cancelled':'unavailable',error:{code:signal.aborted?'CANCELLED_BEFORE_DISPATCH':'RUNTIME_UNAVAILABLE_BEFORE_DISPATCH',message:'Runtime handshake did not complete; no capability invocation was submitted.',retryPolicy:descriptor.effect==='mutation'?'never':'read_retry'}};}
+    try{identity=await this.transport.identity(signal);}catch(error){return runtimeHttpError(error,{invocationId,traceId})??{invocationId,traceId,status:signal.aborted?'cancelled':'unavailable',error:{code:signal.aborted?'CANCELLED_BEFORE_DISPATCH':'RUNTIME_UNAVAILABLE_BEFORE_DISPATCH',message:'Runtime handshake did not complete; no capability invocation was submitted.',retryPolicy:descriptor.effect==='mutation'?'never':'read_retry'}};}
     if(identity.transportMajor!==1||identity.catalogSchemaVersion!==1)return {invocationId,traceId,status:'failed',error:{code:'INCOMPATIBLE_PROTOCOL',message:`Expected transport 1 and catalog schema 1; received transport ${identity.transportMajor} and catalog schema ${identity.catalogSchemaVersion}.`,retryPolicy:'never',details:{expected:{transportMajor:1,catalogSchemaVersion:1},actual:{transportMajor:identity.transportMajor,catalogSchemaVersion:identity.catalogSchemaVersion}}}};
     if(signal.aborted)return {invocationId,traceId,status:'cancelled',error:{code:'CANCELLED_BEFORE_DISPATCH',message:'Deadline elapsed before capability invocation.',retryPolicy:'never'}};
     const request:InvocationRequest={protocolVersion:'1.0',...ref,invocationId,traceId,capabilityId:descriptor.capabilityId,capabilityVersion:descriptor.version,input,source:this.source,deadlineAt,...(options.idempotencyKey?{idempotencyKey:options.idempotencyKey}:{}),...(options.expectedResourceRevision?{expectedResourceRevision:options.expectedResourceRevision}:{})};
-    return this.transport.invoke(request,signal);
+    try{return await this.transport.invoke(request,signal);}catch(error){
+      const rejected=runtimeHttpError(error,{invocationId,traceId});if(rejected)return rejected;
+      if(descriptor.effect==='mutation'){try{const recovered=await recoverInvocationResult(this.transport,request,signal);if(recovered)return recovered;}catch{/* Preserve the original attempt when read-only recovery is unavailable. */}}
+      return {invocationId,traceId,status:'unavailable',error:{code:'RUNTIME_RESPONSE_UNAVAILABLE',message:descriptor.effect==='mutation'?'Resolve the original invocation ID when Runtime returns; mutation resubmission is disabled.':'Runtime response unavailable.',retryPolicy:descriptor.effect==='mutation'?'inspect_only':'read_retry',details:{invocationId,doNotResubmitMutation:descriptor.effect==='mutation'}}};
+    }
   }
 }
 /** Transport does not retry mutation requests; a lost response retains the original invocation ID. */
@@ -45,17 +76,19 @@ export class HttpRuntimeTransport implements RuntimeTransport {
   async invoke(request:InvocationRequest,signal?:AbortSignal):Promise<CapabilityResult> {
     const remaining=Date.parse(request.deadlineAt)-Date.now(),deadline=Number.isFinite(remaining)?AbortSignal.timeout(Math.max(0,Math.min(remaining,2147483647))):AbortSignal.abort();
     const bounded=AbortSignal.any([deadline,...(signal?[signal]:[])]);
+    if(bounded.aborted||remaining<=0)return {invocationId:request.invocationId,traceId:request.traceId,status:'cancelled',error:{code:'CANCELLED_BEFORE_DISPATCH',message:'Capability invocation was not submitted.',retryPolicy:'never'}};
     try{return await this.read('/v1/invocations',request,bounded) as CapabilityResult;}
     catch(error){
+      const rejected=runtimeHttpError(error,request);if(rejected)return rejected;
       // Read the same attempt record. Never submit another mutation after a lost response.
       if(request.idempotencyKey){
-        try{const record=await this.getInvocation(request.invocationId,bounded) as {result?:CapabilityResult;operationId?:string};if(record.result)return record.result;if(record.operationId)return {invocationId:request.invocationId,traceId:request.traceId,status:'unknown',operation:{operationId:record.operationId,state:'unknown'},error:{code:'OUTCOME_UNKNOWN',message:'Read-only inspection is required after losing the response.',retryPolicy:'inspect_only'}};}catch{/* Runtime may still be unavailable. */}
+        try{const recovered=await recoverInvocationResult(this,request,bounded);if(recovered)return recovered;}catch{/* Runtime may still be unavailable. */}
       }
       return {invocationId:request.invocationId,traceId:request.traceId,status:'unavailable',error:{code:'RUNTIME_RESPONSE_UNAVAILABLE',message:request.idempotencyKey?'Resolve the original invocation ID when Runtime returns; mutation resubmission is disabled.':'Runtime response unavailable.',retryPolicy:request.idempotencyKey?'inspect_only':'read_retry',details:{invocationId:request.invocationId,doNotResubmitMutation:!!request.idempotencyKey}}};
     }
   }
   async inspect(operationId:string,signal?:AbortSignal) {return await this.read(`/v1/operations/${encodeURIComponent(operationId)}/inspect`,{},signal) as CapabilityResult;}
-  async getInvocation(invocationId:string,signal?:AbortSignal) {return this.read(`/v1/invocations/${encodeURIComponent(invocationId)}`,undefined,signal);}
+  async getInvocation(invocationId:string,signal?:AbortSignal) {return await this.read(`/v1/invocations/${encodeURIComponent(invocationId)}`,undefined,signal) as InvocationRecoveryRecord;}
 }
 function schemaType(schema:JsonSchema):string {
   if(Array.isArray(schema.enum))return schema.enum.map(item=>JSON.stringify(item)).join(' | ');

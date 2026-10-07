@@ -2,13 +2,15 @@
 
 A.2 使用原 DSH 会话、原文件/命令工具和 Apps 网关。用户在任意原输入框 `@` 选择应用后手动发送要求；Agent 编辑普通 React/TSX/CSS，完成真实构建、双视口反馈、候选就绪和明确保存。只更新应用/组件区域，不建立另一套聊天。当前包内路径与运行身份必须来自正在处理该原会话的 Host，不能照抄旧开发机路径。
 
-candidate.10已通过官方插件管理器覆盖原同名插件并正常重开桌面：安装五hash/143冻结源输入、实际Runtime7/schema4/健康/唯一writer核对通过。冻结706/706、类型检查、26视觉fixture、实际包内build/双视口10断言和只读smoke范围保留；独立备份工具另验22+1并完成1754文件备份，旧10包未重打。Host/Client原生内存身份、GUI和新挂载仍待人工验收。candidate.9原Agent源码/build/preview/read_image/反馈历史未改，旧挂载失败、最后旧pub重启后interrupted；用户本轮暂不保存。进度以 [A.2执行记录](apps-a2-execution.md)为准。
+TST-023完整最低FIXTURE已由I15/15和独立V17/17验证真实UTF-8字节预算、handle完整分页及query_only spill拒绝；017–020完整FIXTURE由I25/25/V38/38验证幂等、unknown只读恢复、取消与严格CAS。两组都是candidate11隔离执行，原DSH/真实模型原话与桌面创作另验；013–015完整最低FIXTURE/actual-command已独立V通过；所有新执行证据均冻结于11修复后续开始前。
+
+当前candidate.12已于11:37:55 UTC通过官方管理器覆盖原同名插件；冷备恢复、33项安装产物/143冻结输入与9774核心文件字节不变已核对。首次启动超时并出现EACCES19387，原日志保留；11:44:02 UTC仅重试桌面后启动，11:45:55 UTC核实Runtime12/schema4、四只读HTTP200及Hallmark健康。Host插件内存身份、原生GUI/@/组件挂载仍NOT_RUN，22张正式PASS仍绑定原10/11，不迁移12。 前轮candidate.10通过官方插件管理器覆盖原同名插件并正常重开桌面的历史：安装五hash/143冻结源输入、实际Runtime7/schema4/健康/唯一writer核对通过。冻结706/706、类型检查、26视觉fixture、实际包内build/双视口10断言和只读smoke范围保留；独立备份工具另验22+1并完成1754文件备份，旧10包未重打。Host/Client原生内存身份、GUI和新挂载仍待人工验收。candidate.9原Agent源码/build/preview/read_image/反馈历史未改，旧挂载失败、最后旧pub重启后interrupted；用户本轮暂不保存。进度以 [A.2执行记录](apps-a2-execution.md)为准。
 
 本轮TST-054 FIXTURE（I52/52、实际公开Runtime invocation/A-B独立目录和两次edit）、055 FIXTURE+SOURCE_EXEC、056 FIXTURE、057 SOURCE_EXEC已按完整最低断言独立V通过；这些卡不代签原Agent/桌面全流程。057使用正常安装依赖的React/TSX/CSS与真实包内CLI，v2四方法/v1/major拒绝、资源字节核对以及同一冻结build的fixture/本地Bill200行live_readonly快照分别验证。快照源时间2026-10-06 16:01:20.856 UTC、取得时间次日07:50:12.932 UTC、freshness unknown，不代表新live API读数。旧HTML/JS只是子范围；058完整LIVE_MODEL/双视口视觉反馈仍NOT_RUN，420图价格/库存窄列逐字换行不能标视觉PASS。
 
 1754文件备份已实际恢复新根并核验6归档/8构建签名/6预览签名/12PNG/2草稿/44引用，普通npm ci和已安装CLI/SDK真实重建得到原Bill buildId，六原归档不改。该SOURCE_EXEC未切换桌面库或执行原Agent编辑；依赖安装通过仅适用于本次Bill归档和本地React夹具，不保证通用starter/file锁在所有机器可恢复。
 
-a635ec4已推送5份验收/审查文件及7份说明；本轮增量包含草稿账本/发布/核心边界harness与诊断回归/说明；提交与推送以Git历史和最终交付为准，10manifest所录143输入摘要与10归档不改，当前源码另有新11的5项差异。054的历史I、首V补充FAIL及SQLite侧文件更正均保留，主DB/307原I字节不变；新增侧文件不等于业务写，详情见执行记录。059/060完整FIXTURE独立V通过；candidate.11（Bundle/Host/Runtime11、schema4）归档已冻结，最终包检查727/727、类型/实际SDK/CLI/只读smoke及包内诊断通过，包独立V有限复核通过、003/004/011/012新11完整FIXTURE已独立V通过且未部署；当前十四张PASS分别绑定新11核心四卡与旧10其他十卡，003/004/012旧10 PASS及011旧10 FAIL保留，旧10卡不得自动搬到新候选。
+a635ec4已推送5份验收/审查文件及7份说明；前轮16文件已推送0824a4a；其后新增API/SDK、Runtime写入边界和模型预算独立harness，提交与推送以Git历史和最终交付为准，10manifest所录143输入摘要与10归档不改，11冻结输入比10有5项差异；11全部I/V冻结后已补profit公共Provider→UI provenance/行展开（2新增/33相关/type通过）及Host/SDK/Bridge错误边界，局部回归/有限review通过；另定位同view重开Pane缓存error/legacy未按nav.revision重验的源码路径，最小修复6项React局部回归、29项相关与类型检查通过，不能作为现场挂载失败因果证明。12已冻结包检查774/774并实际覆盖安装/桌面retry启动，Native原输入/组件挂载仍待用户测试；当前工作树不再作为11相同输入的证明。054的历史I、首V补充FAIL及SQLite侧文件更正均保留，主DB/307原I字节不变；新增侧文件不等于业务写，详情见执行记录。059/060完整FIXTURE独立V通过；candidate.11（Bundle/Host/Runtime11、schema4）归档已冻结，最终包检查727/727、类型/实际SDK/CLI/只读smoke及包内诊断通过，包独立V有限复核通过、003/004/011/012新11完整FIXTURE已独立V通过且未部署；当前二十二张PASS分别绑定新11十二卡（核心四卡、013–015、017–020与023）和旧10其他十卡，003/004/012旧10 PASS及011旧10 FAIL保留，旧10卡不得自动搬到新候选。
 
 ## A.2：先发现能力和工程定位
 

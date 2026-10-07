@@ -1,5 +1,5 @@
 import type {BridgeHello, BridgeIdentity, BridgeRequest, FailureInfo, JsonValue} from '../../app-contracts/src/index.ts';
-import {COMPONENT_CHANNEL, COMPONENT_METHODS, isBridgeIdentity, sameBridgeIdentity} from './apps-client.ts';
+import {COMPONENT_CHANNEL, COMPONENT_METHODS, ComponentBridgeError, isBridgeIdentity, sameBridgeIdentity} from './apps-client.ts';
 import type {ComponentEvent, ComponentHello, ComponentResponse} from './apps-client.ts';
 
 export interface ComponentHostHandlers {
@@ -50,7 +50,20 @@ export class ComponentHost {
     if(!this.active||!message||typeof message!=='object')return;
     const item=message as Record<string,unknown>;
     if(item.channel!==COMPONENT_CHANNEL||typeof item.requestId!=='string')return;
-    const response=(error:FailureInfo):ComponentResponse=>({...this.identity,channel:COMPONENT_CHANNEL,requestId:item.requestId as string,error});
+    const response=(error:FailureInfo):ComponentResponse=>{
+      const output:ComponentResponse={...this.identity,channel:COMPONENT_CHANNEL,requestId:item.requestId as string,error};
+      let code='BRIDGE_MESSAGE_TOO_LARGE';
+      try {if(messageBytes(output)<=this.maxMessageBytes)return output;}catch{code='INVALID_BRIDGE_MESSAGE';}
+      const details:Record<string,JsonValue>={},source=error.details&&typeof error.details==='object'&&!Array.isArray(error.details)?error.details:{};
+      const bounded:FailureInfo={code,message:'Component failure exceeds the JSON or message limit.',retryPolicy:['never','read_retry','inspect_only'].includes(error.retryPolicy)?error.retryPolicy:'never'};
+      const fallback:ComponentResponse={...this.identity,channel:COMPONENT_CHANNEL,requestId:item.requestId as string,error:bounded};
+      for(const key of ['invocationId','traceId','operationId','doNotResubmitMutation','requestId','idempotencyKey','appId','connectionId','capabilityId','capabilityVersion']){
+        const value=source[key];if(!(typeof value==='string'&&value.length<=512||typeof value==='boolean'))continue;
+        details[key]=value;bounded.details=details;if(messageBytes(fallback)>this.maxMessageBytes)delete details[key];
+      }
+      if(!Object.keys(details).length)delete bounded.details;
+      return fallback;
+    };
     if(item.protocolVersion!=='2.0')return response({code:'UNSUPPORTED_PROTOCOL',message:'Unsupported component protocol major.',retryPolicy:'never'});
     try{if(messageBytes(message)>this.maxMessageBytes)return response({code:'BRIDGE_MESSAGE_TOO_LARGE',message:'Component request exceeds the negotiated byte limit.',retryPolicy:'never'});}catch(error){return response({code:'INVALID_BRIDGE_MESSAGE',message:error instanceof Error?error.message:String(error),retryPolicy:'never'});}
     if(item.type==='hello'){
@@ -65,7 +78,7 @@ export class ComponentHost {
       const handler=this.extensionHandlers[item.feature as ComponentExtensionRequest['feature']];
       if(!handler)return response(unsupported(String(item.feature)));
       try {const result=await handler(message as ComponentExtensionRequest);if(!this.active)return;const output:ComponentResponse={...this.identity,channel:COMPONENT_CHANNEL,requestId:String(item.requestId),result};if(messageBytes(output)>this.maxMessageBytes)return response({code:'BRIDGE_MESSAGE_TOO_LARGE',message:'Extension response exceeds limit.',retryPolicy:'never'});return output;}
-      catch(error){const problem=error as {code?:string;message?:string};return response({code:problem.code??'COMPONENT_ACTION_FAILED',message:problem.message??String(error),retryPolicy:'never'});}
+      catch(error){if(error instanceof ComponentBridgeError)return response(error.failure);const problem=error as {code?:string;message?:string};return response({code:problem.code??'COMPONENT_ACTION_FAILED',message:problem.message??String(error),retryPolicy:'never'});}
     }
     const allowed=new Set(['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','method','params']);
     if(Object.keys(item).some(key=>!allowed.has(key))||!Object.hasOwn(item,'params'))return response({code:'INVALID_BRIDGE_MESSAGE',message:'Bridge requests require params and reject unknown envelope fields.',retryPolicy:'never'});
@@ -81,6 +94,7 @@ export class ComponentHost {
       return output;
     }catch(error){
       if(!this.active)return;
+      if(error instanceof ComponentBridgeError)return response(error.failure);
       const problem=error as {code?:string;message?:string};
       return response({code:problem.code??'COMPONENT_ACTION_FAILED',message:problem.message??String(error),retryPolicy:'never'});
     }
