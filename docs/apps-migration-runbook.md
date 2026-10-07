@@ -1,14 +1,14 @@
 # Apps 数据升级、备份、回退与清理
 
-A.2 Runtime 使用schema4；candidate.9 / Runtime candidate.7 已官方覆盖安装、正常重开和读取健康，694/694检查通过。candidate.7阶段已将实际schema3迁入新schema4，116资产/原集合计数保留；完整备份/核验284文件/25集合、新根恢复404可信映射、入口与唯一writer已执行。更新9前另做294文件/25集合完整备份，新Runtime核对后正常重开，profile/dataDirectory未再次切换。**这些步骤与全部数据切换验收分开记录。** 价格/库存本次四个写动作及独立读回恢复通过；之后真实Agent创作已结束，构建/预览/读图迭代有证据但原生挂载失败。该轮新增创作状态尚需备份/恢复和对账；局部视觉修复仅在隔离fixture通过、未安装。附件、条件回退和上品仍未验收，见 [A.2 执行记录](apps-a2-execution.md)。
+A.2 Runtime使用schema4；candidate.10现已通过官方插件管理器覆盖原同名插件并正常重开桌面，五安装hash/143冻结源输入及实际Runtime7/健康/唯一writer核对通过。candidate.7的schema3→4、116资产/原集合保留、284文件/25集合备份、404映射新根恢复，以及更新9前294文件备份均保留原范围；本轮最终严格备份另为1754文件/25集合apply/verify通过。**低层步骤与全部数据切换验收分开记录。** 本轮未执行该新备份的新根restore验收，GUI/原生内存/新创作、完整历史/草稿对账、附件/条件回退/上品仍待验，见 [A.2执行记录](apps-a2-execution.md)。
 
-candidate.10现已打包，Host10 / Runtime7；706全仓、类型检查、26视觉fixture、独立包内构建/预览和5GET/0mutation smoke通过，143源输入无差异。Runtime JS仍为 `2264139fc4404a11dbe9fdde00a374b541d1bda1544ef784483bfb6547cc9844`，客户端展示修复未变更Runtime协议/数据schema，不代表重新迁移或备份验收。覆盖ValidateOnly通过，实际桌面仍9，已请求正常退出；尚未执行9→10安装或原生挂载复验。备份/恢复及原数据历史继续按原范围保留。
+08:41:55 UTC桌面完全退出后核实任务所属旧Runtime38844，使用Windows Stop-Process停止，非graceful SIGTERM；完成最终备份后08:52:03 UTC安装10、08:52:34 UTC正常重开。新Runtime62564是36994唯一listener，旧38844已退；profile/dataDirectory未再切换。Runtime JS仍 `2264139fc4404a11dbe9fdde00a374b541d1bda1544ef784483bfb6547cc9844`，协议/schema和冻结包未变更；706项包检查不代签之后独立维护工具修复或原生GUI。
 
 本页先列当前 schema3→4 和 schema4 全量备份命令，后面保留旧 schema2→3 的 V1 历史。不要把旧目标 schema3 命令直接当成 A.2 Runtime 可运行数据。
 
 ## A.2：离线检查与工具身份
 
-命令从核实过源码/版本的本仓库根目录执行，Node 须支持 node:sqlite 与原生 TypeScript。安装包中的 build/preview CLI 使用 Host guidance 返回的 Node 执行方式；本页的 `migrate-apps-schema4.mjs`、`backup-apps.mjs` 为**仓库维护工具**。完整备份模块/CLI 不在 candidate.7 的打包 sourceInputs 或安装入口中，须独立记录其源码摘要、测试日志与运行身份，不能拼接一个不存在的已安装 lib 备份命令。
+命令从核实过源码/版本的本仓库根目录执行，Node须支持node:sqlite与原生TypeScript。安装包build/preview CLI使用Host guidance返回的Node方式；本页的 `migrate-apps-schema4.mjs`、`backup-apps.mjs` 是**仓库维护工具**。完整备份模块/CLI不在candidate.10的143打包sourceInputs或安装入口，须独立记源码/hash/日志，不能拼接不存在的已安装lib备份命令。
 
 操作前确认实际 schema、源数据/资产根、新目标路径、连接版本和当前进程。冻结源入口并停止所有 Runtime writer，等待实际执行排空；对 queued/dispatching/pending/unknown 按原 operationId/taskId/requestId 只读核实。未决结果不能靠重发写入或删除记录“解决”。正常退出官方桌面后再执行官方同名插件更新；不要强关用户会话，也不要凭旧 URL 假定服务停止。
 
@@ -60,6 +60,10 @@ source、dist、package.json 和原锁文件仍保存。原锁/依赖路径适�
 恢复会加入哈希锚定的 evidence_relocations，映射原绝对报告、源码工作目录和资产引用到新根；原不可变 JSON/签名报告字节不重写，即使旧目录仍在也使用已验证的新映射。每次访问核对 manifest/hash/映射边界。恢复目录再次备份/恢复保留别名历史；缺失、冲突、篡改映射或未在 manifest 中的引用不猜新路径。
 
 完整备份包含数据库连接配置、service-key、runner 私有签名 key 和业务/会话材料，必须私有保管。对外发布摘要与 hash，不提交备份目录、完整 manifest、PNG 中的真实业务或密钥；恢复不输出 key 内容。
+
+本轮首apply因未签名preview input中的本地dataset标签被误当持久引用，在目录/报告创建前失败；中间apply后独立复核发现JSON显示路径碰撞，原目录/报告保留HOLD，未作为最终备份。最终工具仅按已有执行上下文识别归档输入，以实际binding对象WeakSet身份区分本地未命名空间标签；DB、签名report、typed refs、嵌套payload和所有含冒号namespace仍严格拒绝missing。历史签名report没有input digest，识别归档输入不证明当时逐字preview输入，原JSON/签名/图片不改写。
+
+最终工具摘要 `8b655dc37502725ba878cc01db9cf05d058cf3cd660f76d3c6a2e1a6c26b39d6`，22回归、加强碰撞单项1/1和类型检查通过，独立源码复核PASS。新目标 `artifacts/apps-a2-bill-backup-pre-candidate10-reviewed` apply/verify通过，1754文件/25集合，ID `runtime-backup:572c46b04b9f624b752f8c07532e099bc6ba8bc48049e9d86cef9258d9f1cb4f`；报告摘要见执行页，当前未执行该备份新根restore验收。
 
 实际旧工作副本依赖junction首轮安全拒绝已保留；限定排除规则与显式证据引用负例修复后，实施人/独立V各17/17、当时全仓655/655，实际完整备份/校验/恢复均已通过相应步骤。后续candidate.9另有694/694，不改写旧备份执行版本。备份ID为 `runtime-backup:c3131e247c1b340297f43e36efd9afad7780e0b5261c77bb3d3048f1a05cc1dd`；可核对hash与范围见执行页，不用步骤通过代签DATA-CUTOVER全部断言。
 

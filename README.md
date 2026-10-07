@@ -1,6 +1,10 @@
 # Hallmark × DSH 应用接入
 
-本项目在原 Hallmark 插件项目上覆盖更新。本轮 A.2 **`1.0.0-candidate.10` 已打包并通过706项全仓测试、类型检查、26条生产React隔离视觉检查、包内实际构建/双视口10项断言及只读Runtime smoke，尚未安装。** Host candidate.10、Runtime candidate.7、DB schema4；143个打包源输入已核对，无差异。它补齐原会话可见候选发现与正式右侧渲染，重排局部应用目录/组件库；实际桌面仍为candidate.9，已请求用户正常退出后覆盖更新。candidate.9真实原Agent组件请求已结束：源码、实际构建/预览、读图反馈迭代有证据，原生挂载失败，未验收显示、原输入附加或保存。价格54.80→54.79、库存201→200的四个授权写入已succeeded并独立读回确认恢复；迁移、备份/恢复和唯一writer有记录。桌面视觉、原附件体验、卸载重开、上品和正式逐项验收仍未完成，四门禁未放行。当前范围见 [A.2 实施与验收记录](docs/apps-a2-execution.md)；前轮记录保留在[历史候选说明](docs/apps-v1-candidate.md)和[历史验证摘要](docs/apps-publication-validation-20261007.md)，不代签本轮。
+本项目在原 Hallmark 插件项目上覆盖更新。**`1.0.0-candidate.10` 已通过官方插件管理器覆盖原同名插件，并于2026-10-07 08:52:34 UTC正常重开桌面。** 安装五项文件hash、143个冻结源输入零差异，以及实际Runtime candidate.7/schema4、三个Provider和Hallmark健康已核对；Host/Client原生内存身份、实际GUI视觉和新组件挂载仍待人工验收，四门禁未放行。
+
+候选10冻结范围有706项全仓测试、类型检查、26条生产React隔离视觉检查、包内实际构建/双视口10断言及只读smoke；核心实现已推送GitHub main提交 `92b094888606db0391e9f06a14c006db8191a1fd`。安装前另完成严格备份工具修复、22项回归/加强碰撞单项和类型检查；最终备份apply/verify通过，1754文件/25集合。该工具不在候选10的143源输入中，未重打包；首轮备份失败及中间HOLD保留，本轮工具/说明更新的提交另记。
+
+candidate.9真实原Agent源码、实际构建/预览、读图反馈迭代有历史，但原生挂载失败；重启后最后旧publication为interrupted，未变成成功。旧Agent的重新发布建议不构成验收。价格54.80→54.79、库存201→200四个授权写入已成功并独立读回恢复，本轮未新增业务写或保存；原输入附加、模型整链、卸载重开、上品和正式逐项验收仍待完成。当前范围见 [A.2执行记录](docs/apps-a2-execution.md)；[历史候选说明](docs/apps-v1-candidate.md)和[历史验证摘要](docs/apps-publication-validation-20261007.md)保留原范围。
 
 2026-10-07 的架构 A.1、生图说明与可交互 HTML 明确了**原聊天中由 Agent 创建和编辑组件**的体验：任意已有 DSH 会话在原输入框 `@` 选择应用，使用原 Agent、原消息和原发送；只改应用工作台、组件区与必要输入扩展，不新增独立聊天标签，不重做整个 DSH UI。前一阶段交付设计和原型；本轮 A.2 已补创作记录、真实构建/预览回执、候选就绪、明确保存、原输入引用及库管理实现，原生桌面与真实模型整链按范围另验。
 
@@ -10,7 +14,7 @@
 
 | 内容 | 入口 | 完成范围 |
 |---|---|---|
-| A.2 当前实施与逐项进度 | [执行记录](docs/apps-a2-execution.md)、[24 项任务](docs/apps-a2-tasks.md)、[80 项对照](docs/apps-a2-progress.csv) | candidate.10打包/706项检查/26条视觉fixture/实际CLI双视口通过，待安装；candidate.9现场与真实Agent挂载失败历史保留，价格/库存已恢复，四门禁分开 |
+| A.2 当前实施与逐项进度 | [执行记录](docs/apps-a2-execution.md)、[24 项任务](docs/apps-a2-tasks.md)、[80 项对照](docs/apps-a2-progress.csv) | candidate.10官方同名覆盖/文件与Runtime核对/正常重开、最终1754文件备份通过；GUI/原生内存/新挂载待验，candidate.9失败与业务恢复历史保留，四门禁分开 |
 | A.2 创作与维护操作 | [源码创作](docs/source-component-authoring.md)、[升级/备份恢复](docs/apps-migration-runbook.md)、[技能安装](docs/design-skills-install.md) | 包内命令/签名回执/v2/明确保存；仓库维护工具与恢复依赖规则，保留旧版本历史 |
 | Apps V1 候选实现 | [候选说明](docs/apps-v1-candidate.md)、[架构决策](docs/apps-architecture-decisions.md)、[迁移与回退](docs/apps-migration-runbook.md) | 现有实现与候选验收；不等于新增前端流程已实现 |
 | 需求、架构与逐项追踪 | [TODO](docs/requirements/01_TODO.md)、[规格](docs/requirements/02_SPEC.md)、[架构 A.1](docs/requirements/03_ARCHITECTURE.md)、[traceability.csv](docs/requirements/traceability.csv) | 同仓库保存的需求基线与最新架构补充 |

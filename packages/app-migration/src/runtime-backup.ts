@@ -190,10 +190,48 @@ function inspectSource(options:RuntimeBackupOptions):Inspection {
     };
     for(const row of priorRelocations){assertNotDependencyReference(row.relocatedPath,'trusted_prior_relocation');references.push({location:'trusted_prior_relocation',kind:row.kind,originalPath:row.originalPath,resolvedPath:row.relocatedPath,...(row.kind==='file'?{sha256:row.sha256,bytes:row.bytes}:{})});}
     const scanned=new Set<string>();
-    const scan=(value:unknown,location:string,key='',parent?:Record<string,unknown>):void=>{
+    // Unsigned preview inputs are archived data, not persisted Runtime bindings. Classify the
+    // input slot through existing execution evidence, never a filename or fixture ID prefix.
+    // Old reports do not sign the input data digest; this grants no trust to that data's contents.
+    const evidenceRoot=join(source,'authoring-evidence'),fixtureInputs=new Map<string,unknown>();
+    const records=(table:string)=>state.rows[table].map(row=>({id:String(row.id),value:JSON.parse(String(row.value_json)) as Record<string,unknown>}));
+    const attempts=records('authoring_attempts'),buildReceipts=records('build_receipts'),previewReceipts=records('preview_receipts');
+    const isObject=(value:unknown):value is Record<string,unknown>=>Boolean(value&&typeof value==='object'&&!Array.isArray(value));
+    const signedReport=(reference:unknown):Record<string,unknown>|undefined=>{
+      if(!isObject(reference)||typeof reference.path!=='string'||typeof reference.sha256!=='string'||!Number.isSafeInteger(reference.bytes)||Number(reference.bytes)<0)return;
+      const path=mappedPath(reference.path);if(dirname(path)!==evidenceRoot||!path.endsWith('.json'))return;
+      const bytes=readFileSync(safeExisting(path));if(bytes.length!==reference.bytes||hash(bytes)!==reference.sha256)throw new Error('BACKUP_REFERENCE_HASH_MISMATCH');
+      const envelope=JSON.parse(bytes.toString('utf8'));if(!isObject(envelope)||!('report' in envelope)&&!('signature' in envelope))return;
+      const key=readFileSync(safeExisting(join(evidenceRoot,'.runner-key')));
+      if(!isObject(envelope.report)||key.length!==32||typeof envelope.signature!=='string'||createHmac('sha256',key).update(canonicalJson(envelope.report)).digest('hex')!==envelope.signature)throw new Error('BACKUP_RUNNER_ATTESTATION_INVALID');
+      return envelope.report;
+    };
+    if(existsSync(evidenceRoot))for(const file of readdirSync(evidenceRoot,{withFileTypes:true})){
+      if(!file.isFile()||!file.name.endsWith('.json'))continue;
+      const path=join(evidenceRoot,file.name);let value:unknown;try{value=JSON.parse(readFileSync(path,'utf8'));}catch{continue;}
+      if(isObject(value)&&!('report' in value)&&!('signature' in value))fixtureInputs.set(path,value);
+    }
+    const fixtureData=new Set<string>(),fixtureRequests=new Set<string>();
+    const fixturePacket=(value:unknown):value is Record<string,unknown>=>isObject(value)&&typeof value.viewId==='string'&&Boolean(value.viewId)&&Array.isArray(value.bindings)&&value.bindings.every(binding=>isObject(binding)&&['bindingId','appId','connectionId','datasetId','revision'].every(key=>typeof binding[key]==='string'&&Boolean(binding[key]))&&Object.hasOwn(binding,'payload'));
+    for(const [path,input]of fixtureInputs){
+      if(!isObject(input)||input.mode!=='fixture'||typeof input.attemptId!=='string'||typeof input.buildReceiptId!=='string'||!Number.isSafeInteger(input.epoch)||Number(input.epoch)<1||typeof input.evidenceRoot!=='string'||mappedPath(input.evidenceRoot)!==evidenceRoot||typeof input.archiveRoot!=='string'||mappedPath(input.archiveRoot)!==join(source,'source-components')||!fixturePacket(input.data))continue;
+      const attempt=attempts.find(row=>row.id===input.attemptId&&row.value.attemptId===input.attemptId)?.value;
+      const buildReceipt=buildReceipts.find(row=>row.id===input.buildReceiptId&&row.value.receiptId===input.buildReceiptId)?.value;
+      const previewReceipt=previewReceipts.find(row=>row.id===attempt?.previewReceiptId&&row.value.receiptId===attempt?.previewReceiptId)?.value;
+      if(!attempt||attempt.epoch!==input.epoch||attempt.buildReceiptId!==input.buildReceiptId||!Array.isArray(attempt.evidenceRefs)||!buildReceipt||buildReceipt.attemptId!==input.attemptId||!previewReceipt||previewReceipt.attemptId!==input.attemptId||previewReceipt.buildReceiptId!==input.buildReceiptId||previewReceipt.mode!=='fixture'||previewReceipt.protocol!=='dsh.apps.component.v2'||previewReceipt.runnerVersion!=='dsh-authoring-preview/1')continue;
+      const buildRef=input.buildReportRef;
+      if(!isObject(buildRef)||typeof buildRef.path!=='string'||!attempt.evidenceRefs.some(ref=>isObject(ref)&&typeof ref.path==='string'&&mappedPath(ref.path)===mappedPath(buildRef.path as string)&&ref.sha256===buildRef.sha256&&ref.bytes===buildRef.bytes))continue;
+      const build=signedReport(buildRef);
+      if(!build||build.runnerVersion!=='dsh-authoring-build/1'||build.attemptId!==input.attemptId||build.epoch!==input.epoch||build.archiveBuildId!==buildReceipt.archiveBuildId||build.verdict!=='PASS'||previewReceipt.buildId!==build.archiveBuildId)continue;
+      const witnessed=attempt.evidenceRefs.some(ref=>{
+        const preview=signedReport(ref);return preview?.runnerVersion==='dsh-authoring-preview/1'&&preview.protocol==='dsh.apps.component.v2'&&preview.mode==='fixture'&&preview.attemptId===input.attemptId&&preview.epoch===input.epoch&&preview.buildReceiptId===input.buildReceiptId&&preview.buildId===build.archiveBuildId&&preview.verdict===previewReceipt.verdict;
+      });
+      if(witnessed){fixtureRequests.add(path);fixtureData.add(canonicalJson(input.data));}
+    }
+    const scan=(value:unknown,location:string,key='',parent?:Record<string,unknown>,fixtureBindings:WeakSet<Record<string,unknown>>=new WeakSet()):void=>{
       if(typeof value==='string'){
         if(buildKeys.has(key)){if(!/^[a-f0-9]{64}$/.test(value))throw new Error(`BACKUP_BUILD_REFERENCE_INVALID: ${location}`);builds.add(value);references.push({location,kind:'build',targetId:value});}
-        if(key==='datasetId'){datasets.add(value);references.push({location,kind:'dataset',targetId:value});}
+        if(key==='datasetId'&&(!parent||!fixtureBindings.has(parent)||value.includes(':'))){datasets.add(value);references.push({location,kind:'dataset',targetId:value});}
         if(pathKeys.has(key)&&value){addPath(value,location,['workspacePath','cwd','directory'].includes(key)?'directory':'file');}
         else if(isAbsolute(value)&&!['originalPath','relocatedPath','sourceDirectory','targetDirectory','backupDirectory','manifestPath'].includes(key)){
           if(location.includes('.command[')){references.push({location,kind:'toolchain',originalPath:value});}
@@ -206,14 +244,14 @@ function inspectSource(options:RuntimeBackupOptions):Inspection {
         }
         return;
       }
-      if(Array.isArray(value)){value.forEach((item,index)=>scan(item,`${location}[${index}]`,key));return;}
+      if(Array.isArray(value)){value.forEach((item,index)=>scan(item,`${location}[${index}]`,key,undefined,fixtureBindings));return;}
       if(!value||typeof value!=='object')return;const object=value as Record<string,unknown>;
       if(typeof object.targetKind==='string'){
         if(object.targetKind==='build'&&typeof object.targetId==='string')scan(object.targetId,location+'.targetId','buildId');
         else if(object.targetKind==='dataset'&&typeof object.targetId==='string')scan(object.targetId,location+'.targetId','datasetId');
         else if(location.startsWith('artifact_refs.')&&!['file','build','dataset'].includes(object.targetKind))throw new Error('BACKUP_UNKNOWN_ARTIFACT_REFERENCE');
       }
-      for(const [field,item] of Object.entries(object))scan(item,`${location}.${field}`,field,object);
+      for(const [field,item] of Object.entries(object))scan(item,`${location}.${field}`,field,object,fixtureBindings);
     };
     for(const [table,rows] of Object.entries(state.rows))for(const row of rows){
       const value=JSON.parse(String(row.value_json));
@@ -235,7 +273,11 @@ function inspectSource(options:RuntimeBackupOptions):Inspection {
           if(key.length!==32||typeof envelope.signature!=='string'||createHmac('sha256',key).update(canonicalJson(envelope.report)).digest('hex')!==envelope.signature)throw new Error('BACKUP_RUNNER_ATTESTATION_INVALID');
           references.push({location:`file:${full}.runnerKey`,kind:'file',originalPath:keyPath,sha256:hash(key),bytes:key.length});
         }
-        scan(value,`file:${full}`);
+        const fixture=fixtureRequests.has(full)&&isObject(value)?value.data:fixtureInputs.has(full)&&fixtureData.has(canonicalJson(value))?value:undefined;
+        // Authorize exact parsed binding objects, not display paths that JSON field names can collide with.
+        const fixtureBindings=new WeakSet<Record<string,unknown>>();
+        if(isObject(fixture)&&Array.isArray(fixture.bindings))fixture.bindings.forEach(binding=>{if(isObject(binding))fixtureBindings.add(binding);});
+        scan(value,`file:${full}`,'',undefined,fixtureBindings);
       }
     }
     const sources=new SourceComponentStore(join(source,'source-components'));

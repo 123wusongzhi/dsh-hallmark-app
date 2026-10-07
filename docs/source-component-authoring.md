@@ -2,7 +2,7 @@
 
 A.2 使用原 DSH 会话、原文件/命令工具和 Apps 网关。用户在任意原输入框 `@` 选择应用后手动发送要求；Agent 编辑普通 React/TSX/CSS，完成真实构建、双视口反馈、候选就绪和明确保存。只更新应用/组件区域，不建立另一套聊天。当前包内路径与运行身份必须来自正在处理该原会话的 Host，不能照抄旧开发机路径。
 
-candidate.10已打包待安装：Host candidate.10 / Runtime candidate.7 / schema4，706/706、类型检查、26条视觉fixture、包内实际build/双视口10断言及5GET/0mutation smoke通过，143源输入核对无差异。原会话独立候选发现/正式右侧渲染与局部视觉修复已进入候选。当前桌面仍candidate.9，已请求正常退出；其真实原Agent组件请求已结束，技能工具、源码、build/preview、read_image与反馈修改有历史，但原生挂载失败、无mounted/原输入附加，用户本轮暂不保存。候选检查不代签桌面，进度以 [A.2 实施记录](apps-a2-execution.md)为准。
+candidate.10已通过官方插件管理器覆盖原同名插件并正常重开桌面：安装五hash/143冻结源输入、实际Runtime7/schema4/健康/唯一writer核对通过。冻结706/706、类型检查、26视觉fixture、实际包内build/双视口10断言和只读smoke范围保留；独立备份工具另验22+1并完成1754文件备份，包未重打。Host/Client原生内存身份、GUI和新挂载仍待人工验收。candidate.9原Agent源码/build/preview/read_image/反馈历史未改，旧挂载失败、最后旧pub重启后interrupted；用户本轮暂不保存。进度以 [A.2执行记录](apps-a2-execution.md)为准。
 
 ## A.2：先发现能力和工程定位
 
@@ -122,7 +122,7 @@ record_preview PASS 后调用 `apps.authoring.publish`，带同一 attemptId/epo
 
 原右侧 [AppsSidebarPane](../packages/plugin-apps/client/sidebar.tsx) 在tab可见、owner与当前会话相同、signal有效时使用正式SDK的AppsNativeView。成功读取新目录且目标ID不存在时，才交给历史组件Pane；目录权限/归属错误显示错误，不降级绕过检查。Apps主区在自己的所属会话独立发现并选中工作区，不依赖聊天工具行挂载。聊天 [ToolView](../packages/plugin-apps/client/view.tsx) 是固定session/view/build/publication/revision身份卡；“打开组件”明确打开同view当前工作版本，原消息标识保留，不偷偷随focus变更历史身份。
 
-CandidateFrameLease以session/view/publication/attempt/epoch/build完整键限制一个候选只授权一个iframe文档。没有ToolView挂载时，独立发现仍能驱动正式右栏；主区/右栏同时存在也不能竞争授权。重复hello共享同一授权过程并保留各requestId；卸载、旧handler或晚到授权返回使用原handler退役原grant。错误/超时先只读对账原publication，ready已提交时保留成功；failMount与ready竞争再对账，P1晚结果不得覆盖同view的新P2。13项最终专项及独立源码复核通过，范围为React/契约夹具，尚未安装或完成candidate.10原生GUI验收。
+CandidateFrameLease以session/view/publication/attempt/epoch/build完整键限制一个候选只授权一个iframe文档。没有ToolView挂载时，独立发现仍能驱动正式右栏；主区/右栏同时存在也不能竞争授权。重复hello共享同一授权过程并保留各requestId；卸载、旧handler或晚到授权返回使用原handler退役原grant。错误/超时先只读对账原publication，ready已提交时保留成功；failMount与ready竞争再对账，P1晚结果不得覆盖同view的新P2。13项最终专项及独立源码复核通过，范围为React/契约夹具；实现现已覆盖安装，candidate.10原生GUI仍待直接验收。
 
 **首次授权后、候选确认前离开原展示面会退役原grant；同一publication不跨面重新授权。** 此时先在原会话只读检查原publication/attempt；未成功则保留旧失败事实，再明确进入新attempt重新构建/预览/发布。不能承诺候选无损搬迁，不能为这个边界自动创建Agent重试循环。
 

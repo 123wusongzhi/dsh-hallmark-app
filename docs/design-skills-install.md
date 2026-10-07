@@ -1,6 +1,6 @@
 # DSH 组件设计技能安装与使用
 
-A.2的 `hallmark-component-design` 已更新到DSH技能目录，旧版备份/hash核对，其余上游技能保留。candidate.7原生目录发现/原@只读历史保留；candidate.9另一真实原Agent请求已结束，技能工具、源码、实际构建/预览、读图反馈修改有历史，但原生挂载失败。candidate.10已打包并通过706全仓/类型检查、26视觉fixture、包内实际CLI双视口检查及只读smoke；局部视觉和候选挂载修复在该包，尚未安装，当前桌面仍9、已请求正常退出。视觉/模型整链验收见 [A.2 执行记录](apps-a2-execution.md)。
+A.2的 `hallmark-component-design` 已更新到DSH技能目录，旧版备份/hash及其余上游技能保留。candidate.7原生发现/只读和candidate.9真实源码/构建/预览/读图迭代历史不改，9原生挂载失败。candidate.10现已通过官方插件管理器覆盖原同名插件并正常重开桌面，安装文件/冻结源输入与实际Runtime健康核对通过；GUI/原生内存身份、新技能调用与新组件挂载待用户原会话手动验收。706包检查、26视觉fixture与实际CLI双视口不代签该范围，见 [A.2执行记录](apps-a2-execution.md)。
 
 ## A.2：已更新内容及证据范围
 
@@ -42,7 +42,7 @@ Impeccable、shadcn 等设计方法可用于普通 React 组件；来源/许可�
 - [x] candidate.7 一个原会话的 @ 引用、人工发送和真实外部模型只读应用调用；该范围以 E-NATIVE-READ-7 为准。
 - [x] 原生技能目录列出项目技能和新描述；仅证明发现，未证明模型读取 SKILL.md。
 - [x] candidate.9真实原Agent请求中出现技能工具、写源码、真实构建/双视口预览、read_image及反馈修改；E-MODEL-CREATION-9仅记录这些局部步骤，不代签设计质量或完整闭环。
-- [x] candidate.10打包/706项检查、143源输入核对、26条视觉fixture、实际包内构建/双视口及只读smoke；ValidateOnly通过，尚未安装，不能代签原生技能或设计质量。
+- [x] candidate.10已官方同名覆盖/正常重开，五安装hash/143冻结源输入/实际Runtime7/schema4/健康/唯一writer核对；706包检查及26视觉fixture保持隔离范围，不代签原生技能或设计质量。
 - [ ] 新候选的实际 Host 注册/内存身份、组件入口、卸载重开；所需辅助技能实际加载范围另验。
 - [ ] 实际原输入 @、中文组合态、正文/旧附件保护、手动发送与附件消费，A/B 会话隔离。
 - [ ] 候选显示确认、明确保存、历史/冲突和另一会话重开；candidate.9五条failed_mount和一条过deadline的mounting，无mounted；用户本轮明确暂不保存。

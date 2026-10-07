@@ -62,6 +62,85 @@ function mappedFile(rows:EvidenceRelocation[],path:string):string {
   assert.equal(sha(readFileSync(row.manifestPath)),row.manifestSha256);assert.equal(sha(readFileSync(row.relocatedPath)),row.sha256);assert.equal(readFileSync(row.relocatedPath).length,row.bytes);return row.relocatedPath;
 }
 
+function previewFixtureInputs(f:Awaited<ReturnType<typeof fixture>>){
+  // Signed fixture reports exercise backup classification only; they make no browser claim.
+  const attemptId=f.current.report.attemptId,buildReceiptId='fixture-build',previewReceiptId='fixture-preview';
+  const report={schemaVersion:1,attemptId,epoch:f.current.report.epoch,buildReceiptId,buildId:f.current.report.archiveBuildId,protocol:'dsh.apps.component.v2',mode:'fixture',runnerVersion:'dsh-authoring-preview/1',verdict:'PASS'};
+  const reportRef=f.runner.writeReport('preview',report),data={viewId:'preview',bindings:[{bindingId:'rows',appId:'notes',connectionId:'fixture',datasetId:'local-preview-label',revision:'1',payload:{rows:[{value:1}]}}]};
+  const request={attemptId,epoch:f.current.report.epoch,buildReceiptId,buildReportRef:f.current.reportRef,mode:'fixture',evidenceRoot:f.runner.root,archiveRoot:f.sources.directory,data};
+  const requestPath=join(f.runner.root,'arbitrary-input-name.json'),fixturePath=join(f.runner.root,'arbitrary-data-name.json');
+  writeFileSync(requestPath,JSON.stringify(request));writeFileSync(fixturePath,JSON.stringify(data));
+  const store=new RuntimeStore(join(f.source,'apps.db'));try{
+    store.put('build_receipts',buildReceiptId,{receiptId:buildReceiptId,...f.current.report});
+    store.put('preview_receipts',previewReceiptId,{receiptId:previewReceiptId,...report});
+    store.put('authoring_attempts',attemptId,{attemptId,epoch:f.current.report.epoch,buildReceiptId,previewReceiptId,evidenceRefs:[f.current.reportRef,reportRef]});
+  }finally{store.close();}
+  return {requestPath,fixturePath,request,data,report,reportRef};
+}
+
+test('witnessed unsigned preview input and identical standalone fixture retain exact bytes without promoting local labels to Runtime references',async()=>{
+  const f=await fixture();try{
+    const input=previewFixtureInputs(f),before=tree(f.source),manifest=await backupRuntime(f.options);
+    assert.equal(manifest.references.some(ref=>ref.kind==='dataset'&&ref.targetId==='local-preview-label'),false);
+    assert.ok(manifest.references.some(ref=>ref.kind==='dataset'&&ref.targetId==='dataset:v1:fixture'));
+    assert.deepEqual(tree(f.source),before);verifyRuntimeBackup(f.backup);restoreRuntimeBackup({backupDirectory:f.backup,targetDirectory:f.target});
+    for(const path of [input.requestPath,input.fixturePath,input.reportRef.path])assert.deepEqual(readFileSync(join(f.target,'authoring-evidence',path.slice(f.runner.root.length+1))),readFileSync(path));
+  }finally{f.cleanup();}
+});
+
+test('fixture-shaped files without matching execution evidence and fixture labels in persistent DB remain strict references',async()=>{
+  const f=await fixture();try{
+    const input=previewFixtureInputs(f),original=readFileSync(input.requestPath);
+    writeFileSync(input.requestPath,JSON.stringify({...input.request,attemptId:'forged-attempt'}));
+    assert.throws(()=>runtimeBackupDryRun(f.options),/BACKUP_DATASET_REFERENCE_MISSING: local-preview-label/);assert.equal(existsSync(f.backup),false);
+    writeFileSync(input.requestPath,original);
+    writeFileSync(input.requestPath,JSON.stringify({...input.request,data:{viewId:'preview',bindings:[{datasetId:'local-preview-label'}]}}));
+    assert.throws(()=>runtimeBackupDryRun(f.options),/BACKUP_DATASET_REFERENCE_MISSING: local-preview-label/);writeFileSync(input.requestPath,original);
+    const standalone=readFileSync(input.fixturePath);writeFileSync(input.fixturePath,JSON.stringify({...input.data,viewId:'not-the-request-data'}));
+    assert.throws(()=>runtimeBackupDryRun(f.options),/BACKUP_DATASET_REFERENCE_MISSING: local-preview-label/);writeFileSync(input.fixturePath,standalone);
+    const store=new RuntimeStore(join(f.source,'apps.db'));try{store.put('views','forged-fixture',{mode:'fixture',data:input.data});}finally{store.close();}
+    assert.throws(()=>runtimeBackupDryRun(f.options),/BACKUP_DATASET_REFERENCE_MISSING: local-preview-label/);assert.equal(existsSync(f.backup),false);
+  }finally{f.cleanup();}
+});
+
+test('all namespaced dataset IDs and nested or typed references remain strict even within witnessed preview input',async()=>{
+  const f=await fixture();try{
+    const input=previewFixtureInputs(f);
+    for(const datasetId of ['dataset:v1:missing','result:missing','future:missing']){
+      const data={...input.data,bindings:[{...input.data.bindings[0],datasetId}]};
+      writeFileSync(input.requestPath,JSON.stringify({...input.request,data}));writeFileSync(input.fixturePath,JSON.stringify(data));
+      assert.throws(()=>runtimeBackupDryRun(f.options),new RegExp('BACKUP_DATASET_REFERENCE_MISSING: '+datasetId));
+    }
+    const data={...input.data,bindings:[{...input.data.bindings[0],payload:{datasetId:'missing-nested-reference'}}]};
+    writeFileSync(input.requestPath,JSON.stringify({...input.request,data}));writeFileSync(input.fixturePath,JSON.stringify(data));
+    assert.throws(()=>runtimeBackupDryRun(f.options),/BACKUP_DATASET_REFERENCE_MISSING: missing-nested-reference/);
+    writeFileSync(input.requestPath,JSON.stringify(input.request));writeFileSync(input.fixturePath,JSON.stringify(input.data));
+    const store=new RuntimeStore(join(f.source,'apps.db'));try{store.put('artifact_refs','forged-dataset',{targetKind:'dataset',targetId:'local-preview-label'});}finally{store.close();}
+    assert.throws(()=>runtimeBackupDryRun(f.options),/BACKUP_DATASET_REFERENCE_MISSING: local-preview-label/);assert.equal(existsSync(f.backup),false);
+  }finally{f.cleanup();}
+});
+
+test('JSON field names containing dots and brackets cannot collide with a fixture binding authorization',async()=>{
+  const f=await fixture();try{
+    const input=previewFixtureInputs(f);
+    writeFileSync(input.requestPath,JSON.stringify({...input.request,'data.bindings[0]':{datasetId:'path-collision-reference'}}));
+    assert.throws(()=>runtimeBackupDryRun(f.options),/BACKUP_DATASET_REFERENCE_MISSING: path-collision-reference/);assert.equal(existsSync(f.backup),false);
+    const data={...input.data,'bindings[0]':{datasetId:'standalone-collision-reference'}};
+    writeFileSync(input.requestPath,JSON.stringify({...input.request,data}));writeFileSync(input.fixturePath,JSON.stringify(data));
+    assert.throws(()=>runtimeBackupDryRun(f.options),/BACKUP_DATASET_REFERENCE_MISSING: standalone-collision-reference/);assert.equal(existsSync(f.backup),false);
+  }finally{f.cleanup();}
+});
+
+test('signed preview reports and invalid attestation cannot disguise missing Runtime datasets as fixture input',async()=>{
+  const f=await fixture();try{
+    const input=previewFixtureInputs(f),original=readFileSync(input.reportRef.path);
+    const invalid=JSON.parse(original.toString('utf8'));invalid.signature='0'.repeat(64);writeFileSync(input.reportRef.path,JSON.stringify(invalid));
+    assert.throws(()=>runtimeBackupDryRun(f.options),/BACKUP_REFERENCE_HASH_MISMATCH/);writeFileSync(input.reportRef.path,original);
+    f.runner.writeReport('preview',{...input.report,data:input.data});
+    assert.throws(()=>runtimeBackupDryRun(f.options),/BACKUP_DATASET_REFERENCE_MISSING: local-preview-label/);assert.equal(existsSync(f.backup),false);
+  }finally{f.cleanup();}
+});
+
 test('schema4 full offline backup and new-root restore preserve all25 collections, external draft, history and immutable attestation',async()=>{
   const f=await fixture();try {
     const originalTree=tree(f.source),workspaceTree=tree(f.workspace),originalKey=readFileSync(join(f.runner.root,'.runner-key'));
