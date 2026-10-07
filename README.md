@@ -2,9 +2,11 @@
 
 本项目在原 Hallmark 插件项目上覆盖更新。**`1.0.0-candidate.10` 已通过官方插件管理器覆盖原同名插件，并于2026-10-07 08:52:34 UTC正常重开桌面。** 安装五项文件hash、143个冻结源输入零差异，以及实际Runtime candidate.7/schema4、三个Provider和Hallmark健康已核对；Host/Client原生内存身份、实际GUI视觉和新组件挂载仍待人工验收，四门禁未放行。
 
-候选10冻结范围有706项全仓测试、类型检查、26条生产React隔离视觉检查、包内实际构建/双视口10断言及只读smoke；核心实现已推送GitHub main提交 `92b094888606db0391e9f06a14c006db8191a1fd`，独立备份修复与上一轮说明已推送 `e53fd18a0bedb011db69dd2b87e159c5bb67cf75`。最终1754文件/25集合备份已恢复到新目录，2773条可信映射、归档/签名/PNG/草稿引用核对通过，普通npm ci与已安装candidate.10 CLI/SDK真实重建通过；范围为SOURCE_EXEC，未再次切换桌面数据目录。备份工具与新增验收脚本不在143个冻结打包源输入中，未重打包。
+候选10冻结范围有706项全仓测试、类型检查、26条生产React隔离视觉检查、包内实际构建/双视口10断言及只读smoke；核心实现已推送GitHub main提交 `92b094888606db0391e9f06a14c006db8191a1fd`，独立备份修复与前轮说明已推送 `e53fd18a0bedb011db69dd2b87e159c5bb67cf75`，5份验收/审查脚本与7份说明已推送 `a635ec443288218ffe16a189b7aa68600dd21f88`。本轮增量包含草稿账本/发布/核心边界harness、诊断回归与新11源码/说明；提交与推送以Git历史和最终交付为准，旧10冻结包未重打，另建11归档。最终1754文件/25集合备份已恢复到新目录，2773条可信映射、归档/签名/PNG/草稿引用核对通过，普通npm ci与已安装candidate.10 CLI/SDK真实重建通过；范围为SOURCE_EXEC，未再次切换桌面数据目录。备份工具与新增验收脚本不在143个冻结打包源输入中，旧10包未重打。
 
-candidate.9真实原Agent源码、实际构建/预览、读图反馈迭代有历史，但原生挂载失败；重启后最后旧publication为interrupted，未变成成功。旧Agent的重新发布建议不构成验收。价格54.80→54.79、库存201→200四个授权写入已成功并独立读回恢复，本轮未新增业务写或保存；原输入附加、模型整链、卸载重开、上品和其余正式逐项验收仍待完成。TST-055/056/057/073/075/076/077七卡已按完整最低范围通过独立V复核，TST-057普通React与本地真实只读快照SOURCE_EXEC已独立V通过；TST-058完整LIVE_MODEL/视觉反馈仍NOT_RUN。24项任务和四范围门禁未整体放行，见 [A.2执行记录](docs/apps-a2-execution.md)；[历史候选说明](docs/apps-v1-candidate.md)和[历史验证摘要](docs/apps-publication-validation-20261007.md)保留原范围。
+candidate.9真实原Agent源码、实际构建/预览、读图反馈迭代有历史，但原生挂载失败；重启后最后旧publication为interrupted，未变成成功。旧Agent的重新发布建议不构成验收。价格54.80→54.79、库存201→200四个授权写入已成功并独立读回恢复，本轮未新增业务写或保存；原输入附加、模型整链、卸载重开、上品和其余正式逐项验收仍待完成。TST-003/004/011/012/054/055/056/057/059/060/073/075/076/077十四卡已按完整最低范围通过独立V复核（14 PASS/0 FAIL/66 NOT_RUN，新11核心四卡与旧10其他十卡分别绑定），054为独立草稿/attempt/invocation账本FIXTURE；059/060完整FIXTURE已独立V通过，TST-057普通React与本地真实只读快照SOURCE_EXEC已独立V通过；TST-058完整LIVE_MODEL/视觉反馈仍NOT_RUN。24项任务和四范围门禁未整体放行，见 [A.2执行记录](docs/apps-a2-execution.md)；[历史候选说明](docs/apps-v1-candidate.md)和[历史验证摘要](docs/apps-publication-validation-20261007.md)保留原范围。
+
+本轮能力版本错误诊断已修改两份源码，新增4项回归先red失败再green通过；candidate.11（Bundle/Host/Runtime11、schema4）新归档已冻结，最终包检查727/727、类型/实际SDK/CLI/只读smoke及包内诊断通过，包独立V有限复核通过、003/004/011/012新11完整FIXTURE独立V通过且未部署，桌面仍使用不可变candidate.10。TST-011在旧10完整FIXTURE中安全拒绝发生于Provider前，但缺请求/注册能力版本诊断而正式FAIL；新源码回归不抹去旧失败。旧10正式卡保留执行源码/包身份，不自动提升为后续候选验收。
 
 2026-10-07 的架构 A.1、生图说明与可交互 HTML 明确了**原聊天中由 Agent 创建和编辑组件**的体验：任意已有 DSH 会话在原输入框 `@` 选择应用，使用原 Agent、原消息和原发送；只改应用工作台、组件区与必要输入扩展，不新增独立聊天标签，不重做整个 DSH UI。前一阶段交付设计和原型；本轮 A.2 已补创作记录、真实构建/预览回执、候选就绪、明确保存、原输入引用及库管理实现，原生桌面与真实模型整链按范围另验。
 
@@ -14,7 +16,7 @@ candidate.9真实原Agent源码、实际构建/预览、读图反馈迭代有历
 
 | 内容 | 入口 | 完成范围 |
 |---|---|---|
-| A.2 当前实施与逐项进度 | [执行记录](docs/apps-a2-execution.md)、[24 项任务](docs/apps-a2-tasks.md)、[80 项对照](docs/apps-a2-progress.csv) | candidate.10官方同名覆盖/正常重开、1754文件备份新根恢复与源码重建；七卡完整最低scope独立V通过；GUI/原生挂载待验，四门禁未放行 |
+| A.2 当前实施与逐项进度 | [执行记录](docs/apps-a2-execution.md)、[24 项任务](docs/apps-a2-tasks.md)、[80 项对照](docs/apps-a2-progress.csv) | candidate.10官方同名覆盖/正常重开、1754文件备份新根恢复与源码重建；十四卡完整最低scope独立V通过；GUI/原生挂载待验，四门禁未放行 |
 | A.2 创作与维护操作 | [源码创作](docs/source-component-authoring.md)、[升级/备份恢复](docs/apps-migration-runbook.md)、[技能安装](docs/design-skills-install.md) | 包内命令/签名回执/v2/明确保存；仓库维护工具与恢复依赖规则，保留旧版本历史 |
 | Apps V1 候选实现 | [候选说明](docs/apps-v1-candidate.md)、[架构决策](docs/apps-architecture-decisions.md)、[迁移与回退](docs/apps-migration-runbook.md) | 现有实现与候选验收；不等于新增前端流程已实现 |
 | 需求、架构与逐项追踪 | [TODO](docs/requirements/01_TODO.md)、[规格](docs/requirements/02_SPEC.md)、[架构 A.1](docs/requirements/03_ARCHITECTURE.md)、[traceability.csv](docs/requirements/traceability.csv) | 同仓库保存的需求基线与最新架构补充 |

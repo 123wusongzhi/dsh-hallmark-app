@@ -50,7 +50,7 @@ class ConnectionQueue {
 
 export class AppsRuntime {
   readonly store: RuntimeStore;
-  readonly runtimeVersion = '1.0.0-candidate.7';
+  readonly runtimeVersion = '1.0.0-candidate.11';
   readonly transportMajor = 1;
   readonly catalogSchemaVersion = 1;
   #providers = new Map<string, RegisteredProvider>();
@@ -188,7 +188,10 @@ export class AppsRuntime {
   private async execute(request: InvocationRequest, externalSignal?: AbortSignal): Promise<CapabilityResult> {
     this.log(request,'received');
     const entry=this.#capabilities.get(request.capabilityId);
-    if(!entry||entry.appId!==request.appId||entry.descriptor.version!==request.capabilityVersion)return failure(request,'CAPABILITY_NOT_FOUND','The exact capability version is not registered.');
+    if(!entry||entry.appId!==request.appId||entry.descriptor.version!==request.capabilityVersion){
+      const registeredVersion=entry?.appId===request.appId?entry.descriptor.version:null;
+      return failure(request,'CAPABILITY_NOT_FOUND',`The exact capability version is not registered (requested ${request.capabilityVersion}; registered ${registeredVersion??'none'}).`,'failed','never',{expected:{appId:request.appId,capabilityId:request.capabilityId,capabilityVersion:request.capabilityVersion},actual:{capabilityVersion:registeredVersion}});
+    }
     const registered=this.#providers.get(request.appId)!;
     if(registered.state!=='ready'&&registered.state!=='degraded')return failure(request,'APP_STOPPING','Provider is not accepting new calls.','unavailable','read_retry');
     const connection=this.getConnection(request.appId,request.connectionId);

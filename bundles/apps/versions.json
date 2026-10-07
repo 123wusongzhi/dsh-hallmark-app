@@ -1,8 +1,8 @@
 {
   "releaseId": "apps-a2-20261007",
-  "bundleVersion": "1.0.0-candidate.10",
-  "hostPluginVersion": "1.0.0-candidate.10",
-  "runtimeVersion": "1.0.0-candidate.7",
+  "bundleVersion": "1.0.0-candidate.11",
+  "hostPluginVersion": "1.0.0-candidate.11",
+  "runtimeVersion": "1.0.0-candidate.11",
   "transportMajor": 1,
   "catalogSchemaVersion": 1,
   "databaseSchemaVersion": 4,
@@ -24,7 +24,7 @@
   "legacyNativeToolProjection": "explicit compatibility option; default false",
   "hostCompatibility": {
     "installedCli": "0.2.0-rc.2",
-    "liveBundleAcceptance": "NOT_RUN for candidate.10; candidate.9 real Agent build/preview passed but native candidate mount failed; visual and independent visible candidate discovery fixes require new desktop acceptance; prior evidence preserved",
+    "liveBundleAcceptance": "NOT_RUN for candidate.11; not installed. Candidate.10 is installed and awaits the original desktop Agent continuation and native render acceptance. Candidate.9 real Agent build/preview passed but native mount failed. All previous archives and evidence are preserved.",
     "authoringCli": "standalone Node ESM build/preview entries; immutable receipts and exact attempt epoch",
     "dynamicSchema": "unsupported; fixed gateway",
     "nativeSessionAdapter": "disabled by default; explicit dsh-0.2.0-rc.2 contract opt-in with strict ACTIVE service lifecycle",

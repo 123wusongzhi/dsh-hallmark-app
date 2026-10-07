@@ -4,9 +4,13 @@ A.2 Runtime使用schema4；candidate.10现已通过官方插件管理器覆盖�
 
 08:41:55 UTC桌面完全退出后核实任务所属旧Runtime38844，使用Windows Stop-Process停止，非graceful SIGTERM；完成最终备份后08:52:03 UTC安装10、08:52:34 UTC正常重开。新Runtime62564是36994唯一listener，旧38844已退；profile/dataDirectory未再切换。Runtime JS仍 `2264139fc4404a11dbe9fdde00a374b541d1bda1544ef784483bfb6547cc9844`，协议/schema和冻结包未变更；706项包检查不代签之后独立维护工具修复或原生GUI。
 
+5份验收/审查文件和7份说明已推送a635ec4，本轮增量包含草稿账本/发布/核心边界harness与诊断回归；提交与推送以Git历史和最终交付为准。054/059/060完整FIXTURE已独立V通过（当前共14PASS/0FAIL/66NOT_RUN，新11核心四卡与旧10其他十卡分别绑定）；candidate.11（Bundle/Host/Runtime11、schema4）归档已冻结，最终包检查727/727、类型/实际SDK/CLI/只读smoke及包内诊断通过，包独立V有限复核通过、003/004/011/012新11完整FIXTURE已独立V通过且未部署，003/004/012旧10 FIXTURE已V通过、011旧10 FAIL保留，旧10证据不可自动提升为后续候选；054的V只读SQL检视生成隔离SHM/空WAL的偏差已保留并更正，主DB和307原I文件字节不变，未触及现场或本页1754文件恢复核验结论。
+
 本页先列当前 schema3→4 和 schema4 全量备份命令，后面保留旧 schema2→3 的 V1 历史。不要把旧目标 schema3 命令直接当成 A.2 Runtime 可运行数据。
 
 ## A.2：离线检查与工具身份
+
+桌面安装入口按版本固定：公开 [install-desktop-apps.ps1](../scripts/install-desktop-apps.ps1) 固定candidate.10/Runtime7，不能仅传入candidate.11 manifest就安装11。candidate.11使用固定11版本的私有官方CLI适配计划，保留原同名插件替换、桌面退出守卫、路径/备份/hash检查；2026-10-07 10:25:22.955 UTC仅ValidateOnly通过，`installed=false`、`desktopRunning=true`，没有停止桌面/Runtime或安装11。公开原安装器及candidate.11的143冻结sourceInputs未改；计划证据见 [执行记录](apps-a2-execution.md)。
 
 命令从核实过源码/版本的本仓库根目录执行，Node须支持node:sqlite与原生TypeScript。安装包build/preview CLI使用Host guidance返回的Node方式；本页的 `migrate-apps-schema4.mjs`、`backup-apps.mjs` 是**仓库维护工具**。完整备份模块/CLI不在candidate.10的143打包sourceInputs或安装入口，须独立记源码/hash/日志，不能拼接不存在的已安装lib备份命令。
 
@@ -99,7 +103,7 @@ node scripts/verify-a2-release-evidence.mjs --manifest "E:/operator/offline-card
 | BUSINESS-WRITE | CORE+078，共52 | NOT_ACCEPTED |
 | DATA-CUTOVER | CORE+073/079，共53 | NOT_ACCEPTED |
 
-required只允许增加；原48历史CSV仍42项reported remainingReal NOT_RUN，两种获准逐字序列化CRLF `b5b0a728fe4e7d42ed15e7122432ab7e4c6395aaf9a2042adcc61de90382eb92` / LF `5885e2375bc5711a36d90a635647966b27b850ebfe8b7ff0e95a7a342575c779`按选定字节核对，不任意归一化重写历史；A.2派生基线摘要 `f05edf24340f5c9fd904f33ae99dc98f1a0fd31c1ad4d760c95003391e073ceb`。本轮055/056/057/073/075/076/077七卡完整最低scope独立V通过，73卡仍NOT_RUN；维护267断言/独立12窄测试/typecheck和原706包检查分开。073 FIXTURE直接归档浏览器恢复不代签v2/native切库，075/076旧08:24源与trace的复验不发明原执行commit，077资格审查不代签R。详情/实际V身份见 [A.2执行记录](apps-a2-execution.md)。
+required只允许增加；原48历史CSV仍42项reported remainingReal NOT_RUN，两种获准逐字序列化CRLF `b5b0a728fe4e7d42ed15e7122432ab7e4c6395aaf9a2042adcc61de90382eb92` / LF `5885e2375bc5711a36d90a635647966b27b850ebfe8b7ff0e95a7a342575c779`按选定字节核对，不任意归一化重写历史；A.2派生基线摘要 `f05edf24340f5c9fd904f33ae99dc98f1a0fd31c1ad4d760c95003391e073ceb`。本轮003/004/011/012/054/055/056/057/059/060/073/075/076/077十四卡完整最低scope独立V通过，011旧10基线FAIL原样保留，四张核心卡已在新11真实重跑并独立V通过，当前66卡仍NOT_RUN；维护267断言/独立12窄测试/typecheck和原706包检查分开。073 FIXTURE直接归档浏览器恢复不代签v2/native切库，075/076旧08:24源与trace的复验不发明原执行commit，077资格审查不代签R。详情/实际V身份见 [A.2执行记录](apps-a2-execution.md)。
 
 ## 历史 V1：schema2→3 迁移与夹具记录
 

@@ -186,8 +186,12 @@ export class AppsHost {
       const invocationId = typeof input.invocationId === 'string' ? input.invocationId : randomUUID(), traceId = typeof input.traceId === 'string' ? input.traceId : randomUUID();
       const appId = String(input.appId);
       if (!this.attachments.has(appId)) return fail('HOST_PROJECTION_DETACHED', '此应用的DSH原生投影未挂载。', invocationId, traceId);
-      const descriptor = await this.transport.describe(String(input.capabilityId), String(input.capabilityVersion));
-      if (!descriptor) return fail('CAPABILITY_NOT_FOUND', '精确能力版本未登记。', invocationId, traceId);
+      const capabilityId=String(input.capabilityId),capabilityVersion=String(input.capabilityVersion);
+      const descriptor = await this.transport.describe(capabilityId,capabilityVersion);
+      if (!descriptor){
+        const registeredVersion=(await this.transport.describe(capabilityId))?.version??null;
+        return fail('CAPABILITY_NOT_FOUND',`精确能力版本未登记（请求 ${capabilityVersion}；当前 ${registeredVersion??'未登记'}）。`,invocationId,traceId,{expected:{appId,capabilityId,capabilityVersion},actual:{capabilityVersion:registeredVersion}});
+      }
       const [connections, bindings] = await Promise.all([this.transport.listConnections(appId,signal), this.transport.sessionBindings(sessionId,signal)]);
       const candidates = connections.filter(row => row.enabled && bindings.some(binding => binding.appId === appId && binding.connectionId === row.connectionId && binding.enabled));
       const matches = typeof input.connectionId === 'string' ? candidates.filter(row => row.connectionId === input.connectionId) : candidates;
