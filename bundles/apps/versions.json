@@ -1,8 +1,8 @@
 {
   "releaseId": "apps-a2-20261007",
-  "bundleVersion": "1.0.0-candidate.16",
-  "hostPluginVersion": "1.0.0-candidate.16",
-  "runtimeVersion": "1.0.0-candidate.16",
+  "bundleVersion": "1.0.0-candidate.22",
+  "hostPluginVersion": "1.0.0-candidate.22",
+  "runtimeVersion": "1.0.0-candidate.22",
   "transportMajor": 1,
   "catalogSchemaVersion": 1,
   "databaseSchemaVersion": 4,
@@ -24,7 +24,7 @@
   "legacyNativeToolProjection": "explicit compatibility option; default false",
   "hostCompatibility": {
     "installedCli": "0.2.0-rc.2",
-    "liveBundleAcceptance": "NOT_RUN for candidate.16. Manual-open prepared publications start mount verification only after a user click. Build, full CI and isolated package verification are separate from native Desktop and real business acceptance. Earlier candidate archives and evidence are preserved; verify loaded identity after installation.",
+    "liveBundleAcceptance": "NOT_RUN for candidate.22. Adds release of a retired display document so a remounted pane can re-authorize the same display, and keeps the newest in-pane display across tab hide/show. Explicit desktop opening loads the successful preview archive through an independent display attempt; failed displays can reopen without rebuilding. Build, full CI and isolated package verification are separate from native Desktop and real business acceptance. Earlier candidate archives and evidence are preserved; verify loaded identity after installation.",
     "authoringCli": "standalone Node ESM build/preview entries; immutable receipts and exact attempt epoch",
     "dynamicSchema": "unsupported; fixed gateway",
     "nativeSessionAdapter": "disabled by default; explicit dsh-0.2.0-rc.2 contract opt-in with strict ACTIVE service lifecycle",

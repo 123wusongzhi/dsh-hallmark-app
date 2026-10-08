@@ -9,5 +9,6 @@ const onStart=input.runtime?async()=>{
  const response=await fetch(new URL('/v1/authoring/markBuilding',url),{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+readFileSync(input.runtime.keyFile,'utf8').trim()},body:JSON.stringify({sessionId:input.sessionId,params:{attemptId:input.attemptId,epoch:input.epoch}})});
  if(!response.ok)throw new Error('BUILD_STAGE_REJECTED:'+response.status);const result=await response.json();if(result.state!=='building')throw new Error('BUILD_STAGE_REJECTED');
 }:undefined;
-const result=await runner.build({...input,sources,onStart});console.log(JSON.stringify({reportRef:result.reportRef,verdict:result.report.verdict,archiveBuildId:result.report.archiveBuildId}));
+const buildStarted=performance.now();
+const result=await runner.build({...input,sources,onStart});console.log(JSON.stringify({reportRef:result.reportRef,verdict:result.report.verdict,archiveBuildId:result.report.archiveBuildId,buildMs:Math.round(performance.now()-buildStarted)}));
 if(result.report.verdict!=='PASS')process.exitCode=1;

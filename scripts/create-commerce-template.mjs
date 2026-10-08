@@ -1,0 +1,21 @@
+import {createAppsSource} from './create-apps-source.mjs';
+import {readFile,copyFile,writeFile} from 'node:fs/promises';
+import {resolve,dirname,join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+const args=Object.fromEntries(Array.from({length:(process.argv.length-2)/2},(_,i)=>[process.argv[2+i*2].replace(/^--/,''),process.argv[3+i*2]]));
+const catalog=JSON.parse(await readFile(join(root,'templates/commerce/catalog.json'),'utf8'));
+if(!catalog.some(t=>t.id===args.template)||!args.directory)throw new Error('Use --template products|collection|profit|traffic|pricing|campaigns|review --directory <empty workspace> [--sdk <sdk directory>]');
+const target=resolve(args.directory);await createAppsSource({directory:target,sdkDirectory:args.sdk??join(root,'bundles/apps/sdk/component-runtime')});
+for(const file of ['Workbench.tsx','data.ts','style.css'])await copyFile(join(root,'templates/commerce/src',file),join(target,'src',file));
+await copyFile(join(root,'templates/commerce/adapter.ts'),join(target,'src/adapter.ts'));
+await writeFile(join(target,'src/main.tsx'),`import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {useApps} from '@dsh/apps-component-runtime/apps/react';
+import {Workbench} from './Workbench';
+import {mapData} from './adapter';
+function Component(){const apps=useApps({assertionResults:()=>{const main=document.querySelector('[data-app-component]');const pass=Boolean(main?.getBoundingClientRect().height&&main.getAttribute('data-ready')==='true');return [{id:'commerce.render',required:true,expected:'Data loaded and component visible',actual:String(pass),status:pass?'PASS':'FAIL',evidenceRefs:[]}];}});return <Workbench id=${JSON.stringify(args.template)} dataset={mapData(apps.data)} loading={apps.loading} error={apps.error?.message} onRefresh={()=>void apps.refresh().catch(()=>{})}/>;}
+createRoot(document.getElementById('root')!).render(<Component/>);
+`);
+await copyFile(join(root,'templates/commerce/README.md'),join(target,'TEMPLATE.md'));
+console.log(JSON.stringify({directory:target,template:args.template,next:'Map real binding data in src/adapter.ts, then use existing authoring build/preview/publish workflow.'}));

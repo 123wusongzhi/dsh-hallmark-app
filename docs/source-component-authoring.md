@@ -1,10 +1,10 @@
 # 制作、验证和保存源码组件
 
-正式验收为**35 PASS/0 FAIL/45 NOT_RUN**：034/035/036/039绑定12，037/038绑定14，046/047绑定15，原35张PASS身份不迁移16。candidate.16已官方同名15→16覆盖安装，801/801、类型/实际SDK/build/preview CLI/Runtime/诊断和144输入/33产物冻结；独立包31检查/17负例及两种ValidateOnly通过，实际Runtime16/schema4/健康/四GET和原1766行会话前缀核实，未迁库。首次start exit1与后续正规化重开exit0保留。Native内存/原输入/点击展示、模型整链和四门禁仍未接受，R未签认，见[A.2执行页](apps-a2-execution.md)。
+正式验收为**35 PASS/0 FAIL/45 NOT_RUN**，原35张PASS绑定10/11/12/14/15，不迁17。candidate.17已官方同名16→17覆盖安装，812/812、类型/实际SDK/build/preview CLI/Runtime/诊断通过，145输入/33产物冻结；独立包32检查/17负例、官方ValidateOnly和20文件源码窄复核通过。实际Runtime17/schema4/健康/Hallmark及原2755行历史前缀核验；原侧栏实际点击/失败重开、Native内存/原输入、模型/业务/切库仍待验，四门禁NOT_ACCEPTED、R未签。源码兼容夹具不是原Bill归档Native显示，见[A.2执行页](apps-a2-execution.md)。
 
 新增TST-046/047的完整最低本地FIXTURE/实际命令已独立V通过，绑定candidate.15；原33卡保留各自10/11/12/14身份，6项旧source/build材料没有原归档执行hash链，不补原声明、不迁移15，具体I/V/hash与边界见[A.2执行记录](apps-a2-execution.md)。
 
-用户最新确认：在任何原会话用 `@` 选择应用；Agent实际构建和预览后准备候选，并在原聊天工具卡提供“打开组件”入口，等待用户点击。等待点击不计挂载超时或 failed_mount；点击实际打开后才开始 deadline、授权和展示确认。保持原DSH界面，不自动展开组件区；显示与明确保存仍分开。candidate.16已实现 prepared/startMount 源码契约并冻结：801/801、类型、包内SDK与实际build/preview CLI、Runtime和诊断通过，144输入/33产物及旧15字节守卫零差异。candidate.16已官方同名15→16覆盖安装；独立包31检查/17负例及两种ValidateOnly通过，实际Runtime16/schema4/健康/四GET和原1766行会话前缀核实；Native内存/原输入/点击展示仍待验，不将源码/夹具通过算作Native或正式卡验收。契约见[ADR-009](apps-architecture-decisions.md)与下文。
+用户最新确认：在任何原会话用 `@` 选择应用，Agent实际构建并预览后，在原聊天工具卡提供“打开组件”，由用户手动打开到原侧栏；等待点击不计挂载超时、不自动展开。candidate.17增量将成功预览构建与独立显示尝试分开，UI-only openDisplay/authorizeDisplayFrame/reportDisplayError加载同一归档；失败可明确重新打开，新display/frame/generation退役旧文档，Agent可inspect读取phase/code/message。旧startMount一次性协议保留历史兼容，在新侧栏路径中搁置。candidate.17候选包已冻结：812/812、145输入/33产物及旧16冻结材料守卫零差异，独立20文件源码窄复核闭合；归档SHA-256为 `e5cdbfefe9eab592f7cd733009deacdc215bab909a54cc09dd0128868bb3fa56`。candidate.17已官方同名16→17覆盖安装；独立包32检查/17负例及官方ValidateOnly通过，实际Runtime17/schema4/健康/Hallmark与2755行原历史前缀核验；Native内存/侧栏点击显示仍待验，不将局部源码检查算作正式卡或显示成功。契约见[ADR-010](apps-architecture-decisions.md)和[创作流程](source-component-authoring.md)。
 
 A.2 使用原 DSH 会话、原文件/命令工具和 Apps 网关。用户在任意原输入框 `@` 选择应用后手动发送要求；Agent 编辑普通 React/TSX/CSS，完成真实构建、双视口反馈、候选就绪和明确保存。只更新应用/组件区域，不建立另一套聊天。当前包内路径与运行身份必须来自正在处理该原会话的 Host，不能照抄旧开发机路径。
 
@@ -114,7 +114,29 @@ runner 从同一冻结 build 使用 v2 Host 载入，实际执行 420/1040 CSS �
 
 Agent 必须实际打开两张 PNG，检查长标题、缺图/空数据、层级、窄栏溢出和宽页布局，再读报告。如果反馈有问题，编辑源码并创建下一 attempt，重建/重测；不能只看“无错误”就宣称视觉合格。将预览 CLI 返回的 reportRef、同一 attemptId/epoch 和 buildReceiptId 交给 `apps.authoring.record_preview`，不自行拼预览回执或缩略图。
 
-## candidate.16：准备候选、用户点击与实际展示
+## candidate.17：打开同一预览构建，显示失败后可重新打开
+
+17侧栏路径已实施并冻结候选包812/812、145输入/33产物，已官方16→17覆盖；实际侧栏点击/显示仍待验；以正在运行Host返回的能力为准。begin、真实build/record_build、同一build的双视口预览/看图/record_preview及publication身份保持现有创作链。用户手动点击原工具卡“打开组件”后，直接在原侧栏加载同一成功预览归档。等待点击没有显示计时，也不自动展开；不用另建聊天。加载失败先保留成功build/preview、源码工作副本和原错误，再由用户明确“重新打开”。只有源码或构建确需改变时才开始新的authoring attempt、重建和预览；不能把一次显示失败都变成重复构建。
+
+每次明确打开/重开创建新的displayId、递增generation及新的iframe/documentNonce，退役上次display和grant；相同displayId只对应原次打开。Client经Host使用以下UI-only接口，**不注册为模型能力**：
+
+| UI路由 | params必需身份/内容 | 行为 |
+|---|---|---|
+| `POST /v1/authoring/openDisplay` | viewId、publicationId、attemptId、attemptEpoch、buildId、expectedViewRevision、displayId | 固定原消息构建，建立独立显示尝试并读取其固定数据绑定 |
+| `POST /v1/authoring/authorizeDisplayFrame` | viewId、publicationId、attemptId、attemptEpoch、buildId、displayId、displayGeneration、frameInstanceId、documentNonce | 再验归属、预览归档、连接和特性后授权当前文档；clientFeatures按实际协商提供 |
+| `POST /v1/authoring/reportDisplayError` | viewId、publicationId、buildId、displayId、displayGeneration、error | error含phase/code/message，记录到该次display并退役grant，不自动发送聊天消息 |
+
+三条请求均采用body `{sessionId, params}`。displayId由UI为一次明确打开生成；必须使用实际原记录的view/publication/attempt/epoch/build/revision，不照抄别会话身份。Runtime仍严格核对nonce；Host给旧归档所需的协议上下文补documentNonce，使可信candidate.16成功预览归档也能按新路径直接打开，不改原归档字节或绕过Runtime校验。旧frame/nonce/generation不能授权、调用桥接、提交error/ready或恢复/导出UI状态。
+
+显示记录在现有 `provider_records` 的 `component_displays`，publication准备快照在 `publication_views`；沿用schema4和原所有权。`apps.authoring.inspect` 返回 `latestDisplay/displays`，Agent读其中phase/code/message诊断资源、桥接、数据或渲染错误，决定重开还是修复源码。原failed_mount/interrupted记录保留；新display能在固定身份、回执、归档及当前绑定仍有效时重开，不是旧startMount的终态复活。
+
+首次展示必须由真实当前frame完成授权、数据读取、React提交及全部required assertion PASS，才能提交活动view/last-good；onLoad或预览PASS都不代替这一步。重复ready、已成功构建重开或历史P1展示不重复增加viewRevision。历史原消息的源码与可信view_revisions快照bindings始终配套，不能让P1源码读取P2数据，也不覆盖当前活动构建；权限和resource revision在每次读取/附加时重新检查。保存仍需明确用户请求，原输入正文/附件和手动发送规则保持。
+
+旧startMount一次性协议保留兼容，在17新侧栏UI路径中搁置。17完整包812/812、类型/SDK/实际CLI/Runtime/诊断通过，已官方同名覆盖，独立包与源码窄复核闭合、Runtime健康/原历史前缀核验；实际点击/显示待验。局部前端61/61、后端定向检查和真实组合Host准备态503→green仅按各自隔离范围记录；TST-045的五次16失败保留，17完整矩阵正式I/V尚未通过，正式35/45与四门禁不提升。最新证据见[执行记录](apps-a2-execution.md)与[ADR-010](apps-architecture-decisions.md)。
+
+## 历史candidate.16：准备候选、用户点击与一次性挂载
+
+下面保留16已部署的一次性startMount规则；17的重开流程以上一节为准，不能要求新display路径每次失败后都新建attempt和重建。
 
 16源码和包已冻结并官方覆盖安装，原生点击/展示尚待验收。真实build与record_build、双视口预览/看图和record_preview保持上文流程；PASS后仍调用 `apps.authoring.publish`，但只准备固定候选，不立即挂载。返回publication.state=`prepared`、attempt.state=`publish_ready`，`mountStartedAt` 与 `readyDeadlineAt` 为null。候选在 `publication.source`，固定publication GET保留当前view源码、activeBuildId和lastGoodBuildId；等待期间没有计时，Observer仅通知，workspace不自动展开。
 
@@ -136,7 +158,7 @@ Agent在原聊天工具卡提供“打开组件”入口，固定同一session/v
 
 路由为 `POST /v1/authoring/startMount`；params中六个字段全部必需。版本和epoch须使用实际记录，示例中的1不能照抄。Runtime重验所属会话、当前attempt/source代际、viewRevision、签名build/preview回执及归档，原子从prepared转mounting；首次有效点击创建15秒期限，相同/并发点击只保留首次期限，不续期，取消/失败/被取代的终态不能复活。此路由**不注册为模型能力**，Agent不能调用另一次publish、生成ready或自动打开替代用户点击。
 
-实际frame仍须完成授权、features协商、真实数据读取、UI状态恢复和React提交，再按固定frame/document nonce与attempt身份回传renderReady。通过校验才提交view revision并提升active/last-good，才称“已展示”。超时/错误保留旧可用界面和工作副本；prepared重启保留，旧mounting重启interrupted，取消或新attempt取代也覆盖prepared。当前15的原failed_mount保留；使用16时需明确新attempt、重新实际build/preview，不能复活原失败publication。
+实际frame仍须完成授权、features协商、真实数据读取、UI状态恢复和React提交，再按固定frame/document nonce与attempt身份回传renderReady。通过校验才提交view revision并提升active/last-good，才称“已展示”。超时/错误保留旧可用界面和工作副本；prepared重启保留，旧mounting重启interrupted，取消或新attempt取代也覆盖prepared。当时15的原failed_mount保留；使用16时需明确新attempt、重新实际build/preview，不能复活原失败publication。
 
 明确保存仍单独执行。存在authoring draft时，共享presentation save门禁也拒绝prepared/mounting、未确认构建或不匹配已展示源码，不能改用通用save绕过；无authoring draft的旧static/legacy保存兼容保留。后端30/30与保存门禁38/38仅为本地实际命令/HTTP及隔离Chrome范围，首次typecheck失败与后续通过各自保留；801项包检查不代签Native展示、TST-045或四门禁。16包/局部证据hash见[执行记录](apps-a2-execution.md)。
 
@@ -281,3 +303,13 @@ node scripts/source-capture.mjs --directory component-workspace/collected-produc
 首模板检查 380px 和 1100px、真实长标题、缺图、搜索无结果、选择跨页、附加后的状态和键盘焦点。视觉沿用 `skills/hallmark-component-design/references/visual-direction.md`：有颜色和层级，主操作突出，减少重复框线，数据缺失与错误状态明确。
 
 用户要求保存时调用 `hallmark_save_component`。保存源码、CSS、资源、包锁与实际构建；正式更新保留旧版本。编辑已有版本先打开工作副本；回退也从历史版本打开，再保存为新的版本。普通依赖冲突、溢出或性能问题出现后，针对实际问题修改工程，不提前收紧 Agent 的表达能力。
+ 独立17安装后验33产物/145源码/原核心9774文件两遍零差异，最终3251引用/337包索引与352当前文件守卫通过；完整scope与旧16预存单文件漂移诊断见[A.2执行记录](apps-a2-execution.md)。
+
+
+### 快速预览循环
+
+源码和构建输入不变时，复用当前 attempt 的成功构建回执；直接运行一次 preview，读取其 420/1040 两张截图和交互报告。不另跑固定等待的截图、图片计时脚本。
+
+预览 runner 将外部图片请求替换为本地缓存或标有 Preview 的占位图，真实组件归档和数据不变。首次缺图立即使用占位，同时最多抽样下载六个地址，共用五秒预算；后续运行复用缓存。截图证明布局/交互，不证明外网图片性能。CLI 返回 diagnosticsPath 和 timings，其中单独记录图片缓存、占位、下载耗时及失败，不以图片源慢触发构建修复循环。本地构建资源加载失败仍计入预览失败。
+
+starter 的 src/Image.tsx 提供固定尺寸、懒加载、异步解码和加载/失败占位。正式组件仍使用真实图片地址；有官方缩略图字段时优先使用。

@@ -21,3 +21,9 @@ test('manual component cards pin their publication and reject incomplete or acce
   owner='B';assert.equal(openSessionComponents(sidebar,'A','V','P1').ok,false);
   owner='A';assert.equal(openSessionComponents(sidebar,'A',undefined,'P1').ok,false);assert.equal(calls.length,1);
 });
+test('fresh display navigation requires a plain fixed publication and preserves the click identity',()=>{
+  assert.deepEqual(readSidebarNavigation({viewId:'V',publicationId:'P1',displayId:'fresh'}),{valid:true,viewId:'V',publicationId:'P1',displayId:'fresh'});
+  for(const value of [{viewId:'V',displayId:'fresh'},{displayId:'fresh'},{viewId:'V',publicationId:'P1',displayId:''},{viewId:'V',publicationId:'P1',displayId:3},{viewId:'V',publicationId:'P1',get displayId(){throw Error('getter must never run');}}])assert.equal(readSidebarNavigation(value).valid,false);
+  const calls:unknown[]=[];const sidebar={mounted:{getSnapshot:()=> 'A'},openTab:(kind:string,options?:unknown)=>calls.push({kind,options})};
+  assert.equal(openSessionComponents(sidebar,'A','V','P1','fresh').ok,true);assert.deepEqual(calls,[{kind:COMPONENTS_SIDEBAR_KIND,options:{params:{viewId:'V',publicationId:'P1',displayId:'fresh'}}}]);
+});

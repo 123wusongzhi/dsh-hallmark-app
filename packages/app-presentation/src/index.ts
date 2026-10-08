@@ -38,7 +38,7 @@ export class AppsPresentationService {
   private options:AppsPresentationOptions;
   private refreshes=new Map<string,Promise<DatasetSnapshot>>();
   constructor(options:AppsPresentationOptions){this.options=options;this.store=options.store;this.runtime=options.runtime;this.sources=options.sources;this.contexts=new ComponentContexts(this);}
-  configureAuthoring(options:Pick<AppsAuthoringOptions,'validateBuildEvidence'|'validatePreviewEvidence'|'evidenceRoot'|'clock'|'readyTimeoutMs'|'maxUiStateBytes'|'onCancel'|'resolveEvidencePath'>={}):AppsAuthoringService {
+  configureAuthoring(options:Pick<AppsAuthoringOptions,'validateBuildEvidence'|'validatePreviewEvidence'|'evidenceRoot'|'clock'|'readyTimeoutMs'|'maxUiStateBytes'|'onCancel'|'resolveEvidencePath'|'withEvidencePathScope'>={}):AppsAuthoringService {
     if(!this.sources)fail('SOURCE_STORE_UNAVAILABLE','Authoring requires the existing source archive.');
     if(this.authoring)fail('AUTHORING_ALREADY_CONFIGURED','Authoring service has already been configured.');
     return this.authoring=new AppsAuthoringService({store:this.store,sources:this.sources,presentation:this,...options});
@@ -91,9 +91,12 @@ export class AppsPresentationService {
     if(view.ownerSessionId!==sessionId)fail('VIEW_NOT_OWNED','View belongs to another session.');
     return view;
   }
-  getData(sessionId:string|null,viewId:string):AppsViewData {
-    const view=this.ownedView(sessionId,viewId);
-    return {viewId,bindings:view.bindings.map(binding=>{
+  getData(sessionId:string|null,viewId:string,display?:{publicationId:string;buildId:string;displayId:string;displayGeneration:number}):AppsViewData {
+    const view=display?this.authoring!.display(sessionId!,{...display,viewId}).view:this.ownedView(sessionId,viewId);
+    return this.dataForView(view);
+  }
+  private dataForView(view:AppsView):AppsViewData {
+    return {viewId:view.viewId,bindings:view.bindings.map(binding=>{
       const id=binding.datasetId??datasetId(binding),snapshot=this.store.get<DatasetSnapshot>('datasets',id);
       const base:AppsBindingData={bindingId:binding.bindingId,appId:binding.appId,connectionId:binding.connectionId,datasetId:id,revision:null,payload:null,resources:[],freshness:'unknown',state:'empty',lastSuccessAt:null,sourceDataTime:null,provenance:[]};
       if(!snapshot)return base;
@@ -144,7 +147,14 @@ export class AppsPresentationService {
     for(const resource of resources){if(resource.appId!==binding.appId||resource.connectionId!==binding.connectionId||!resource.resourceType||!resource.resourceId)fail('INVALID_RESOURCE_REFERENCE','Resource identity must match its explicit binding.');const key=resourceKey(resource);if(seen.has(key))fail('AMBIGUOUS_RESOURCES','Dataset contains duplicate resource identities.');seen.add(key);}
   }
   validateSelection(sessionId:string,viewId:string,envelope:SelectionEnvelope):SelectionEnvelope {
-    const view=this.ownedView(sessionId,viewId),binding=view.bindings.find(item=>item.bindingId===envelope?.bindingId);
+    return this.selectionForView(this.ownedView(sessionId,viewId),envelope);
+  }
+  validateDisplaySelection(sessionId:string,identity:CandidateFrameIdentity,envelope:SelectionEnvelope):SelectionEnvelope {
+    if(identity.sessionId!==sessionId||!identity.displayId||!identity.displayGeneration||!this.authoring?.acceptsDisplayFrame(identity))fail('BRIDGE_IDENTITY_STALE','Selection is not from the current display document.');
+    return this.selectionForView(this.authoring.display(sessionId,{...identity,displayId:identity.displayId,displayGeneration:identity.displayGeneration}).view,envelope);
+  }
+  private selectionForView(view:AppsView,envelope:SelectionEnvelope):SelectionEnvelope {
+    const binding=view.bindings.find(item=>item.bindingId===envelope?.bindingId);
     if(!binding)fail('BINDING_NOT_FOUND','Selection binding is not part of the view.');
     const snapshot=this.store.get<DatasetSnapshot>('datasets',binding.datasetId??datasetId(binding));
     if(!snapshot||typeof envelope.datasetRevision!=='string'||snapshot.revision!==envelope.datasetRevision)fail('SELECTION_STALE','Dataset changed. Select resources again from the current revision.');
@@ -211,19 +221,24 @@ export class AppsPresentationService {
     return {...view,initialData:data.bindings.filter(binding=>missing.includes(binding.bindingId)).map(binding=>({bindingId:binding.bindingId,datasetId:binding.datasetId,status:binding.state}))};
   }
   createHost(identity:BridgeIdentity,options:{signal?:AbortSignal;attachSelection?:NonNullable<AppsPresentationOptions['attachSelection']>;candidate?:CandidateFrameIdentity;clientFeatures?:string[]}={}):ComponentHost {
-    const current=()=>{const view=this.ownedView(identity.sessionId,identity.viewId);if((view.source&&view.source.buildId!==identity.buildId||view.validationStatus==='draft_unpublished')&&!this.authoring?.acceptsFrame(options.candidate??identity as CandidateFrameIdentity))fail('BRIDGE_IDENTITY_STALE','View build changed. Reopen the component.');return view;};
+    const displayIdentity=options.candidate?.displayId&&options.candidate.displayGeneration?{...options.candidate,displayId:options.candidate.displayId,displayGeneration:options.candidate.displayGeneration}:undefined;
+    const current=()=>{const view=this.ownedView(identity.sessionId,identity.viewId);if(displayIdentity){if(!this.authoring?.acceptsDisplayFrame(displayIdentity))fail('BRIDGE_IDENTITY_STALE','The display document was replaced; reopen the component.');return this.authoring.display(identity.sessionId,displayIdentity).view;}if((view.source&&view.source.buildId!==identity.buildId||view.validationStatus==='draft_unpublished')&&!this.authoring?.acceptsFrame(options.candidate??identity as CandidateFrameIdentity))fail('BRIDGE_IDENTITY_STALE','View build changed. Reopen the component.');return view;};
     const initial=current();
-    const contextInfo=()=>{const view=current();return {...this.contexts.get({...identity,buildId:view.source?.buildId??identity.buildId}),...identity};};
+    // A fixed historical display gets its own build context pointer; immutable evidence
+    // and the session's active context remain in the existing Runtime-owned store.
+    const contextKey=(key:string)=>displayIdentity&&key===`view:${identity.sessionId}:${identity.viewId}`?`${key}:build:${identity.buildId}`:key;
+    const contexts=displayIdentity?new ComponentContexts({store:{...this.store,get:<T>(collection:string,key:string)=>this.store.get<T>(collection,collection==='component_contexts'?contextKey(key):key),put:<T>(collection:string,key:string,value:T)=>this.store.put(collection,collection==='component_contexts'?contextKey(key):key,value),list:<T>(collection:string)=>this.store.list<T>(collection),delete:(collection:string,key:string)=>this.store.delete(collection,collection==='component_contexts'?contextKey(key):key),transaction:<T>(action:()=>T)=>this.store.transaction(action)},ownedView:()=>current(),getData:()=>this.dataForView(current()),validateSelection:(_session,_view,selection)=>this.selectionForView(current(),selection)}):this.contexts;
+    const contextInfo=()=>{const view=current();return {...contexts.get({...identity,buildId:view.source?.buildId??identity.buildId}),...identity};};
     const source:InvocationSource={kind:'component',sessionId:identity.sessionId,viewId:identity.viewId,frameInstanceId:identity.frameInstanceId};
     return new ComponentHost(identity,{
-      getData:()=>{current();return json(this.getData(identity.sessionId,identity.viewId));},
-      getContext:()=>{current();const publication=options.candidate?this.store.get<ViewPublication>('view_publications',options.candidate.publicationId):undefined;return json({...contextInfo(),...(publication?{publication:{publicationId:publication.publicationId,attemptId:publication.attemptId,attemptEpoch:publication.attemptEpoch,buildId:publication.candidateBuildId,documentNonce:publication.documentNonce}}:{})});},
+      getData:()=>json(this.dataForView(current())),
+      getContext:()=>{current();const publication=options.candidate?this.store.get<ViewPublication>('view_publications',options.candidate.publicationId):undefined;return json({...contextInfo(),...(publication?{publication:{publicationId:publication.publicationId,attemptId:publication.attemptId,attemptEpoch:publication.attemptEpoch,buildId:publication.candidateBuildId,documentNonce:displayIdentity?.documentNonce??publication.documentNonce,...(displayIdentity?{displayId:displayIdentity.displayId,displayGeneration:displayIdentity.displayGeneration}:{})}}:{})});},
       ...(initial.source?{
-        updateContext:(request:import('../../app-contracts/src/index.ts').BridgeRequest)=>{current();return json(this.contexts.update(identity,request.requestId,request.params as never));},
-        requestAgent:(request:import('../../app-contracts/src/index.ts').BridgeRequest)=>{current();return json(this.contexts.prepare(identity,request.requestId,request.params as never));},
+        updateContext:(request:import('../../app-contracts/src/index.ts').BridgeRequest)=>{current();return json(contexts.update(identity,request.requestId,request.params as never));},
+        requestAgent:(request:import('../../app-contracts/src/index.ts').BridgeRequest)=>{current();return json(contexts.prepare(identity,request.requestId,request.params as never));},
       }:{}),
-      refresh:request=>{current();return this.refreshView(identity.sessionId,identity.viewId,source,(request.params as {bindingIds?:string[]}|null)?.bindingIds,options.signal).then(json);},
-      attachSelection:async request=>{current();const selection=this.validateSelection(identity.sessionId,identity.viewId,request.params as unknown as SelectionEnvelope),attach=options.attachSelection??this.options.attachSelection;if(!attach)fail('UNSUPPORTED_HOST_CAPABILITY','Native attachments are unavailable.');return attach(identity,selection);},
+      refresh:async request=>{const view=current(),bindingIds=(request.params as {bindingIds?:string[]}|null)?.bindingIds;if(!displayIdentity)return this.refreshView(identity.sessionId,identity.viewId,source,bindingIds,options.signal).then(json);if(bindingIds?.some(id=>!view.bindings.some(binding=>binding.bindingId===id)))fail('BINDING_NOT_FOUND','Requested binding is not part of this fixed display.');await Promise.all(view.bindings.filter(binding=>!bindingIds||bindingIds.includes(binding.bindingId)).map(binding=>this.refreshBinding(binding,source,options.signal)));return json(this.dataForView(current()));},
+      attachSelection:async request=>{const selection=this.selectionForView(current(),request.params as unknown as SelectionEnvelope),attach=options.attachSelection??this.options.attachSelection;if(!attach)fail('UNSUPPORTED_HOST_CAPABILITY','Native attachments are unavailable.');return attach(identity,selection);},
       invokeCapability:async request=>{
         const view=current();
         const input=request.params as unknown as Omit<InvocationRequest,'protocolVersion'|'invocationId'|'traceId'|'source'>;
@@ -233,8 +248,8 @@ export class AppsPresentationService {
         return json(result);
       },
     },{contextRevision:()=>contextInfo().contextRevision,clientFeatures:options.clientFeatures,extensionHandlers:this.authoring?{
-      renderReadyV1:request=>{if(request.action!=='ready'||!options.candidate)fail('FRAME_NOT_READY','No authorized candidate publication.');const params=request.params as unknown as {checks:Parameters<AppsAuthoringService['confirmReady']>[1]['checks']};return json(this.authoring!.confirmReady(identity.sessionId,{...options.candidate,...identity,checks:params.checks}));},
-      uiStateV1:request=>{const params=request.params as unknown as {uiStateSchemaVersion:number;expectedStateRevision?:number;value?:JsonValue;state?:JsonValue;selectionEvidence?:Parameters<AppsAuthoringService['exportUiState']>[1]['selectionEvidence']};current();if(request.action==='read')return json(this.authoring!.restoreUiState(identity.sessionId,{viewId:identity.viewId,targetBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion},options.candidate));if(request.action==='write')return json(this.authoring!.exportUiState(identity.sessionId,{viewId:identity.viewId,sourceBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion,expectedStateRevision:params.expectedStateRevision??0,value:params.value??params.state??null,selectionEvidence:params.selectionEvidence??[]}));fail('INVALID_INPUT','Unknown UI state action.');},
+      renderReadyV1:request=>{if(request.action!=='ready'||!options.candidate)fail('FRAME_NOT_READY','No authorized candidate publication.');const params=request.params as unknown as {checks:Parameters<AppsAuthoringService['confirmReady']>[1]['checks']};return json(displayIdentity?this.authoring!.confirmDisplayReady(identity.sessionId,{...displayIdentity,...identity,checks:params.checks}):this.authoring!.confirmReady(identity.sessionId,{...options.candidate,...identity,checks:params.checks}));},
+      uiStateV1:request=>{const params=request.params as unknown as {uiStateSchemaVersion:number;expectedStateRevision?:number;value?:JsonValue;state?:JsonValue;selectionEvidence?:Parameters<AppsAuthoringService['exportUiState']>[1]['selectionEvidence']};current();if(request.action==='read')return json(this.authoring!.restoreUiState(identity.sessionId,{viewId:identity.viewId,targetBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion},options.candidate));if(request.action==='write')return json(this.authoring!.exportUiState(identity.sessionId,{viewId:identity.viewId,sourceBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion,expectedStateRevision:params.expectedStateRevision??0,value:params.value??params.state??null,selectionEvidence:params.selectionEvidence??[]},displayIdentity));fail('INVALID_INPUT','Unknown UI state action.');},
     }:undefined});
   }
   /** Runtime registration adapter. The shared provider has no application-domain imports. */

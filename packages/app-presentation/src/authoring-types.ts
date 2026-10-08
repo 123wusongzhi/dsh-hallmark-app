@@ -64,6 +64,15 @@ export interface RecordPreviewInput extends AuthoringAttemptInput {buildReceiptI
 export interface PublishAuthoringInput extends AuthoringAttemptInput {viewId:string;expectedViewRevision:number;buildId:string;buildReceiptId:string;previewReceiptId:string;publicationId?:string}
 /** Only an explicit UI open starts the readiness deadline for this fixed publication. */
 export interface StartMountInput {viewId:string;publicationId:string;attemptId:string;attemptEpoch:number;buildId:string;expectedViewRevision:number}
+/** UI display retries reuse a verified archive, independently of the authoring attempt. */
+export interface OpenDisplayInput extends StartMountInput {displayId:string}
+export interface DisplayError {phase:string;code:string;message:string;at?:string}
+export interface ComponentDisplay extends OpenDisplayInput {
+  ownerSessionId:string;generation:number;state:'opening'|'ready'|'failed'|'retired';view:AuthoringView;
+  errors:DisplayError[];createdAt:string;updatedAt:string;readyAt?:string;frameInstanceId?:string;documentNonce?:string;
+}
+export interface DisplayFrameAuthorizationInput extends FrameAuthorizationInput {viewId:string;displayId:string;displayGeneration:number}
+export interface ReportDisplayErrorInput {viewId:string;publicationId:string;buildId:string;displayId:string;displayGeneration:number;error:DisplayError}
 export interface FrameAuthorizationInput {
   publicationId:string;attemptId:string;attemptEpoch:number;buildId:string;frameInstanceId:string;documentNonce:string;
 }
@@ -84,6 +93,7 @@ export interface AuthoringPresentationPort {
   saveComponent(sessionId:string,viewId:string,userRequest:string,options:SaveAppsComponentOptions):AppsComponent;
   manageSaved?(input:Record<string,JsonValue>):JsonValue;
   validateSelection?(sessionId:string,viewId:string,selection:SelectionEnvelope):SelectionEnvelope;
+  validateDisplaySelection?(sessionId:string,identity:CandidateFrameIdentity,selection:SelectionEnvelope):SelectionEnvelope;
 }
 export interface EvidenceValidationContext {draft:AuthoringDraft;attempt:AuthoringAttempt;sources:SourceComponentStore}
 export interface AppsAuthoringOptions {
@@ -94,6 +104,7 @@ export interface AppsAuthoringOptions {
   onCancel?:(attemptId:string,epoch:number)=>void;
   /** Trusted offline restore aliases preserve immutable original receipt/report paths. */
   resolveEvidencePath?:(path:string)=>string;
+  withEvidencePathScope?:(work:()=>void)=>void;
   clock?:()=>Date;readyTimeoutMs?:number;maxUiStateBytes?:number;
 }
-export type CandidateFrameIdentity=BridgeIdentity&{publicationId:string;attemptId:string;attemptEpoch:number;documentNonce:string};
+export type CandidateFrameIdentity=BridgeIdentity&{publicationId:string;attemptId:string;attemptEpoch:number;documentNonce:string;displayId?:string;displayGeneration?:number};

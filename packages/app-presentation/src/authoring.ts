@@ -5,7 +5,7 @@ import {canonicalJson} from '../../app-contracts/src/index.ts';
 import type {CapabilityResult,ExecutionContext,JsonValue,ResourceRef} from '../../app-contracts/src/index.ts';
 import {distDigest} from '../../source-components/src/authoring-evidence.ts';
 import type {AppsComponent} from './types.ts';
-import type {AppsAuthoringOptions,AuthoringAssertion,AuthoringAttempt,AuthoringAttemptInput,AuthoringDraft,AuthoringState,AuthoringView,BeginAuthoringInput,BuildExecutionEvidence,BuildReceipt,CandidateFrameIdentity,FileEvidenceRef,FrameAuthorizationInput,ManageAuthoringComponentInput,PreviewReceipt,PreviewValidationEvidence,PublishAuthoringInput,RecordBuildInput,RecordPreviewInput,RenderReadyInput,SaveAuthoringInput,StartMountInput,UiStateExportInput,UiStateRestoreInput,UiStateSnapshot,ViewPublication} from './authoring-types.ts';
+import type {AppsAuthoringOptions,AuthoringAssertion,AuthoringAttempt,AuthoringAttemptInput,AuthoringDraft,AuthoringState,AuthoringView,BeginAuthoringInput,BuildExecutionEvidence,BuildReceipt,CandidateFrameIdentity,ComponentDisplay,DisplayFrameAuthorizationInput,FileEvidenceRef,FrameAuthorizationInput,ManageAuthoringComponentInput,OpenDisplayInput,PreviewReceipt,PreviewValidationEvidence,PublishAuthoringInput,RecordBuildInput,RecordPreviewInput,RenderReadyInput,ReportDisplayErrorInput,SaveAuthoringInput,StartMountInput,UiStateExportInput,UiStateRestoreInput,UiStateSnapshot,ViewPublication} from './authoring-types.ts';
 export * from './authoring-types.ts';
 
 export class AuthoringError extends Error {
@@ -69,9 +69,12 @@ export class AppsAuthoringService {
   private fileRef(ownerKind:string,ownerId:string,reference:FileEvidenceRef):void {this.store.put('artifact_refs',`${ownerKind}:${ownerId}:file:${reference.sha256}`,{ownerKind,ownerId,targetKind:'file',targetId:reference.sha256,file:reference});}
   private buildRef(ownerKind:string,ownerId:string,buildId:string):void {this.store.put('artifact_refs',`${ownerKind}:${ownerId}:build:${buildId}`,{ownerKind,ownerId,targetKind:'build',targetId:buildId});}
   private verifyReceiptFiles(attempt:AuthoringAttempt,build:BuildReceipt,preview:PreviewReceipt):void {
+    const verify=()=>{
     for(const reference of [...attempt.evidenceRefs,build.logRef,...(build.fileManifestRef?[build.fileManifestRef]:[])])this.verifyFile(reference);
     for(const viewport of preview.viewportResults)this.verifyFile(viewport.screenshot);
     for(const assertion of preview.assertionResults)for(const reference of assertion.evidenceRefs)this.verifyFile(reference);
+    };
+    if(this.options.withEvidencePathScope)this.options.withEvidencePathScope(verify);else verify();
   }
   private failure(sessionId:string,input:AuthoringAttemptInput,state:'build_failed'|'preview_failed',error:unknown,reference:FileEvidenceRef):void {
     this.store.transaction(()=>{const attempt=this.store.get<AuthoringAttempt>('authoring_attempts',input.attemptId),draft=attempt&&this.store.get<AuthoringDraft>('authoring_drafts',attempt.draftId);if(!attempt||!draft||draft.ownerSessionId!==sessionId||draft.epoch!==input.epoch||attempt.epoch!==input.epoch||terminal.has(attempt.state))return;this.transition(draft,{...attempt,evidenceRefs:[...attempt.evidenceRefs,reference]},state,error instanceof Error?error.message:String(error));});
@@ -183,6 +186,7 @@ export class AppsAuthoringService {
       const source={buildId:input.buildId,directory:draft.workspacePath,entry:'index.html',files:[...this.sources.manifest(input.buildId)!.files]},at=this.stamp();
       const publication:ViewPublication={publicationId:input.publicationId??randomUUID(),viewId:view.viewId,ownerSessionId:sessionId,attemptId:attempt.attemptId,attemptEpoch:attempt.epoch,expectedViewRevision:view.viewRevision,candidateBuildId:input.buildId,priorActiveBuildId:view.activeBuildId,state:'prepared',readyDeadlineAt:null,mountStartedAt:null,evidenceRefs:clone(attempt.evidenceRefs),createdAt:at,updatedAt:at,buildReceiptId:build.receiptId,previewReceiptId:preview.receiptId,source};
       if(this.store.get('view_publications',publication.publicationId))fail('VIEW_CONFLICT','Publication ID already exists.');
+      const publicationViewId='publication-view:'+publication.publicationId;this.store.put('provider_records',publicationViewId,{appId:'apps',connectionId:'presentation',namespace:'publication_views',recordId:publicationViewId,value:{...clone(view),source:clone(source)}});
       this.store.put('view_publications',publication.publicationId,publication);this.store.put('views',view.viewId,{...view,pendingPublicationId:publication.publicationId});this.buildRef('publication',publication.publicationId,input.buildId);this.transition(draft,{...attempt,publicationId:publication.publicationId},'publish_ready');return clone(publication);
     });
   }
@@ -207,6 +211,94 @@ export class AppsAuthoringService {
       this.store.put('view_publications',publication.publicationId,mounting);this.transition(draft,attempt,'mounting');return clone(mounting);
     });
   }
+  private displays(viewId:string):ComponentDisplay[] {
+    return this.store.list<{namespace:string;value:ComponentDisplay}>('provider_records').filter(row=>row.namespace==='component_displays'&&row.value.viewId===viewId).map(row=>row.value).sort((a,b)=>a.generation-b.generation);
+  }
+  private putDisplay(display:ComponentDisplay):ComponentDisplay {
+    const recordId='component-display:'+display.displayId;
+    this.store.put('provider_records',recordId,{appId:'apps',connectionId:'presentation',namespace:'component_displays',recordId,value:display});return clone(display);
+  }
+  /** A display may use a fixed mounted historical snapshot, never the newer view's bindings. */
+  private displayTarget(sessionId:string,input:StartMountInput){
+    required(input.viewId,'viewId');required(input.buildId,'buildId');integer(input.expectedViewRevision,'expectedViewRevision');integer(input.attemptEpoch,'attemptEpoch');
+    const publication=this.store.get<ViewPublication>('view_publications',required(input.publicationId,'publicationId'));
+    if(!publication||publication.ownerSessionId!==sessionId)fail('VIEW_NOT_OWNED','Publication is not owned by this session.');
+    if(publication.viewId!==input.viewId||publication.attemptId!==input.attemptId||publication.attemptEpoch!==input.attemptEpoch||publication.candidateBuildId!==input.buildId||publication.expectedViewRevision!==input.expectedViewRevision)fail('PUBLICATION_TARGET_MISMATCH','Display must identify the fixed publication from this message.');
+    const current=this.view(sessionId,input.viewId),attempt=this.store.get<AuthoringAttempt>('authoring_attempts',publication.attemptId),draft=attempt&&this.store.get<AuthoringDraft>('authoring_drafts',attempt.draftId);
+    if(!attempt||!draft||draft.ownerSessionId!==sessionId||draft.viewId!==input.viewId||attempt.epoch!==input.attemptEpoch||attempt.publicationId!==publication.publicationId)fail('PUBLICATION_UNAVAILABLE','Publication authoring identity is unavailable.');
+    let view:AuthoringView;
+    if(publication.state==='mounted'){
+      const recordId='view-revision:'+canonicalJson([sessionId,input.viewId,publication.committedViewRevision]);
+      const snapshot=this.store.get<{namespace:string;value:AuthoringView}>('provider_records',recordId);
+      if(!publication.committedViewRevision||snapshot?.namespace!=='view_revisions'||snapshot.value.ownerSessionId!==sessionId||snapshot.value.viewId!==input.viewId||snapshot.value.viewRevision!==publication.committedViewRevision||snapshot.value.source?.buildId!==input.buildId)fail('PUBLICATION_UNAVAILABLE','The fixed mounted view snapshot is unavailable.');
+      view=clone(snapshot.value);
+    }else{
+      if(!['prepared','mounting','failed_mount','interrupted'].includes(publication.state)||!['publish_ready','mounting','failed_mount','interrupted'].includes(attempt.state)||draft.epoch!==attempt.epoch||draft.sourceRevision!==attempt.sourceRevision||current.viewRevision!==publication.expectedViewRevision||current.pendingPublicationId&&current.pendingPublicationId!==publication.publicationId)fail('PUBLICATION_UNAVAILABLE','This candidate was cancelled, superseded or replaced; its original result remains inspectable.');
+      const snapshot=this.store.get<{namespace:string;value:AuthoringView}>('provider_records','publication-view:'+publication.publicationId);view=snapshot?.namespace==='publication_views'?clone(snapshot.value):{...current,source:clone(publication.source)};
+      if(view.ownerSessionId!==sessionId||view.viewId!==input.viewId||view.viewRevision!==publication.expectedViewRevision||canonicalJson(view.bindings)!==canonicalJson(current.bindings))fail('PUBLICATION_TARGET_MISMATCH','Candidate bindings changed after preparation.');
+    }
+    const build=this.store.get<BuildReceipt>('build_receipts',publication.buildReceiptId),preview=this.store.get<PreviewReceipt>('preview_receipts',publication.previewReceiptId),manifest=this.sources.manifest(input.buildId);
+    if(!build||!preview||attempt.buildReceiptId!==build.receiptId||attempt.previewReceiptId!==preview.receiptId||build.attemptId!==attempt.attemptId||preview.attemptId!==attempt.attemptId||build.sourceRevision!==attempt.sourceRevision||build.verdict!=='PASS'||preview.verdict!=='PASS'||preview.buildReceiptId!==build.receiptId||preview.buildId!==input.buildId||build.archiveBuildId!==input.buildId||publication.source.buildId!==input.buildId||!manifest||!this.sources.verify(input.buildId).valid)fail('BUILD_EVIDENCE_INVALID','Display requires the same immutable PASS build and preview.');
+    if(publication.source.directory!==draft.workspacePath||publication.source.entry!==manifest.entry||canonicalJson(publication.source.files)!==canonicalJson(manifest.files)||canonicalJson(view.source)!==canonicalJson(publication.source))fail('BUILD_EVIDENCE_INVALID','Display source differs from the exact previewed archive.');
+    this.verifyReceiptFiles(attempt,build,preview);return {publication,attempt,draft,current,view};
+  }
+  openDisplay(sessionId:string,input:OpenDisplayInput):{publication:ViewPublication;display:ComponentDisplay;source:ViewPublication['source'];view:AuthoringView} {
+    required(input.displayId,'displayId');if(!/^[-a-zA-Z0-9_.:]{1,160}$/.test(input.displayId))fail('INVALID_INPUT','displayId must be a bounded explicit identity.');
+    return this.store.transaction(()=>{
+      const {publication,view}=this.displayTarget(sessionId,input),existing=this.store.get<{value:ComponentDisplay}>('provider_records','component-display:'+input.displayId)?.value;
+      if(existing){if(existing.ownerSessionId!==sessionId||canonicalJson({...input})!==canonicalJson({viewId:existing.viewId,publicationId:existing.publicationId,attemptId:existing.attemptId,attemptEpoch:existing.attemptEpoch,buildId:existing.buildId,expectedViewRevision:existing.expectedViewRevision,displayId:existing.displayId}))fail('DISPLAY_ID_CONFLICT','This display ID already identifies another open.');return {publication:clone(publication),display:clone(existing),source:clone(publication.source),view:clone(existing.view)};}
+      const previous=this.displays(input.viewId),at=this.stamp();
+      for(const display of previous)if(display.state==='opening'||display.state==='ready')this.putDisplay({...display,state:'retired',updatedAt:at});
+      // Retire old document grants only after the complete fixed target has validated.
+      for(const row of this.store.list<{namespace:string;recordId:string;value:{identity?:{sessionId?:string;viewId?:string};retired?:boolean}}>('provider_records'))if(row.namespace==='frame_grants'&&row.value.identity?.sessionId===sessionId&&row.value.identity.viewId===input.viewId)this.store.put('provider_records',row.recordId,{...row,value:{...row.value,retired:true}});
+      const display=this.putDisplay({...input,ownerSessionId:sessionId,generation:(previous.at(-1)?.generation??0)+1,state:'opening',view:clone(view),errors:[],createdAt:at,updatedAt:at});
+      this.buildRef('display',display.displayId,input.buildId);return {publication:clone(publication),display,source:clone(publication.source),view:clone(view)};
+    });
+  }
+  display(sessionId:string,input:{viewId:string;publicationId:string;buildId:string;displayId:string;displayGeneration:number}):ComponentDisplay {
+    const display=this.store.get<{namespace:string;value:ComponentDisplay}>('provider_records','component-display:'+required(input.displayId,'displayId'))?.value;
+    if(!display||display.ownerSessionId!==sessionId)fail('VIEW_NOT_OWNED','Display is not owned by this session.');
+    integer(input.displayGeneration,'displayGeneration');
+    if(display.viewId!==input.viewId||display.publicationId!==input.publicationId||display.buildId!==input.buildId||display.generation!==input.displayGeneration||this.displays(display.viewId).at(-1)?.displayId!==display.displayId||!['opening','ready'].includes(display.state))fail('BRIDGE_IDENTITY_STALE','This iframe display was replaced or failed; explicitly reopen it.');
+    this.displayTarget(sessionId,display);return clone(display);
+  }
+  authorizeDisplayFrame(sessionId:string,input:DisplayFrameAuthorizationInput):ComponentDisplay {
+    required(input.frameInstanceId,'frameInstanceId');required(input.documentNonce,'documentNonce');
+    return this.store.transaction(()=>{const display=this.display(sessionId,input);if(display.attemptId!==input.attemptId||display.attemptEpoch!==input.attemptEpoch)fail('PUBLICATION_TARGET_MISMATCH','Display attempt identity differs.');this.displayTarget(sessionId,display);if(display.frameInstanceId&&(display.frameInstanceId!==input.frameInstanceId||display.documentNonce!==input.documentNonce))fail('BRIDGE_IDENTITY_STALE','This display already identifies another iframe document; reopen to create a new display.');return this.putDisplay({...display,frameInstanceId:input.frameInstanceId,documentNonce:input.documentNonce,updatedAt:this.stamp()});});
+  }
+  acceptsDisplayFrame(identity:CandidateFrameIdentity):boolean {
+    try{if(identity.protocolVersion!=='2.0'||!identity.displayId||!identity.displayGeneration)return false;const display=this.display(identity.sessionId,{...identity,displayId:identity.displayId,displayGeneration:identity.displayGeneration});return display.attemptId===identity.attemptId&&display.attemptEpoch===identity.attemptEpoch&&display.frameInstanceId===identity.frameInstanceId&&display.documentNonce===identity.documentNonce;}catch{return false;}
+  }
+  /** A retired document gives up its display slot, so the same display can grant one new document. A different live document is never displaced. */
+  releaseDisplayFrame(sessionId:string,input:{displayId:string;frameInstanceId:string;documentNonce:string}):boolean {
+    return this.store.transaction(()=>{
+      const display=this.store.get<{value:ComponentDisplay}>('provider_records','component-display:'+required(input.displayId,'displayId'))?.value;
+      if(!display||display.ownerSessionId!==sessionId||!display.frameInstanceId||display.frameInstanceId!==input.frameInstanceId||display.documentNonce!==input.documentNonce)return false;
+      const {frameInstanceId:_frame,documentNonce:_nonce,...released}=display;
+      this.putDisplay({...released,updatedAt:this.stamp()});return true;
+    });
+  }
+  confirmDisplayReady(sessionId:string,input:RenderReadyInput&{displayId:string;displayGeneration:number}):{publication:ViewPublication;display:ComponentDisplay;view:AuthoringView} {
+    return this.store.transaction(()=>{
+      const display=this.display(sessionId,input);if(!this.acceptsDisplayFrame({...input,sessionId,protocolVersion:'2.0'}))fail('BRIDGE_IDENTITY_STALE','Ready receipt is not from the current display document.');
+      const checks=input.checks;if(!checks||checks.rendered!==true||checks.bridgeReady!==true||checks.dataRead!==true||!Array.isArray(checks.unhandledErrors)||checks.unhandledErrors.length)fail('FRAME_RUNTIME_ERROR','The display has not completed actual render, bridge and data readiness.');
+      let passed=false;try{passed=assertions(checks.assertionResults);}catch{}if(!passed)fail('FRAME_RUNTIME_ERROR','The actual display must pass its required component assertions.');
+      let {publication,attempt,draft,current}=this.displayTarget(sessionId,display),displayView=display.view;
+      if(publication.state!=='mounted'){
+        if(canonicalJson(current.bindings)!==canonicalJson(display.view.bindings))fail('PUBLICATION_TARGET_MISMATCH','Candidate data bindings changed during display.');
+        const next:AuthoringView={...current,source:clone(publication.source),activeBuildId:input.buildId,previousGoodBuildId:current.lastGoodBuildId,lastGoodBuildId:input.buildId,pendingPublicationId:null,validationStatus:'verified',viewRevision:current.viewRevision+1,updatedAt:this.stamp()};
+        publication={...publication,state:'mounted',committedViewRevision:next.viewRevision,updatedAt:this.stamp()};
+        const recordId='view-revision:'+canonicalJson([sessionId,current.viewId,next.viewRevision]);
+        this.store.put('provider_records',recordId,{appId:'apps',connectionId:'presentation',namespace:'view_revisions',recordId,value:next});this.store.put('views',next.viewId,next);this.store.put('view_publications',publication.publicationId,publication);this.buildRef('view',next.viewId,input.buildId);this.transition(draft,attempt,'mounted');displayView=next;
+      }
+      const ready=display.state==='ready'?display:this.putDisplay({...display,state:'ready',readyAt:this.stamp(),updatedAt:this.stamp(),view:clone(displayView)});
+      return {publication:clone(publication),display:clone(ready),view:clone(ready.view)};
+    });
+  }
+  reportDisplayError(sessionId:string,input:ReportDisplayErrorInput):ComponentDisplay {
+    const error=input.error;if(!error||typeof error!=='object'||Object.keys(error).some(key=>!['phase','code','message'].includes(key))||['phase','code','message'].some(key=>typeof error[key as keyof typeof error]!=='string'||!String(error[key as keyof typeof error]).trim())||Buffer.byteLength(error.phase)>80||Buffer.byteLength(error.code)>160||Buffer.byteLength(error.message)>4096)fail('INVALID_INPUT','Display errors require bounded phase, code and message fields.');
+    return this.store.transaction(()=>{const display=this.display(sessionId,input),next=this.putDisplay({...display,state:'failed',errors:[...display.errors,{phase:error.phase,code:error.code,message:error.message,at:this.stamp()}],updatedAt:this.stamp()});for(const row of this.store.list<{namespace:string;recordId:string;value:{candidate?:{displayId?:string};retired?:boolean}}>('provider_records'))if(row.namespace==='frame_grants'&&row.value.candidate?.displayId===display.displayId)this.store.put('provider_records',row.recordId,{...row,value:{...row.value,retired:true}});return next;});
+  }
   private pending(sessionId:string,input:FrameAuthorizationInput){
     const publication=this.store.get<ViewPublication>('view_publications',required(input.publicationId,'publicationId'));if(!publication||publication.ownerSessionId!==sessionId)fail('VIEW_NOT_OWNED','Candidate publication does not belong to this session.');
     const context=this.context(sessionId,{attemptId:input.attemptId,epoch:input.attemptEpoch},true);
@@ -219,6 +311,7 @@ export class AppsAuthoringService {
     return this.store.transaction(()=>{const {publication}=this.pending(sessionId,input);if(publication.frameInstanceId&&(publication.frameInstanceId!==input.frameInstanceId||publication.documentNonce!==input.documentNonce))fail('ATTEMPT_SUPERSEDED','This publication already granted a different iframe document.');return this.store.put('view_publications',publication.publicationId,{...publication,frameInstanceId:input.frameInstanceId,documentNonce:input.documentNonce,updatedAt:this.stamp()});});
   }
   acceptsFrame(identity:CandidateFrameIdentity):boolean {
+    if(identity?.displayId!==undefined||identity?.displayGeneration!==undefined)return this.acceptsDisplayFrame(identity);
     try{if(identity.protocolVersion!=='2.0')return false;const {publication}=this.pending(identity.sessionId,identity);return publication.viewId===identity.viewId&&publication.frameInstanceId===identity.frameInstanceId&&publication.documentNonce===identity.documentNonce;}catch{return false;}
   }
   confirmReady(sessionId:string,input:RenderReadyInput):{publication:ViewPublication;view:AuthoringView} {
@@ -254,14 +347,16 @@ export class AppsAuthoringService {
     if(notify)this.notifyCancellation(input.attemptId,input.expectedEpoch);
     return result;
   }
-  inspect(sessionId:string,input:{attemptId?:string;publicationId?:string}){
+  inspect(sessionId:string,input:{attemptId?:string;publicationId?:string;displayId?:string}){
     if(Boolean(input.attemptId)===Boolean(input.publicationId))fail('INVALID_INPUT','Inspect exactly one attempt or publication identity.');
     const publication=input.publicationId?this.store.get<ViewPublication>('view_publications',input.publicationId):undefined;
     const attempt=this.store.get<AuthoringAttempt>('authoring_attempts',input.attemptId??publication?.attemptId??'');
     const draft=attempt&&this.store.get<AuthoringDraft>('authoring_drafts',attempt.draftId);if(!attempt||!draft||draft.ownerSessionId!==sessionId||publication&&publication.ownerSessionId!==sessionId)fail('VIEW_NOT_OWNED','Inspection identity is not owned.');
     const selected=publication??(attempt.publicationId?this.store.get<ViewPublication>('view_publications',attempt.publicationId):undefined);
     const workspacePath=this.resolvePath(draft.workspacePath);
-    return {draft:{...draft,workspacePath},attempt,publication:selected??null,view:this.view(sessionId,draft.viewId),workspaceAvailable:existsSync(workspacePath),missingEvidence:[...(!attempt.buildReceiptId?['BuildReceipt']:[]),...(!attempt.previewReceiptId?['PreviewReceipt']:[])]};
+    const displays=this.displays(draft.viewId).filter(display=>display.ownerSessionId===sessionId&&display.publicationId===selected?.publicationId);
+    const display=input.displayId?displays.find(display=>display.displayId===input.displayId):undefined;if(input.displayId&&!display)fail('VIEW_NOT_OWNED','The requested display does not belong to this publication and session.');
+    return {draft:{...draft,workspacePath},attempt,publication:selected??null,view:this.view(sessionId,draft.viewId),latestDisplay:displays.at(-1)??null,displays,...(display?{display}:{}),workspaceAvailable:existsSync(workspacePath),missingEvidence:[...(!attempt.buildReceiptId?['BuildReceipt']:[]),...(!attempt.previewReceiptId?['PreviewReceipt']:[])]};
   }
   recoverInterrupted():{interruptedAttemptIds:string[];committedPublicationIds:string[]} {
     const stopped:{attemptId:string;epoch:number}[]=[];
@@ -293,24 +388,34 @@ export class AppsAuthoringService {
     if(!this.options.presentation.manageSaved)fail('UNSUPPORTED_HOST_CAPABILITY','Saved component management is unavailable.');
     return this.store.transaction(()=>{const current=this.store.get<AppsComponent>('components',input.componentId);if(!current||current.revision!==input.expectedRevision)fail('COMPONENT_CONFLICT','Component metadata changed; inspect latest or keep the work copy.');return this.options.presentation.manageSaved!({kind:'component',id:input.componentId,action:input.action,...(input.action==='rename'?{name:required(input.title,'title')}:{})});});
   }
-  exportUiState(sessionId:string,input:UiStateExportInput):UiStateSnapshot {
-    const view=this.view(sessionId,input.viewId);integer(input.uiStateSchemaVersion,'uiStateSchemaVersion');integer(input.expectedStateRevision,'expectedStateRevision',0);
-    if(view.activeBuildId!==input.sourceBuildId)fail('BRIDGE_IDENTITY_STALE','UI state must come from the active build.');
+  private uiStateDisplay(sessionId:string,viewId:string,buildId:string,identity?:FrameAuthorizationInput&{displayId?:string;displayGeneration?:number}):ComponentDisplay|undefined {
+    if(!identity?.displayId)return;
+    const candidate={...identity,protocolVersion:'2.0' as const,sessionId,viewId,displayId:identity.displayId,displayGeneration:identity.displayGeneration!};
+    if(candidate.buildId!==buildId||!this.acceptsDisplayFrame(candidate))fail('BRIDGE_IDENTITY_STALE','UI state requires the current authorized display document.');return this.display(sessionId,candidate);
+  }
+  private uiSnapshot(sessionId:string,viewId:string,buildId:string,display?:ComponentDisplay):UiStateSnapshot|undefined {
+    const legacy=this.store.get<UiStateSnapshot>('view_ui_states',canonicalJson([sessionId,viewId]));
+    if(!display)return legacy;
+    return this.store.get<UiStateSnapshot>('view_ui_states',canonicalJson([sessionId,viewId,buildId]))??(legacy?.sourceBuildId===buildId?legacy:undefined);
+  }
+  exportUiState(sessionId:string,input:UiStateExportInput,authorizedDisplay?:CandidateFrameIdentity):UiStateSnapshot {
+    const display=this.uiStateDisplay(sessionId,input.viewId,input.sourceBuildId,authorizedDisplay),view=display?.view??this.view(sessionId,input.viewId);integer(input.uiStateSchemaVersion,'uiStateSchemaVersion');integer(input.expectedStateRevision,'expectedStateRevision',0);
+    if(!display&&view.activeBuildId!==input.sourceBuildId)fail('BRIDGE_IDENTITY_STALE','UI state must come from the active build.');
     if(Buffer.byteLength(canonicalJson(input.value))>(this.options.maxUiStateBytes??65536))fail('UI_STATE_TOO_LARGE','UI state exceeds its declared JSON byte limit.');
     if(!Array.isArray(input.selectionEvidence))fail('INVALID_INPUT','selectionEvidence must be explicit.');
-    return this.store.transaction(()=>{const current=this.view(sessionId,input.viewId);if(current.activeBuildId!==input.sourceBuildId)fail('BRIDGE_IDENTITY_STALE','UI state build changed before export.');for(const selection of input.selectionEvidence){const binding=current.bindings.find(item=>item.bindingId===selection.bindingId);if(!binding||binding.datasetId!==selection.datasetId)fail('SELECTION_STALE','UI selection dataset identity changed.');if(!this.options.presentation.validateSelection)fail('UI_STATE_INCOMPATIBLE','No resource-selection validator is configured.');this.options.presentation.validateSelection(sessionId,input.viewId,selection);}const id=canonicalJson([sessionId,input.viewId]),previous=this.store.get<UiStateSnapshot>('view_ui_states',id);if((previous?.stateRevision??0)!==input.expectedStateRevision)fail('UI_STATE_CONFLICT','UI state revision changed.');const snapshot:UiStateSnapshot={sessionId,viewId:input.viewId,sourceBuildId:input.sourceBuildId,uiStateSchemaVersion:input.uiStateSchemaVersion,stateRevision:input.expectedStateRevision+1,value:clone(input.value),capturedAt:this.stamp(),selectionEvidence:clone(input.selectionEvidence)};this.store.put('view_ui_states',id,snapshot);this.buildRef('ui_state',id,input.sourceBuildId);return snapshot;});
+    return this.store.transaction(()=>{const current=this.uiStateDisplay(sessionId,input.viewId,input.sourceBuildId,authorizedDisplay)?.view??this.view(sessionId,input.viewId);if(!display&&current.activeBuildId!==input.sourceBuildId)fail('BRIDGE_IDENTITY_STALE','UI state build changed before export.');for(const selection of input.selectionEvidence){const binding=current.bindings.find(item=>item.bindingId===selection.bindingId);if(!binding||binding.datasetId!==selection.datasetId)fail('SELECTION_STALE','UI selection dataset identity changed.');if(display){if(!this.options.presentation.validateDisplaySelection)fail('UI_STATE_INCOMPATIBLE','No display resource validator is configured.');this.options.presentation.validateDisplaySelection(sessionId,authorizedDisplay!,selection);}else{if(!this.options.presentation.validateSelection)fail('UI_STATE_INCOMPATIBLE','No resource-selection validator is configured.');this.options.presentation.validateSelection(sessionId,input.viewId,selection);}}const id=canonicalJson(display?[sessionId,input.viewId,input.sourceBuildId]:[sessionId,input.viewId]),previous=this.uiSnapshot(sessionId,input.viewId,input.sourceBuildId,display);if((previous?.stateRevision??0)!==input.expectedStateRevision)fail('UI_STATE_CONFLICT','UI state revision changed.');const snapshot:UiStateSnapshot={sessionId,viewId:input.viewId,sourceBuildId:input.sourceBuildId,uiStateSchemaVersion:input.uiStateSchemaVersion,stateRevision:input.expectedStateRevision+1,value:clone(input.value),capturedAt:this.stamp(),selectionEvidence:clone(input.selectionEvidence)};this.store.put('view_ui_states',id,snapshot);this.buildRef('ui_state',id,input.sourceBuildId);return snapshot;});
   }
-  restoreUiState(sessionId:string,input:UiStateRestoreInput,authorizedCandidate?:FrameAuthorizationInput){
-    const view=this.view(sessionId,input.viewId),snapshot=this.store.get<UiStateSnapshot>('view_ui_states',canonicalJson([sessionId,input.viewId]));
+  restoreUiState(sessionId:string,input:UiStateRestoreInput,authorizedCandidate?:FrameAuthorizationInput&{displayId?:string;displayGeneration?:number}){
+    const display=this.uiStateDisplay(sessionId,input.viewId,input.targetBuildId,authorizedCandidate),view=display?.view??this.view(sessionId,input.viewId),snapshot=this.uiSnapshot(sessionId,input.viewId,input.targetBuildId,display);
     integer(input.uiStateSchemaVersion,'uiStateSchemaVersion');
-    if(view.activeBuildId!==input.targetBuildId){
+    if(!display&&view.activeBuildId!==input.targetBuildId){
       if(!authorizedCandidate||authorizedCandidate.buildId!==input.targetBuildId)fail('BRIDGE_IDENTITY_STALE','UI state restore must target the active or an authorized pending build.');
       const {publication}=this.pending(sessionId,authorizedCandidate);if(publication.viewId!==input.viewId||publication.frameInstanceId!==authorizedCandidate.frameInstanceId||publication.documentNonce!==authorizedCandidate.documentNonce)fail('BRIDGE_IDENTITY_STALE','Candidate UI restore requires its authorized iframe document.');
     }
     if(!snapshot)return {status:'empty' as const,snapshot:null,removedSelections:[]};
     if(snapshot.uiStateSchemaVersion!==input.uiStateSchemaVersion)return {status:'incompatible' as const,code:'UI_STATE_INCOMPATIBLE',snapshot,removedSelections:[]};
     const valid:UiStateSnapshot['selectionEvidence']=[],removedSelections:{bindingId:string;resource:ResourceRef;reason:string}[]=[];
-    for(const selection of snapshot.selectionEvidence){const resources:ResourceRef[]=[];for(const resource of selection.resources){try{const binding=view.bindings.find(item=>item.bindingId===selection.bindingId);if(!binding||binding.datasetId!==selection.datasetId)fail('SELECTION_STALE','UI selection dataset identity changed.');if(!this.options.presentation.validateSelection)fail('UI_STATE_INCOMPATIBLE','No selection validator.');this.options.presentation.validateSelection(sessionId,input.viewId,{...selection,resources:[resource]});resources.push(clone(resource));}catch(error){removedSelections.push({bindingId:selection.bindingId,resource:clone(resource),reason:error instanceof Error?error.message:String(error)});}}if(resources.length)valid.push({...selection,resources});}
+    for(const selection of snapshot.selectionEvidence){const resources:ResourceRef[]=[];for(const resource of selection.resources){try{const binding=view.bindings.find(item=>item.bindingId===selection.bindingId);if(!binding||binding.datasetId!==selection.datasetId)fail('SELECTION_STALE','UI selection dataset identity changed.');if(display){if(!this.options.presentation.validateDisplaySelection)fail('UI_STATE_INCOMPATIBLE','No display selection validator.');this.options.presentation.validateDisplaySelection(sessionId,{...authorizedCandidate!,sessionId,viewId:input.viewId,protocolVersion:'2.0'}, {...selection,resources:[resource]});}else{if(!this.options.presentation.validateSelection)fail('UI_STATE_INCOMPATIBLE','No selection validator.');this.options.presentation.validateSelection(sessionId,input.viewId,{...selection,resources:[resource]});}resources.push(clone(resource));}catch(error){removedSelections.push({bindingId:selection.bindingId,resource:clone(resource),reason:error instanceof Error?error.message:String(error)});}}if(resources.length)valid.push({...selection,resources});}
     return {status:'restored' as const,snapshot:{...snapshot,selectionEvidence:valid},removedSelections};
   }
   closeDraft(sessionId:string,viewId:string,action:'keep'|'discard'):AuthoringDraft {

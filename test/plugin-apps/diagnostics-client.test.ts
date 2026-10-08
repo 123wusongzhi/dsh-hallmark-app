@@ -33,6 +33,7 @@ test('diagnostics UI copies four linked IDs from the actual scoped Host HTTP que
       const host=new AppsHost({tools:{register:()=>()=>{}},agents:{get:id=>agents.get(id)},connection:{fetch:{register:()=>async()=>{}}}},new HttpAppsHostTransport('http://127.0.0.1:'+server.address().port,'x'.repeat(64)));
       await host.start();const detach=host.attachApp('notes'),nativeFetch=globalThis.fetch,requests=[],clipboardCalls=[];let clipboardFails=false,modelRequests=0,tree;
       globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+      globalThis.window=new EventTarget();
       Object.defineProperty(globalThis,'navigator',{configurable:true,value:{clipboard:{writeText:async text=>{clipboardCalls.push(text);if(clipboardFails)throw new Error('Clipboard denied fixture');}}}});
       globalThis.fetch=async(target,options)=>{const value=String(target);requests.push({url:value,method:options?.method??'GET'});if(value.startsWith('/api/dsh-apps'))return host.ui(new Request('http://client.fixture'+value,options));if(value.includes('model'))modelRequests++;return nativeFetch(target,options);};
       const settle=()=>new Promise(resolve=>setTimeout(resolve,50));

@@ -1,21 +1,36 @@
 import React,{useEffect,useRef,useSyncExternalStore} from 'react';
 import type {AppsView} from '../../app-presentation/src/types.ts';
 import type {ViewPublication} from '../../app-presentation/src/authoring-types.ts';
+import {openSessionComponents} from '../../dsh-plugin/client/sidebar-contract.ts';
 import type {NativeSidebarRight} from '../../dsh-plugin/client/sidebar-contract.ts';
 import {appsAuthoring,appsResource} from './api.ts';
 
-/** Reads are single-flight and lose authority as soon as their visible Session changes. */
-export function watchOwnedAppsViews(sessionId:string,onViews:(views:AppsView[],signal:AbortSignal)=>void|Promise<void>,isCurrent:()=>boolean,onError?:(error:unknown)=>void,pollMs=1000):()=>void {
-  const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined;
-  const poll=async()=>{
-    if(controller.signal.aborted||!isCurrent())return;
-    try{
-      const value=await appsResource<{views:AppsView[]}>('views',{sessionId},AbortSignal.any([controller.signal,AbortSignal.timeout(5000)]));
-      if(!controller.signal.aborted&&isCurrent())await onViews(Array.isArray(value.views)?value.views.filter(view=>view.ownerSessionId===sessionId):[],controller.signal);
-    }catch(error){if(!controller.signal.aborted&&isCurrent())onError?.(error);}
-    if(!controller.signal.aborted&&isCurrent())timer=setTimeout(()=>void poll(),pollMs);
-  };
-  void poll();return()=>{controller.abort();if(timer!==undefined)clearTimeout(timer);};
+type ViewsListener={controller:AbortController;onViews:(views:AppsView[],signal:AbortSignal)=>void|Promise<void>;isCurrent:()=>boolean;onError?:(error:unknown)=>void;last?:string};
+const viewWatches=new Map<string,{listeners:Set<ViewsListener>;poll:()=>Promise<void>;stop:()=>void;views?:AppsView[]}>();
+/** One poll per session, with independent lifetimes for its consumers. */
+export function watchOwnedAppsViews(sessionId:string,onViews:ViewsListener['onViews'],isCurrent:()=>boolean,onError?:ViewsListener['onError'],pollMs=3000):()=>void {
+  const listener:ViewsListener={controller:new AbortController(),onViews,isCurrent,onError};
+  let watch=viewWatches.get(sessionId);
+  const deliver=async(item:ViewsListener,views:AppsView[])=>{if(item.controller.signal.aborted||!item.isCurrent())return;const snapshot=JSON.stringify(views);if(item.last===snapshot)return;try{await item.onViews(views,item.controller.signal);item.last=snapshot;}catch(error){if(!item.controller.signal.aborted)item.onError?.(error);}};
+  if(!watch){
+    const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined,running=false;
+    const current={listeners:new Set<ViewsListener>(),views:undefined as AppsView[]|undefined,poll:async()=>{
+      if(running||controller.signal.aborted)return;
+      if(timer!==undefined)clearTimeout(timer);
+      if(typeof document!=='undefined'&&document.hidden)return;
+      running=true;
+      try{const value=await appsResource<{views:AppsView[]}>('views',{sessionId},AbortSignal.any([controller.signal,AbortSignal.timeout(5000)]));
+        if(!controller.signal.aborted){current.views=(value.views??[]).filter(view=>view.ownerSessionId===sessionId);await Promise.all([...current.listeners].map(item=>deliver(item,current.views!)));}
+      }catch(error){if(!controller.signal.aborted)for(const item of current.listeners)if(item.isCurrent())item.onError?.(error);}
+      finally{running=false;if(!controller.signal.aborted&&!(typeof document!=='undefined'&&document.hidden))timer=setTimeout(()=>void current.poll(),pollMs);}
+    },stop:()=>{controller.abort();if(timer!==undefined)clearTimeout(timer);if(typeof document!=='undefined')document.removeEventListener('visibilitychange',visibility);}};
+    const visibility=()=>{if(document.hidden){if(timer!==undefined)clearTimeout(timer);}else void current.poll();};
+    if(typeof document!=='undefined')document.addEventListener('visibilitychange',visibility);
+    watch=current;viewWatches.set(sessionId,current);
+  }
+  watch.listeners.add(listener);
+  if(watch.views)void deliver(listener,watch.views);else void watch.poll();
+  return()=>{listener.controller.abort();watch!.listeners.delete(listener);if(!watch!.listeners.size){watch!.stop();viewWatches.delete(sessionId);}};
 }
 export function useOwnedAppsViews(sessionId:string|undefined,onViews:(views:AppsView[],signal:AbortSignal)=>void|Promise<void>,onError?:(error:unknown)=>void,refreshKey=0,enabled=true):void {
   const live=useRef({sessionId,onViews,onError,enabled});live.current={sessionId,onViews,onError,enabled};
@@ -30,14 +45,10 @@ export async function readOwnedPendingPublication(sessionId:string,view:AppsView
   if(current.ownerSessionId!==sessionId||current.viewId!==view.viewId||publication?.ownerSessionId!==sessionId||publication.viewId!==view.viewId||publication.publicationId!==view.pendingPublicationId)throw new Error('候选发布不属于当前屏幕会话。');
   if(publication.state==='prepared'||publication.state==='mounting'&&publication.readyDeadlineAt!==null&&Date.parse(publication.readyDeadlineAt)>Date.now())return publication;
 }
-export interface PublicationTarget {sessionId:string;viewId:string;publicationId:string;buildId?:string;viewRevision?:number}
-/** A click carries the original publication, never the view's latest candidate. */
-export function ownedPublication(target:PublicationTarget,value:AppsView&{publication?:ViewPublication}):ViewPublication {
-  const publication=value.publication;
-  if(value.ownerSessionId!==target.sessionId||value.viewId!==target.viewId||publication?.ownerSessionId!==target.sessionId||publication.viewId!==target.viewId||publication.publicationId!==target.publicationId||target.buildId&&publication.candidateBuildId!==target.buildId||target.viewRevision!==undefined&&target.viewRevision!==publication.expectedViewRevision&&target.viewRevision!==publication.committedViewRevision||publication.source?.buildId!==publication.candidateBuildId||!Number.isSafeInteger(publication.attemptEpoch)||!Number.isSafeInteger(publication.expectedViewRevision)||!publication.attemptId)throw new Error('原消息的发布身份不一致，请检查原 publication。');
-  if(!['prepared','mounting','mounted'].includes(publication.state))throw new Error('原发布已结束，请在原聊天准备新的组件。');
-  return publication;
-}
+import {ownedPublication} from './native-display.ts';
+import type {PublicationTarget} from './native-display.ts';
+export {ownedPublication,ownedDisplay,readOwnedDisplay,openOwnedPublicationDisplay,latestOpenedDisplayId} from './native-display.ts';
+export type {PublicationTarget,DisplayTarget,OpenDisplayResult} from './native-display.ts';
 /** Response loss is resolved by reading this exact publication; it never causes an implicit retry. */
 export async function startOwnedPublicationMount(target:PublicationTarget,publication:ViewPublication,isCurrent:()=>boolean,signal:AbortSignal):Promise<ViewPublication> {
   const checkCurrent=()=>{signal.throwIfAborted();if(!isCurrent())throw new Error('会话已切换，请切回组件所属聊天后重新打开。');};
@@ -64,19 +75,20 @@ export function announceAppsPublication(sessionId:string,viewId:string,publicati
   window.dispatchEvent(new CustomEvent('apps-publication-discovered',{detail:{sessionId,viewId,publicationId}}));
 }
 const absentMounted={getSnapshot:()=>undefined,subscribe:(_listener:()=>void)=>()=>{}};
-/** Discovery updates available component entrances; only a user's click opens the right pane. */
+/** A newly prepared component appears in the current session's right pane once. */
 export function NativePublicationObserver({sidebarRight}:{sidebarRight?:NativeSidebarRight}) {
   const store=sidebarRight?.mounted??absentMounted;
   const sessionId=useSyncExternalStore(store.subscribe??absentMounted.subscribe,store.getSnapshot,store.getSnapshot);
   const consumed=useRef(new Set<string>());
   useOwnedAppsViews(sessionId,async(views,signal)=>{
-    for(const view of views){
+    for(const view of views.filter(view=>view.pendingPublicationId).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,1)){
       if(!view.pendingPublicationId||sidebarRight?.mounted.getSnapshot()!==sessionId)continue;
       const key=publicationKey(sessionId!,view.viewId,view.pendingPublicationId);if(consumed.current.has(key))continue;
       const publication=await readOwnedPendingPublication(sessionId!,view,signal);
       if(signal.aborted||sidebarRight?.mounted.getSnapshot()!==sessionId)return;
       if(!publication){consumed.current.add(key);continue;}
       consumed.current.add(key);announceAppsPublication(sessionId!,view.viewId,view.pendingPublicationId);
+      openSessionComponents(sidebarRight,sessionId,view.viewId,view.pendingPublicationId);return;
     }
   });
   return null;

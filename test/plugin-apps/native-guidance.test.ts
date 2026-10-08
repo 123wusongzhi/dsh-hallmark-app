@@ -2,9 +2,9 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {AppsRuntime,RuntimeStore} from '../../packages/app-runtime/src/index.ts';import {AppsHost,type AppsPluginContext} from '../../packages/plugin-apps/src/index.ts';import type {AppsHostTransport} from '../../packages/plugin-apps/src/transport.ts';import type {AppsAuthoringGuidance} from '../../packages/plugin-apps/src/authoring-guidance.ts';
 import {authoringInstructions} from '../../packages/plugin-apps/src/authoring-guidance.ts';
 
-test('Agent guidance describes prepared cards and waits for a user click before native mount verification',()=>{
+test('Agent guidance describes automatic display and retry of the same preview archive after failure',()=>{
   const instructions=authoringInstructions({cliPath:null,nodeExecutable:'node',nodeArgs:[],nodeEnvironment:{},starterPath:'starter',sdkDirectory:'sdk',buildRunnerPath:'build',previewRunnerPath:'preview',runtime:{url:'http://fixture',keyFile:'key-file-reference',archiveRoot:'archive',evidenceRoot:'evidence'}},'A');
-  const flow=instructions.flow.join('\n');assert.match(flow,/成功仅表示组件已准备好/);assert.match(flow,/等待用户点击时不计挂载超时/);assert.match(flow,/不自动展开右侧/);assert.match(flow,/不自行调用UI startMount/);assert.match(flow,/用户点击原聊天卡片打开组件后/);assert.match(flow,/才可称已展示/);
+  const flow=instructions.flow.join('\n');assert.match(flow,/成功仅表示组件已准备好/);assert.match(flow,/自动在右侧加载展示/);assert.match(flow,/无需要求用户再点击打开/);assert.match(flow,/不自行调用 UI startMount、openDisplay/);assert.match(flow,/UI自动为同publication\/build开启独立显示尝试/);assert.match(flow,/才可称已展示/);assert.match(flow,/重新打开同一构建/);assert.match(flow,/latestDisplay\/displays/);assert.match(flow,/旧frame不得恢复权限/);
 });
 
 test('prepared authoring results produce a fixed original-chat card without claiming a committed view',async()=>{

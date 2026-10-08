@@ -32,6 +32,12 @@ export class EvidencePathResolver {
   readonly root:string;
   private store:EvidencePathResolverOptions['store'];
   private indexes=new WeakMap<Manifest,ManifestIndex>();
+  private scope?:{rows?:Relocation[]};
+  /** Reuse the relocation index only within one synchronous evidence batch. */
+  withScope(work:()=>void):void {
+    const previous=this.scope;this.scope=previous??{};
+    try{work();}finally{this.scope=previous;}
+  }
   constructor(options:EvidencePathResolverOptions){
     namedAbsolute(resolve(options.root));noSymlink(options.root);this.root=realpathSync(options.root);this.store=options.store;
     if(!lstatSync(this.root).isDirectory())throw new Error('EVIDENCE_RELOCATION_ROOT_INVALID');
@@ -92,7 +98,7 @@ export class EvidencePathResolver {
   }
   resolve(path:string):string {
     if(typeof path!=='string'||!path)throw new Error('EVIDENCE_RELOCATION_PATH_INVALID');noTraversal(path);
-    const absolute=resolve(path),rows=this.rows(),exact=rows.find(row=>row.kind==='file'&&samePath(row.originalPath,absolute));
+    const absolute=resolve(path),rows=this.scope?(this.scope.rows??=this.rows()):this.rows(),exact=rows.find(row=>row.kind==='file'&&samePath(row.originalPath,absolute));
     const directory=rows.filter(row=>row.kind==='directory'&&inside(row.originalPath,absolute)).sort((a,b)=>b.originalPath.length-a.originalPath.length)[0];
     if(!exact&&!directory){noSymlink(absolute);return absolute;}
     const target=exact?.relocatedPath??resolve(directory!.relocatedPath,relative(directory!.originalPath,absolute));
