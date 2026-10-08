@@ -7,7 +7,7 @@ import {AppsPresentationService} from '../../packages/app-presentation/src/index
 import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
 import {SourceComponentStore} from '../../packages/source-components/src/index.ts';
 import {canonicalBinding,datasetId} from '../../packages/app-contracts/src/index.ts';
-import type {BridgeIdentity,CapabilityDescriptor,CapabilityResult,DatasetBinding,InvocationRequest,JsonValue,ResourceRef} from '../../packages/app-contracts/src/index.ts';
+import type {BridgeIdentity,CapabilityDescriptor,CapabilityResult,DatasetBinding,InvocationRequest,JsonValue,ResourceRef,SessionAppBinding} from '../../packages/app-contracts/src/index.ts';
 import {COMPONENT_CHANNEL} from '../../packages/component-runtime/src/apps-client.ts';
 
 function descriptor(appId:string,effect:'query'|'mutation'='query'):CapabilityDescriptor {
@@ -17,7 +17,7 @@ const binding=(appId:string):DatasetBinding=>({bindingId:appId,appId,connectionI
 function setup(t:{after:(action:()=>void)=>void}) {
   const store=new RuntimeStore(':memory:');t.after(()=>store.close());
   const calls:InvocationRequest[]=[],offline=new Set<string>();let providerAvailable=true;
-  const runtime={describe:(capabilityId:string)=>providerAvailable?descriptor(capabilityId.split('.')[0]):undefined,invoke:async(request:InvocationRequest):Promise<CapabilityResult>=>{
+  const runtime={getConnection:()=>({enabled:true}),bind:(value:SessionAppBinding)=>value,describe:(capabilityId:string)=>providerAvailable?descriptor(capabilityId.split('.')[0]):undefined,invoke:async(request:InvocationRequest):Promise<CapabilityResult>=>{
     calls.push(request);
     if(offline.has(request.appId))return {invocationId:request.invocationId,traceId:request.traceId,status:'unavailable',error:{code:'BACKEND_OFFLINE',message:'Fixture backend is offline',retryPolicy:'read_retry'}};
     const resource:ResourceRef={appId:request.appId,connectionId:request.connectionId,resourceType:request.appId==='notes'?'note':'product',resourceId:`${request.appId}-record`};

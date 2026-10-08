@@ -22,7 +22,7 @@ export const TOOL_DEFINITIONS: ToolDescriptor[] = [
   define('app_info', 'read', '说明应用能力、边界、来源、保存规则与后端状态'),
   define('list_stores', 'read', '列出已配置店铺，保留原始字段'),
   define('resolve_store', 'read', '唯一解析店铺；多个返回候选', {query: string()}, ['query']),
-  define('list_store_products', 'read', '读取店铺商品最近快照，保留原始源字段与时间', {...store, ...paging}),
+  define('list_store_products', 'read', '读取店铺商品最近快照，保留原始源字段与时间；status 精确筛选后分页，query 仅作全文搜索，与 status 取交集。仅在售用 status:on_sale，禁止遍历全店再筛选', {...store, ...paging, status: string('按源顶层 status 精确相等筛选，例如 on_sale；缺失不匹配，不翻译或推断状态'), query: string('整行全文搜索，不代表精确商品状态；与 status 筛选取交集')}),
   define('get_platform_data', 'read', '仅对白名单只读平台端点调用，自动关联内部任务', {...store, path: string(), method: {type: 'string', enum: ['GET','POST']}, body: object}, ['path']),
   define('search_collected_items', 'read', '搜索浏览器扩展已有采集摘要，不触发采集。返回items、分页cursor及可直接绑定组件的datasetKey；保留源返回顺序，不保证按采集时间排序；没有时间证据不声称最近。已保存组件可按同一查询与分页范围只读刷新', {...paging}),
   define('get_collected_item', 'read', '获取单个采集商品完整原始字段', {itemId: string()}, ['itemId']),

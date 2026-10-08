@@ -1,4 +1,4 @@
-import type {BridgeIdentity,CapabilityDescriptor,CapabilityResult,DataProvenance,DatasetBinding,FailureInfo,Freshness,InvocationRequest,JsonValue,ResourceRef,SelectionEnvelope} from '../../app-contracts/src/index.ts';
+import type {BridgeIdentity,CapabilityDescriptor,CapabilityResult,DataProvenance,DatasetBinding,FailureInfo,Freshness,InvocationRequest,JsonValue,ResourceRef,SelectionEnvelope,SessionAppBinding} from '../../app-contracts/src/index.ts';
 import type {SourceArtifact} from '../../presentation/src/types.ts';
 import type {SourceComponentStore} from '../../source-components/src/index.ts';
 
@@ -13,6 +13,10 @@ export interface PresentationStore {
 export interface PresentationRuntime {
   invoke(request:InvocationRequest,signal?:AbortSignal):Promise<CapabilityResult>;
   describe(capabilityId:string,version?:string):CapabilityDescriptor|undefined;
+  /** Saved content reuses existing connections in the explicit destination session. */
+  getConnection?(appId:string,connectionId:string):{enabled:boolean}|undefined;
+  bind?(binding:SessionAppBinding):SessionAppBinding;
+  sessionBindings?(sessionId:string):SessionAppBinding[];
 }
 export interface AppsView {
   viewId:string;

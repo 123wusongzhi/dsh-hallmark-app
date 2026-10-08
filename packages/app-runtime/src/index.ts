@@ -50,7 +50,7 @@ class ConnectionQueue {
 
 export class AppsRuntime {
   readonly store: RuntimeStore;
-  readonly runtimeVersion = '1.0.0-candidate.27';
+  readonly runtimeVersion = '1.0.0-candidate.35';
   readonly transportMajor = 1;
   readonly catalogSchemaVersion = 1;
   #providers = new Map<string, RegisteredProvider>();
@@ -227,6 +227,7 @@ export class AppsRuntime {
     const timer=setTimeout(()=>controller.abort(new Error('DEADLINE_EXCEEDED')),Math.max(0,remaining));
     if(remaining<=0)controller.abort(new Error('DEADLINE_EXCEEDED'));
     const queueKey=key(request.appId,request.connectionId), queue=this.#queues.get(queueKey)??new ConnectionQueue();this.#queues.set(queueKey,queue);
+    const queuedAt=performance.now();
     let release: (()=>void) | undefined, releaseConnection:(()=>void)|undefined, providerWork: Promise<CapabilityResult> | undefined;
     try {
       release=await queue.acquire(mutation||entry.descriptor.execution.concurrency==='exclusive',controller.signal);
@@ -240,7 +241,7 @@ export class AppsRuntime {
         operation=this.store.updateOperation(operation!.operationId,'dispatching',undefined,{event:'dispatch_intent',traceId:request.traceId,invocationId:request.invocationId});
       }
       const record=this.store.get<InvocationRecord>('invocations',request.invocationId)!;this.store.put('invocations',request.invocationId,{...record,state:'dispatching'});
-      this.log(request,'dispatch_intent',{operationId:operation?.operationId??null});
+      this.log(request,'dispatch_intent',{operationId:operation?.operationId??null,queueMs:Math.round(performance.now()-queuedAt)});
       const context:ExecutionContext={request:structuredClone(request),signal:controller.signal,configRevision:connection.configRevision,...(operation?{operationId:operation.operationId}:{}),...('runId' in request.source?{parentRunId:request.source.runId}:{})};
       const execution=registered.provider.execute(context);
       providerWork=execution;

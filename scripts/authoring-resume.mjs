@@ -15,15 +15,10 @@ export async function inspectAttempt(input){
  if(!input.runtime)return null;
  const response=await fetch(new URL('/v1/authoring/inspect',input.runtime.url),{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+readFileSync(input.runtime.keyFile,'utf8').trim()},body:JSON.stringify({sessionId:input.sessionId,params:{attemptId:input.attemptId}}),signal:AbortSignal.timeout(30000)});
  const state=await response.json();if(!response.ok)throw Object.assign(new Error(state.error?.message??'Inspect failed'),{code:state.error?.code??'INSPECT_FAILED'});
- if(state.attempt.epoch!==input.epoch||state.draft.epoch!==input.epoch||['cancelled','superseded','interrupted'].includes(state.attempt.state))throw Object.assign(new Error('Inspect the current attempt before continuing.'),{code:'ATTEMPT_SUPERSEDED'});
+ if((input.epoch!==undefined&&state.attempt.epoch!==input.epoch)||state.draft.epoch!==state.attempt.epoch||['cancelled','superseded','interrupted'].includes(state.attempt.state))throw Object.assign(new Error('Inspect the current attempt before continuing.'),{code:'ATTEMPT_SUPERSEDED'});
  return state;
 }
 export function newAttemptRequired(){return Object.assign(new Error('Inputs changed after an immutable receipt. Start a new authoring attempt; do not rewrite old receipts.'),{code:'NEW_ATTEMPT_REQUIRED'});}
-export async function previewFingerprint(input,includeLiveData=true){
- let data=input.data??null;
- if(input.mode==='live_readonly'&&includeLiveData){
-  const response=await fetch(new URL('/v1/authoring/preview',input.runtime.url),{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+readFileSync(input.runtime.keyFile,'utf8').trim()},body:JSON.stringify({sessionId:input.sessionId,params:{viewId:input.viewId,action:'data'}}),signal:AbortSignal.timeout(30000)});
-  if(!response.ok)throw new Error('Preview data inspection failed');data=await response.json();
- }
- return fingerprint({attemptId:input.attemptId,epoch:input.epoch,buildReceiptId:input.buildReceiptId,buildReportRef:input.buildReportRef,mode:input.mode,data,context:input.context??null,capabilityFixtures:input.capabilityFixtures??null,refreshData:input.refreshData??null,assertions:input.assertions??null,noninteractiveReason:input.noninteractiveReason??null,requiredMethods:input.requiredMethods??[],runtime:input.runtime??null,browserExecutable:input.browserExecutable??process.env.DSH_PREVIEW_BROWSER_PATH??null});
+export function previewFingerprint(input){
+ return fingerprint({attemptId:input.attemptId,epoch:input.epoch,buildReceiptId:input.buildReceiptId,buildReportRef:input.buildReportRef,mode:input.mode,data:input.data??null,context:input.context??null,capabilityFixtures:input.capabilityFixtures??null,refreshData:input.refreshData??null,assertions:input.assertions??null,noninteractiveReason:input.noninteractiveReason??null,requiredMethods:input.requiredMethods??[],requiredMethodsOnce:input.requiredMethodsOnce??[],runtime:input.runtime??null,browserExecutable:input.browserExecutable??process.env.DSH_PREVIEW_BROWSER_PATH??null});
 }

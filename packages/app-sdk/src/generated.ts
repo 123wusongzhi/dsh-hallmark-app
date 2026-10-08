@@ -3,6 +3,3500 @@ import { AppsClient } from './index.ts';
 import type { AppRef, CapabilityResult, JsonValue } from '../../app-contracts/src/index.ts';
 export const catalog = [
   {
+    "capabilityId": "apps.authoring.begin",
+    "version": "1.0.0",
+    "title": "begin",
+    "description": "Versioned local authoring metadata. Candidates, mounting, confirmed display and explicit saved assets are distinct; this action owns no domain mutation or another Agent loop.",
+    "effect": "compute",
+    "inputSchema": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "new"
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "componentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "workspacePath": {
+              "type": "string",
+              "minLength": 1
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "invocationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "edit"
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "componentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "workspacePath": {
+              "type": "string",
+              "minLength": 1
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "invocationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "mode",
+            "viewId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "open_saved"
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "componentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "workspacePath": {
+              "type": "string",
+              "minLength": 1
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "invocationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "mode",
+            "componentId"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "draftId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ownerSessionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "workspacePath": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "epoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "status": {
+              "enum": [
+                "editing",
+                "building",
+                "build_failed",
+                "previewing",
+                "preview_failed",
+                "publish_ready",
+                "mounting",
+                "mounted",
+                "failed_mount",
+                "cancelled",
+                "superseded",
+                "interrupted",
+                "closed",
+                "discarded"
+              ]
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "sourceComponentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "selectedSourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "baseRevisionAtOpen": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "draftId",
+            "ownerSessionId",
+            "viewId",
+            "workspacePath",
+            "sourceRevision",
+            "epoch",
+            "status",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        },
+        "attempt": {
+          "type": "object",
+          "properties": {
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "draftId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "epoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "state": {
+              "enum": [
+                "editing",
+                "building",
+                "build_failed",
+                "previewing",
+                "preview_failed",
+                "publish_ready",
+                "mounting",
+                "mounted",
+                "failed_mount",
+                "cancelled",
+                "superseded",
+                "interrupted"
+              ]
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "expectedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "invocationRefs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256",
+                  "bytes"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "terminalReason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "buildReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "previewReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "publicationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "requestHash": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "attemptId",
+            "draftId",
+            "epoch",
+            "sourceRevision",
+            "state",
+            "startedAt",
+            "expectedViewRevision",
+            "invocationRefs",
+            "evidenceRefs",
+            "terminalReason"
+          ],
+          "additionalProperties": false
+        },
+        "view": {
+          "type": "object",
+          "properties": {
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ownerSessionId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "design": {},
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "buildId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "directory": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "entry": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "buildId",
+                "directory",
+                "entry",
+                "files"
+              ],
+              "additionalProperties": true
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "sourceComponentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "baseRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "viewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "activeBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lastGoodBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "previousGoodBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pendingPublicationId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "validationStatus": {
+              "enum": [
+                "draft_unpublished",
+                "legacy_unverified",
+                "verified"
+              ]
+            }
+          },
+          "required": [
+            "viewId",
+            "ownerSessionId",
+            "title",
+            "design",
+            "bindings",
+            "createdAt",
+            "updatedAt",
+            "viewRevision",
+            "activeBuildId",
+            "lastGoodBuildId",
+            "previousGoodBuildId",
+            "pendingPublicationId",
+            "validationStatus"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "draft",
+        "attempt",
+        "view"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 30000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "authoring",
+        "component",
+        "source",
+        "receipt"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "apps.authoring.cancel",
+    "version": "1.0.0",
+    "title": "cancel",
+    "description": "Versioned local authoring metadata. Candidates, mounting, confirmed display and explicit saved assets are distinct; this action owns no domain mutation or another Agent loop.",
+    "effect": "compute",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedEpoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "attemptId",
+        "expectedEpoch",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "cancelled",
+            "already_published"
+          ]
+        },
+        "activeBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "viewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "publication": {
+          "type": "object",
+          "properties": {
+            "publicationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ownerSessionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptEpoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "expectedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "candidateBuildId": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "priorActiveBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "state": {
+              "enum": [
+                "prepared",
+                "mounting",
+                "mounted",
+                "failed_mount",
+                "cancelled",
+                "superseded",
+                "interrupted"
+              ]
+            },
+            "readyDeadlineAt": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            },
+            "mountStartedAt": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256",
+                  "bytes"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "buildReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "previewReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "buildId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "directory": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "entry": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "buildId",
+                "directory",
+                "entry",
+                "files"
+              ],
+              "additionalProperties": true
+            },
+            "frameInstanceId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "documentNonce": {
+              "type": "string",
+              "minLength": 1
+            },
+            "committedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "terminalReason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "publicationId",
+            "viewId",
+            "ownerSessionId",
+            "attemptId",
+            "attemptEpoch",
+            "expectedViewRevision",
+            "candidateBuildId",
+            "priorActiveBuildId",
+            "state",
+            "readyDeadlineAt",
+            "evidenceRefs",
+            "createdAt",
+            "updatedAt",
+            "buildReceiptId",
+            "previewReceiptId",
+            "source"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "status",
+        "activeBuildId",
+        "viewRevision"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 30000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "authoring",
+        "component",
+        "source",
+        "receipt"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "apps.authoring.inspect",
+    "version": "1.0.0",
+    "title": "inspect",
+    "description": "Versioned local authoring metadata. Candidates, mounting, confirmed display and explicit saved assets are distinct; this action owns no domain mutation or another Agent loop.",
+    "effect": "query",
+    "inputSchema": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "displayId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "attemptId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "publicationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "displayId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "publicationId"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "object",
+          "properties": {
+            "lastConfirmedDisplay": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "preparedBuild": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "currentDisplay": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "blockedStage": {
+              "type": "string",
+              "minLength": 1
+            },
+            "nextAction": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "target": {
+                  "type": "object"
+                },
+                "errorCodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "action",
+                "reason",
+                "target",
+                "errorCodes"
+              ],
+              "additionalProperties": false
+            },
+            "requiresRebuild": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "lastConfirmedDisplay",
+            "preparedBuild",
+            "currentDisplay",
+            "blockedStage",
+            "nextAction",
+            "requiresRebuild"
+          ],
+          "additionalProperties": false
+        },
+        "draft": {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "draftId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ownerSessionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "workspacePath": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "epoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "status": {
+              "enum": [
+                "editing",
+                "building",
+                "build_failed",
+                "previewing",
+                "preview_failed",
+                "publish_ready",
+                "mounting",
+                "mounted",
+                "failed_mount",
+                "cancelled",
+                "superseded",
+                "interrupted",
+                "closed",
+                "discarded"
+              ]
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "sourceComponentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "selectedSourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "baseRevisionAtOpen": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "draftId",
+            "ownerSessionId",
+            "viewId",
+            "workspacePath",
+            "sourceRevision",
+            "epoch",
+            "status",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        },
+        "attempt": {
+          "type": "object",
+          "properties": {
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "draftId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "epoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "state": {
+              "enum": [
+                "editing",
+                "building",
+                "build_failed",
+                "previewing",
+                "preview_failed",
+                "publish_ready",
+                "mounting",
+                "mounted",
+                "failed_mount",
+                "cancelled",
+                "superseded",
+                "interrupted"
+              ]
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "expectedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "invocationRefs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256",
+                  "bytes"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "terminalReason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "buildReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "previewReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "publicationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "requestHash": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "attemptId",
+            "draftId",
+            "epoch",
+            "sourceRevision",
+            "state",
+            "startedAt",
+            "expectedViewRevision",
+            "invocationRefs",
+            "evidenceRefs",
+            "terminalReason"
+          ],
+          "additionalProperties": false
+        },
+        "publication": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "publicationId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "viewId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ownerSessionId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "attemptId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "attemptEpoch": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "expectedViewRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "candidateBuildId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "priorActiveBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "enum": [
+                    "prepared",
+                    "mounting",
+                    "mounted",
+                    "failed_mount",
+                    "cancelled",
+                    "superseded",
+                    "interrupted"
+                  ]
+                },
+                "readyDeadlineAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "mountStartedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "evidenceRefs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "sha256",
+                      "bytes"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "buildReceiptId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "previewReceiptId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "buildId": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "directory": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "entry": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "required": [
+                    "buildId",
+                    "directory",
+                    "entry",
+                    "files"
+                  ],
+                  "additionalProperties": true
+                },
+                "frameInstanceId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "documentNonce": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "committedViewRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "terminalReason": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "publicationId",
+                "viewId",
+                "ownerSessionId",
+                "attemptId",
+                "attemptEpoch",
+                "expectedViewRevision",
+                "candidateBuildId",
+                "priorActiveBuildId",
+                "state",
+                "readyDeadlineAt",
+                "evidenceRefs",
+                "createdAt",
+                "updatedAt",
+                "buildReceiptId",
+                "previewReceiptId",
+                "source"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "view": {
+          "type": "object",
+          "properties": {
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ownerSessionId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "design": {},
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "buildId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "directory": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "entry": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "buildId",
+                "directory",
+                "entry",
+                "files"
+              ],
+              "additionalProperties": true
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "sourceComponentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "baseRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "viewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "activeBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lastGoodBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "previousGoodBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pendingPublicationId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "validationStatus": {
+              "enum": [
+                "draft_unpublished",
+                "legacy_unverified",
+                "verified"
+              ]
+            }
+          },
+          "required": [
+            "viewId",
+            "ownerSessionId",
+            "title",
+            "design",
+            "bindings",
+            "createdAt",
+            "updatedAt",
+            "viewRevision",
+            "activeBuildId",
+            "lastGoodBuildId",
+            "previousGoodBuildId",
+            "pendingPublicationId",
+            "validationStatus"
+          ],
+          "additionalProperties": true
+        },
+        "latestDisplay": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "displayId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "generation": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "ownerSessionId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "viewId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "publicationId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "attemptId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "attemptEpoch": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "buildId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "expectedViewRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "state": {
+                  "enum": [
+                    "opening",
+                    "ready",
+                    "failed",
+                    "retired"
+                  ]
+                },
+                "view": {
+                  "type": "object",
+                  "properties": {
+                    "viewId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "ownerSessionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "design": {},
+                    "bindings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "source": {
+                      "type": "object",
+                      "properties": {
+                        "buildId": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "directory": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "entry": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "files": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      },
+                      "required": [
+                        "buildId",
+                        "directory",
+                        "entry",
+                        "files"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "sourceComponentId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "baseRevision": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "viewRevision": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "activeBuildId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "lastGoodBuildId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "previousGoodBuildId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "pendingPublicationId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "validationStatus": {
+                      "enum": [
+                        "draft_unpublished",
+                        "legacy_unverified",
+                        "verified"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "viewId",
+                    "ownerSessionId",
+                    "title",
+                    "design",
+                    "bindings",
+                    "createdAt",
+                    "updatedAt",
+                    "viewRevision",
+                    "activeBuildId",
+                    "lastGoodBuildId",
+                    "previousGoodBuildId",
+                    "pendingPublicationId",
+                    "validationStatus"
+                  ],
+                  "additionalProperties": true
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "phase": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 160
+                      },
+                      "message": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 4096
+                      },
+                      "at": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "phase",
+                      "code",
+                      "message"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "readyAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "frameInstanceId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "documentNonce": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "displayId",
+                "generation",
+                "ownerSessionId",
+                "viewId",
+                "publicationId",
+                "attemptId",
+                "attemptEpoch",
+                "buildId",
+                "expectedViewRevision",
+                "state",
+                "view",
+                "errors",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "displays": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "displayId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "ownerSessionId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "viewId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "publicationId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "attemptId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "attemptEpoch": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "buildId": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "expectedViewRevision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "opening",
+                  "ready",
+                  "failed",
+                  "retired"
+                ]
+              },
+              "view": {
+                "type": "object",
+                "properties": {
+                  "viewId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "ownerSessionId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "design": {},
+                  "bindings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "buildId": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "directory": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "entry": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "files": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    },
+                    "required": [
+                      "buildId",
+                      "directory",
+                      "entry",
+                      "files"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "sourceComponentId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "baseRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "viewRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "activeBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "lastGoodBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "previousGoodBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "pendingPublicationId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "validationStatus": {
+                    "enum": [
+                      "draft_unpublished",
+                      "legacy_unverified",
+                      "verified"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewId",
+                  "ownerSessionId",
+                  "title",
+                  "design",
+                  "bindings",
+                  "createdAt",
+                  "updatedAt",
+                  "viewRevision",
+                  "activeBuildId",
+                  "lastGoodBuildId",
+                  "previousGoodBuildId",
+                  "pendingPublicationId",
+                  "validationStatus"
+                ],
+                "additionalProperties": true
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "phase": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    "at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "phase",
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "readyAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "frameInstanceId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "documentNonce": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "displayId",
+              "generation",
+              "ownerSessionId",
+              "viewId",
+              "publicationId",
+              "attemptId",
+              "attemptEpoch",
+              "buildId",
+              "expectedViewRevision",
+              "state",
+              "view",
+              "errors",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "display": {
+          "type": "object",
+          "properties": {
+            "displayId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "generation": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "ownerSessionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "publicationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptEpoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "buildId": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "expectedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "state": {
+              "enum": [
+                "opening",
+                "ready",
+                "failed",
+                "retired"
+              ]
+            },
+            "view": {
+              "type": "object",
+              "properties": {
+                "viewId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ownerSessionId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "design": {},
+                "bindings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "buildId": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "directory": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "entry": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "required": [
+                    "buildId",
+                    "directory",
+                    "entry",
+                    "files"
+                  ],
+                  "additionalProperties": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "sourceComponentId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "baseRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "viewRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "activeBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "lastGoodBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "previousGoodBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "pendingPublicationId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "validationStatus": {
+                  "enum": [
+                    "draft_unpublished",
+                    "legacy_unverified",
+                    "verified"
+                  ]
+                }
+              },
+              "required": [
+                "viewId",
+                "ownerSessionId",
+                "title",
+                "design",
+                "bindings",
+                "createdAt",
+                "updatedAt",
+                "viewRevision",
+                "activeBuildId",
+                "lastGoodBuildId",
+                "previousGoodBuildId",
+                "pendingPublicationId",
+                "validationStatus"
+              ],
+              "additionalProperties": true
+            },
+            "errors": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "at": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "phase",
+                  "code",
+                  "message"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "readyAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "frameInstanceId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "documentNonce": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "displayId",
+            "generation",
+            "ownerSessionId",
+            "viewId",
+            "publicationId",
+            "attemptId",
+            "attemptEpoch",
+            "buildId",
+            "expectedViewRevision",
+            "state",
+            "view",
+            "errors",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        },
+        "workspaceAvailable": {
+          "type": "boolean"
+        },
+        "missingEvidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "summary",
+        "draft",
+        "attempt",
+        "publication",
+        "view",
+        "latestDisplay",
+        "displays",
+        "workspaceAvailable",
+        "missingEvidence"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 30000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "authoring",
+        "component",
+        "source",
+        "receipt"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "apps.authoring.publish",
+    "version": "1.0.0",
+    "title": "publish",
+    "description": "Versioned local authoring metadata. Candidates, mounting, confirmed display and explicit saved assets are distinct; this action owns no domain mutation or another Agent loop.",
+    "effect": "compute",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "viewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedViewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "buildId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "buildReceiptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previewReceiptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "publicationId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "attemptId",
+        "epoch",
+        "viewId",
+        "expectedViewRevision",
+        "buildId",
+        "buildReceiptId",
+        "previewReceiptId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "publicationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "viewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ownerSessionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attemptEpoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "expectedViewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "candidateBuildId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "priorActiveBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "enum": [
+            "prepared",
+            "mounting",
+            "mounted",
+            "failed_mount",
+            "cancelled",
+            "superseded",
+            "interrupted"
+          ]
+        },
+        "readyDeadlineAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "mountStartedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "path",
+              "sha256",
+              "bytes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "buildReceiptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previewReceiptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "buildId": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "directory": {
+              "type": "string",
+              "minLength": 1
+            },
+            "entry": {
+              "type": "string",
+              "minLength": 1
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "buildId",
+            "directory",
+            "entry",
+            "files"
+          ],
+          "additionalProperties": true
+        },
+        "frameInstanceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "documentNonce": {
+          "type": "string",
+          "minLength": 1
+        },
+        "committedViewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "terminalReason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "publicationId",
+        "viewId",
+        "ownerSessionId",
+        "attemptId",
+        "attemptEpoch",
+        "expectedViewRevision",
+        "candidateBuildId",
+        "priorActiveBuildId",
+        "state",
+        "readyDeadlineAt",
+        "evidenceRefs",
+        "createdAt",
+        "updatedAt",
+        "buildReceiptId",
+        "previewReceiptId",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 30000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "authoring",
+        "component",
+        "source",
+        "receipt"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "apps.authoring.record_build",
+    "version": "1.0.0",
+    "title": "record_build",
+    "description": "Versioned local authoring metadata. Candidates, mounting, confirmed display and explicit saved assets are distinct; this action owns no domain mutation or another Agent loop.",
+    "effect": "compute",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reportRef": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "path",
+            "sha256",
+            "bytes"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "attemptId",
+        "epoch",
+        "reportRef"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "receiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sourceInputDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "lockfileDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "command": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "cwd": {
+              "type": "string",
+              "minLength": 1
+            },
+            "toolchain": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "exitCode": {
+              "const": 0
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "finishedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "logRef": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "path",
+                "sha256",
+                "bytes"
+              ],
+              "additionalProperties": false
+            },
+            "distDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "archiveBuildId": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "fileManifestRef": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "path",
+                "sha256",
+                "bytes"
+              ],
+              "additionalProperties": false
+            },
+            "inputUnchanged": {
+              "const": true
+            },
+            "verdict": {
+              "const": "PASS"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "receiptId",
+            "attemptId",
+            "sourceRevision",
+            "sourceInputDigest",
+            "lockfileDigest",
+            "command",
+            "cwd",
+            "toolchain",
+            "exitCode",
+            "startedAt",
+            "finishedAt",
+            "logRef",
+            "distDigest",
+            "archiveBuildId",
+            "fileManifestRef",
+            "inputUnchanged",
+            "verdict"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "receiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sourceInputDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "lockfileDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "command": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "cwd": {
+              "type": "string",
+              "minLength": 1
+            },
+            "toolchain": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "exitCode": {
+              "type": "integer"
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "finishedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "logRef": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "path",
+                "sha256",
+                "bytes"
+              ],
+              "additionalProperties": false
+            },
+            "distDigest": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "archiveBuildId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "fileManifestRef": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "bytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256",
+                    "bytes"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "inputUnchanged": {
+              "type": "boolean"
+            },
+            "verdict": {
+              "const": "FAIL"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "receiptId",
+            "attemptId",
+            "sourceRevision",
+            "sourceInputDigest",
+            "lockfileDigest",
+            "command",
+            "cwd",
+            "toolchain",
+            "exitCode",
+            "startedAt",
+            "finishedAt",
+            "logRef",
+            "distDigest",
+            "archiveBuildId",
+            "fileManifestRef",
+            "inputUnchanged",
+            "verdict"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 30000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "authoring",
+        "component",
+        "source",
+        "receipt"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "apps.authoring.record_preview",
+    "version": "1.0.0",
+    "title": "record_preview",
+    "description": "Versioned local authoring metadata. Candidates, mounting, confirmed display and explicit saved assets are distinct; this action owns no domain mutation or another Agent loop.",
+    "effect": "compute",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "buildReceiptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reportRef": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "path",
+            "sha256",
+            "bytes"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "attemptId",
+        "epoch",
+        "buildReceiptId",
+        "reportRef"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "receiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "buildReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "buildId": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "protocol": {
+              "const": "dsh.apps.component.v2"
+            },
+            "mode": {
+              "enum": [
+                "fixture",
+                "live_readonly"
+              ]
+            },
+            "runnerVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "finishedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "viewportResults": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "contentWidthCssPx": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "heightCssPx": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "deviceScaleFactor": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "screenshot": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "sha256",
+                      "bytes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "pageErrors": {
+                    "type": "array",
+                    "maxItems": 0,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "unhandledRejections": {
+                    "type": "array",
+                    "maxItems": 0,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "failedRequests": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "bridgeReady": {
+                    "const": true
+                  },
+                  "assertionIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "contentWidthCssPx",
+                  "heightCssPx",
+                  "deviceScaleFactor",
+                  "screenshot",
+                  "pageErrors",
+                  "unhandledRejections",
+                  "failedRequests",
+                  "bridgeReady",
+                  "assertionIds"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "assertionResults": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "required": {
+                        "const": true
+                      },
+                      "expected": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "actual": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "const": "PASS"
+                      },
+                      "evidenceRefs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "bytes": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "path",
+                            "sha256",
+                            "bytes"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "required",
+                      "expected",
+                      "actual",
+                      "status",
+                      "evidenceRefs"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "required": {
+                        "const": false
+                      },
+                      "expected": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "actual": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "enum": [
+                          "PASS",
+                          "FAIL",
+                          "NOT_RUN",
+                          "BLOCKED"
+                        ]
+                      },
+                      "evidenceRefs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "bytes": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "path",
+                            "sha256",
+                            "bytes"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "required",
+                      "expected",
+                      "actual",
+                      "status",
+                      "evidenceRefs"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "verdict": {
+              "const": "PASS"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "receiptId",
+            "attemptId",
+            "buildReceiptId",
+            "buildId",
+            "protocol",
+            "mode",
+            "runnerVersion",
+            "startedAt",
+            "finishedAt",
+            "viewportResults",
+            "assertionResults",
+            "verdict"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "receiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "buildReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "buildId": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "protocol": {
+              "const": "dsh.apps.component.v2"
+            },
+            "mode": {
+              "enum": [
+                "fixture",
+                "live_readonly"
+              ]
+            },
+            "runnerVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "finishedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "viewportResults": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "contentWidthCssPx": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "heightCssPx": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "deviceScaleFactor": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "screenshot": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "sha256",
+                      "bytes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "pageErrors": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "unhandledRejections": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "failedRequests": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "bridgeReady": {
+                    "type": "boolean"
+                  },
+                  "assertionIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "contentWidthCssPx",
+                  "heightCssPx",
+                  "deviceScaleFactor",
+                  "screenshot",
+                  "pageErrors",
+                  "unhandledRejections",
+                  "failedRequests",
+                  "bridgeReady",
+                  "assertionIds"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "assertionResults": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "required": {
+                    "type": "boolean"
+                  },
+                  "expected": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "actual": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "status": {
+                    "enum": [
+                      "PASS",
+                      "FAIL",
+                      "NOT_RUN",
+                      "BLOCKED"
+                    ]
+                  },
+                  "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "bytes": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "sha256",
+                        "bytes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "required",
+                  "expected",
+                  "actual",
+                  "status",
+                  "evidenceRefs"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "verdict": {
+              "enum": [
+                "FAIL",
+                "INCOMPLETE"
+              ]
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "receiptId",
+            "attemptId",
+            "buildReceiptId",
+            "buildId",
+            "protocol",
+            "mode",
+            "runnerVersion",
+            "startedAt",
+            "finishedAt",
+            "viewportResults",
+            "assertionResults",
+            "verdict"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 30000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "authoring",
+        "component",
+        "source",
+        "receipt"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "apps.authoring.save_component",
+    "version": "1.0.0",
+    "title": "save_component",
+    "description": "Explicitly save a confirmed authoring view using component/view CAS and the existing idempotent mutation ledger.",
+    "effect": "mutation",
+    "inputSchema": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expectedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "userRequest": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mode": {
+              "const": "save_as"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "viewId",
+            "expectedViewRevision",
+            "userRequest",
+            "mode"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expectedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "userRequest": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mode": {
+              "const": "update"
+            },
+            "componentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expectedRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "viewId",
+            "expectedViewRevision",
+            "userRequest",
+            "mode",
+            "componentId",
+            "expectedRevision"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "componentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "view": {
+          "type": "object"
+        },
+        "userRequest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "savedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "componentId",
+        "revision",
+        "title",
+        "view",
+        "userRequest",
+        "savedAt"
+      ],
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 30000,
+      "concurrency": "exclusive",
+      "lockScope": "connection",
+      "idempotency": "runtime_dedup",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "authoring",
+        "component",
+        "source",
+        "receipt"
+      ]
+    },
+    "aliases": []
+  },
+  {
     "capabilityId": "apps.presentation.list_saved",
     "version": "1.0.0",
     "title": "listSaved",
@@ -200,6 +3694,50 @@ export const catalog = [
                   "baseRevision": {
                     "type": "integer",
                     "minimum": 1
+                  },
+                  "baseRevisionAtOpen": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "selectedSourceRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "viewRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "activeBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "lastGoodBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "previousGoodBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "pendingPublicationId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "validationStatus": {
+                    "enum": [
+                      "draft_unpublished",
+                      "legacy_unverified",
+                      "verified",
+                      "failed"
+                    ]
                   },
                   "initialData": {
                     "type": "array",
@@ -707,6 +4245,10 @@ export const catalog = [
         },
         "pinned": {
           "type": "boolean"
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
         }
       },
       "required": [
@@ -899,6 +4441,50 @@ export const catalog = [
                 "baseRevision": {
                   "type": "integer",
                   "minimum": 1
+                },
+                "baseRevisionAtOpen": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "selectedSourceRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "viewRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "activeBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "lastGoodBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "previousGoodBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "pendingPublicationId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "validationStatus": {
+                  "enum": [
+                    "draft_unpublished",
+                    "legacy_unverified",
+                    "verified",
+                    "failed"
+                  ]
                 },
                 "initialData": {
                   "type": "array",
@@ -1567,6 +5153,50 @@ export const catalog = [
           "type": "integer",
           "minimum": 1
         },
+        "baseRevisionAtOpen": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selectedSourceRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "viewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "activeBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "previousGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pendingPublicationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validationStatus": {
+          "enum": [
+            "draft_unpublished",
+            "legacy_unverified",
+            "verified",
+            "failed"
+          ]
+        },
         "initialData": {
           "type": "array",
           "items": {
@@ -1936,6 +5566,50 @@ export const catalog = [
         "baseRevision": {
           "type": "integer",
           "minimum": 1
+        },
+        "baseRevisionAtOpen": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selectedSourceRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "viewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "activeBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "previousGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pendingPublicationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validationStatus": {
+          "enum": [
+            "draft_unpublished",
+            "legacy_unverified",
+            "verified",
+            "failed"
+          ]
         },
         "initialData": {
           "type": "array",
@@ -2326,6 +6000,50 @@ export const catalog = [
           "type": "integer",
           "minimum": 1
         },
+        "baseRevisionAtOpen": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selectedSourceRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "viewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "activeBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "previousGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pendingPublicationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validationStatus": {
+          "enum": [
+            "draft_unpublished",
+            "legacy_unverified",
+            "verified",
+            "failed"
+          ]
+        },
         "initialData": {
           "type": "array",
           "items": {
@@ -2617,6 +6335,50 @@ export const catalog = [
             "baseRevision": {
               "type": "integer",
               "minimum": 1
+            },
+            "baseRevisionAtOpen": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "selectedSourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "viewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "activeBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lastGoodBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "previousGoodBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pendingPublicationId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "validationStatus": {
+              "enum": [
+                "draft_unpublished",
+                "legacy_unverified",
+                "verified",
+                "failed"
+              ]
             },
             "initialData": {
               "type": "array",
@@ -3544,6 +7306,50 @@ export const catalog = [
         "baseRevision": {
           "type": "integer",
           "minimum": 1
+        },
+        "baseRevisionAtOpen": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selectedSourceRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "viewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "activeBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "previousGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pendingPublicationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validationStatus": {
+          "enum": [
+            "draft_unpublished",
+            "legacy_unverified",
+            "verified",
+            "failed"
+          ]
         },
         "initialData": {
           "type": "array",
@@ -5708,7 +9514,7 @@ export const catalog = [
     "execution": {
       "mode": "sync",
       "timeoutMs": 60000,
-      "concurrency": "exclusive",
+      "concurrency": "declared_safe",
       "lockScope": "connection",
       "idempotency": "not_applicable",
       "completionEvidence": "response"
@@ -6263,7 +10069,7 @@ export const catalog = [
     "capabilityId": "hallmark.products.list",
     "version": "1.0.0",
     "title": "hallmark_list_store_products",
-    "description": "读取店铺商品最近快照，保留原始源字段与时间",
+    "description": "读取店铺商品最近快照，保留原始源字段与时间；status 精确筛选后分页，query 仅作全文搜索，与 status 取交集。仅在售用 status:on_sale，禁止遍历全店再筛选",
     "effect": "query",
     "inputSchema": {
       "type": "object",
@@ -6293,7 +10099,37 @@ export const catalog = [
         "query": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 4000
+          "maxLength": 4000,
+          "description": "整行全文搜索，不代表精确商品状态；与 status 筛选取交集"
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "按源顶层 status 精确相等筛选，例如 on_sale；缺失不匹配，不翻译或推断状态"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "title",
+              "imageUrl",
+              "sku",
+              "status",
+              "platformStatus",
+              "currency",
+              "price",
+              "pricing",
+              "profit",
+              "stock",
+              "metrics",
+              "sources",
+              "declaredWeight",
+              "storeName"
+            ]
+          },
+          "description": "可选：只返回指定商品字段；身份字段始终保留。列表推荐 title/imageUrl/sku/status/currency/pricing/profit/stock；详情需要来源或规格时再请求 sources。省略保持完整响应。"
         }
       },
       "required": [],
@@ -7689,68 +11525,68 @@ export const catalog = [
     "aliases": []
   }
 ] as const;
-export type Input0 = {  };
-export type Output0 = { "components": Array<{ "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> }>; "assets": Array<JsonValue | JsonValue | { "assetId": string; "kind": "template"; "title": string; "description"?: string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "userRequest": string; "savedAt"?: string }> };
+export type Input0 = { "mode": "new"; "viewId"?: string; "componentId"?: string; "revision"?: number; "workspacePath"?: string; "title"?: string; "bindings"?: Array<({  } & { [key: string]: JsonValue })>; "invocationId"?: string; "attemptId"?: string } | { "mode": "edit"; "viewId": string; "componentId"?: string; "revision"?: number; "workspacePath"?: string; "title"?: string; "bindings"?: Array<({  } & { [key: string]: JsonValue })>; "invocationId"?: string; "attemptId"?: string } | { "mode": "open_saved"; "viewId"?: string; "componentId": string; "revision"?: number; "workspacePath"?: string; "title"?: string; "bindings"?: Array<({  } & { [key: string]: JsonValue })>; "invocationId"?: string; "attemptId"?: string };
+export type Output0 = { "draft": { "schemaVersion": 1; "draftId": string; "ownerSessionId": string; "viewId": string; "workspacePath": string; "sourceRevision": number; "epoch": number; "status": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted" | "closed" | "discarded"; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "selectedSourceRevision"?: number; "baseRevisionAtOpen"?: number }; "attempt": { "attemptId": string; "draftId": string; "epoch": number; "sourceRevision": number; "state": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "startedAt": string; "expectedViewRevision": number; "invocationRefs": Array<string>; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "terminalReason": string | null; "buildReceiptId"?: string; "previewReceiptId"?: string; "publicationId"?: string; "requestHash"?: string }; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<({  } & { [key: string]: JsonValue })>; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }) };
 export function call0(client: AppsClient, ref: AppRef, input: Input0, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output0>> { return client.invoke(ref, catalog[0], input as JsonValue, options) as Promise<CapabilityResult<Output0>>; }
 
-export type Input1 = { "kind": "component" | "entry" | "template"; "id": string; "action": "rename" | "delete" | "pin" | "reorder"; "name"?: string; "order"?: number; "pinned"?: boolean };
-export type Output1 = { "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> } | JsonValue | JsonValue | { "assetId": string; "kind": "template"; "title": string; "description"?: string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "userRequest": string; "savedAt"?: string } | { "deleted": true; "id": string };
+export type Input1 = { "attemptId": string; "expectedEpoch": number; "reason": string };
+export type Output1 = { "status": "cancelled" | "already_published"; "activeBuildId": string | null; "viewRevision": number; "publication"?: { "publicationId": string; "viewId": string; "ownerSessionId": string; "attemptId": string; "attemptEpoch": number; "expectedViewRevision": number; "candidateBuildId": string; "priorActiveBuildId": string | null; "state": "prepared" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "readyDeadlineAt": string | null; "mountStartedAt"?: string | null; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "createdAt": string; "updatedAt": string; "buildReceiptId": string; "previewReceiptId": string; "source": ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "frameInstanceId"?: string; "documentNonce"?: string; "committedViewRevision"?: number; "terminalReason"?: string } };
 export function call1(client: AppsClient, ref: AppRef, input: Input1, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output1>> { return client.invoke(ref, catalog[1], input as JsonValue, options) as Promise<CapabilityResult<Output1>>; }
 
-export type Input2 = { "componentId": string; "revision"?: number; "directory"?: string };
-export type Output2 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
+export type Input2 = { "attemptId": string; "displayId"?: string } | { "publicationId": string; "displayId"?: string };
+export type Output2 = { "summary": { "lastConfirmedDisplay": ({  } & { [key: string]: JsonValue }) | null; "preparedBuild": ({  } & { [key: string]: JsonValue }) | null; "currentDisplay": ({  } & { [key: string]: JsonValue }) | null; "blockedStage": string; "nextAction": { "action": string; "reason": string; "target": ({  } & { [key: string]: JsonValue }); "errorCodes": Array<string> }; "requiresRebuild": boolean | null }; "draft": { "schemaVersion": 1; "draftId": string; "ownerSessionId": string; "viewId": string; "workspacePath": string; "sourceRevision": number; "epoch": number; "status": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted" | "closed" | "discarded"; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "selectedSourceRevision"?: number; "baseRevisionAtOpen"?: number }; "attempt": { "attemptId": string; "draftId": string; "epoch": number; "sourceRevision": number; "state": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "startedAt": string; "expectedViewRevision": number; "invocationRefs": Array<string>; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "terminalReason": string | null; "buildReceiptId"?: string; "previewReceiptId"?: string; "publicationId"?: string; "requestHash"?: string }; "publication": { "publicationId": string; "viewId": string; "ownerSessionId": string; "attemptId": string; "attemptEpoch": number; "expectedViewRevision": number; "candidateBuildId": string; "priorActiveBuildId": string | null; "state": "prepared" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "readyDeadlineAt": string | null; "mountStartedAt"?: string | null; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "createdAt": string; "updatedAt": string; "buildReceiptId": string; "previewReceiptId": string; "source": ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "frameInstanceId"?: string; "documentNonce"?: string; "committedViewRevision"?: number; "terminalReason"?: string } | null; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<({  } & { [key: string]: JsonValue })>; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }); "latestDisplay": { "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<({  } & { [key: string]: JsonValue })>; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string } | null; "displays": Array<{ "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<({  } & { [key: string]: JsonValue })>; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string }>; "display"?: { "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<({  } & { [key: string]: JsonValue })>; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string }; "workspaceAvailable": boolean; "missingEvidence": Array<string> };
 export function call2(client: AppsClient, ref: AppRef, input: Input2, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output2>> { return client.invoke(ref, catalog[2], input as JsonValue, options) as Promise<CapabilityResult<Output2>>; }
 
-export type Input3 = { "directory": string; "title"?: string; "viewId"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "legacyBindings"?: Array<{ "id": string; "datasetKey"?: string; "fieldMap": ({  } & { [key: string]: JsonValue }); "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }> };
-export type Output3 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
+export type Input3 = { "attemptId": string; "epoch": number; "viewId": string; "expectedViewRevision": number; "buildId": string; "buildReceiptId": string; "previewReceiptId": string; "publicationId"?: string };
+export type Output3 = { "publicationId": string; "viewId": string; "ownerSessionId": string; "attemptId": string; "attemptEpoch": number; "expectedViewRevision": number; "candidateBuildId": string; "priorActiveBuildId": string | null; "state": "prepared" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "readyDeadlineAt": string | null; "mountStartedAt"?: string | null; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "createdAt": string; "updatedAt": string; "buildReceiptId": string; "previewReceiptId": string; "source": ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "frameInstanceId"?: string; "documentNonce"?: string; "committedViewRevision"?: number; "terminalReason"?: string };
 export function call3(client: AppsClient, ref: AppRef, input: Input3, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output3>> { return client.invoke(ref, catalog[3], input as JsonValue, options) as Promise<CapabilityResult<Output3>>; }
 
-export type Input4 = { "title": string; "design"?: JsonValue; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "viewId"?: string; "legacyViewId"?: string; "templateId"?: string; "directory"?: string; "legacyBindings"?: Array<{ "id": string; "datasetKey"?: string; "fieldMap": ({  } & { [key: string]: JsonValue }); "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }>; "requiredBindingIds"?: Array<string>; "legacyNeedsSpecification"?: boolean };
-export type Output4 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
+export type Input4 = { "attemptId": string; "epoch": number; "reportRef": { "path": string; "sha256": string; "bytes": number } };
+export type Output4 = { "schemaVersion": 1; "receiptId": string; "attemptId": string; "sourceRevision": number; "sourceInputDigest": string; "lockfileDigest": string; "command": Array<string>; "cwd": string; "toolchain": ({  } & { [key: string]: JsonValue }); "exitCode": 0; "startedAt": string; "finishedAt": string; "logRef": { "path": string; "sha256": string; "bytes": number }; "distDigest": string; "archiveBuildId": string; "fileManifestRef": { "path": string; "sha256": string; "bytes": number }; "inputUnchanged": true; "verdict": "PASS" } | { "schemaVersion": 1; "receiptId": string; "attemptId": string; "sourceRevision": number; "sourceInputDigest": string; "lockfileDigest": string; "command": Array<string>; "cwd": string; "toolchain": ({  } & { [key: string]: JsonValue }); "exitCode": number; "startedAt": string; "finishedAt": string; "logRef": { "path": string; "sha256": string; "bytes": number }; "distDigest": string | null; "archiveBuildId": string | null; "fileManifestRef": { "path": string; "sha256": string; "bytes": number } | null; "inputUnchanged": boolean; "verdict": "FAIL" };
 export function call4(client: AppsClient, ref: AppRef, input: Input4, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output4>> { return client.invoke(ref, catalog[4], input as JsonValue, options) as Promise<CapabilityResult<Output4>>; }
 
-export type Input5 = { "viewId": string; "userRequest": string; "title"?: string; "mode": "save_as" | "update"; "componentId"?: string; "expectedRevision"?: number; "legacyComponentId"?: string; "legacyTemplate"?: JsonValue };
-export type Output5 = { "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> };
+export type Input5 = { "attemptId": string; "epoch": number; "buildReceiptId": string; "reportRef": { "path": string; "sha256": string; "bytes": number } };
+export type Output5 = { "schemaVersion": 1; "receiptId": string; "attemptId": string; "buildReceiptId": string; "buildId": string; "protocol": "dsh.apps.component.v2"; "mode": "fixture" | "live_readonly"; "runnerVersion": string; "startedAt": string; "finishedAt": string; "viewportResults": Array<{ "id": string; "contentWidthCssPx": number; "heightCssPx": number; "deviceScaleFactor": number; "screenshot": { "path": string; "sha256": string; "bytes": number }; "pageErrors": Array<string>; "unhandledRejections": Array<string>; "failedRequests": Array<string>; "bridgeReady": true; "assertionIds": Array<string> }>; "assertionResults": Array<{ "id": string; "required": true; "expected": string; "actual": string | null; "status": "PASS"; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }> } | { "id": string; "required": false; "expected": string; "actual": string | null; "status": "PASS" | "FAIL" | "NOT_RUN" | "BLOCKED"; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }> }>; "verdict": "PASS" } | { "schemaVersion": 1; "receiptId": string; "attemptId": string; "buildReceiptId": string; "buildId": string; "protocol": "dsh.apps.component.v2"; "mode": "fixture" | "live_readonly"; "runnerVersion": string; "startedAt": string; "finishedAt": string; "viewportResults": Array<{ "id": string; "contentWidthCssPx": number; "heightCssPx": number; "deviceScaleFactor": number; "screenshot": { "path": string; "sha256": string; "bytes": number }; "pageErrors": Array<string>; "unhandledRejections": Array<string>; "failedRequests": Array<string>; "bridgeReady": boolean; "assertionIds": Array<string> }>; "assertionResults": Array<{ "id": string; "required": boolean; "expected": string; "actual": string | null; "status": "PASS" | "FAIL" | "NOT_RUN" | "BLOCKED"; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }> }>; "verdict": "FAIL" | "INCOMPLETE" };
 export function call5(client: AppsClient, ref: AppRef, input: Input5, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output5>> { return client.invoke(ref, catalog[5], input as JsonValue, options) as Promise<CapabilityResult<Output5>>; }
 
-export type Input6 = { "title": string; "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }; "legacyBinding"?: { "id": string; "datasetKey"?: string; "fieldMap": ({  } & { [key: string]: JsonValue }); "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }; "legacyFieldOrder"?: Array<string>; "userRequest": string };
-export type Output6 = JsonValue | JsonValue;
+export type Input6 = { "viewId": string; "expectedViewRevision": number; "userRequest": string; "mode": "save_as"; "title"?: string } | { "viewId": string; "expectedViewRevision": number; "userRequest": string; "mode": "update"; "componentId": string; "expectedRevision": number; "title"?: string };
+export type Output6 = ({ "componentId": string; "revision": number; "title": string; "view": ({  } & { [key: string]: JsonValue }); "userRequest": string; "savedAt": string } & { [key: string]: JsonValue });
 export function call6(client: AppsClient, ref: AppRef, input: Input6, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output6>> { return client.invoke(ref, catalog[6], input as JsonValue, options) as Promise<CapabilityResult<Output6>>; }
 
-export type Input7 = { "viewId": string; "name": string; "description"?: string; "userRequest": string };
-export type Output7 = { "assetId": string; "kind": "template"; "title": string; "description"?: string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "userRequest": string; "savedAt"?: string };
+export type Input7 = {  };
+export type Output7 = { "components": Array<{ "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> }>; "assets": Array<JsonValue | JsonValue | { "assetId": string; "kind": "template"; "title": string; "description"?: string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "userRequest": string; "savedAt"?: string }> };
 export function call7(client: AppsClient, ref: AppRef, input: Input7, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output7>> { return client.invoke(ref, catalog[7], input as JsonValue, options) as Promise<CapabilityResult<Output7>>; }
 
-export type Input8 = { "viewId": string; "title"?: string; "design"?: JsonValue; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }> };
-export type Output8 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
+export type Input8 = { "kind": "component" | "entry" | "template"; "id": string; "action": "rename" | "delete" | "pin" | "reorder"; "name"?: string; "order"?: number; "pinned"?: boolean; "expectedRevision"?: number };
+export type Output8 = { "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> } | JsonValue | JsonValue | { "assetId": string; "kind": "template"; "title": string; "description"?: string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "userRequest": string; "savedAt"?: string } | { "deleted": true; "id": string };
 export function call8(client: AppsClient, ref: AppRef, input: Input8, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output8>> { return client.invoke(ref, catalog[8], input as JsonValue, options) as Promise<CapabilityResult<Output8>>; }
 
-export type Input9 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
-export type Output9 = JsonValue | JsonValue;
+export type Input9 = { "componentId": string; "revision"?: number; "directory"?: string };
+export type Output9 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
 export function call9(client: AppsClient, ref: AppRef, input: Input9, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output9>> { return client.invoke(ref, catalog[9], input as JsonValue, options) as Promise<CapabilityResult<Output9>>; }
 
-export type Input10 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
-export type Output10 = JsonValue | JsonValue;
+export type Input10 = { "directory": string; "title"?: string; "viewId"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "legacyBindings"?: Array<{ "id": string; "datasetKey"?: string; "fieldMap": ({  } & { [key: string]: JsonValue }); "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }> };
+export type Output10 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
 export function call10(client: AppsClient, ref: AppRef, input: Input10, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output10>> { return client.invoke(ref, catalog[10], input as JsonValue, options) as Promise<CapabilityResult<Output10>>; }
 
-export type Input11 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
-export type Output11 = JsonValue | JsonValue;
+export type Input11 = { "title": string; "design"?: JsonValue; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "viewId"?: string; "legacyViewId"?: string; "templateId"?: string; "directory"?: string; "legacyBindings"?: Array<{ "id": string; "datasetKey"?: string; "fieldMap": ({  } & { [key: string]: JsonValue }); "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }>; "requiredBindingIds"?: Array<string>; "legacyNeedsSpecification"?: boolean };
+export type Output11 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
 export function call11(client: AppsClient, ref: AppRef, input: Input11, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output11>> { return client.invoke(ref, catalog[11], input as JsonValue, options) as Promise<CapabilityResult<Output11>>; }
 
-export type Input12 = { "storeId"?: string; "store"?: string; "mode": "search" | "show" | "template" | "values" | "validate_value" | "sync"; "q"?: string; "descriptionCategoryId"?: string; "typeId"?: string; "attributeId"?: string; "valueId"?: string; "dictionaryId"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number };
-export type Output12 = JsonValue | JsonValue;
+export type Input12 = { "viewId": string; "userRequest": string; "title"?: string; "mode": "save_as" | "update"; "componentId"?: string; "expectedRevision"?: number; "legacyComponentId"?: string; "legacyTemplate"?: JsonValue };
+export type Output12 = { "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> };
 export function call12(client: AppsClient, ref: AppRef, input: Input12, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output12>> { return client.invoke(ref, catalog[12], input as JsonValue, options) as Promise<CapabilityResult<Output12>>; }
 
-export type Input13 = { "itemId": string };
+export type Input13 = { "title": string; "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }; "legacyBinding"?: { "id": string; "datasetKey"?: string; "fieldMap": ({  } & { [key: string]: JsonValue }); "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }; "legacyFieldOrder"?: Array<string>; "userRequest": string };
 export type Output13 = JsonValue | JsonValue;
 export function call13(client: AppsClient, ref: AppRef, input: Input13, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output13>> { return client.invoke(ref, catalog[13], input as JsonValue, options) as Promise<CapabilityResult<Output13>>; }
 
-export type Input14 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
-export type Output14 = JsonValue | JsonValue;
+export type Input14 = { "viewId": string; "name": string; "description"?: string; "userRequest": string };
+export type Output14 = { "assetId": string; "kind": "template"; "title": string; "description"?: string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "userRequest": string; "savedAt"?: string };
 export function call14(client: AppsClient, ref: AppRef, input: Input14, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output14>> { return client.invoke(ref, catalog[14], input as JsonValue, options) as Promise<CapabilityResult<Output14>>; }
 
-export type Input15 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
-export type Output15 = JsonValue | JsonValue;
+export type Input15 = { "viewId": string; "title"?: string; "design"?: JsonValue; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }> };
+export type Output15 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
 export function call15(client: AppsClient, ref: AppRef, input: Input15, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output15>> { return client.invoke(ref, catalog[15], input as JsonValue, options) as Promise<CapabilityResult<Output15>>; }
 
 export type Input16 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
@@ -7765,110 +11601,138 @@ export type Input18 = { "storeId"?: string; "store"?: string; "body"?: ({  } & {
 export type Output18 = JsonValue | JsonValue;
 export function call18(client: AppsClient, ref: AppRef, input: Input18, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output18>> { return client.invoke(ref, catalog[18], input as JsonValue, options) as Promise<CapabilityResult<Output18>>; }
 
-export type Input19 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "price"?: number; "currency"?: string; "oldPrice"?: number; "actionId"?: number };
-export type Output19 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export type Input19 = { "storeId"?: string; "store"?: string; "mode": "search" | "show" | "template" | "values" | "validate_value" | "sync"; "q"?: string; "descriptionCategoryId"?: string; "typeId"?: string; "attributeId"?: string; "valueId"?: string; "dictionaryId"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number };
+export type Output19 = JsonValue | JsonValue;
 export function call19(client: AppsClient, ref: AppRef, input: Input19, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output19>> { return client.invoke(ref, catalog[19], input as JsonValue, options) as Promise<CapabilityResult<Output19>>; }
 
-export type Input20 = {  };
+export type Input20 = { "itemId": string };
 export type Output20 = JsonValue | JsonValue;
 export function call20(client: AppsClient, ref: AppRef, input: Input20, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output20>> { return client.invoke(ref, catalog[20], input as JsonValue, options) as Promise<CapabilityResult<Output20>>; }
 
-export type Input21 = {  };
-export type Output21 = ({  } & { [key: string]: JsonValue });
+export type Input21 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output21 = JsonValue | JsonValue;
 export function call21(client: AppsClient, ref: AppRef, input: Input21, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output21>> { return client.invoke(ref, catalog[21], input as JsonValue, options) as Promise<CapabilityResult<Output21>>; }
 
-export type Input22 = {  };
-export type Output22 = Array<JsonValue | JsonValue | JsonValue>;
+export type Input22 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output22 = JsonValue | JsonValue;
 export function call22(client: AppsClient, ref: AppRef, input: Input22, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output22>> { return client.invoke(ref, catalog[22], input as JsonValue, options) as Promise<CapabilityResult<Output22>>; }
 
-export type Input23 = {  };
-export type Output23 = ({  } & { [key: string]: JsonValue });
+export type Input23 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output23 = JsonValue | JsonValue;
 export function call23(client: AppsClient, ref: AppRef, input: Input23, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output23>> { return client.invoke(ref, catalog[23], input as JsonValue, options) as Promise<CapabilityResult<Output23>>; }
 
 export type Input24 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
 export type Output24 = JsonValue | JsonValue;
 export function call24(client: AppsClient, ref: AppRef, input: Input24, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output24>> { return client.invoke(ref, catalog[24], input as JsonValue, options) as Promise<CapabilityResult<Output24>>; }
 
-export type Input25 = {  };
-export type Output25 = ({ "appId": "hallmark"; "instructions": string; "tools": Array<{ "name": string; "kind": string }>; "boundaries": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
+export type Input25 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output25 = JsonValue | JsonValue;
 export function call25(client: AppsClient, ref: AppRef, input: Input25, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output25>> { return client.invoke(ref, catalog[25], input as JsonValue, options) as Promise<CapabilityResult<Output25>>; }
 
-export type Input26 = { "storeId"?: string; "store"?: string; "mode": "search" | "show" | "template" | "values" | "validate_value" | "sync"; "q"?: string; "descriptionCategoryId"?: string; "typeId"?: string; "attributeId"?: string; "valueId"?: string; "dictionaryId"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number };
-export type Output26 = JsonValue | JsonValue;
+export type Input26 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "price"?: number; "currency"?: string; "oldPrice"?: number; "actionId"?: number };
+export type Output26 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
 export function call26(client: AppsClient, ref: AppRef, input: Input26, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output26>> { return client.invoke(ref, catalog[26], input as JsonValue, options) as Promise<CapabilityResult<Output26>>; }
 
-export type Input27 = { "itemId": string };
+export type Input27 = {  };
 export type Output27 = JsonValue | JsonValue;
 export function call27(client: AppsClient, ref: AppRef, input: Input27, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output27>> { return client.invoke(ref, catalog[27], input as JsonValue, options) as Promise<CapabilityResult<Output27>>; }
 
-export type Input28 = { "cursor"?: string; "limit"?: number; "query"?: string };
-export type Output28 = ({ "datasetKey": string; "items": Array<({  } & { [key: string]: JsonValue })>; "total": number; "cursor"?: string } & { [key: string]: JsonValue }) | ({ "datasetKey": string; "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "total": number; "cursor": string; "limit": number } & { [key: string]: JsonValue });
+export type Input28 = {  };
+export type Output28 = ({  } & { [key: string]: JsonValue });
 export function call28(client: AppsClient, ref: AppRef, input: Input28, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output28>> { return client.invoke(ref, catalog[28], input as JsonValue, options) as Promise<CapabilityResult<Output28>>; }
 
-export type Input29 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
-export type Output29 = ({ "datasetKey": string; "snapshot": ({  } & { [key: string]: JsonValue }); "counts": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
+export type Input29 = {  };
+export type Output29 = Array<JsonValue | JsonValue | JsonValue>;
 export function call29(client: AppsClient, ref: AppRef, input: Input29, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output29>> { return client.invoke(ref, catalog[29], input as JsonValue, options) as Promise<CapabilityResult<Output29>>; }
 
-export type Input30 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
-export type Output30 = ({ "datasetKey": string; "state": string; "lastSuccessAt": string | null; "lastError": JsonValue } & { [key: string]: JsonValue });
+export type Input30 = {  };
+export type Output30 = ({  } & { [key: string]: JsonValue });
 export function call30(client: AppsClient, ref: AppRef, input: Input30, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output30>> { return client.invoke(ref, catalog[30], input as JsonValue, options) as Promise<CapabilityResult<Output30>>; }
 
-export type Input31 = { "operationId": string };
-export type Output31 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export type Input31 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output31 = JsonValue | JsonValue;
 export function call31(client: AppsClient, ref: AppRef, input: Input31, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output31>> { return client.invoke(ref, catalog[31], input as JsonValue, options) as Promise<CapabilityResult<Output31>>; }
 
-export type Input32 = { "storeId"?: string; "since"?: string; "limit"?: number };
-export type Output32 = Array<({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })>;
+export type Input32 = {  };
+export type Output32 = ({ "appId": "hallmark"; "instructions": string; "tools": Array<{ "name": string; "kind": string }>; "boundaries": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
 export function call32(client: AppsClient, ref: AppRef, input: Input32, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output32>> { return client.invoke(ref, catalog[32], input as JsonValue, options) as Promise<CapabilityResult<Output32>>; }
 
-export type Input33 = { "storeId"?: string; "store"?: string; "path": string; "method"?: "GET" | "POST"; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Input33 = { "storeId"?: string; "store"?: string; "mode": "search" | "show" | "template" | "values" | "validate_value" | "sync"; "q"?: string; "descriptionCategoryId"?: string; "typeId"?: string; "attributeId"?: string; "valueId"?: string; "dictionaryId"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number };
 export type Output33 = JsonValue | JsonValue;
 export function call33(client: AppsClient, ref: AppRef, input: Input33, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output33>> { return client.invoke(ref, catalog[33], input as JsonValue, options) as Promise<CapabilityResult<Output33>>; }
 
-export type Input34 = { "storeId"?: string; "store"?: string; "minMargin"?: number; "maxMargin"?: number; "minPrice"?: number; "maxPrice"?: number; "minStock"?: number; "maxStock"?: number; "status"?: string; "resultSetId"?: string };
-export type Output34 = ({ "resultSetId": string; "storeId": string; "expiresAt": string; "payload": JsonValue | JsonValue } & { [key: string]: JsonValue });
+export type Input34 = { "itemId": string };
+export type Output34 = JsonValue | JsonValue;
 export function call34(client: AppsClient, ref: AppRef, input: Input34, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output34>> { return client.invoke(ref, catalog[34], input as JsonValue, options) as Promise<CapabilityResult<Output34>>; }
 
-export type Input35 = { "storeId"?: string; "store"?: string; "cursor"?: string; "limit"?: number; "query"?: string };
-export type Output35 = ({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue }) | ({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue });
+export type Input35 = { "cursor"?: string; "limit"?: number; "query"?: string };
+export type Output35 = ({ "datasetKey": string; "items": Array<({  } & { [key: string]: JsonValue })>; "total": number; "cursor"?: string } & { [key: string]: JsonValue }) | ({ "datasetKey": string; "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "total": number; "cursor": string; "limit": number } & { [key: string]: JsonValue });
 export function call35(client: AppsClient, ref: AppRef, input: Input35, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output35>> { return client.invoke(ref, catalog[35], input as JsonValue, options) as Promise<CapabilityResult<Output35>>; }
 
-export type Input36 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "collectedItemId"?: string; "skuScope"?: Array<string>; "importItems"?: Array<({  } & { [key: string]: JsonValue })> };
-export type Output36 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export type Input36 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
+export type Output36 = ({ "datasetKey": string; "snapshot": ({  } & { [key: string]: JsonValue }); "counts": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
 export function call36(client: AppsClient, ref: AppRef, input: Input36, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output36>> { return client.invoke(ref, catalog[36], input as JsonValue, options) as Promise<CapabilityResult<Output36>>; }
 
-export type Input37 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "price"?: number; "currency"?: string; "oldPrice"?: number; "actionId"?: number };
-export type Output37 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export type Input37 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
+export type Output37 = ({ "datasetKey": string; "state": string; "lastSuccessAt": string | null; "lastError": JsonValue } & { [key: string]: JsonValue });
 export function call37(client: AppsClient, ref: AppRef, input: Input37, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output37>> { return client.invoke(ref, catalog[37], input as JsonValue, options) as Promise<CapabilityResult<Output37>>; }
 
-export type Input38 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "stock"?: number; "warehouseId"?: string };
+export type Input38 = { "operationId": string };
 export type Output38 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
 export function call38(client: AppsClient, ref: AppRef, input: Input38, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output38>> { return client.invoke(ref, catalog[38], input as JsonValue, options) as Promise<CapabilityResult<Output38>>; }
 
-export type Input39 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string> };
-export type Output39 = ({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue }) | ({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue });
+export type Input39 = { "storeId"?: string; "since"?: string; "limit"?: number };
+export type Output39 = Array<({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })>;
 export function call39(client: AppsClient, ref: AppRef, input: Input39, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output39>> { return client.invoke(ref, catalog[39], input as JsonValue, options) as Promise<CapabilityResult<Output39>>; }
 
-export type Input40 = {  };
-export type Output40 = Array<JsonValue | JsonValue | JsonValue>;
+export type Input40 = { "storeId"?: string; "store"?: string; "path": string; "method"?: "GET" | "POST"; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output40 = JsonValue | JsonValue;
 export function call40(client: AppsClient, ref: AppRef, input: Input40, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output40>> { return client.invoke(ref, catalog[40], input as JsonValue, options) as Promise<CapabilityResult<Output40>>; }
 
-export type Input41 = { "query": string };
-export type Output41 = JsonValue | JsonValue | JsonValue;
+export type Input41 = { "storeId"?: string; "store"?: string; "minMargin"?: number; "maxMargin"?: number; "minPrice"?: number; "maxPrice"?: number; "minStock"?: number; "maxStock"?: number; "status"?: string; "resultSetId"?: string };
+export type Output41 = ({ "resultSetId": string; "storeId": string; "expiresAt": string; "payload": JsonValue | JsonValue } & { [key: string]: JsonValue });
 export function call41(client: AppsClient, ref: AppRef, input: Input41, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output41>> { return client.invoke(ref, catalog[41], input as JsonValue, options) as Promise<CapabilityResult<Output41>>; }
 
-export type Input42 = { "id"?: string; "title": string; "content": string };
-export type Output42 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export type Input42 = { "storeId"?: string; "store"?: string; "cursor"?: string; "limit"?: number; "query"?: string; "status"?: string; "fields"?: Array<"title" | "imageUrl" | "sku" | "status" | "platformStatus" | "currency" | "price" | "pricing" | "profit" | "stock" | "metrics" | "sources" | "declaredWeight" | "storeName"> };
+export type Output42 = ({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue }) | ({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue });
 export function call42(client: AppsClient, ref: AppRef, input: Input42, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output42>> { return client.invoke(ref, catalog[42], input as JsonValue, options) as Promise<CapabilityResult<Output42>>; }
 
-export type Input43 = { "id": string };
-export type Output43 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export type Input43 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "collectedItemId"?: string; "skuScope"?: Array<string>; "importItems"?: Array<({  } & { [key: string]: JsonValue })> };
+export type Output43 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
 export function call43(client: AppsClient, ref: AppRef, input: Input43, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output43>> { return client.invoke(ref, catalog[43], input as JsonValue, options) as Promise<CapabilityResult<Output43>>; }
 
-export type Input44 = { "query"?: string; "cursor"?: string; "limit"?: number };
-export type Output44 = { "items": Array<{ "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } }>; "total": number; "returned": number; "nextCursor": string | null; "completeness": "complete" | "partial" };
+export type Input44 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "price"?: number; "currency"?: string; "oldPrice"?: number; "actionId"?: number };
+export type Output44 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
 export function call44(client: AppsClient, ref: AppRef, input: Input44, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output44>> { return client.invoke(ref, catalog[44], input as JsonValue, options) as Promise<CapabilityResult<Output44>>; }
 
-export type Input45 = JsonValue | JsonValue;
-export type Output45 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export type Input45 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "stock"?: number; "warehouseId"?: string };
+export type Output45 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
 export function call45(client: AppsClient, ref: AppRef, input: Input45, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output45>> { return client.invoke(ref, catalog[45], input as JsonValue, options) as Promise<CapabilityResult<Output45>>; }
+
+export type Input46 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string> };
+export type Output46 = ({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue }) | ({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue });
+export function call46(client: AppsClient, ref: AppRef, input: Input46, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output46>> { return client.invoke(ref, catalog[46], input as JsonValue, options) as Promise<CapabilityResult<Output46>>; }
+
+export type Input47 = {  };
+export type Output47 = Array<JsonValue | JsonValue | JsonValue>;
+export function call47(client: AppsClient, ref: AppRef, input: Input47, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output47>> { return client.invoke(ref, catalog[47], input as JsonValue, options) as Promise<CapabilityResult<Output47>>; }
+
+export type Input48 = { "query": string };
+export type Output48 = JsonValue | JsonValue | JsonValue;
+export function call48(client: AppsClient, ref: AppRef, input: Input48, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output48>> { return client.invoke(ref, catalog[48], input as JsonValue, options) as Promise<CapabilityResult<Output48>>; }
+
+export type Input49 = { "id"?: string; "title": string; "content": string };
+export type Output49 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export function call49(client: AppsClient, ref: AppRef, input: Input49, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output49>> { return client.invoke(ref, catalog[49], input as JsonValue, options) as Promise<CapabilityResult<Output49>>; }
+
+export type Input50 = { "id": string };
+export type Output50 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export function call50(client: AppsClient, ref: AppRef, input: Input50, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output50>> { return client.invoke(ref, catalog[50], input as JsonValue, options) as Promise<CapabilityResult<Output50>>; }
+
+export type Input51 = { "query"?: string; "cursor"?: string; "limit"?: number };
+export type Output51 = { "items": Array<{ "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } }>; "total": number; "returned": number; "nextCursor": string | null; "completeness": "complete" | "partial" };
+export function call51(client: AppsClient, ref: AppRef, input: Input51, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output51>> { return client.invoke(ref, catalog[51], input as JsonValue, options) as Promise<CapabilityResult<Output51>>; }
+
+export type Input52 = JsonValue | JsonValue;
+export type Output52 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export function call52(client: AppsClient, ref: AppRef, input: Input52, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output52>> { return client.invoke(ref, catalog[52], input as JsonValue, options) as Promise<CapabilityResult<Output52>>; }

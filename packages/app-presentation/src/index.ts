@@ -1,5 +1,5 @@
 import {randomUUID} from 'node:crypto';
-import {canonicalBinding,canonicalJson,compileSchema,datasetId} from '../../app-contracts/src/index.ts';
+import {canonicalBinding,canonicalJson,compileSchema,datasetId,requestHash} from '../../app-contracts/src/index.ts';
 import type {AppManifest,AppProvider,BridgeIdentity,CapabilityDescriptor,CapabilityResult,DatasetBinding,ExecutionContext,FailureInfo,InvocationRequest,InvocationSource,JsonValue,ResourceRef,SelectionEnvelope} from '../../app-contracts/src/index.ts';
 import {ComponentHost} from '../../component-runtime/src/host.ts';
 import type {AppsBindingData,AppsComponent,AppsPresentationOptions,AppsView,AppsViewData,DatasetSnapshot,SaveAppsComponentOptions} from './types.ts';
@@ -23,6 +23,15 @@ const problem=(code:string,message:string):FailureInfo=>({code,message,retryPoli
 function fail(code:string,message:string):never {throw new AppsPresentationError(code,message);}
 const text=(value:unknown,label:string):string=>typeof value==='string'&&value.trim()?value:fail('INVALID_INPUT',`${label} is required.`);
 const resourceKey=(resource:ResourceRef)=>canonicalJson(resource);
+// Exact invocation versions are resolved at read time, not persisted as binding metadata.
+function storedBinding(value:DatasetBinding):DatasetBinding {
+  const {capabilityVersion:_,...binding}=value as DatasetBinding&{capabilityVersion?:string};
+  return clone(binding);
+}
+function savedAsset(value:JsonValue):JsonValue {
+  const asset=value as Record<string,JsonValue>;
+  return {...asset,...(Array.isArray(asset.bindings)?{bindings:json((asset.bindings as unknown as DatasetBinding[]).map(storedBinding))}:{})};
+}
 const declaredResources=(result:CapabilityResult):ResourceRef[]=>{
   if(result.status!=='ok'&&result.status!=='partial')return [];
   const payload=result.data as {resources?:ResourceRef[]}|null;
@@ -61,8 +70,8 @@ export class AppsPresentationService {
     const resources=this.options.resources?this.options.resources({...binding,input:query},result):declaredResources(result);this.checkResources(binding,resources);
     const base=this.dataForView(view).bindings.find(item=>item.bindingId===binding.bindingId)!;
     const provenance=result.provenance??[],now=new Date().toISOString();
-    const next:AppsBindingData={...base,revision:`page:${token}`,payload:json(result.data),resources:clone(resources),state:'ready',freshness:provenance.some(item=>item.freshness==='stale')?'stale':'unknown',provenance:clone(provenance),lastSuccessAt:now,sourceDataTime:provenance.find(item=>item.sourceDataTime)?.sourceDataTime??null,query:base.query?{...base.query,input:query}:undefined};
-    delete next.error;
+    const next:AppsBindingData={...base,revision:`page:${token}`,payload:json(result.data),resources:clone(resources),state:'ready',freshness:provenance.some(item=>item.freshness==='stale')?'stale':provenance.length&&provenance.every(item=>item.freshness==='fresh')?'fresh':'unknown',provenance:clone(provenance),lastSuccessAt:now,sourceDataTime:provenance.find(item=>item.sourceDataTime)?.sourceDataTime??null,query:base.query?{...base.query,input:query}:undefined};
+    if(result.status==='partial')next.error=clone(result.errors[0]);else delete next.error;
     const data=this.scopedData(view,scope);data.bindings=data.bindings.map(item=>item.bindingId===binding.bindingId?next:item);
     // Do not advance selection state to a page that cannot reach the iframe.
     if(Buffer.byteLength(JSON.stringify(data),'utf8')>250000)fail('BRIDGE_MESSAGE_TOO_LARGE','Page is too large; reduce binding limit or select fewer fields.');
@@ -87,7 +96,7 @@ export class AppsPresentationService {
     if(/^apps\.(presentation|authoring)\./.test(descriptor.capabilityId))fail('QUERY_NOT_READ_ONLY','Presentation lifecycle actions cannot serve as their own dataset source.');
     const errors=compileSchema(descriptor.inputSchema)(value.input);if(errors.length)fail('INVALID_BINDING',errors.join('; '));
     const id=datasetId(value);if(value.datasetId!==undefined&&value.datasetId!==id)fail('DATASET_ID_MISMATCH','Binding identity does not match its canonical query.');
-    return {...clone(value),datasetId:id};
+    return {...storedBinding(value),datasetId:id};
   }
   createView(sessionId:string|null,input:{title:string;design?:JsonValue;bindings?:DatasetBinding[];viewId?:string;legacyViewId?:string}):AppsView {
     if(sessionId!==null)text(sessionId,'sessionId');text(input.title,'title');
@@ -217,25 +226,45 @@ export class AppsPresentationService {
       return clone(component);
     });
   }
+  private openSaved(sessionId:string|null,bindings:DatasetBinding[],open:()=>AppsView):AppsView {
+    if(sessionId===null||!bindings.length)return open();
+    if(!this.runtime.getConnection||!this.runtime.bind)fail('SAVED_CONNECTION_UNAVAILABLE','当前宿主无法启用保存内容的数据连接，请更新宿主后重试。');
+    const connections=[...new Map(bindings.map(({appId,connectionId})=>[canonicalJson([appId,connectionId]),{appId,connectionId}])).values()];
+    // Validate every exact connection before creating a checkout or changing session bindings.
+    for(const {appId,connectionId} of connections){
+      const connection=this.runtime.getConnection(appId,connectionId);
+      if(!connection)fail('SAVED_CONNECTION_MISSING',`保存内容使用的连接 ${appId}/${connectionId} 已不存在。请在应用设置中恢复该连接后重试；如需换连接，请明确重新配置数据绑定。`);
+      if(!connection.enabled)fail('SAVED_CONNECTION_DISABLED',`保存内容使用的连接 ${appId}/${connectionId} 已停用。请在应用设置中启用该连接后重试。`);
+    }
+    return this.store.transaction(()=>{
+      const view=open(),enabled=this.runtime.sessionBindings?.(sessionId)??[];
+      for(const connection of connections)if(!enabled.some(binding=>binding.appId===connection.appId&&binding.connectionId===connection.connectionId&&binding.enabled))this.runtime.bind!({sessionId,...connection,enabled:true,boundAt:new Date().toISOString()});
+      return view;
+    });
+  }
   openComponent(sessionId:string|null,componentId:string,options:{revision?:number;directory?:string}={}):AppsView {
     if(sessionId!==null)text(sessionId,'sessionId');const latest=this.store.get<AppsComponent>('components',componentId);if(!latest)fail('COMPONENT_NOT_FOUND','Saved component does not exist.');
     const selected=options.revision===undefined?latest:this.store.get<AppsComponent>('component_versions',`${componentId}:${options.revision}`);if(!selected)fail('COMPONENT_REVISION_NOT_FOUND','Saved revision does not exist.');
-    const now=new Date().toISOString(),view:AppsView={...clone(selected.view),viewId:randomUUID(),ownerSessionId:sessionId,createdAt:now,updatedAt:now,sourceComponentId:componentId,baseRevision:latest.revision,baseRevisionAtOpen:latest.revision,selectedSourceRevision:selected.revision,pendingPublicationId:null};
-    if(view.source){if(!this.sources)fail('SOURCE_STORE_UNAVAILABLE','Source archive is not configured.');view.source=this.sources.checkout(view.source,options.directory);}
-    // Opening an offline saved design does not resolve or execute its business bindings.
-    return this.store.transaction(()=>{if(view.source)this.store.put('artifact_refs',`view:${view.viewId}:${view.source.buildId}`,{ownerKind:'view',ownerId:view.viewId,targetKind:'build',targetId:view.source.buildId});return clone(this.store.put('views',view.viewId,view));});
+    return this.openSaved(sessionId,selected.view.bindings,()=>{
+      const now=new Date().toISOString(),view:AppsView={...clone(selected.view),viewId:randomUUID(),ownerSessionId:sessionId,createdAt:now,updatedAt:now,sourceComponentId:componentId,baseRevision:latest.revision,baseRevisionAtOpen:latest.revision,selectedSourceRevision:selected.revision,pendingPublicationId:null};
+      if(view.source){if(!this.sources)fail('SOURCE_STORE_UNAVAILABLE','Source archive is not configured.');view.source=this.sources.checkout(view.source,options.directory);}
+      // Opening reuses connection references without executing business queries.
+      return this.store.transaction(()=>{if(view.source)this.store.put('artifact_refs',`view:${view.viewId}:${view.source.buildId}`,{ownerKind:'view',ownerId:view.viewId,targetKind:'build',targetId:view.source.buildId});return clone(this.store.put('views',view.viewId,view));});
+    });
   }
   componentVersions(componentId:string):AppsComponent[]{return clone(this.store.list<AppsComponent>('component_versions').filter(item=>item.componentId===componentId).sort((a,b)=>a.revision-b.revision));}
   saveTemplate(sessionId:string|null,viewId:string,name:string,userRequest:string,description=''):Record<string,JsonValue> {
     const view=this.ownedView(sessionId,viewId);text(userRequest,'userRequest');text(name,'name');
-    const asset={assetId:randomUUID(),kind:'template',title:name,description,design:clone(view.design),bindings:clone(view.bindings),...(view.source?{source:this.sources?this.sources.withPreview(clone(view.source)):clone(view.source)}:{}),userRequest,savedAt:new Date().toISOString()};
+    const asset={assetId:randomUUID(),kind:'template',title:name,description,design:clone(view.design),bindings:view.bindings.map(storedBinding),...(view.source?{source:this.sources?this.sources.withPreview(clone(view.source)):clone(view.source)}:{}),userRequest,savedAt:new Date().toISOString()};
     return this.store.transaction(()=>{if(view.source)this.store.put('artifact_refs',`template:${asset.assetId}:${view.source.buildId}`,{ownerKind:'saved_asset',ownerId:`template:${asset.assetId}`,targetKind:'build',targetId:view.source.buildId});return json(this.store.put('saved_assets',`template:${asset.assetId}`,asset)) as Record<string,JsonValue>;});
   }
   openTemplate(sessionId:string|null,templateId:string,options:{title?:string;bindings?:DatasetBinding[];directory?:string;legacyBindings?:JsonValue[]}={}):AppsView {
     const asset=this.store.get<{title:string;design:JsonValue;bindings:DatasetBinding[];source?:AppsView['source']}>('saved_assets',`template:${templateId}`);if(!asset)fail('TEMPLATE_NOT_FOUND','Saved template does not exist.');
     const title=options.title??asset.title,bindings=options.bindings?.length?options.bindings:asset.bindings,design={...(asset.design&&typeof asset.design==='object'&&!Array.isArray(asset.design)?asset.design:{}),...(options.legacyBindings?{bindings:json(options.legacyBindings)}:{}),templateId};
-    if(asset.source){if(!this.sources)fail('SOURCE_STORE_UNAVAILABLE','Source archive is not configured.');const source=this.sources.checkout(asset.source,options.directory);const view=this.openSource(sessionId,source.directory,{title,bindings});view.design=clone(design);return clone(this.store.put('views',view.viewId,view));}
-    return this.createView(sessionId,{title,bindings,design});
+    return this.openSaved(sessionId,bindings,()=>{
+      if(asset.source){if(!this.sources)fail('SOURCE_STORE_UNAVAILABLE','Source archive is not configured.');const source=this.sources.checkout(asset.source,options.directory);const view=this.openSource(sessionId,source.directory,{title,bindings});view.design=clone(design);return clone(this.store.put('views',view.viewId,view));}
+      return this.createView(sessionId,{title,bindings,design});
+    });
   }
   async hydrateSourceView(view:AppsView,source:InvocationSource,signal?:AbortSignal):Promise<AppsView & {initialData?:{bindingId:string;datasetId:string;status:string}[]}> {
     if(!view.source)return view;
@@ -266,10 +295,11 @@ export class AppsPresentationService {
       attachSelection:async request=>{const selection=validateDataSelection(data(),request.params as unknown as SelectionEnvelope),attach=options.attachSelection??this.options.attachSelection;if(!attach)fail('UNSUPPORTED_HOST_CAPABILITY','Native attachments are unavailable.');return attach(identity,selection);},
       invokeCapability:async request=>{
         const view=current();
-        const input=request.params as unknown as Omit<InvocationRequest,'protocolVersion'|'invocationId'|'traceId'|'source'>;
+        const input=request.params as unknown as Omit<InvocationRequest,'protocolVersion'|'invocationId'|'traceId'|'source'|'deadlineAt'>&{deadlineAt?:string};
         if(!input||typeof input!=='object')fail('INVALID_INPUT','Capability invocation requires explicit routing and input.');
         if(!view.bindings.some(binding=>binding.appId===input.appId&&binding.connectionId===input.connectionId))fail('CONNECTION_NOT_BOUND','Capability route is not bound to this component.');
-        const result=await this.runtime.invoke({protocolVersion:'1.0',appId:input.appId,connectionId:input.connectionId,capabilityId:input.capabilityId,capabilityVersion:input.capabilityVersion,input:input.input,deadlineAt:input.deadlineAt,invocationId:randomUUID(),traceId:randomUUID(),source,...(input.idempotencyKey?{idempotencyKey:input.idempotencyKey}:{}),...(input.expectedResourceRevision?{expectedResourceRevision:input.expectedResourceRevision}:{})},options.signal);
+        const deadlineAt=input.deadlineAt===undefined?new Date(Date.now()+Math.min(90000,this.runtime.describe(input.capabilityId,input.capabilityVersion)?.execution.timeoutMs??30000)).toISOString():input.deadlineAt;
+        const result=await this.runtime.invoke({protocolVersion:'1.0',appId:input.appId,connectionId:input.connectionId,capabilityId:input.capabilityId,capabilityVersion:input.capabilityVersion,input:input.input,deadlineAt,invocationId:randomUUID(),traceId:randomUUID(),source,...(input.idempotencyKey?{idempotencyKey:input.idempotencyKey}:{}),...(input.expectedResourceRevision?{expectedResourceRevision:input.expectedResourceRevision}:{})},options.signal);
         return json(result);
       },
     },{contextRevision:()=>contextInfo().contextRevision,clientFeatures:options.clientFeatures,extensionHandlers:{bindingPagesV1:async request=>{if(request.action!=='read')fail('INVALID_INPUT','Unknown binding page action.');return json(await this.readBindingPage(current(),pageScope,request.params as unknown as {bindingId:string;cursor?:string|null},source,current,options.signal));},...(this.authoring?{
@@ -280,7 +310,7 @@ export class AppsPresentationService {
   /** Runtime registration adapter. The shared provider has no application-domain imports. */
   provider():AppProvider {
     const manifest:AppManifest={manifestVersion:1,appId:'apps',displayName:'Shared presentation',providerPackage:'@dsh/app-presentation',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:['component','template','entry']};
-    return {manifest,descriptors:[...APP_PRESENTATION_DESCRIPTORS,...APP_AUTHORING_DESCRIPTORS],execute:context=>this.execute(context),dispose:async()=>{}};
+    return {manifest,descriptors:[...APP_PRESENTATION_DESCRIPTORS,...APP_AUTHORING_DESCRIPTORS],execute:context=>this.execute(context),inspect:async(operationId,context)=>this.inspectMutation(operationId,context),dispose:async()=>{}};
   }
   async execute(context:ExecutionContext):Promise<CapabilityResult> {
     const {request}=context,params=request.input as Record<string,JsonValue>;
@@ -288,6 +318,8 @@ export class AppsPresentationService {
     const output=(data:unknown):CapabilityResult=>({status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:json(data)});
     try{
       if(!sessionId)fail('SESSION_REQUIRED','Presentation actions require an explicit owning session.');
+      const descriptor=[...APP_PRESENTATION_DESCRIPTORS,...APP_AUTHORING_DESCRIPTORS].find(item=>item.capabilityId===request.capabilityId);
+      if(descriptor?.effect==='mutation')return this.executeMutation(context,sessionId,descriptor);
       if(request.capabilityId.startsWith('apps.authoring.')){
         if(!this.authoring)fail('AUTHORING_UNAVAILABLE','Authoring is not configured.');
         const action=request.capabilityId.slice('apps.authoring.'.length);
@@ -298,7 +330,6 @@ export class AppsPresentationService {
           case 'publish':return output(this.authoring.publish(sessionId,params as never));
           case 'inspect':return output(this.authoring.inspect(sessionId,params as never));
           case 'cancel':return output(this.authoring.cancel(sessionId,params as never));
-          case 'save_component':return output(this.authoring.saveComponent(sessionId,params as never));
           default:fail('CAPABILITY_NOT_FOUND','Unknown authoring action.');
         }
       }
@@ -318,8 +349,21 @@ export class AppsPresentationService {
           const view=this.openSource(sessionId,text(params.directory,'directory'),params as unknown as Parameters<AppsPresentationService['openSource']>[2]);return output(await this.hydrateSourceView(view,request.source,context.signal));
         }
         case 'apps.presentation.open_component':return output(await this.hydrateSourceView(this.openComponent(sessionId,text(params.componentId,'componentId'),params as unknown as Parameters<AppsPresentationService['openComponent']>[2]),request.source,context.signal));
+        case 'apps.presentation.list_saved':return output({components:this.store.list<AppsComponent>('components').map(component=>({...component,revisions:this.componentVersions(component.componentId).map(version=>({revision:version.revision,title:version.title,savedAt:version.savedAt,...(version.view.source?{buildId:version.view.source.buildId}:{})}))})),assets:this.store.list<JsonValue>('saved_assets').map(savedAsset)});
+        default:fail('CAPABILITY_NOT_FOUND','Unknown shared presentation action.');
+      }
+    }catch(error){return {status:'failed',invocationId:request.invocationId,traceId:request.traceId,error:problem((error as AppsPresentationError).code??'PRESENTATION_FAILED',error instanceof Error?error.message:String(error))};}
+  }
+  /** Local mutations commit their validated result and receipt with the asset in one SQLite transaction. */
+  private executeMutation(context:ExecutionContext,sessionId:string,descriptor:CapabilityDescriptor):CapabilityResult {
+    const {request,operationId}=context,params=request.input as Record<string,JsonValue>;
+    const output=(data:unknown):CapabilityResult=>({status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:json(data)});
+    const write=():CapabilityResult=>{
+      switch(request.capabilityId){
+        case 'apps.authoring.save_component':
+          if(!this.authoring)fail('AUTHORING_UNAVAILABLE','Authoring is not configured.');
+          return output(this.authoring.saveComponent(sessionId,params as never));
         case 'apps.presentation.save_component':return output(this.saveComponent(sessionId,text(params.viewId,'viewId'),text(params.userRequest,'userRequest'),params as unknown as SaveAppsComponentOptions));
-        case 'apps.presentation.list_saved':return output({components:this.store.list<AppsComponent>('components').map(component=>({...component,revisions:this.componentVersions(component.componentId).map(version=>({revision:version.revision,title:version.title,savedAt:version.savedAt,...(version.view.source?{buildId:version.view.source.buildId}:{})}))})),assets:this.store.list<JsonValue>('saved_assets')});
         case 'apps.presentation.save_entry':{
           text(params.userRequest,'userRequest');const binding=this.binding(params.binding as unknown as DatasetBinding),asset={assetId:randomUUID(),kind:'entry',entryKind:'data',title:text(params.title,'title'),binding,...(params.legacyBinding?{legacyBinding:json(params.legacyBinding),...(params.legacyFieldOrder?{legacyFieldOrder:json(params.legacyFieldOrder)}:{})}:{}),userRequest:params.userRequest,pinned:false,order:this.store.list<Record<string,JsonValue>>('saved_assets').filter(asset=>asset.kind==='entry').length};return output(this.store.put('saved_assets',`entry:${asset.assetId}`,asset));
         }
@@ -327,9 +371,40 @@ export class AppsPresentationService {
           return output(this.saveTemplate(sessionId,text(params.viewId,'viewId'),text(params.name,'name'),text(params.userRequest,'userRequest'),typeof params.description==='string'?params.description:''));
         }
         case 'apps.presentation.manage_saved':return output(params.kind==='component'&&params.expectedRevision!==undefined&&this.authoring?this.authoring.manageSavedComponent(sessionId,{componentId:String(params.id),expectedRevision:Number(params.expectedRevision),action:params.action,title:params.name} as never):this.manageSaved(params));
-        default:fail('CAPABILITY_NOT_FOUND','Unknown shared presentation action.');
+        default:fail('CAPABILITY_NOT_FOUND','Unknown shared presentation mutation.');
       }
-    }catch(error){return {status:'failed',invocationId:request.invocationId,traceId:request.traceId,error:problem((error as AppsPresentationError).code??'PRESENTATION_FAILED',error instanceof Error?error.message:String(error))};}
+    };
+    const remember=(result:CapabilityResult)=>{
+      if(operationId){const recordId=`presentation-mutation:${operationId}`;this.store.put('provider_records',recordId,{appId:'apps',connectionId:request.connectionId,namespace:'presentation_mutations',recordId,value:{capabilityId:request.capabilityId,requestHash:requestHash(request),result}});}
+      return result;
+    };
+    try{return this.store.transaction(()=>{
+      const result=write(),errors='data' in result?compileSchema(descriptor.outputSchema)(result.data):[];
+      if(errors.length)fail('OUTPUT_SCHEMA_INVALID',errors.join('; '));
+      return remember(result);
+    });}catch(error){
+      return remember({status:'failed',invocationId:request.invocationId,traceId:request.traceId,error:problem((error as AppsPresentationError).code??'PRESENTATION_FAILED',error instanceof Error?error.message:String(error))});
+    }
+  }
+  private inspectMutation(operationId:string,{request}:ExecutionContext):CapabilityResult {
+    const receipt=this.store.get<{connectionId:string;value:{capabilityId:string;requestHash:string;result:CapabilityResult}}>('provider_records',`presentation-mutation:${operationId}`);
+    if(receipt&&receipt.connectionId===request.connectionId&&receipt.value.capabilityId===request.capabilityId&&receipt.value.requestHash===requestHash(request))return {...receipt.value.result,invocationId:request.invocationId,traceId:request.traceId};
+    // Pre-receipt template saves can be recovered only from one matching asset within the original dispatch window.
+    const operation=this.store.get<{request:InvocationRequest;createdAt:string;updatedAt:string;result?:CapabilityResult}>('operations',operationId);
+    if(request.capabilityId==='apps.presentation.save_template'&&operation?.result&&'error' in operation.result&&operation.result.error.code==='OUTPUT_SCHEMA_INVALID'&&/^\$\.bindings\[\d+\]\.capabilityVersion: unknown field$/.test(operation.result.error.message)){
+      const original=operation.request,params=original.input as Record<string,JsonValue>,sessionId='sessionId' in original.source?original.source.sessionId:undefined;
+      const view=this.getView(String(params.viewId));
+      if(view&&view.ownerSessionId===sessionId){
+        const sourceIdentity=(source:unknown)=>{const value=source as AppsView['source'];return value?{buildId:value.buildId,directory:value.directory,entry:value.entry,files:value.files}:null;};
+        const candidates=this.store.list<Record<string,JsonValue>>('saved_assets').filter(asset=>
+          asset.kind==='template'&&asset.title===params.name&&asset.userRequest===params.userRequest&&asset.description===(params.description??'')&&
+          typeof asset.savedAt==='string'&&asset.savedAt>=operation.createdAt&&asset.savedAt<=operation.updatedAt&&
+          canonicalJson(asset.design)===canonicalJson(view.design)&&canonicalJson(sourceIdentity(asset.source))===canonicalJson(sourceIdentity(view.source))&&
+          Array.isArray(asset.bindings)&&canonicalJson((asset.bindings as unknown as DatasetBinding[]).map(storedBinding))===canonicalJson(view.bindings.map(storedBinding)));
+        if(candidates.length===1)return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:savedAsset(candidates[0])};
+      }
+    }
+    return {status:'unknown',invocationId:request.invocationId,traceId:request.traceId,error:{code:'PRESENTATION_RECEIPT_NOT_FOUND',message:'No conclusive local mutation receipt; the original action was not repeated.',retryPolicy:'inspect_only'},operation:{operationId,state:'unknown'}};
   }
   manageSaved(params:Record<string,JsonValue>):JsonValue {
     const kind=text(params.kind,'kind'),id=text(params.id,'id'),action=text(params.action,'action');
@@ -346,6 +421,6 @@ export class AppsPresentationService {
     else if(action==='pin'&&kind==='entry'&&typeof params.pinned==='boolean')current.pinned=params.pinned;
     else if(action==='reorder'&&kind==='entry'&&Number.isSafeInteger(params.order))current.order=params.order;
     else fail('INVALID_INPUT','Invalid saved asset action.');
-    return json(this.store.put('saved_assets',key,current));
+    return savedAsset(json(this.store.put('saved_assets',key,current)));
   }
 }

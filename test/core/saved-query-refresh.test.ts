@@ -22,6 +22,33 @@ function setup(){
 function deferred(){let release!:()=>void;const promise=new Promise<void>(resolve=>release=resolve);return {promise,release};}
 const context={sessionId:'background'};
 
+test('saved exact-status queries retain their filtered page on refresh without replacing the store snapshot',async()=>{
+ const f=setup(),source={...f.source,products:[
+  {storeId:'A',offerId:'A1',status:'on_sale',title:'needle first'},
+  {storeId:'A',offerId:'false-title',status:'archived',title:'on_sale needle'},
+  {storeId:'A',offerId:'A2',status:'on_sale',title:'needle second'},
+  {storeId:'A',offerId:'false-history',status:'archived',title:'needle',history:{status:'on_sale'}},
+  {storeId:'A',offerId:'missing',title:'needle',platformStatus:'Продается'},
+  {storeId:'A',offerId:'A3',status:'on_sale',title:'needle third'},
+  {storeId:'A',offerId:'A4',status:'on_sale',title:'other'},
+  {storeId:'B',offerId:'B1',status:'on_sale',title:'needle foreign'},
+ ]},spill={path:'synthetic-products.json',bytes:2000000,summary:{count:8},cursor:'spill:fixture:0'},original=structuredClone(source);
+ f.client.getStoreProducts=async()=>({...ok(source),spill});
+ try{
+  await f.refresher.refresh('store_products:A',context);const base=f.store.get('snapshots','store_products:A');
+  for(const cursor of [undefined,'2']){
+   const params={storeId:'A',status:'on_sale',query:'NEEDLE',limit:2,...(cursor?{cursor}:{})},key=f.saveQuery('hallmark_list_store_products',params),query=f.store.get('queries',key.slice(6));
+   const result=await f.refresher.refresh(key,context);assert.equal(result.status,'ok',JSON.stringify(result));
+   const snapshot=f.store.get('snapshots',key)!;assert.deepEqual(snapshot.payload.products.map((row:any)=>row.offerId),cursor?['A3']:['A1','A2']);assert.equal(snapshot.payload.total,3);assert.equal(snapshot.payload.cursor,cursor?undefined:'2');assert.deepEqual(snapshot.sourceSpill,spill);assert.equal(snapshot.payload.spill,undefined);assert.equal((result.data as any).spill,undefined);
+   const view=f.presentation.renderView({id:`status-page-${cursor??'first'}`,title:'Status page',layout:{type:'column',children:['note']},widgets:[{id:'note',type:'text',text:'Products'}],bindings:[{id:'products',datasetKey:key,fieldMap:{}}]});
+   assert.deepEqual(f.presentation.getViewData(view.id).data!.bindings[0].payload,snapshot.payload);
+   assert.deepEqual(f.store.get('queries',key.slice(6)),query);assert.deepEqual(f.store.get('snapshots','store_products:A'),base);
+  }
+  const legacyKey=f.saveQuery('hallmark_list_store_products',{storeId:'A',query:'needle',limit:1,cursor:'1'});assert.equal((await f.refresher.refresh(legacyKey,context)).status,'ok');assert.equal(f.store.get('snapshots',legacyKey)!.payload.products.length,6);
+  assert.deepEqual(source,original);assert.equal(f.counts.business,0);
+ }finally{f.store.close();}
+});
+
 for(const tool of ['hallmark_list_store_products','hallmark_compute_profit','hallmark_filter_products'])test(`saved ${tool} resolves a unique store name without modifying its query definition`,async()=>{
  const f=setup(),params={store:'Alpha shop',...(tool==='hallmark_filter_products'?{maxMargin:0.15}:{})};const key=f.saveQuery(tool,params);const before=f.store.get('queries',key.slice(6));
  const result=await f.refresher.refresh(key,context);assert.equal(result.status,'ok');const snapshot=f.store.get('snapshots',key)!;assert.equal(snapshot.provenance.storeId,'A');assert.equal(snapshot.dataTime,'2026-10-05T00:00:00Z');assert.ok(snapshot.payload.products.every((row:any)=>row.storeId==='A'));assert.equal(snapshot.payload.products[0].unknownSourceField,'retained');

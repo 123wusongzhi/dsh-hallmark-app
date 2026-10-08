@@ -35,6 +35,36 @@ test('product fields trim transport while preserving identity, cursor, total and
   assert.deepEqual(data(await f.invoke('hallmark.products.list',{storeId:'shop',limit:1})),full);
  }finally{await f.runtime.dispose();f.store.close();}
 });
+for(const useSpill of [false,true])test(`exact product status filters before paging and field projection${useSpill?' with source spill':''}`,async()=>{
+ const f=fixture(),source={stores:[{id:'shop'}],products:[
+  {id:'source-A',storeId:'shop',offerId:'A',productId:1,status:'on_sale',title:'needle first'},
+  {storeId:'shop',offerId:'title',productId:2,status:'archived',title:'on_sale needle'},
+  {storeId:'shop',offerId:'B',productId:3,status:'on_sale',title:'needle second'},
+  {storeId:'shop',offerId:'history',productId:4,status:'archived',sources:{history:['on_sale']}},
+  {storeId:'shop',offerId:'missing',productId:5,title:'on_sale',platformStatus:'Продается',stock:10},
+  {storeId:'shop',offerId:'imported',productId:6,status:'imported',platformStatus:'Продается',stock:10},
+  {storeId:'shop',offerId:'case',productId:7,status:'ON_SALE'},
+  {storeId:'shop',offerId:'C',productId:8,status:'on_sale',title:'other'},
+  {storeId:'other',offerId:'foreign',productId:9,status:'on_sale'},
+ ]},original=structuredClone(source),spill={path:'synthetic-products.json',bytes:2000000,summary:{count:9},cursor:'spill:fixture:0'};
+ f.client.getStoreProducts=async()=>({...ok(source),...(useSpill?{spill}:{})});
+ try{
+  const first=data(await f.invoke('hallmark.products.list',{storeId:'shop',status:'on_sale',limit:2}));
+  assert.deepEqual(first.products.map((row:any)=>row.offerId),['A','B']);assert.equal(first.total,3);assert.equal(first.cursor,'2');assert.equal(first.spill,undefined);
+  const last=data(await f.invoke('hallmark.products.list',{storeId:'shop',status:'on_sale',cursor:first.cursor,limit:2,fields:['title']}));
+  assert.deepEqual(last.products,[{storeId:'shop',offerId:'C',productId:8,title:'other'}]);assert.equal(last.total,3);assert.equal(last.cursor,undefined);assert.equal(last.spill,undefined);
+  const intersection=data(await f.invoke('hallmark.products.list',{storeId:'shop',status:'on_sale',query:'NEEDLE',limit:1,fields:['title']}));
+  assert.deepEqual(intersection.products,[{id:'source-A',storeId:'shop',offerId:'A',productId:1,title:'needle first'}]);assert.equal(intersection.total,2);assert.equal(intersection.cursor,'1');
+  const next=data(await f.invoke('hallmark.products.list',{storeId:'shop',status:'on_sale',query:'NEEDLE',limit:1,cursor:intersection.cursor}));
+  assert.equal(next.products[0].offerId,'B');assert.equal(next.total,2);assert.equal(next.cursor,undefined);
+  const empty=data(await f.invoke('hallmark.products.list',{storeId:'shop',status:'on_sale',query:'absent'}));assert.deepEqual(empty.products,[]);assert.equal(empty.total,0);assert.equal(empty.cursor,undefined);
+  const exact=data(await f.invoke('hallmark.products.list',{storeId:'shop',status:'ON_SALE'}));assert.deepEqual(exact.products.map((row:any)=>row.offerId),['case']);
+  const legacy=data(await f.invoke('hallmark.products.list',{storeId:'shop',query:'on_sale'}));assert.equal(legacy.total,7);
+  if(useSpill){assert.deepEqual(legacy.spill,spill);assert.equal(legacy.products,undefined);assert.equal(legacy.cursor,'0');}
+  else assert.deepEqual(legacy.products.map((row:any)=>row.offerId),['A','title','B','history','missing','case','C']);
+  const snapshot=f.port('c').get('snapshots','store_products:shop')!;assert.equal(snapshot.payload.products.length,8);assert.deepEqual(snapshot.sourceSpill,useSpill?spill:undefined);assert.deepEqual(source,original);
+ }finally{await f.runtime.dispose();f.store.close();}
+});
 test('all 26 legacy names have one owner and every domain/API schema compiles',()=>{
  assert.deepEqual(LEGACY_TOOL_MAP.map(row=>row.legacyName),TOOL_DEFINITIONS.map(row=>row.name));
  assert.equal(LEGACY_TOOL_MAP.filter(row=>row.owner==='presentation').length,9);
@@ -76,4 +106,18 @@ test('registered API price operation inherits strict conditional CNY fallback wi
 });
 test('connection namespaces isolate snapshots and retain stale data when refresh is unavailable',async()=>{
  const f=fixture();try{await f.invoke('hallmark.products.list',{storeId:'shop'});assert.equal(f.port('d').get('snapshots','store_products:shop'),undefined);const before=f.port('c').get('snapshots','store_products:shop');f.down();const refresh=await f.invoke('hallmark.datasets.refresh',{datasetKey:'store_products:shop'});assert.equal(refresh.status,'unavailable');assert.deepEqual(f.port('c').get('snapshots','store_products:shop')?.payload,before?.payload);assert.equal(f.port('c').get('snapshots','store_products:shop')?.lastSuccessAt,before?.lastSuccessAt);const cached=await f.invoke('hallmark.products.list',{storeId:'shop'});assert.equal(cached.status,'ok');assert.equal(cached.provenance?.[0].freshness,'stale');assert.equal(f.calls.length,0);}finally{await f.runtime.dispose();f.store.close();}
+});
+
+
+test('platform synchronization coalesces while pagination reads the last complete snapshot',async()=>{
+ const f=fixture();let release!:()=>void,started!:()=>void;const entered=new Promise<void>(resolve=>started=resolve);let syncs=0;
+ try{
+  const before=data(await f.invoke('hallmark.products.list',{storeId:'shop',limit:1}));
+  f.client.syncStoreProducts=async()=>{syncs++;started();await new Promise<void>(resolve=>release=resolve);return ok({});};
+  const first=f.invoke('hallmark.datasets.refresh',{datasetKey:'store_products:shop'});await entered;
+  const second=f.invoke('hallmark.datasets.refresh',{datasetKey:'store_products:shop'});
+  const page=await Promise.race([f.invoke('hallmark.products.list',{storeId:'shop',cursor:before.cursor,limit:1}),new Promise<never>((_,reject)=>setTimeout(()=>reject(Error('Pagination blocked by platform sync')),1000))]);
+  assert.equal(data(page).products[0].offerId,'B');assert.equal(syncs,1);assert.equal(f.port('c').get('snapshots','store_products:shop')?.state,'refreshing');
+  release();const results=await Promise.all([first,second]);assert.ok(results.every(result=>result.status==='ok'));assert.equal(syncs,1);assert.equal(data(results[0]).timings.syncMs>=0,true);assert.equal(f.port('c').get('snapshots','store_products:shop')?.state,'ready');
+ }finally{release?.();await f.runtime.dispose();f.store.close();}
 });

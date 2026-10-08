@@ -1,8 +1,7 @@
-import type {BridgeRequest,FailureInfo,JsonValue,SelectionEnvelope} from '../../app-contracts/src/index.ts';
+import type {BridgeRequest,FailureInfo,JsonValue} from '../../app-contracts/src/index.ts';
 import type {ComponentHandlerFactory} from '../../dsh-plugin/client/component-handlers.ts';
 import type {ComponentResponse} from '../../component-runtime/src/apps-client.ts';
 import {COMPONENT_CHANNEL,ComponentBridgeError,sameBridgeIdentity} from '../../component-runtime/src/apps-client.ts';
-import {selectionInputBridge} from '../../dsh-plugin/client/selection.ts';
 import type {ComponentExtensionRequest} from '../../component-runtime/src/host.ts';
 import type {ExtendedComponentHandlers,ComponentFrameError} from '../../dsh-plugin/client/component-frame.tsx';
 export interface PublicationFrame {publicationId:string;attemptId:string;attemptEpoch:number;displayId?:string;displayGeneration?:number}
@@ -57,7 +56,7 @@ export async function createAppsPresentationHandlers(identity:Parameters<Compone
     if(value.channel!==COMPONENT_CHANNEL||value.requestId!==request.requestId||!sameBridgeIdentity(request,value)||!Object.hasOwn(value,'result'))fail('INVALID_BRIDGE_RESPONSE','Extension response has a different frame identity.');
     if(request.feature==='renderReadyV1'){
       if(publication?.displayId){const display=record(record(value.result).display);if(display.displayId!==publication.displayId||display.generation!==publication.displayGeneration||display.ownerSessionId!==identity.sessionId||display.viewId!==identity.viewId||display.publicationId!==publication.publicationId||display.buildId!==identity.buildId||display.state!=='ready')fail('INVALID_DISPLAY_RECEIPT','Runtime did not confirm this exact display.');}
-      window.dispatchEvent(new CustomEvent(publication?.displayId?'apps-display-ready':'apps-authoring-published',{detail:{sessionId:identity.sessionId,viewId:identity.viewId,buildId:identity.buildId,...(publication?{publicationId:publication.publicationId,displayId:publication.displayId}:{})}}));
+      window.dispatchEvent(new CustomEvent(publication?.displayId?'apps-display-ready':'apps-authoring-published',{detail:{sessionId:identity.sessionId,viewId:identity.viewId,buildId:identity.buildId,viewRevision:record(record(value.result).view).viewRevision,...(publication?{publicationId:publication.publicationId,displayId:publication.displayId}:{})}}));
     }
     return value.result!;
   };
@@ -65,14 +64,14 @@ export async function createAppsPresentationHandlers(identity:Parameters<Compone
   const initial=async(request:BridgeRequest):Promise<JsonValue>=>{const first=!initialized.has(request.method);initialized.add(request.method);try{return await call(request);}catch(error){if(first&&publication?.displayId&&!signal.aborted)onFrameError?.({phase:request.method==='getData'?'data':'context',code:String(record(error).code??'DISPLAY_INITIALIZATION_FAILED'),message:error instanceof Error?error.message:String(error)});throw error;}};
   const displayExtension=async(request:ComponentExtensionRequest)=>{
     checkCurrent();
-    // SDK 16 omitted this parameter for UI-state calls. Only this authorized frame
+    // Older SDKs omitted this parameter for UI-state and binding-page calls. Only this authorized frame
     // may receive its parent-owned nonce; an explicitly wrong nonce is never changed.
-    if(publication?.displayId&&request.feature==='uiStateV1'&&authorizedDocument&&sameBridgeIdentity(request,authorizedDocument.identity)&&!Object.hasOwn(record(request.params),'documentNonce'))request={...request,params:{...record(request.params),documentNonce:authorizedDocument.nonce} as JsonValue};
+    if(publication?.displayId&&(request.feature==='uiStateV1'||request.feature==='bindingPagesV1')&&authorizedDocument&&sameBridgeIdentity(request,authorizedDocument.identity)&&!Object.hasOwn(record(request.params),'documentNonce'))request={...request,params:{...record(request.params),documentNonce:authorizedDocument.nonce} as JsonValue};
     try{return await extension(request);}catch(error){if(request.feature==='renderReadyV1'&&publication?.displayId&&!signal.aborted&&(isCurrent?.()??true))onFrameError?.({phase:'readiness',code:String(record(error).code??'DISPLAY_READY_FAILED'),message:error instanceof Error?error.message:String(error)});throw error;}
   };
   return {
     getData:initial,
-    getContext:async request=>({ ...record(await initial(request)),...(publication?{publication,...(publication.displayId?{display:{displayId:publication.displayId,generation:publication.displayGeneration}}:{})}:{}),nativeFeatures:features,attachment:selectionInputBridge.availability(identity.sessionId)} as unknown as JsonValue),
+    getContext:async request=>({ ...record(await initial(request)),...(publication?{publication,...(publication.displayId?{display:{displayId:publication.displayId,generation:publication.displayGeneration}}:{})}:{}),nativeFeatures:features,attachment:{available:false,disabledReason:'附加到聊天暂未开放。'}} as unknown as JsonValue),
     refresh:call,
     invokeCapability:call,
     ...(features.updateContext?{updateContext:call}:{}),
@@ -89,15 +88,6 @@ export async function createAppsPresentationHandlers(identity:Parameters<Compone
       authorizedDocument={identity:frame,nonce:documentNonce};
       return value.features.filter((feature):feature is string=>typeof feature==='string'&&granted.includes(feature));
     },retireFrame:async(frame,documentNonce)=>{await fetch('/api/dsh-apps',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'authoring',operation:'retireFrame',sessionId:frame.sessionId,params:{viewId:frame.viewId,buildId:frame.buildId,frameInstanceId:frame.frameInstanceId,documentNonce}}),keepalive:true,signal:AbortSignal.timeout(3000)});}}:{}),
-    attachSelection:async request=>{
-      checkCurrent();
-      const availability=selectionInputBridge.availability(identity.sessionId);if(!availability.available)fail('UNSUPPORTED_HOST_CAPABILITY',availability.disabledReason??'Native file attachments are unavailable.');
-      const verified=record(await call(request));if(verified.status!=='validated')fail('INVALID_ATTACHMENT_RECEIPT','The Runtime must validate resource selection before native insertion.');
-      const selection=verified.selection as SelectionEnvelope,input=request.params as unknown as SelectionEnvelope;
-      if(!selection||selection.bindingId!==input.bindingId||selection.datasetRevision!==input.datasetRevision||!Array.isArray(selection.resources)||selection.resources.length!==input.resources.length||selection.resources.some((resource,index)=>{const supplied=input.resources[index];return !supplied||resource.appId!==supplied.appId||resource.connectionId!==supplied.connectionId||resource.resourceType!==supplied.resourceType||resource.resourceId!==supplied.resourceId||resource.revision!==supplied.revision;}))fail('INVALID_ATTACHMENT_RECEIPT','Validated selection differs from the component request.');
-      checkCurrent();const result=selectionInputBridge.attachResources(identity.sessionId,{...selection,...identity});
-      if(!result.ok)fail('NATIVE_ATTACHMENT_UNAVAILABLE',result.message);
-      return {status:result.pending?'pending':'attached',message:result.message};
-    },
+    attachSelection:async()=>{checkCurrent();fail('UNSUPPORTED_HOST_CAPABILITY','附加到聊天暂未开放。');},
   };
 }

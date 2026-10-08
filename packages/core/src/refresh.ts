@@ -9,7 +9,7 @@ import { clean, now, productStoreId, profitRows, METRIC_BASIS, wrapped, sourceTi
 import type { CoreStore, CoreClient, Operation, RecordData, AdapterResponse } from './types.ts';
 export class DatasetRefresher {
  store:CoreStore;client:CoreClient;inflight=new Map<string,Promise<ToolResult>>();
- #sourceFlight?:Promise<AdapterResponse>;
+ #sourceFlight?:Promise<{response:AdapterResponse;syncMs:number;readMs:number}>;
  constructor(store:CoreStore,client:CoreClient){this.store=store;this.client=client;}
  refresh(datasetKey:string,context:InvocationContext):Promise<ToolResult> {
   const running=this.inflight.get(datasetKey);if(running)return running;
@@ -33,7 +33,7 @@ export class DatasetRefresher {
     const resolved=await this.resolveQueryStore(query.params??{});if('result' in resolved)return this.finishFailure(op,datasetKey,resolved.result);
     storeId=resolved.storeId;op.storeId=storeId;this.store.put('operations',operationId,op);projectOperationReceipt(this.store,operationId);
    }
-   const response=await this.syncAndReadSource();if(response.status!=='ok')return this.finishFailure(op,datasetKey,wrapped(response));
+   const {response,syncMs,readMs}=await this.syncAndReadSource(),commitStarted=performance.now();if(response.status!=='ok')return this.finishFailure(op,datasetKey,wrapped(response));
    if(!Array.isArray(response.raw?.products))return this.finishFailure(op,datasetKey,failed('INVALID_SOURCE_RESPONSE','Hallmark 商品响应缺少 products 数组。'));
    const storeStatus=response.raw.stores?.find((row:RecordData)=>String(row.id??row.storeId)===storeId);
    if(!storeStatus)return this.finishFailure(op,datasetKey,failed('STORE_NOT_FOUND','源快照不存在指定店铺，不能将空数据视为刷新成功。'));
@@ -45,6 +45,11 @@ export class DatasetRefresher {
     const p=query.params;
     payload.products=payload.products.filter((row:RecordData)=>(!p.offerIds&&!p.productIds)||p.offerIds?.includes(String(row.offerId??row.offer_id))||p.productIds?.includes(String(row.productId??row.product_id)));
     if(p.query)payload.products=payload.products.filter((row:RecordData)=>JSON.stringify(row).toLowerCase().includes(String(p.query).toLowerCase()));
+    if(query.tool==='hallmark_list_store_products'&&p.status!==undefined){
+     const matches=payload.products.filter((row:RecordData)=>row.status===p.status),offset=p.cursor?Number(p.cursor):0,limit=p.limit??100;
+     if(!Number.isSafeInteger(offset)||offset<0)return this.finishFailure(op,datasetKey,failed('INVALID_CURSOR','分页 cursor 须为非负偏移。'));
+     payload={...payload,products:matches.slice(offset,offset+limit),total:matches.length,...(offset+limit<matches.length?{cursor:String(offset+limit)}:{})};
+    }
     if(query.tool==='hallmark_filter_products'){
      const unable:RecordData[]=[];
      payload.products=payload.products.filter((row:RecordData)=>{
@@ -58,7 +63,7 @@ export class DatasetRefresher {
    const metadata=clean({sourceSpill:response.spill,provenance:{...sourceProvenance,source:response.provenance?.source??'hallmark_snapshot',storeId,...(dataTime?{dataTime}:{})},...(match[1]==='profit'?{metricBasis:METRIC_BASIS}:{})});
    const snapshot=this.store.updateSnapshotSuccess(datasetKey,payload,dataTime,metadata);
    const {payload:storedPayload,...snapshotStatus}=snapshot;
-   const result:ToolResult={status:'ok',data:{datasetKey,snapshot:snapshotStatus,counts:{products:payload.products.length,unable:payload.unable?.length??0},...(response.spill?{spill:response.spill}:{})},provenance:metadata.provenance,operation:{operationId,state:'succeeded'},...(match[1]==='profit'?{metricBasis:METRIC_BASIS}:{})};
+   const result:ToolResult={status:'ok',data:{datasetKey,snapshot:snapshotStatus,counts:{products:payload.products.length,unable:payload.unable?.length??0},timings:{syncMs,readMs,commitMs:Math.round(performance.now()-commitStarted)},...(response.spill&&!(query?.tool==='hallmark_list_store_products'&&query.params?.status!==undefined)?{spill:response.spill}:{})},provenance:metadata.provenance,operation:{operationId,state:'succeeded'},...(match[1]==='profit'?{metricBasis:METRIC_BASIS}:{})};
    this.store.put('operations',operationId,clean({...op,state:'succeeded',result,updatedAt:now()}));projectOperationReceipt(this.store,operationId);return result;
   } catch(error){return this.finishFailure(op,datasetKey,{status:'unavailable',error:{code:'REFRESH_ERROR',message:error instanceof Error?error.message:'刷新失败',retryable:true}});}
  }
@@ -101,9 +106,9 @@ export class DatasetRefresher {
   }catch(error){return this.finishFailure(op,datasetKey,failed('REFRESH_ERROR',error instanceof Error?error.message:'类目刷新失败',true));}
  }
  /** Only actual overlapping synchronizations share this promise; sequential scheduler batches are not memoized. */
- private syncAndReadSource():Promise<AdapterResponse> {
+ private syncAndReadSource():Promise<{response:AdapterResponse;syncMs:number;readMs:number}> {
   if(this.#sourceFlight)return this.#sourceFlight;
-  const job=(async()=>{const synced=await this.client.syncStoreProducts();return synced.status==='ok'?await this.client.getStoreProducts():synced;})().finally(()=>{this.#sourceFlight=undefined;});
+  const job=(async()=>{const started=performance.now(),synced=await this.client.syncStoreProducts(),syncedAt=performance.now(),response=synced.status==='ok'?await this.client.getStoreProducts():synced;return {response,syncMs:Math.round(syncedAt-started),readMs:Math.round(performance.now()-syncedAt)};})().finally(()=>{this.#sourceFlight=undefined;});
   this.#sourceFlight=job;return job;
  }
  private async resolveQueryStore(params:RecordData):Promise<{storeId:string}|{result:ToolResult}> {

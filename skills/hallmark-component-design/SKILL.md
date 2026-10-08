@@ -22,8 +22,9 @@ Host 提供的 `authoringGuidance` 是安装目录、source starter、SDK、构�
 
 - apps_describe 只传 capabilityId/version，不传 appId。
 - 商品列表在 input.fields 指定所需字段，建议 title、imageUrl、sku、status、currency、pricing、profit、stock；身份字段和 total/cursor 自动保留。详情需要 sources 等字段时再读取，省略 fields 保留完整响应。binding.projection 不负责裁剪响应。
+- `list_store_products` / `hallmark.products.list` 的可选 `status` 只与源数据顶层 `row.status` 精确相等，缺失状态不匹配，不翻译或推断状态。仅在售绑定设置 `input.status: "on_sale"`；`query` 只做全文搜索，与 `status` 取交集，`total` 为过滤后的总数。禁止 Agent 遍历全店或客户端拉取全量后筛选在售商品，保留现有分页、`fields` 和同步语义。
 - 大结果的 sample 是截断样本；需要完整内容时按 authoringGuidance.resultReader 写 request.json 并运行读取器，使用返回的 outputPath。不要重复查询、猜结果文件或查 SQLite。
-- 可附加的分页使用 useApps.readBindingPage(bindingId, cursor)，协商 bindingPagesV1 后由宿主同步更新当前页 payload/resources/revision。页大小固定取 binding.query.input.limit；翻页清空勾选，只附加当前页资源。invokeCapability 仅做独立查询，不用于这条分页链路。
+- 列表分页统一使用 useApps.readBindingPage(bindingId, cursor)，协商 bindingPagesV1 后由宿主同步更新当前页 payload/resources/revision。页大小固定取 binding.query.input.limit；附加到聊天暂未开放，不生成附加按钮或为附加设置勾选；分页不自动同步 Agent 上下文。invokeCapability 仅做独立查询，不用于这条分页链路。
 - 先执行标准 build 和 live_readonly preview，出现具体失败后再定位相关实现；不要预先遍历安装包源码、旧报告或数据库。
 - 复用未变源码的 build 回执和预览生成的两张截图。外网图片使用预览缓存/占位，图片慢不触发重建或额外等待截图。
 
@@ -32,11 +33,12 @@ Host 提供的 `authoringGuidance` 是安装目录、source starter、SDK、构�
 1. 先查询现有组件、模板与真实业务数据。新建调用 `apps.authoring.begin` 的 `mode:new`；编辑当前会话组件使用 `mode:edit` 和原 viewId；打开保存版本使用 `mode:open_saved`、componentId 及可选 revision。保留返回的 draftId、attemptId、epoch、sourceRevision、expectedViewRevision、workspacePath。同一 begin 重试使用相同 attemptId；新一轮源码修改明确开始下一 attempt。
 2. `begin` 已创建独立工作副本目录。用安装包 starter 初始化该空目录，或复制合适模板的源码、资源、package.json 与锁文件；不复制 node_modules。生成器拒绝覆盖非空目录。普通 npm 依赖可按实际设计安装，保留真实产生的锁文件，不能伪造 lockfile 或 build PASS。
 3. 直接编辑 TSX、CSS、JavaScript、图片与其他资源。允许条件、循环、局部状态、搜索、排序、图表与派生计算，不把旧 ViewSpec 词表或宿主 React 版本当作源码上限。新 A.2 页面使用 `@dsh/apps-component-runtime/apps/react` 的 v2 SDK，旧 v1 页面继续使用原根入口与 `/react`；协议必须与预览和 Host 匹配。新 SDK 的 required readiness assertions 必须实际读取 React commit 后的 DOM/数据，不能返回固定 PASS。
-4. 写入构建请求 JSON，将 attemptId/epoch/sourceRevision、workspacePath、实际 command 数组及 Host 返回的 evidenceRoot/archiveRoot/runtime 参数传给安装包构建 CLI。原命令工具执行 `node <installed>/lib/apps-authoring-build.js <request.json>`。凭据从本机 keyFile 读取，不把令牌内容写入聊天或命令行。CLI 在实际 spawn 前向 Runtime 登记 building；取消会持久化 epoch 并通知同一 epoch 的进程停止。
-5. 默认构建请求设置 `autoRecord:true`、sessionId 和 viewId，CLI 通过后自动登记 record_build，并返回含回执的 previewRequest。只有真实命令退出 0、构建前后源码输入不变、日志与源码/dist 归档均可复核时才能 PASS。已存在 dist/index.html、手写 exitCode JSON 或 capture 成功都不能替代 BuildReceipt。
-6. 为冻结 build 声明具体测试计划，使用安装包预览 CLI。必须实际测 420 与 1040 CSS 像素内容宽度、deviceScaleFactor、截图、运行异常、失败请求、v2 bridge 和交互断言。搜索、勾选、分页、展开等控件分别写入输入动作与可观察结果；有交互控件时不得使用 noninteractiveReason 绕过测试。默认使用 live_readonly，传入当前 sessionId、viewId、runtime，不手工拼装真实数据夹具。requiredMethods 按实际功能声明 readBindingPage、refresh、attachSelection，并通过真实动作触发；缺失能力不能当作通过。fixture 仅用于明确的离线测试。
-7. **打开两张真实截图实际看效果**，阅读 pageErrors、unhandledRejections、failedRequests 和 required assertions。检查长名称、图片缺失、空数据、信息层级、窄栏溢出与宽页布局。仅在看到明确布局或交互缺陷时修改源码并再次构建/预览；无缺陷直接复用成功回执。不能仅看“无报错”就声称视觉效果合格。
-8. 预览请求设置 `autoRecord:true`，PASS 后自动登记 record_preview。读取 summaryPath 的失败项、截图路径、耗时和回执；异常也读取该摘要，不自写包装器。仅登记失败时复用报告修正登记参数。登记成功后调用 `publish`，带同一 attemptId、epoch、buildId、BuildReceipt/PreviewReceipt ID、viewId 与 expectedViewRevision。`publish` 成功只表示 prepared，当前聊天会自动加载；实际 iframe 完成数据读取、React 渲染与 bridge 检查后，经过精确 documentNonce/frame/attempt 身份确认才交换 active/last-good build。构建失败、白屏、超时、取消或过期结果保留旧可用界面；首次失败显示真实空态。
+4. 先读 authoringGuidance.developerDocs.index，按其中流程用 checkRunner.prepareRequest 自动准备请求（仅填 attemptId）；只维护 `.preview/plan.json`，不要将请求放在源码根目录或手改 epoch/sourceRevision。build 使用 Host 的实际路径与 begin 返回身份；preview 使用 live_readonly 和真实交互断言。搜索、勾选、分页、刷新、附加按实际功能验证，requiredMethods 与动作对应。fixture 仅用于明确离线测试。
+5. 优先运行 checkRunner，Windows 使用 windowsCommand。薄启动脚本等待真实进程退出；现有检查器顺序构建、自动登记构建回执、双视口预览、自动登记预览回执。无需再手动执行这四步。凭据从 keyFile 读取，不把令牌内容写入聊天或命令行；不手造 PASS 报告。
+6. 阅读 result/summaryPath 的失败项、回执及 420/1040 截图。需要顶部、底部或交互后画面时提前在 assertion 配置 screenshot，不额外搭建 Host/CDP。仅在发现具体布局或交互缺陷时修改源码；通过后复用成功回执。异常读返回的独立错误摘要路径，并结合 inspect.summary 定位。
+7. 调用 publish，带同一 attemptId、epoch、buildId、两份回执 ID、viewId 与 expectedViewRevision。publish 仅表示 prepared，当前聊天自动加载；inspect.summary 确认实际展示。展示失败不自动重建；保存由用户明确要求后单独执行。
+
+单独 build/preview CLI 仍可用于只需要某一阶段的任务，正常新建走上面的 checkRunner 流程。
 
 组件设计与数据绑定分别管理。数据刷新只更新原绑定的数据与 freshness，保留设计、源码 buildId、组件版本、本地排序和可兼容 UI 状态。多绑定分别报告成功、失败或陈旧时间，不能用一个绑定的成功覆盖另一个绑定的错误。
 
@@ -65,6 +67,16 @@ VIEW_CONFLICT / COMPONENT_CONFLICT / ATTEMPT_SUPERSEDED 时保留工作副本，
 
 ## 同一尝试继续执行
 
-交互计划已明确时使用当前 Host guidance 的 checkRunner：请求包含 build 和 preview，由现有脚本顺序执行构建、登记构建回执、预览、登记预览回执，不自动发布或保存。重复运行同一请求复用有效报告；登记响应丢失时先 inspect 原回执。只读摘要里的 reusedBuild / reusedPreview、stage 和 nextAction，不另写包装脚本。
+交互计划已明确时使用当前 Host guidance 的 checkRunner：请求包含 build 和 preview，由现有脚本顺序执行构建、登记构建回执、预览、登记预览回执，不自动发布或保存。重复运行同一请求复用有效报告；登记响应丢失时先 inspect 原回执。优先读摘要里的 reusedBuild / reusedPreview、stage 和 nextAction，不另写包装脚本。
 
-源码、锁文件、命令或相关环境改变时不能复用旧构建；已登记的预览回执也不能在同一 attempt 中替换。NEW_ATTEMPT_REQUIRED 表示按现有 begin 流程开启新尝试，不能反复提交旧请求。尚未登记的预览计划变化只需重跑预览。仅展示失败使用 inspect，不运行 checkRunner。
+源码、锁文件、命令或相关环境改变时不能复用旧构建；已登记的预览回执也不能在同一 attempt 中替换。明确输入改变而返回 NEW_ATTEMPT_REQUIRED 时按现有 begin 流程开启新尝试；调用异常先结合 inspect.summary 确认已有成功回执，不能反复提交旧请求。尚未登记的预览计划变化只需重跑预览。仅展示失败使用 inspect，不运行 checkRunner。
+
+## 随包开发文档与可靠检查
+
+先读 authoringGuidance.developerDocs.index；数据结构、首次加载、分页与附加以该说明和 product-list 示例为准，不从旧临时数据或预览器源码反推。用 --template product-list 初始化后按业务需求修改。
+
+Windows 优先 checkRunner.windowsCommand，它等待进程退出并提供 exitCode、result 和日志。相同请求恢复原报告，verifiedAt 是原验证时间；实时数据变化不要求恢复任务重建，需要验证最新数据才开启新 attempt。错误调用使用独立 .error.json，先结合 inspect.summary 判断已有成功回执。
+
+在正式 preview 的 assertion 上配置 screenshot:{} 或 screenshot:{selector:"#pager"}，从摘要读取交互后的顶部／底部图；不另起 Host/CDP。只为具体可见缺陷修改源码，通过后发布。
+
+真实平台同步和绑定重读分开：同步成功再重读，等待期间保留旧数据。耗时同步只在一个声明视口验证（viewports / requiredMethodsOnce），布局和分页双视口检查；不制作 FAST_CHECK 或只验证“已触发”的替代构建。详见开发者文档的“耗时同步与双尺寸验证”。

@@ -277,13 +277,16 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
           if((publication.state==='prepared'||publication.state==='mounting')&&current.pendingPublicationId===publication.publicationId&&current.viewRevision===publication.expectedViewRevision&&(!revision||revision===publication.expectedViewRevision))return send(res,200,{...current,...(publication.state==='mounting'?{source:publication.source}:{}),publication});
           if(['failed_mount','interrupted'].includes(publication.state)&&current.viewRevision===publication.expectedViewRevision&&(!current.pendingPublicationId||current.pendingPublicationId===publication.publicationId)&&(!revision||revision===publication.expectedViewRevision))return send(res,200,{...current,publication});
           if(publication.state==='mounted'&&publication.committedViewRevision&&(!revision||revision===publication.committedViewRevision)){
-            const snapshot=runtime.store.list<{namespace:string;value:AppsView}>('provider_records').find(row=>row.namespace==='view_revisions'&&row.value.ownerSessionId===sessionId&&row.value.viewId===viewId&&row.value.viewRevision===publication.committedViewRevision&&row.value.source?.buildId===publication.candidateBuildId)?.value;
+            const record=runtime.store.get<{namespace:string;value:AppsView}>('provider_records','view-revision:'+canonicalJson([sessionId,viewId,publication.committedViewRevision]));
+            const snapshot=record?.namespace==='view_revisions'&&record.value.ownerSessionId===sessionId&&record.value.viewId===viewId&&record.value.viewRevision===publication.committedViewRevision&&record.value.source?.buildId===publication.candidateBuildId?record.value:undefined;
             if(snapshot)return send(res,200,{...snapshot,publication});
           }
           throw Object.assign(new Error('The fixed publication is no longer mountable; inspect its terminal result.'),{code:'PUBLICATION_UNAVAILABLE'});
         }
         if(buildId||revision!==undefined){
-          const historical=runtime.store.list<{namespace:string;value:AppsView}>('provider_records').filter(row=>row.namespace==='view_revisions').map(row=>row.value).find(view=>view.ownerSessionId===sessionId&&view.viewId===viewId&&(revision===undefined||view.viewRevision===revision)&&(!buildId||view.source?.buildId===buildId));
+          const record=revision===undefined?undefined:runtime.store.get<{namespace:string;value:AppsView}>('provider_records','view-revision:'+canonicalJson([sessionId,viewId,revision]));
+          const records=revision===undefined?runtime.store.list<{namespace:string;value:AppsView}>('provider_records'):record?[record]:[];
+          const historical=records.filter(row=>row.namespace==='view_revisions').map(row=>row.value).find(view=>view.ownerSessionId===sessionId&&view.viewId===viewId&&(revision===undefined||view.viewRevision===revision)&&(!buildId||view.source?.buildId===buildId));
           if(historical)return send(res,200,historical);
           if((!buildId||current.source?.buildId===buildId)&&(revision===undefined||current.viewRevision===revision))return send(res,200,current);
           throw Object.assign(new Error('The message names an unavailable historical view; current source is not substituted.'),{code:'VIEW_REVISION_NOT_FOUND'});

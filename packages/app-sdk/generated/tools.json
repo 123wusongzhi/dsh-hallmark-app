@@ -1,5 +1,3359 @@
 [
   {
+    "name": "apps.authoring.begin",
+    "description": "Versioned local authoring metadata. Candidates, mounting, confirmed display and explicit saved assets are distinct; this action owns no domain mutation or another Agent loop.",
+    "parameters": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "new"
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "componentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "workspacePath": {
+              "type": "string",
+              "minLength": 1
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "invocationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "edit"
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "componentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "workspacePath": {
+              "type": "string",
+              "minLength": 1
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "invocationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "mode",
+            "viewId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "open_saved"
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "componentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "workspacePath": {
+              "type": "string",
+              "minLength": 1
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "invocationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "mode",
+            "componentId"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "draftId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ownerSessionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "workspacePath": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "epoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "status": {
+              "enum": [
+                "editing",
+                "building",
+                "build_failed",
+                "previewing",
+                "preview_failed",
+                "publish_ready",
+                "mounting",
+                "mounted",
+                "failed_mount",
+                "cancelled",
+                "superseded",
+                "interrupted",
+                "closed",
+                "discarded"
+              ]
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "sourceComponentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "selectedSourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "baseRevisionAtOpen": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "draftId",
+            "ownerSessionId",
+            "viewId",
+            "workspacePath",
+            "sourceRevision",
+            "epoch",
+            "status",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        },
+        "attempt": {
+          "type": "object",
+          "properties": {
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "draftId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "epoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "state": {
+              "enum": [
+                "editing",
+                "building",
+                "build_failed",
+                "previewing",
+                "preview_failed",
+                "publish_ready",
+                "mounting",
+                "mounted",
+                "failed_mount",
+                "cancelled",
+                "superseded",
+                "interrupted"
+              ]
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "expectedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "invocationRefs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256",
+                  "bytes"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "terminalReason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "buildReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "previewReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "publicationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "requestHash": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "attemptId",
+            "draftId",
+            "epoch",
+            "sourceRevision",
+            "state",
+            "startedAt",
+            "expectedViewRevision",
+            "invocationRefs",
+            "evidenceRefs",
+            "terminalReason"
+          ],
+          "additionalProperties": false
+        },
+        "view": {
+          "type": "object",
+          "properties": {
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ownerSessionId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "design": {},
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "buildId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "directory": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "entry": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "buildId",
+                "directory",
+                "entry",
+                "files"
+              ],
+              "additionalProperties": true
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "sourceComponentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "baseRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "viewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "activeBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lastGoodBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "previousGoodBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pendingPublicationId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "validationStatus": {
+              "enum": [
+                "draft_unpublished",
+                "legacy_unverified",
+                "verified"
+              ]
+            }
+          },
+          "required": [
+            "viewId",
+            "ownerSessionId",
+            "title",
+            "design",
+            "bindings",
+            "createdAt",
+            "updatedAt",
+            "viewRevision",
+            "activeBuildId",
+            "lastGoodBuildId",
+            "previousGoodBuildId",
+            "pendingPublicationId",
+            "validationStatus"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "draft",
+        "attempt",
+        "view"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "apps.authoring.cancel",
+    "description": "Versioned local authoring metadata. Candidates, mounting, confirmed display and explicit saved assets are distinct; this action owns no domain mutation or another Agent loop.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedEpoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "attemptId",
+        "expectedEpoch",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "cancelled",
+            "already_published"
+          ]
+        },
+        "activeBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "viewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "publication": {
+          "type": "object",
+          "properties": {
+            "publicationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ownerSessionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptEpoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "expectedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "candidateBuildId": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "priorActiveBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "state": {
+              "enum": [
+                "prepared",
+                "mounting",
+                "mounted",
+                "failed_mount",
+                "cancelled",
+                "superseded",
+                "interrupted"
+              ]
+            },
+            "readyDeadlineAt": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            },
+            "mountStartedAt": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256",
+                  "bytes"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "buildReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "previewReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "buildId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "directory": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "entry": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "buildId",
+                "directory",
+                "entry",
+                "files"
+              ],
+              "additionalProperties": true
+            },
+            "frameInstanceId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "documentNonce": {
+              "type": "string",
+              "minLength": 1
+            },
+            "committedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "terminalReason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "publicationId",
+            "viewId",
+            "ownerSessionId",
+            "attemptId",
+            "attemptEpoch",
+            "expectedViewRevision",
+            "candidateBuildId",
+            "priorActiveBuildId",
+            "state",
+            "readyDeadlineAt",
+            "evidenceRefs",
+            "createdAt",
+            "updatedAt",
+            "buildReceiptId",
+            "previewReceiptId",
+            "source"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "status",
+        "activeBuildId",
+        "viewRevision"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "apps.authoring.inspect",
+    "description": "Versioned local authoring metadata. Candidates, mounting, confirmed display and explicit saved assets are distinct; this action owns no domain mutation or another Agent loop.",
+    "parameters": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "displayId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "attemptId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "publicationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "displayId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "publicationId"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "object",
+          "properties": {
+            "lastConfirmedDisplay": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "preparedBuild": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "currentDisplay": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "blockedStage": {
+              "type": "string",
+              "minLength": 1
+            },
+            "nextAction": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "target": {
+                  "type": "object"
+                },
+                "errorCodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "action",
+                "reason",
+                "target",
+                "errorCodes"
+              ],
+              "additionalProperties": false
+            },
+            "requiresRebuild": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "lastConfirmedDisplay",
+            "preparedBuild",
+            "currentDisplay",
+            "blockedStage",
+            "nextAction",
+            "requiresRebuild"
+          ],
+          "additionalProperties": false
+        },
+        "draft": {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "draftId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ownerSessionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "workspacePath": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "epoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "status": {
+              "enum": [
+                "editing",
+                "building",
+                "build_failed",
+                "previewing",
+                "preview_failed",
+                "publish_ready",
+                "mounting",
+                "mounted",
+                "failed_mount",
+                "cancelled",
+                "superseded",
+                "interrupted",
+                "closed",
+                "discarded"
+              ]
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "sourceComponentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "selectedSourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "baseRevisionAtOpen": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "draftId",
+            "ownerSessionId",
+            "viewId",
+            "workspacePath",
+            "sourceRevision",
+            "epoch",
+            "status",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        },
+        "attempt": {
+          "type": "object",
+          "properties": {
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "draftId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "epoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "state": {
+              "enum": [
+                "editing",
+                "building",
+                "build_failed",
+                "previewing",
+                "preview_failed",
+                "publish_ready",
+                "mounting",
+                "mounted",
+                "failed_mount",
+                "cancelled",
+                "superseded",
+                "interrupted"
+              ]
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "expectedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "invocationRefs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256",
+                  "bytes"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "terminalReason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "buildReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "previewReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "publicationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "requestHash": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "attemptId",
+            "draftId",
+            "epoch",
+            "sourceRevision",
+            "state",
+            "startedAt",
+            "expectedViewRevision",
+            "invocationRefs",
+            "evidenceRefs",
+            "terminalReason"
+          ],
+          "additionalProperties": false
+        },
+        "publication": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "publicationId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "viewId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ownerSessionId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "attemptId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "attemptEpoch": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "expectedViewRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "candidateBuildId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "priorActiveBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "enum": [
+                    "prepared",
+                    "mounting",
+                    "mounted",
+                    "failed_mount",
+                    "cancelled",
+                    "superseded",
+                    "interrupted"
+                  ]
+                },
+                "readyDeadlineAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "mountStartedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "evidenceRefs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "sha256",
+                      "bytes"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "buildReceiptId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "previewReceiptId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "buildId": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "directory": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "entry": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "required": [
+                    "buildId",
+                    "directory",
+                    "entry",
+                    "files"
+                  ],
+                  "additionalProperties": true
+                },
+                "frameInstanceId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "documentNonce": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "committedViewRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "terminalReason": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "publicationId",
+                "viewId",
+                "ownerSessionId",
+                "attemptId",
+                "attemptEpoch",
+                "expectedViewRevision",
+                "candidateBuildId",
+                "priorActiveBuildId",
+                "state",
+                "readyDeadlineAt",
+                "evidenceRefs",
+                "createdAt",
+                "updatedAt",
+                "buildReceiptId",
+                "previewReceiptId",
+                "source"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "view": {
+          "type": "object",
+          "properties": {
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ownerSessionId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "design": {},
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "buildId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "directory": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "entry": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "buildId",
+                "directory",
+                "entry",
+                "files"
+              ],
+              "additionalProperties": true
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "sourceComponentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "baseRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "viewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "activeBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lastGoodBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "previousGoodBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pendingPublicationId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "validationStatus": {
+              "enum": [
+                "draft_unpublished",
+                "legacy_unverified",
+                "verified"
+              ]
+            }
+          },
+          "required": [
+            "viewId",
+            "ownerSessionId",
+            "title",
+            "design",
+            "bindings",
+            "createdAt",
+            "updatedAt",
+            "viewRevision",
+            "activeBuildId",
+            "lastGoodBuildId",
+            "previousGoodBuildId",
+            "pendingPublicationId",
+            "validationStatus"
+          ],
+          "additionalProperties": true
+        },
+        "latestDisplay": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "displayId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "generation": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "ownerSessionId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "viewId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "publicationId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "attemptId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "attemptEpoch": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "buildId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "expectedViewRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "state": {
+                  "enum": [
+                    "opening",
+                    "ready",
+                    "failed",
+                    "retired"
+                  ]
+                },
+                "view": {
+                  "type": "object",
+                  "properties": {
+                    "viewId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "ownerSessionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "design": {},
+                    "bindings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "source": {
+                      "type": "object",
+                      "properties": {
+                        "buildId": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "directory": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "entry": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "files": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      },
+                      "required": [
+                        "buildId",
+                        "directory",
+                        "entry",
+                        "files"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "sourceComponentId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "baseRevision": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "viewRevision": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "activeBuildId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "lastGoodBuildId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "previousGoodBuildId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "pendingPublicationId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "validationStatus": {
+                      "enum": [
+                        "draft_unpublished",
+                        "legacy_unverified",
+                        "verified"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "viewId",
+                    "ownerSessionId",
+                    "title",
+                    "design",
+                    "bindings",
+                    "createdAt",
+                    "updatedAt",
+                    "viewRevision",
+                    "activeBuildId",
+                    "lastGoodBuildId",
+                    "previousGoodBuildId",
+                    "pendingPublicationId",
+                    "validationStatus"
+                  ],
+                  "additionalProperties": true
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "phase": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 160
+                      },
+                      "message": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 4096
+                      },
+                      "at": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "phase",
+                      "code",
+                      "message"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "readyAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "frameInstanceId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "documentNonce": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "displayId",
+                "generation",
+                "ownerSessionId",
+                "viewId",
+                "publicationId",
+                "attemptId",
+                "attemptEpoch",
+                "buildId",
+                "expectedViewRevision",
+                "state",
+                "view",
+                "errors",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "displays": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "displayId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "ownerSessionId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "viewId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "publicationId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "attemptId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "attemptEpoch": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "buildId": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "expectedViewRevision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "opening",
+                  "ready",
+                  "failed",
+                  "retired"
+                ]
+              },
+              "view": {
+                "type": "object",
+                "properties": {
+                  "viewId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "ownerSessionId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "design": {},
+                  "bindings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "buildId": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "directory": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "entry": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "files": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    },
+                    "required": [
+                      "buildId",
+                      "directory",
+                      "entry",
+                      "files"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "sourceComponentId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "baseRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "viewRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "activeBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "lastGoodBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "previousGoodBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "pendingPublicationId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "validationStatus": {
+                    "enum": [
+                      "draft_unpublished",
+                      "legacy_unverified",
+                      "verified"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewId",
+                  "ownerSessionId",
+                  "title",
+                  "design",
+                  "bindings",
+                  "createdAt",
+                  "updatedAt",
+                  "viewRevision",
+                  "activeBuildId",
+                  "lastGoodBuildId",
+                  "previousGoodBuildId",
+                  "pendingPublicationId",
+                  "validationStatus"
+                ],
+                "additionalProperties": true
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "phase": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    "at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "phase",
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "readyAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "frameInstanceId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "documentNonce": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "displayId",
+              "generation",
+              "ownerSessionId",
+              "viewId",
+              "publicationId",
+              "attemptId",
+              "attemptEpoch",
+              "buildId",
+              "expectedViewRevision",
+              "state",
+              "view",
+              "errors",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "display": {
+          "type": "object",
+          "properties": {
+            "displayId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "generation": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "ownerSessionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "publicationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptEpoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "buildId": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "expectedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "state": {
+              "enum": [
+                "opening",
+                "ready",
+                "failed",
+                "retired"
+              ]
+            },
+            "view": {
+              "type": "object",
+              "properties": {
+                "viewId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ownerSessionId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "design": {},
+                "bindings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "buildId": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "directory": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "entry": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "required": [
+                    "buildId",
+                    "directory",
+                    "entry",
+                    "files"
+                  ],
+                  "additionalProperties": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "sourceComponentId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "baseRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "viewRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "activeBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "lastGoodBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "previousGoodBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "pendingPublicationId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "validationStatus": {
+                  "enum": [
+                    "draft_unpublished",
+                    "legacy_unverified",
+                    "verified"
+                  ]
+                }
+              },
+              "required": [
+                "viewId",
+                "ownerSessionId",
+                "title",
+                "design",
+                "bindings",
+                "createdAt",
+                "updatedAt",
+                "viewRevision",
+                "activeBuildId",
+                "lastGoodBuildId",
+                "previousGoodBuildId",
+                "pendingPublicationId",
+                "validationStatus"
+              ],
+              "additionalProperties": true
+            },
+            "errors": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "at": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "phase",
+                  "code",
+                  "message"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "readyAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "frameInstanceId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "documentNonce": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "displayId",
+            "generation",
+            "ownerSessionId",
+            "viewId",
+            "publicationId",
+            "attemptId",
+            "attemptEpoch",
+            "buildId",
+            "expectedViewRevision",
+            "state",
+            "view",
+            "errors",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        },
+        "workspaceAvailable": {
+          "type": "boolean"
+        },
+        "missingEvidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "summary",
+        "draft",
+        "attempt",
+        "publication",
+        "view",
+        "latestDisplay",
+        "displays",
+        "workspaceAvailable",
+        "missingEvidence"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "apps.authoring.publish",
+    "description": "Versioned local authoring metadata. Candidates, mounting, confirmed display and explicit saved assets are distinct; this action owns no domain mutation or another Agent loop.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "viewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedViewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "buildId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "buildReceiptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previewReceiptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "publicationId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "attemptId",
+        "epoch",
+        "viewId",
+        "expectedViewRevision",
+        "buildId",
+        "buildReceiptId",
+        "previewReceiptId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "publicationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "viewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ownerSessionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attemptEpoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "expectedViewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "candidateBuildId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "priorActiveBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "enum": [
+            "prepared",
+            "mounting",
+            "mounted",
+            "failed_mount",
+            "cancelled",
+            "superseded",
+            "interrupted"
+          ]
+        },
+        "readyDeadlineAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "mountStartedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "path",
+              "sha256",
+              "bytes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "buildReceiptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previewReceiptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "buildId": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "directory": {
+              "type": "string",
+              "minLength": 1
+            },
+            "entry": {
+              "type": "string",
+              "minLength": 1
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "buildId",
+            "directory",
+            "entry",
+            "files"
+          ],
+          "additionalProperties": true
+        },
+        "frameInstanceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "documentNonce": {
+          "type": "string",
+          "minLength": 1
+        },
+        "committedViewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "terminalReason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "publicationId",
+        "viewId",
+        "ownerSessionId",
+        "attemptId",
+        "attemptEpoch",
+        "expectedViewRevision",
+        "candidateBuildId",
+        "priorActiveBuildId",
+        "state",
+        "readyDeadlineAt",
+        "evidenceRefs",
+        "createdAt",
+        "updatedAt",
+        "buildReceiptId",
+        "previewReceiptId",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "apps.authoring.record_build",
+    "description": "Versioned local authoring metadata. Candidates, mounting, confirmed display and explicit saved assets are distinct; this action owns no domain mutation or another Agent loop.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reportRef": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "path",
+            "sha256",
+            "bytes"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "attemptId",
+        "epoch",
+        "reportRef"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "receiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sourceInputDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "lockfileDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "command": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "cwd": {
+              "type": "string",
+              "minLength": 1
+            },
+            "toolchain": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "exitCode": {
+              "const": 0
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "finishedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "logRef": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "path",
+                "sha256",
+                "bytes"
+              ],
+              "additionalProperties": false
+            },
+            "distDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "archiveBuildId": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "fileManifestRef": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "path",
+                "sha256",
+                "bytes"
+              ],
+              "additionalProperties": false
+            },
+            "inputUnchanged": {
+              "const": true
+            },
+            "verdict": {
+              "const": "PASS"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "receiptId",
+            "attemptId",
+            "sourceRevision",
+            "sourceInputDigest",
+            "lockfileDigest",
+            "command",
+            "cwd",
+            "toolchain",
+            "exitCode",
+            "startedAt",
+            "finishedAt",
+            "logRef",
+            "distDigest",
+            "archiveBuildId",
+            "fileManifestRef",
+            "inputUnchanged",
+            "verdict"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "receiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sourceInputDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "lockfileDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "command": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "cwd": {
+              "type": "string",
+              "minLength": 1
+            },
+            "toolchain": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "exitCode": {
+              "type": "integer"
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "finishedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "logRef": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "path",
+                "sha256",
+                "bytes"
+              ],
+              "additionalProperties": false
+            },
+            "distDigest": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "archiveBuildId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "fileManifestRef": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "bytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256",
+                    "bytes"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "inputUnchanged": {
+              "type": "boolean"
+            },
+            "verdict": {
+              "const": "FAIL"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "receiptId",
+            "attemptId",
+            "sourceRevision",
+            "sourceInputDigest",
+            "lockfileDigest",
+            "command",
+            "cwd",
+            "toolchain",
+            "exitCode",
+            "startedAt",
+            "finishedAt",
+            "logRef",
+            "distDigest",
+            "archiveBuildId",
+            "fileManifestRef",
+            "inputUnchanged",
+            "verdict"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "apps.authoring.record_preview",
+    "description": "Versioned local authoring metadata. Candidates, mounting, confirmed display and explicit saved assets are distinct; this action owns no domain mutation or another Agent loop.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "buildReceiptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reportRef": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "path",
+            "sha256",
+            "bytes"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "attemptId",
+        "epoch",
+        "buildReceiptId",
+        "reportRef"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "receiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "buildReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "buildId": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "protocol": {
+              "const": "dsh.apps.component.v2"
+            },
+            "mode": {
+              "enum": [
+                "fixture",
+                "live_readonly"
+              ]
+            },
+            "runnerVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "finishedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "viewportResults": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "contentWidthCssPx": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "heightCssPx": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "deviceScaleFactor": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "screenshot": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "sha256",
+                      "bytes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "pageErrors": {
+                    "type": "array",
+                    "maxItems": 0,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "unhandledRejections": {
+                    "type": "array",
+                    "maxItems": 0,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "failedRequests": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "bridgeReady": {
+                    "const": true
+                  },
+                  "assertionIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "contentWidthCssPx",
+                  "heightCssPx",
+                  "deviceScaleFactor",
+                  "screenshot",
+                  "pageErrors",
+                  "unhandledRejections",
+                  "failedRequests",
+                  "bridgeReady",
+                  "assertionIds"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "assertionResults": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "required": {
+                        "const": true
+                      },
+                      "expected": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "actual": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "const": "PASS"
+                      },
+                      "evidenceRefs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "bytes": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "path",
+                            "sha256",
+                            "bytes"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "required",
+                      "expected",
+                      "actual",
+                      "status",
+                      "evidenceRefs"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "required": {
+                        "const": false
+                      },
+                      "expected": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "actual": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "enum": [
+                          "PASS",
+                          "FAIL",
+                          "NOT_RUN",
+                          "BLOCKED"
+                        ]
+                      },
+                      "evidenceRefs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "bytes": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "path",
+                            "sha256",
+                            "bytes"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "required",
+                      "expected",
+                      "actual",
+                      "status",
+                      "evidenceRefs"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "verdict": {
+              "const": "PASS"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "receiptId",
+            "attemptId",
+            "buildReceiptId",
+            "buildId",
+            "protocol",
+            "mode",
+            "runnerVersion",
+            "startedAt",
+            "finishedAt",
+            "viewportResults",
+            "assertionResults",
+            "verdict"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "receiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "buildReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "buildId": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "protocol": {
+              "const": "dsh.apps.component.v2"
+            },
+            "mode": {
+              "enum": [
+                "fixture",
+                "live_readonly"
+              ]
+            },
+            "runnerVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "finishedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "viewportResults": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "contentWidthCssPx": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "heightCssPx": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "deviceScaleFactor": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "screenshot": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "sha256",
+                      "bytes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "pageErrors": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "unhandledRejections": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "failedRequests": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "bridgeReady": {
+                    "type": "boolean"
+                  },
+                  "assertionIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "contentWidthCssPx",
+                  "heightCssPx",
+                  "deviceScaleFactor",
+                  "screenshot",
+                  "pageErrors",
+                  "unhandledRejections",
+                  "failedRequests",
+                  "bridgeReady",
+                  "assertionIds"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "assertionResults": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "required": {
+                    "type": "boolean"
+                  },
+                  "expected": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "actual": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "status": {
+                    "enum": [
+                      "PASS",
+                      "FAIL",
+                      "NOT_RUN",
+                      "BLOCKED"
+                    ]
+                  },
+                  "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "bytes": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "sha256",
+                        "bytes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "required",
+                  "expected",
+                  "actual",
+                  "status",
+                  "evidenceRefs"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "verdict": {
+              "enum": [
+                "FAIL",
+                "INCOMPLETE"
+              ]
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "receiptId",
+            "attemptId",
+            "buildReceiptId",
+            "buildId",
+            "protocol",
+            "mode",
+            "runnerVersion",
+            "startedAt",
+            "finishedAt",
+            "viewportResults",
+            "assertionResults",
+            "verdict"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "apps.authoring.save_component",
+    "description": "Explicitly save a confirmed authoring view using component/view CAS and the existing idempotent mutation ledger.",
+    "parameters": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expectedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "userRequest": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mode": {
+              "const": "save_as"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "viewId",
+            "expectedViewRevision",
+            "userRequest",
+            "mode"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expectedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "userRequest": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mode": {
+              "const": "update"
+            },
+            "componentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expectedRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "viewId",
+            "expectedViewRevision",
+            "userRequest",
+            "mode",
+            "componentId",
+            "expectedRevision"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "componentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "view": {
+          "type": "object"
+        },
+        "userRequest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "savedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "componentId",
+        "revision",
+        "title",
+        "view",
+        "userRequest",
+        "savedAt"
+      ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
     "name": "apps.presentation.list_saved",
     "description": "Shared component listSaved. Builds and drafts remain separate from explicit saved assets.",
     "parameters": {
@@ -194,6 +3548,50 @@
                   "baseRevision": {
                     "type": "integer",
                     "minimum": 1
+                  },
+                  "baseRevisionAtOpen": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "selectedSourceRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "viewRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "activeBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "lastGoodBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "previousGoodBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "pendingPublicationId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "validationStatus": {
+                    "enum": [
+                      "draft_unpublished",
+                      "legacy_unverified",
+                      "verified",
+                      "failed"
+                    ]
                   },
                   "initialData": {
                     "type": "array",
@@ -680,6 +4078,10 @@
         },
         "pinned": {
           "type": "boolean"
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
         }
       },
       "required": [
@@ -872,6 +4274,50 @@
                 "baseRevision": {
                   "type": "integer",
                   "minimum": 1
+                },
+                "baseRevisionAtOpen": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "selectedSourceRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "viewRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "activeBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "lastGoodBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "previousGoodBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "pendingPublicationId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "validationStatus": {
+                  "enum": [
+                    "draft_unpublished",
+                    "legacy_unverified",
+                    "verified",
+                    "failed"
+                  ]
                 },
                 "initialData": {
                   "type": "array",
@@ -1519,6 +4965,50 @@
           "type": "integer",
           "minimum": 1
         },
+        "baseRevisionAtOpen": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selectedSourceRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "viewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "activeBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "previousGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pendingPublicationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validationStatus": {
+          "enum": [
+            "draft_unpublished",
+            "legacy_unverified",
+            "verified",
+            "failed"
+          ]
+        },
         "initialData": {
           "type": "array",
           "items": {
@@ -1867,6 +5357,50 @@
         "baseRevision": {
           "type": "integer",
           "minimum": 1
+        },
+        "baseRevisionAtOpen": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selectedSourceRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "viewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "activeBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "previousGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pendingPublicationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validationStatus": {
+          "enum": [
+            "draft_unpublished",
+            "legacy_unverified",
+            "verified",
+            "failed"
+          ]
         },
         "initialData": {
           "type": "array",
@@ -2236,6 +5770,50 @@
           "type": "integer",
           "minimum": 1
         },
+        "baseRevisionAtOpen": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selectedSourceRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "viewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "activeBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "previousGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pendingPublicationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validationStatus": {
+          "enum": [
+            "draft_unpublished",
+            "legacy_unverified",
+            "verified",
+            "failed"
+          ]
+        },
         "initialData": {
           "type": "array",
           "items": {
@@ -2506,6 +6084,50 @@
             "baseRevision": {
               "type": "integer",
               "minimum": 1
+            },
+            "baseRevisionAtOpen": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "selectedSourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "viewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "activeBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lastGoodBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "previousGoodBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pendingPublicationId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "validationStatus": {
+              "enum": [
+                "draft_unpublished",
+                "legacy_unverified",
+                "verified",
+                "failed"
+              ]
             },
             "initialData": {
               "type": "array",
@@ -3370,6 +6992,50 @@
         "baseRevision": {
           "type": "integer",
           "minimum": 1
+        },
+        "baseRevisionAtOpen": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selectedSourceRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "viewRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "activeBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "previousGoodBuildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pendingPublicationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validationStatus": {
+          "enum": [
+            "draft_unpublished",
+            "legacy_unverified",
+            "verified",
+            "failed"
+          ]
         },
         "initialData": {
           "type": "array",
@@ -5549,7 +9215,7 @@
   },
   {
     "name": "hallmark.products.list",
-    "description": "读取店铺商品最近快照，保留原始源字段与时间",
+    "description": "读取店铺商品最近快照，保留原始源字段与时间；status 精确筛选后分页，query 仅作全文搜索，与 status 取交集。仅在售用 status:on_sale，禁止遍历全店再筛选",
     "parameters": {
       "type": "object",
       "properties": {
@@ -5578,7 +9244,37 @@
         "query": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 4000
+          "maxLength": 4000,
+          "description": "整行全文搜索，不代表精确商品状态；与 status 筛选取交集"
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "按源顶层 status 精确相等筛选，例如 on_sale；缺失不匹配，不翻译或推断状态"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "title",
+              "imageUrl",
+              "sku",
+              "status",
+              "platformStatus",
+              "currency",
+              "price",
+              "pricing",
+              "profit",
+              "stock",
+              "metrics",
+              "sources",
+              "declaredWeight",
+              "storeName"
+            ]
+          },
+          "description": "可选：只返回指定商品字段；身份字段始终保留。列表推荐 title/imageUrl/sku/status/currency/pricing/profit/stock；详情需要来源或规格时再请求 sources。省略保持完整响应。"
         }
       },
       "required": [],

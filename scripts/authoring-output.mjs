@@ -4,7 +4,9 @@ import {join} from 'node:path';
 import {randomUUID} from 'node:crypto';
 
 export function writeSummary(input,stage,summary){
- const path=input.summaryPath??join(input.evidenceRoot,`${input.attemptId}-${input.epoch}-${stage}-summary.json`);
+ const base=input.summaryPath??join(input.evidenceRoot,`${input.attemptId}-${input.epoch}-${stage}-summary.json`);
+ // Invocation errors must not replace a previously successful evidence summary.
+ const path=summary.verdict==='ERROR'?base+'.error.json':base;
  mkdirSync(input.evidenceRoot,{recursive:true});
  writeFileSync(path,JSON.stringify({attemptId:input.attemptId,epoch:input.epoch,...summary},null,2)+'\n');
  return path;
@@ -20,8 +22,8 @@ export async function recordEvidence(input,stage,reportRef){
 }
 export function previewSummary(result){
  const report=result.report;
- return {verdict:report.verdict,reportRef:result.reportRef,buildId:report.buildId,buildReceiptId:report.buildReceiptId,timings:result.diagnostics.timings,diagnosticsPath:result.diagnosticsPath,
+ return {verdict:report.verdict,verifiedAt:report.finishedAt,reportRef:result.reportRef,buildId:report.buildId,buildReceiptId:report.buildReceiptId,timings:result.diagnostics.timings,diagnosticsPath:result.diagnosticsPath,
   failures:report.assertionResults.filter(item=>item.status!=='PASS').map(({id,status,required,expected,actual})=>({id,status,required,expected,actual})),
   testPlanErrors:report.testPlan.errors,
-  viewports:report.viewportResults.map(view=>({id:view.id,screenshot:view.screenshot.path,pageErrors:view.pageErrors,unhandledRejections:view.unhandledRejections,failedRequests:view.failedRequests}))};
+  viewports:report.viewportResults.map(view=>({id:view.id,bridgeCalls:view.bridgeCalls??[],screenshot:view.screenshot.path,screenshots:(view.screenshots??[]).map(shot=>({afterCase:shot.afterCase,selector:shot.selector,path:shot.file.path})),pageErrors:view.pageErrors,unhandledRejections:view.unhandledRejections,failedRequests:view.failedRequests}))};
 }

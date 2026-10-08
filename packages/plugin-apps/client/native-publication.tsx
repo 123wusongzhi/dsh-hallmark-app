@@ -20,7 +20,7 @@ export function watchOwnedAppsViews(sessionId:string,onViews:ViewsListener['onVi
       if(typeof document!=='undefined'&&document.hidden)return;
       running=true;
       try{const value=await appsResource<{views:AppsView[]}>('views',{sessionId},AbortSignal.any([controller.signal,AbortSignal.timeout(5000)]));
-        if(!controller.signal.aborted){current.views=(value.views??[]).filter(view=>view.ownerSessionId===sessionId);await Promise.all([...current.listeners].map(item=>deliver(item,current.views!)));}
+        if(!controller.signal.aborted){const views=(value.views??[]).filter(view=>view.ownerSessionId===sessionId),changed=current.views!==undefined&&JSON.stringify(current.views)!==JSON.stringify(views);current.views=views;if(changed&&typeof window!=='undefined')window.dispatchEvent(new CustomEvent('hallmark-view-updated',{detail:{sessionId}}));await Promise.all([...current.listeners].map(item=>deliver(item,views)));}
       }catch(error){if(!controller.signal.aborted)for(const item of current.listeners)if(item.isCurrent())item.onError?.(error);}
       finally{running=false;if(!controller.signal.aborted&&!(typeof document!=='undefined'&&document.hidden))timer=setTimeout(()=>void current.poll(),pollMs);}
     },stop:()=>{controller.abort();if(timer!==undefined)clearTimeout(timer);if(typeof document!=='undefined')document.removeEventListener('visibilitychange',visibility);}};

@@ -4,7 +4,7 @@ import {mkdir, readFile, writeFile, cp, readdir, rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {join, resolve} from 'node:path';
-const sourceInputPaths=new Set(['scripts/build-apps-bundle.mjs','scripts/create-apps-source.mjs','scripts/apps-authoring-build.mjs','scripts/apps-authoring-preview.mjs','scripts/preview-images.mjs','scripts/preview-data.mjs','scripts/authoring-output.mjs','scripts/authoring-resume.mjs','scripts/apps-authoring-check.mjs','scripts/apps-read-result.mjs','scripts/verify-apps-sdk.mjs','scripts/install-desktop-apps.ps1','scripts/install-design-skills.ps1','skills/hallmark-component-design/SKILL.md','skills/hallmark-component-design/references/visual-direction.md','bundles/apps/package.json','bundles/apps/versions.json','bundles/apps/cordis.patch.yml','pnpm-lock.yaml']);
+const sourceInputPaths=new Set(['scripts/build-apps-bundle.mjs','scripts/create-apps-source.mjs','scripts/apps-authoring-build.mjs','scripts/apps-authoring-preview.mjs','scripts/preview-images.mjs','scripts/preview-data.mjs','scripts/authoring-output.mjs','scripts/authoring-resume.mjs','scripts/apps-authoring-check.mjs','scripts/apps-authoring-check.ps1','scripts/apps-read-result.mjs','scripts/verify-apps-sdk.mjs','scripts/install-desktop-apps.ps1','scripts/install-design-skills.ps1','skills/hallmark-component-design/SKILL.md','skills/hallmark-component-design/references/visual-direction.md','bundles/apps/package.json','bundles/apps/versions.json','bundles/apps/cordis.patch.yml','pnpm-lock.yaml']);
 async function build(options){
   const result=await esbuild({...options,metafile:true});
   for(const path of Object.keys(result.metafile.inputs))if(/^(packages|bundles)\//.test(path.replaceAll('\\','/')))sourceInputPaths.add(path.replaceAll('\\','/'));
@@ -26,6 +26,9 @@ await writeFile(`${directory}/client/client.js`,`window.__ModuleLoader__.load({i
 await build({entryPoints:['packages/service/src/apps-main.ts'],outfile:`${directory}/lib/runtime.js`,bundle:true,platform:'node',format:'esm',target:'node22',sourcemap:true,packages:'external'});
 // Node-only CLI entries bundle all project TS dependencies and load outside the checkout.
 for(const name of ['apps-authoring-build','apps-authoring-preview','apps-authoring-check','apps-read-result'])await build({entryPoints:[`scripts/${name}.mjs`],outfile:`${directory}/lib/${name}.js`,bundle:true,platform:'node',format:'esm',target:'node22',sourcemap:true,banner:{js:'#!/usr/bin/env node'}});
+await cp('scripts/apps-authoring-check.ps1',`${directory}/lib/apps-authoring-check.ps1`);
+await cp('docs/component-authoring',`${directory}/authoring-docs`,{recursive:true});
+for(const entry of await readdir('docs/component-authoring',{recursive:true,withFileTypes:true}))if(entry.isFile())sourceInputPaths.add(join(entry.parentPath,entry.name).replaceAll('\\','/'));
 // Installable development SDKs travel with the bundle; each component's normal React dependencies remain in its own lockfile.
 const generatedSdk=resolve(directory,'sdk'),bundleDirectory=resolve(directory);if(generatedSdk!==join(bundleDirectory,'sdk'))throw new Error('INVALID_GENERATED_SDK_DIRECTORY');
 await rm(generatedSdk,{recursive:true,force:true});
@@ -54,7 +57,7 @@ await mkdir(`${directory}/source-starter`,{recursive:true});
 await cp('scripts/create-apps-source.mjs',`${directory}/source-starter/create-apps-source.mjs`);
 const hashes = {};
 for (const file of ['package.json','cordis.patch.yml','versions.json','client/client.js']) hashes[file] = createHash('sha256').update(await readFile(`${directory}/${file}`)).digest('hex');
-for (const section of ['lib','sdk','source-starter'])for (const entry of await readdir(`${directory}/${section}`,{recursive:true,withFileTypes:true}))if(entry.isFile()){const absolute=resolve(entry.parentPath,entry.name);const path=absolute.substring(resolve(directory).length+1).replaceAll('\\','/');hashes[path]=createHash('sha256').update(await readFile(absolute)).digest('hex');}
+for (const section of ['lib','sdk','source-starter','authoring-docs'])for (const entry of await readdir(`${directory}/${section}`,{recursive:true,withFileTypes:true}))if(entry.isFile()){const absolute=resolve(entry.parentPath,entry.name);const path=absolute.substring(resolve(directory).length+1).replaceAll('\\','/');hashes[path]=createHash('sha256').update(await readFile(absolute)).digest('hex');}
 const evidence = `evidence/${versions.releaseId}/candidates/${manifest.version}`;await mkdir(evidence,{recursive:true});
 const sourceInputs={};for(const path of [...sourceInputPaths].sort())sourceInputs[path]=createHash('sha256').update(await readFile(path)).digest('hex');
 await writeFile(`${evidence}/build-manifest.json`,JSON.stringify({releaseId:versions.releaseId,bundleVersion:manifest.version,versions,artifacts:hashes,sourceInputs,sourceBuild:true,installed:false,liveAcceptance:'NOT_RUN',runtimeEntry:'lib/runtime.js',authoringEntries:{check:'lib/apps-authoring-check.js',build:'lib/apps-authoring-build.js',preview:'lib/apps-authoring-preview.js'},logicalPlugins:['plugin-apps','plugin-hallmark','plugin-notes'],publicEntries:1,runtimeProcesses:1},null,2)+'\n');

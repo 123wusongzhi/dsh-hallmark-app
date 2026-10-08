@@ -14,7 +14,7 @@ import {apply as attachNotes} from '../../../packages/plugin-notes/src/index.ts'
 import type {NativeSessionAdapterMode} from '../../../packages/dsh-compat/src/index.ts';
 import type {AppsAuthoringGuidance} from '../../../packages/plugin-apps/src/authoring-guidance.ts';
 export const name = 'dsh-plugin-apps-bundle';
-export const version = '1.0.0-candidate.27';
+export const version = '1.0.0-candidate.35';
 export const inject = ['tools', 'commands', 'systemPrompt', 'connection', 'agents', 'sessionQuery'];
 export const Config = Schema.object({
   serviceUrl: Schema.string().default('http://127.0.0.1:4181').description('显式Apps Runtime回环地址；候选包不启动或重启运行服务。'),

@@ -11,7 +11,7 @@ import type {SelectionEnvelope} from '../../app-contracts/src/index.ts';
 export async function startAuthoringPreview(options:{sources:SourceComponentStore;buildId:string;mode:'fixture'|'live_readonly';data:JsonValue;context?:JsonValue;port?:number;readOnlyCapability?:(input:JsonValue)=>Promise<JsonValue>;refreshData?:(input:JsonValue)=>Promise<JsonValue>;validateSelection?:(input:JsonValue)=>Promise<JsonValue>;readBindingPage?:(input:JsonValue)=>Promise<JsonValue>;closeData?:()=>Promise<unknown>;resetData?:()=>Promise<JsonValue>}) {
   if(!options.sources.verify(options.buildId).valid)throw new Error('PREVIEW_BUILD_INVALID');
   const identity={protocolVersion:'2.0' as const,sessionId:'authoring-preview',viewId:randomUUID(),buildId:options.buildId,frameInstanceId:randomUUID()};
-  const events:{method:string;at:string;result?:JsonValue;error?:string}[]=[],features=['renderReadyV1','uiStateV1',...(options.readBindingPage?['bindingPagesV1']:[])];
+  const events:{method:string;at:string;durationMs:number;result?:JsonValue;error?:string}[]=[],pendingCalls=new Set<string>(),features=['renderReadyV1','uiStateV1',...(options.readBindingPage?['bindingPagesV1']:[])];
   let ready=false,documentNonce:string|undefined;
   let data=options.data;
   const host=new ComponentHost(identity,{
@@ -32,7 +32,7 @@ export async function startAuthoringPreview(options:{sources:SourceComponentStor
       if(req.method==='POST'&&url.pathname==='/bridge'){
         if(req.headers.origin!==`http://127.0.0.1:${port}`)throw new Error('PREVIEW_ORIGIN_INVALID');
         let bytes='';for await(const chunk of req){bytes+=chunk;if(Buffer.byteLength(bytes)>262144)throw new Error('BRIDGE_MESSAGE_TOO_LARGE');}
-        const message=JSON.parse(bytes);if(message.type==='hello'&&message.documentNonce!==documentNonce){if(documentNonce)data=options.resetData?await options.resetData():options.data;documentNonce=message.documentNonce;ready=false;}const response=await host.handle(message);const result=response&&'result' in response?response.result as {status?:string;error?:{code?:string}}:undefined;const callError=response&&'error' in response?response.error?.code:result?.status&& !['ok','partial','validated'].includes(result.status)?result.error?.code??'CAPABILITY_FAILED':undefined;events.push({method:message.feature==='bindingPagesV1'?'readBindingPage':message.method??message.type,at:new Date().toISOString(),...(callError?{error:callError}:{})});
+        const message=JSON.parse(bytes);if(message.type==='hello'&&message.documentNonce!==documentNonce){if(documentNonce)data=options.resetData?await options.resetData():options.data;documentNonce=message.documentNonce;ready=false;}const started=performance.now(),callId=randomUUID();pendingCalls.add(callId);let response;try{response=await host.handle(message);}finally{pendingCalls.delete(callId);}const result=response&&'result' in response?response.result as {status?:string;error?:{code?:string}}:undefined;const callError=response&&'error' in response?response.error?.code:result?.status&& !['ok','partial','validated'].includes(result.status)?result.error?.code??'CAPABILITY_FAILED':undefined;events.push({method:message.feature==='bindingPagesV1'?'readBindingPage':message.method??message.type,at:new Date().toISOString(),durationMs:Math.round(performance.now()-started),...(callError?{error:callError}:{})});
         res.writeHead(response?200:400,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(response??{error:'INVALID_BRIDGE_MESSAGE'}));return;
       }
       if(req.method!=='GET')throw new Error('PREVIEW_READ_ONLY');
@@ -40,13 +40,14 @@ export async function startAuthoringPreview(options:{sources:SourceComponentStor
       if(url.pathname==='/status'){res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({identity,events,ready,features,mode:options.mode}));return;}
       if(url.pathname==='/'){
         const html=`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden}iframe{display:block;width:100%;height:100%;border:0}</style></head><body><iframe title="组件预览" src="/dist/index.html"></iframe><script>
-const frame=document.querySelector('iframe');window.__APPS_PREVIEW={identity:${JSON.stringify(identity)},bridgeReady:false,dataRead:false,events:[]};
+const frame=document.querySelector('iframe');window.__APPS_PREVIEW={identity:${JSON.stringify(identity)},bridgeReady:false,dataRead:false,inflight:0,events:[]};
 window.addEventListener('message',async event=>{
  if(event.source!==frame.contentWindow||event.origin!==location.origin||event.data?.channel!=='dsh.apps.component.v2')return;
+ window.__APPS_PREVIEW.inflight++;
  try{const response=await fetch('/bridge',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(event.data)});const reply=await response.json();
  if(reply.type==='hello')window.__APPS_PREVIEW.bridgeReady=true;if(event.data.method==='getData'&&reply.result!==undefined)window.__APPS_PREVIEW.dataRead=true;
  window.__APPS_PREVIEW.events.push({request:event.data,response:reply});frame.contentWindow.postMessage(reply,location.origin);
- }catch(error){window.__APPS_PREVIEW.events.push({error:String(error)});}
+ }catch(error){window.__APPS_PREVIEW.events.push({error:String(error)});}finally{window.__APPS_PREVIEW.inflight--;}
 });</script></body></html>`;
         res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});res.end(html);return;
       }
@@ -57,5 +58,5 @@ window.addEventListener('message',async event=>{
   });
   await new Promise<void>((accept,reject)=>{server.once('error',reject);server.listen(options.port??0,'127.0.0.1',accept);});
   const port=(server.address() as {port:number}).port;
-  return {url:`http://127.0.0.1:${port}`,identity,events,close:async()=>{await options.closeData?.();host.dispose();server.closeAllConnections();await new Promise<void>(accept=>server.close(()=>accept()));}};
+  return {url:`http://127.0.0.1:${port}`,identity,events,get pendingCalls(){return pendingCalls.size;},close:async()=>{await options.closeData?.();host.dispose();server.closeAllConnections();await new Promise<void>(accept=>server.close(()=>accept()));}};
 }

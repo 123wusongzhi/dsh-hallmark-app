@@ -1,0 +1,61 @@
+{
+  "mode": "live_readonly",
+  "requiredMethods": [
+    "getData",
+    "refresh",
+    "readBindingPage"
+  ],
+  "assertions": [
+    {
+      "id": "initial",
+      "selector": "[data-product-row]",
+      "check": "visible",
+      "expected": true,
+      "screenshot": {}
+    },
+    {
+      "id": "search",
+      "action": "fill",
+      "selector": "[aria-label=\"搜索当前页\"]",
+      "valueFromSelector": "[data-product-row] strong",
+      "checkSelector": "[data-product-row]",
+      "check": "visible",
+      "expected": true
+    },
+    {
+      "id": "clear-search",
+      "action": "fill",
+      "selector": "[aria-label=\"搜索当前页\"]",
+      "value": "",
+      "check": "value",
+      "expected": ""
+    },
+    {
+      "id": "next",
+      "action": "click",
+      "selector": "[data-testid=next]",
+      "checkSelector": "[data-testid=page]",
+      "check": "text",
+      "expected": "第 2 页",
+      "screenshot": {
+        "selector": "#pager"
+      }
+    },
+    {
+      "id": "previous",
+      "action": "click",
+      "selector": "[data-testid=previous]",
+      "checkSelector": "[data-testid=page]",
+      "check": "text",
+      "expected": "第 1 页"
+    },
+    {
+      "id": "refresh",
+      "action": "click",
+      "selector": "[data-testid=refresh]",
+      "checkSelector": "[role=status]",
+      "check": "text",
+      "expected": "已刷新"
+    }
+  ]
+}

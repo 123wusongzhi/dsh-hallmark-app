@@ -27,3 +27,11 @@
 5. 实际打包后的 check CLI 在仓库外运行两次：四步成功，第二次复用 build/preview。
 
 真实 Agent 是否遵循新入口、总耗时减少多少，安装后再记录；不以回归成功虚报现场提升比例。
+
+## candidate.28 修正（尚未安装）
+
+真实轨迹暴露：预览自身刷新绑定，导致包含实时快照的指纹变化；同请求重跑报 NEW_ATTEMPT_REQUIRED。已用真实 Runtime 刷新及模板浏览器刷新复现并修正。续跑现在比较明确请求，不读取最新快照；返回原 verifiedAt，完整报告记录实际读取的 bindingSnapshots。需要最新数据验证时新建 attempt。此规则替代上文 candidate.27 的“相同请求及当前快照”条件。
+
+Windows 新增薄启动脚本等待完成并返回退出码、结构化结果及日志；调用错误写独立 error 摘要，不覆盖成功摘要。随包开发文档及 product-list starter 示例明确首次加载、分页、资源选择；现有预览 assertion 可声明 screenshot:{} 或 screenshot:{selector}，无需额外 Host/CDP。
+
+验证：55 项相关回归通过；实际 DSH Electron 进程经 PowerShell 启动脚本运行两次，第二次复用原回执；打包 SDK 声明、默认 starter 和 product-list 示例构建通过。独立浏览器验证两种宽度的首次空绑定加载、分页、附加、刷新与按步骤截图。仍需安装后观察新 Agent 轨迹，未声称耗时降低比例。
