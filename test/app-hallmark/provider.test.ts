@@ -22,6 +22,19 @@ function fixture(){
 }
 function data(result:CapabilityResult):any{assert.ok('data' in result,JSON.stringify(result));return result.data;}
 const priceInput={storeId:'shop',offerIds:['A'],price:100,currency:'RUB',valueSource:'user',userRequest:'把 A 价格改为 100 RUB'};
+
+test('product fields trim transport while preserving identity, cursor, total and original snapshot',async()=>{
+ const f=fixture();try{
+  const full=data(await f.invoke('hallmark.products.list',{storeId:'shop',limit:1}));
+  const slim=data(await f.invoke('hallmark.products.list',{storeId:'shop',limit:1,fields:['price','profit']}));
+  assert.equal(slim.total,full.total);assert.equal(slim.cursor,full.cursor);
+  assert.deepEqual(slim.products[0],{storeId:'shop',offerId:'A',productId:1,price:100,profit:full.products[0].profit});
+  assert.equal(slim.stores,undefined);assert.ok(JSON.stringify(slim).length<JSON.stringify(full).length);
+  const next=data(await f.invoke('hallmark.products.list',{storeId:'shop',cursor:slim.cursor,limit:1,fields:['profit']}));
+  assert.equal(next.products[0].offerId,'B');assert.equal(next.cursor,undefined);
+  assert.deepEqual(data(await f.invoke('hallmark.products.list',{storeId:'shop',limit:1})),full);
+ }finally{await f.runtime.dispose();f.store.close();}
+});
 test('all 26 legacy names have one owner and every domain/API schema compiles',()=>{
  assert.deepEqual(LEGACY_TOOL_MAP.map(row=>row.legacyName),TOOL_DEFINITIONS.map(row=>row.name));
  assert.equal(LEGACY_TOOL_MAP.filter(row=>row.owner==='presentation').length,9);

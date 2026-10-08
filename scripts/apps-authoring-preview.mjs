@@ -1,3 +1,5 @@
+import {checkpoint,previewFingerprint,inspectAttempt,newAttemptRequired} from './authoring-resume.mjs';
+import {recordEvidence,writeSummary,previewSummary} from './authoring-output.mjs';
 import {previewImages} from './preview-images.mjs';
 import {previewData} from './preview-data.mjs';
 import {spawn} from 'node:child_process';
@@ -14,6 +16,29 @@ import {previewTestPlan} from '../packages/source-components/src/authoring-previ
 const pause=ms=>new Promise(accept=>setTimeout(accept,ms));
 /** Fresh headless browser and isolated profile; never attaches to the user's desktop or authenticated browser. */
 export async function runAuthoringPreview(input){
+ input={...input,evidenceRoot:input.evidenceRoot??input.runner?.root};
+ let stage='preview',summary;
+ try{
+  const runner=input.runner??new AuthoringEvidenceRunner(input.evidenceRoot),sources=input.sources??new SourceComponentStore(input.archiveRoot);
+  const build=runner.verifyBuild(input.buildReportRef,sources);if(build.attemptId!==input.attemptId||build.epoch!==input.epoch)throw new Error('PREVIEW_BUILD_MISMATCH');
+  const previous=checkpoint(input,'preview'),requestKey=await previewFingerprint(input,false),pendingRegistration=previous?.pendingRegistration&&previous.requestKey===requestKey;
+  const key=pendingRegistration?previous.key:await previewFingerprint(input),state=input.autoRecord?await inspectAttempt(input):null;
+  let result,reused=false;
+  if(previous?.key===key&&previous.result.report.verdict==='PASS'){
+   runner.verifyPreview(previous.result.reportRef,sources);result=previous.result;reused=true;
+  }else{
+   if(state?.attempt.previewReceiptId)throw newAttemptRequired();
+   result=await executePreview(input);checkpoint(input,'preview',{key,requestKey,pendingRegistration:!!input.autoRecord,result});
+  }
+  summary={...previewSummary(result),reusedPreview:reused};
+  if(input.autoRecord&&result.report.verdict==='PASS'){
+   stage='record_preview';const receipt=await recordEvidence(input,'preview',result.reportRef);summary.previewReceiptId=receipt.receiptId;checkpoint(input,'preview',{key,requestKey,pendingRegistration:false,result});
+  }
+  summary.stage='complete';summary.nextAction=result.report.verdict==='PASS'?'inspect_or_publish':'inspect_preview_report';
+  result.summary=summary;result.summaryPath=writeSummary(input,'preview',summary);return result;
+ }catch(error){writeSummary(input,'preview',{...summary,verdict:'ERROR',stage,nextAction:stage==='record_preview'?'retry_same_request':error.code==='NEW_ATTEMPT_REQUIRED'?'begin_new_attempt':'inspect_evidence',error:{code:error.code??null,message:error.message}});throw error;}
+}
+async function executePreview(input){
  const timingStart=performance.now(),timings={};
  const sources=input.sources??new SourceComponentStore(input.archiveRoot),runner=input.runner??new AuthoringEvidenceRunner(input.evidenceRoot);
  const build=runner.verifyBuild(input.buildReportRef,sources);if(build.attemptId!==input.attemptId||build.epoch!==input.epoch)throw new Error('PREVIEW_BUILD_MISMATCH');
@@ -89,7 +114,7 @@ export async function runAuthoringPreview(input){
   }
   const assertionResults=viewportResults.flatMap(view=>view.assertions.map(item=>({...item,id:`${view.id}:${item.id}`})));for(const view of viewportResults){view.assertionIds=view.assertions.map(item=>`${view.id}:${item.id}`);delete view.assertions;}
   const missingMethods=(input.requiredMethods??[]).filter(method=>!preview.events.some(event=>event.method===method&&!event.error));
-  const bridgeFailures=preview.events.filter(event=>event.error&&['invokeCapability','refresh','attachSelection'].includes(event.method));
+  const bridgeFailures=preview.events.filter(event=>event.error&&['readBindingPage','invokeCapability','refresh','attachSelection'].includes(event.method));
   for(const method of missingMethods)assertionResults.push({id:`bridge:${method}`,required:true,expected:'A successful bridge call',actual:'Required feature was not exercised successfully',status:'NOT_RUN',evidenceRefs:[]});
   for(const [index,event] of bridgeFailures.entries())assertionResults.push({id:`bridge:error:${index}`,required:true,expected:'Successful bridge operation',actual:`${event.method}: ${event.error}`,status:event.error==='PREVIEW_CAPABILITY_UNAVAILABLE'||event.error==='UNSUPPORTED_HOST_CAPABILITY'?'BLOCKED':'FAIL',evidenceRefs:[]});
   const incomplete=testPlan.errors.length||missingMethods.length||assertionResults.some(item=>item.status==='BLOCKED')||testPlan.mode==='noninteractive'&&viewportResults.some(view=>view.interactiveControlCount>0);
@@ -101,6 +126,6 @@ export async function runAuthoringPreview(input){
   return {report,reportRef:runner.writeReport('preview',report),diagnosticsPath,diagnostics};
  }finally{socket?.close();child.kill();if(child.exitCode===null)await new Promise(accept=>{const timer=setTimeout(accept,2000);child.once('close',()=>{clearTimeout(timer);accept();});});for(const item of pending.values())item.reject(new Error('Preview closed'));pending.clear();await preview.close();}
 }
-if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- if(process.argv.length!==3)throw new Error('Provide one preview request JSON path.');const result=await runAuthoringPreview(JSON.parse(readFileSync(process.argv[2],'utf8')));console.log(JSON.stringify({reportRef:result.reportRef,verdict:result.report.verdict,diagnosticsPath:result.diagnosticsPath,timings:result.diagnostics.timings}));if(result.report.verdict!=='PASS')process.exitCode=1;
+if(process.argv[1]&&/apps-authoring-preview\.(mjs|js)$/.test(process.argv[1])&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+ if(process.argv.length!==3)throw new Error('Provide one preview request JSON path.');const result=await runAuthoringPreview(JSON.parse(readFileSync(process.argv[2],'utf8')));console.log(JSON.stringify({summaryPath:result.summaryPath,previewReceiptId:result.summary.previewReceiptId,reportRef:result.reportRef,verdict:result.report.verdict,diagnosticsPath:result.diagnosticsPath,timings:result.diagnostics.timings}));if(result.report.verdict!=='PASS')process.exitCode=1;
 }

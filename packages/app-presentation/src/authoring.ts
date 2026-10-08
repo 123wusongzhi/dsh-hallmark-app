@@ -1,3 +1,4 @@
+import {authoringSummary} from './authoring-summary.ts';
 import {createHash,randomUUID} from 'node:crypto';
 import {existsSync,lstatSync,mkdirSync,readFileSync,readdirSync,realpathSync} from 'node:fs';
 import {dirname,isAbsolute,join,relative,resolve,sep} from 'node:path';
@@ -356,7 +357,8 @@ export class AppsAuthoringService {
     const workspacePath=this.resolvePath(draft.workspacePath);
     const displays=this.displays(draft.viewId).filter(display=>display.ownerSessionId===sessionId&&display.publicationId===selected?.publicationId);
     const display=input.displayId?displays.find(display=>display.displayId===input.displayId):undefined;if(input.displayId&&!display)fail('VIEW_NOT_OWNED','The requested display does not belong to this publication and session.');
-    return {draft:{...draft,workspacePath},attempt,publication:selected??null,view:this.view(sessionId,draft.viewId),latestDisplay:displays.at(-1)??null,displays,...(display?{display}:{}),workspaceAvailable:existsSync(workspacePath),missingEvidence:[...(!attempt.buildReceiptId?['BuildReceipt']:[]),...(!attempt.previewReceiptId?['PreviewReceipt']:[])]};
+    const summary=authoringSummary({attempt,publication:selected??null,build:attempt.buildReceiptId?this.store.get<BuildReceipt>('build_receipts',attempt.buildReceiptId):undefined,preview:attempt.previewReceiptId?this.store.get<PreviewReceipt>('preview_receipts',attempt.previewReceiptId):undefined,displays:this.displays(draft.viewId).filter(item=>item.ownerSessionId===sessionId),currentDisplay:display??displays.at(-1)??null});
+    return {summary,draft:{...draft,workspacePath},attempt,publication:selected??null,view:this.view(sessionId,draft.viewId),latestDisplay:displays.at(-1)??null,displays,...(display?{display}:{}),workspaceAvailable:existsSync(workspacePath),missingEvidence:[...(!attempt.buildReceiptId?['BuildReceipt']:[]),...(!attempt.previewReceiptId?['PreviewReceipt']:[])]};
   }
   recoverInterrupted():{interruptedAttemptIds:string[];committedPublicationIds:string[]} {
     const stopped:{attemptId:string;epoch:number}[]=[];

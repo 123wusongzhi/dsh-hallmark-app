@@ -38,6 +38,36 @@ export class AppsPresentationService {
   authoring?:AppsAuthoringService;
   private options:AppsPresentationOptions;
   private refreshes=new Map<string,Promise<DatasetSnapshot>>();
+  private pages=new Map<string,Map<string,{token:string;data?:AppsBindingData}>>();
+  /** A page belongs to one iframe/preview, never to the shared saved binding. */
+  clearBindingPages(scope:string):void {this.pages.delete(scope);}
+  scopedData(view:AppsView,scope:string):AppsViewData {
+    const data=this.dataForView(view),pages=this.pages.get(scope);
+    return {...data,bindings:data.bindings.map(binding=>clone(pages?.get(binding.bindingId)?.data??binding))};
+  }
+  async readBindingPage(view:AppsView,scope:string,input:{bindingId:string;cursor?:string|null},source:InvocationSource,stillCurrent:()=>void=()=>{},signal?:AbortSignal):Promise<AppsViewData> {
+    const binding=view.bindings.find(item=>item.bindingId===input.bindingId);
+    if(!binding)fail('BINDING_NOT_FOUND','Requested binding is not part of this view.');
+    const descriptor=this.runtime.describe(binding.capabilityId)!;
+    const original=binding.input as Record<string,JsonValue>;
+    const query={...original};if(input.cursor===null||input.cursor===undefined)delete query.cursor;else query.cursor=text(input.cursor,'cursor');
+    const errors=compileSchema(descriptor.inputSchema)(query);if(errors.length)fail('INVALID_INPUT',errors.join('; '));
+    let pages=this.pages.get(scope);if(!pages){pages=new Map();this.pages.set(scope,pages);}
+    const token=randomUUID(),entry={token,data:pages.get(binding.bindingId)?.data};pages.set(binding.bindingId,entry);
+    const request:InvocationRequest={protocolVersion:'1.0',appId:binding.appId,connectionId:binding.connectionId,capabilityId:binding.capabilityId,capabilityVersion:descriptor.version,input:query,source,invocationId:randomUUID(),traceId:randomUUID(),deadlineAt:new Date(Date.now()+descriptor.execution.timeoutMs).toISOString()};
+    const result=await this.runtime.invoke(request,signal);stillCurrent();
+    if(this.pages.get(scope)?.get(binding.bindingId)!==entry)fail('PAGE_SUPERSEDED','A newer page request replaced this response.');
+    if(result.status!=='ok'&&result.status!=='partial')fail('error' in result?result.error.code:'DATASET_NOT_READY','error' in result?result.error.message:'Page data is not ready.');
+    const resources=this.options.resources?this.options.resources({...binding,input:query},result):declaredResources(result);this.checkResources(binding,resources);
+    const base=this.dataForView(view).bindings.find(item=>item.bindingId===binding.bindingId)!;
+    const provenance=result.provenance??[],now=new Date().toISOString();
+    const next:AppsBindingData={...base,revision:`page:${token}`,payload:json(result.data),resources:clone(resources),state:'ready',freshness:provenance.some(item=>item.freshness==='stale')?'stale':'unknown',provenance:clone(provenance),lastSuccessAt:now,sourceDataTime:provenance.find(item=>item.sourceDataTime)?.sourceDataTime??null,query:base.query?{...base.query,input:query}:undefined};
+    delete next.error;
+    const data=this.scopedData(view,scope);data.bindings=data.bindings.map(item=>item.bindingId===binding.bindingId?next:item);
+    // Do not advance selection state to a page that cannot reach the iframe.
+    if(Buffer.byteLength(JSON.stringify(data),'utf8')>250000)fail('BRIDGE_MESSAGE_TOO_LARGE','Page is too large; reduce binding limit or select fewer fields.');
+    entry.data=next;return clone(data);
+  }
   constructor(options:AppsPresentationOptions){this.options=options;this.store=options.store;this.runtime=options.runtime;this.sources=options.sources;this.contexts=new ComponentContexts(this);}
   configureAuthoring(options:Pick<AppsAuthoringOptions,'validateBuildEvidence'|'validatePreviewEvidence'|'evidenceRoot'|'clock'|'readyTimeoutMs'|'maxUiStateBytes'|'onCancel'|'resolveEvidencePath'|'withEvidencePathScope'>={}):AppsAuthoringService {
     if(!this.sources)fail('SOURCE_STORE_UNAVAILABLE','Authoring requires the existing source archive.');
@@ -218,22 +248,22 @@ export class AppsPresentationService {
   createHost(identity:BridgeIdentity,options:{signal?:AbortSignal;attachSelection?:NonNullable<AppsPresentationOptions['attachSelection']>;candidate?:CandidateFrameIdentity;clientFeatures?:string[]}={}):ComponentHost {
     const displayIdentity=options.candidate?.displayId&&options.candidate.displayGeneration?{...options.candidate,displayId:options.candidate.displayId,displayGeneration:options.candidate.displayGeneration}:undefined;
     const current=()=>{const view=this.ownedView(identity.sessionId,identity.viewId);if(displayIdentity){if(!this.authoring?.acceptsDisplayFrame(displayIdentity))fail('BRIDGE_IDENTITY_STALE','The display document was replaced; reopen the component.');return this.authoring.display(identity.sessionId,displayIdentity).view;}if((view.source&&view.source.buildId!==identity.buildId||view.validationStatus==='draft_unpublished')&&!this.authoring?.acceptsFrame(options.candidate??identity as CandidateFrameIdentity))fail('BRIDGE_IDENTITY_STALE','View build changed. Reopen the component.');return view;};
-    const initial=current();
+    const initial=current(),pageScope=canonicalJson(identity),data=()=>this.scopedData(current(),pageScope);
     // A fixed historical display gets its own build context pointer; immutable evidence
     // and the session's active context remain in the existing Runtime-owned store.
     const contextKey=(key:string)=>displayIdentity&&key===`view:${identity.sessionId}:${identity.viewId}`?`${key}:build:${identity.buildId}`:key;
-    const contexts=displayIdentity?new ComponentContexts({store:{...this.store,get:<T>(collection:string,key:string)=>this.store.get<T>(collection,collection==='component_contexts'?contextKey(key):key),put:<T>(collection:string,key:string,value:T)=>this.store.put(collection,collection==='component_contexts'?contextKey(key):key,value),list:<T>(collection:string)=>this.store.list<T>(collection),delete:(collection:string,key:string)=>this.store.delete(collection,collection==='component_contexts'?contextKey(key):key),transaction:<T>(action:()=>T)=>this.store.transaction(action)},ownedView:()=>current(),getData:()=>this.dataForView(current()),validateSelection:(_session,_view,selection)=>this.selectionForView(current(),selection)}):this.contexts;
+    const contexts=new ComponentContexts({store:{...this.store,get:<T>(collection:string,key:string)=>this.store.get<T>(collection,collection==='component_contexts'?contextKey(key):key),put:<T>(collection:string,key:string,value:T)=>this.store.put(collection,collection==='component_contexts'?contextKey(key):key,value),list:<T>(collection:string)=>this.store.list<T>(collection),delete:(collection:string,key:string)=>this.store.delete(collection,collection==='component_contexts'?contextKey(key):key),transaction:<T>(action:()=>T)=>this.store.transaction(action)},ownedView:()=>current(),getData:data,validateSelection:(_session,_view,selection)=>validateDataSelection(data(),selection)});
     const contextInfo=()=>{const view=current();return {...contexts.get({...identity,buildId:view.source?.buildId??identity.buildId}),...identity};};
     const source:InvocationSource={kind:'component',sessionId:identity.sessionId,viewId:identity.viewId,frameInstanceId:identity.frameInstanceId};
     return new ComponentHost(identity,{
-      getData:()=>json(this.dataForView(current())),
+      getData:()=>json(data()),
       getContext:()=>{current();const publication=options.candidate?this.store.get<ViewPublication>('view_publications',options.candidate.publicationId):undefined;return json({...contextInfo(),...(publication?{publication:{publicationId:publication.publicationId,attemptId:publication.attemptId,attemptEpoch:publication.attemptEpoch,buildId:publication.candidateBuildId,documentNonce:displayIdentity?.documentNonce??publication.documentNonce,...(displayIdentity?{displayId:displayIdentity.displayId,displayGeneration:displayIdentity.displayGeneration}:{})}}:{})});},
       ...(initial.source?{
         updateContext:(request:import('../../app-contracts/src/index.ts').BridgeRequest)=>{current();return json(contexts.update(identity,request.requestId,request.params as never));},
         requestAgent:(request:import('../../app-contracts/src/index.ts').BridgeRequest)=>{current();return json(contexts.prepare(identity,request.requestId,request.params as never));},
       }:{}),
-      refresh:async request=>{const view=current(),bindingIds=(request.params as {bindingIds?:string[]}|null)?.bindingIds;if(!displayIdentity)return this.refreshView(identity.sessionId,identity.viewId,source,bindingIds,options.signal).then(json);if(bindingIds?.some(id=>!view.bindings.some(binding=>binding.bindingId===id)))fail('BINDING_NOT_FOUND','Requested binding is not part of this fixed display.');await Promise.all(view.bindings.filter(binding=>!bindingIds||bindingIds.includes(binding.bindingId)).map(binding=>this.refreshBinding(binding,source,options.signal)));return json(this.dataForView(current()));},
-      attachSelection:async request=>{const selection=this.selectionForView(current(),request.params as unknown as SelectionEnvelope),attach=options.attachSelection??this.options.attachSelection;if(!attach)fail('UNSUPPORTED_HOST_CAPABILITY','Native attachments are unavailable.');return attach(identity,selection);},
+      refresh:async request=>{this.clearBindingPages(pageScope);const view=current(),bindingIds=(request.params as {bindingIds?:string[]}|null)?.bindingIds;if(!displayIdentity)return this.refreshView(identity.sessionId,identity.viewId,source,bindingIds,options.signal).then(json);if(bindingIds?.some(id=>!view.bindings.some(binding=>binding.bindingId===id)))fail('BINDING_NOT_FOUND','Requested binding is not part of this fixed display.');await Promise.all(view.bindings.filter(binding=>!bindingIds||bindingIds.includes(binding.bindingId)).map(binding=>this.refreshBinding(binding,source,options.signal)));return json(this.dataForView(current()));},
+      attachSelection:async request=>{const selection=validateDataSelection(data(),request.params as unknown as SelectionEnvelope),attach=options.attachSelection??this.options.attachSelection;if(!attach)fail('UNSUPPORTED_HOST_CAPABILITY','Native attachments are unavailable.');return attach(identity,selection);},
       invokeCapability:async request=>{
         const view=current();
         const input=request.params as unknown as Omit<InvocationRequest,'protocolVersion'|'invocationId'|'traceId'|'source'>;
@@ -242,10 +272,10 @@ export class AppsPresentationService {
         const result=await this.runtime.invoke({protocolVersion:'1.0',appId:input.appId,connectionId:input.connectionId,capabilityId:input.capabilityId,capabilityVersion:input.capabilityVersion,input:input.input,deadlineAt:input.deadlineAt,invocationId:randomUUID(),traceId:randomUUID(),source,...(input.idempotencyKey?{idempotencyKey:input.idempotencyKey}:{}),...(input.expectedResourceRevision?{expectedResourceRevision:input.expectedResourceRevision}:{})},options.signal);
         return json(result);
       },
-    },{contextRevision:()=>contextInfo().contextRevision,clientFeatures:options.clientFeatures,extensionHandlers:this.authoring?{
+    },{contextRevision:()=>contextInfo().contextRevision,clientFeatures:options.clientFeatures,extensionHandlers:{bindingPagesV1:async request=>{if(request.action!=='read')fail('INVALID_INPUT','Unknown binding page action.');return json(await this.readBindingPage(current(),pageScope,request.params as unknown as {bindingId:string;cursor?:string|null},source,current,options.signal));},...(this.authoring?{
       renderReadyV1:request=>{if(request.action!=='ready'||!options.candidate)fail('FRAME_NOT_READY','No authorized candidate publication.');const params=request.params as unknown as {checks:Parameters<AppsAuthoringService['confirmReady']>[1]['checks']};return json(displayIdentity?this.authoring!.confirmDisplayReady(identity.sessionId,{...displayIdentity,...identity,checks:params.checks}):this.authoring!.confirmReady(identity.sessionId,{...options.candidate,...identity,checks:params.checks}));},
       uiStateV1:request=>{const params=request.params as unknown as {uiStateSchemaVersion:number;expectedStateRevision?:number;value?:JsonValue;state?:JsonValue;selectionEvidence?:Parameters<AppsAuthoringService['exportUiState']>[1]['selectionEvidence']};current();if(request.action==='read')return json(this.authoring!.restoreUiState(identity.sessionId,{viewId:identity.viewId,targetBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion},options.candidate));if(request.action==='write')return json(this.authoring!.exportUiState(identity.sessionId,{viewId:identity.viewId,sourceBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion,expectedStateRevision:params.expectedStateRevision??0,value:params.value??params.state??null,selectionEvidence:params.selectionEvidence??[]},displayIdentity));fail('INVALID_INPUT','Unknown UI state action.');},
-    }:undefined});
+    }:{})}});
   }
   /** Runtime registration adapter. The shared provider has no application-domain imports. */
   provider():AppProvider {

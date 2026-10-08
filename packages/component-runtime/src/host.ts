@@ -12,7 +12,7 @@ export interface ComponentHostHandlers {
   updateContext?: (request: BridgeRequest)=>Promise<JsonValue>|JsonValue;
   requestAgent?: (request: BridgeRequest)=>Promise<JsonValue>|JsonValue;
 }
-export interface ComponentExtensionRequest extends BridgeIdentity {channel:string;type:'extension';feature:'renderReadyV1'|'uiStateV1';action:string;requestId:string;params:JsonValue}
+export interface ComponentExtensionRequest extends BridgeIdentity {channel:string;type:'extension';feature:'renderReadyV1'|'uiStateV1'|'bindingPagesV1';action:string;requestId:string;params:JsonValue}
 export type ComponentExtensionHandlers=Partial<Record<ComponentExtensionRequest['feature'],(request:ComponentExtensionRequest)=>Promise<JsonValue>|JsonValue>>;
 const unsupported=(method:string):FailureInfo=>({code:'UNSUPPORTED_HOST_CAPABILITY',message:`Host has no verified ${method} path. Attach a selection to the input and send it manually.`,retryPolicy:'never'});
 function messageBytes(value:unknown):number {

@@ -386,3 +386,30 @@ test('UI state size limits and close keep/discard retain workspaces and immutabl
   const saved=f.authoring.saveComponent(session,{viewId:view.viewId,expectedViewRevision:view.viewRevision,userRequest:'Save before close',mode:'save_as'}),draft=f.authoring.closeDraft(session,view.viewId,'keep');assert.equal(draft.status,'closed');assert.ok(existsSync(draft.workspacePath));
   const second=f.authoring.begin(session,{mode:'edit',viewId:view.viewId});assert.equal(second.draft.workspacePath,draft.workspacePath);assert.equal(f.authoring.closeDraft(session,view.viewId,'discard').status,'discarded');assert.ok(existsSync(second.draft.workspacePath));assert.ok(f.sources.verify(view.activeBuildId!).valid);assert.ok(f.store.get('components',saved.componentId));
 });
+
+
+test('inspect distinguishes a previously confirmed build from a newer failed display and gives scoped advice',async t=>{
+ const f=setup(t),first=await prepared(f,undefined,'Confirmed',false);
+ const one=f.authoring.openDisplay(session,{...openInput(first.publication),displayId:'confirmed'}),frame=displayFrame(first.publication,one.display,'confirmed');
+ f.authoring.authorizeDisplayFrame(session,frame);f.authoring.confirmDisplayReady(session,{...first.ready,...frame});
+ const second=await prepared(f,f.authoring.begin(session,{mode:'edit',viewId:first.begin.view.viewId}),'New',false);
+ const error=(code:string)=>{const two=f.authoring.openDisplay(session,{...openInput(second.publication),displayId:'failed-'+code});return f.authoring.reportDisplayError(session,{viewId:second.begin.view.viewId,publicationId:second.publication.publicationId,buildId:second.publication.candidateBuildId,displayId:two.display.displayId,displayGeneration:two.display.generation,error:{phase:'bridge',code,message:'Fixture display failure'}});};
+ error('BRIDGE_TIMEOUT');
+ let inspected=f.authoring.inspect(session,{publicationId:second.publication.publicationId}),summary=inspected.summary;
+ assert.equal(summary.lastConfirmedDisplay?.buildId,first.publication.candidateBuildId);
+ assert.equal(summary.preparedBuild?.buildId,second.publication.candidateBuildId);
+ assert.equal(summary.currentDisplay?.state,'failed');assert.equal(summary.nextAction.action,'reopen_same_build');assert.equal(summary.requiresRebuild,false);
+ assert.equal(summary.nextAction.target.publicationId,second.publication.publicationId);
+ const {compileSchema}=await import('../../packages/app-contracts/src/index.ts');assert.deepEqual(compileSchema(APP_AUTHORING_DESCRIPTORS.find(item=>item.capabilityId==='apps.authoring.inspect')!.outputSchema)(JSON.parse(JSON.stringify(inspected))),[]);
+ error('UNCLASSIFIED_ERROR');summary=f.authoring.inspect(session,{publicationId:second.publication.publicationId}).summary;assert.equal(summary.requiresRebuild,null);assert.equal(summary.nextAction.action,'inspect_evidence');
+ error('COMPONENT_SCRIPT_ERROR');summary=f.authoring.inspect(session,{publicationId:second.publication.publicationId}).summary;assert.equal(summary.requiresRebuild,true);assert.equal(summary.nextAction.action,'fix_source');
+ const old=f.authoring.inspect(session,{publicationId:first.publication.publicationId}).summary;assert.equal(old.currentDisplay?.buildId,first.publication.candidateBuildId);assert.equal(old.nextAction.action,'open_prepared_build');
+});
+
+test('inspect retains a successful build when preview environment is incomplete',async t=>{
+ const f=setup(t),begin=f.authoring.begin(session,{mode:'new'});project(begin);const built=await build(f,begin);
+ assert.equal(f.authoring.inspect(session,{attemptId:begin.attempt.attemptId}).summary.nextAction.action,'run_preview');
+ await preview(f,begin,built.receipt,value=>{value.verdict='INCOMPLETE';value.assertionResults[0].status='BLOCKED';value.assertionResults[0].actual='PREVIEW_CAPABILITY_UNAVAILABLE';});
+ const summary=f.authoring.inspect(session,{attemptId:begin.attempt.attemptId}).summary;
+ assert.equal(summary.blockedStage,'preview');assert.equal(summary.nextAction.action,'repair_preview_environment');assert.equal(summary.requiresRebuild,false);assert.equal(summary.lastConfirmedDisplay,null);assert.equal(summary.preparedBuild,null);
+});

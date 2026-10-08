@@ -5,6 +5,10 @@ import {authoringInstructions} from '../../packages/plugin-apps/src/authoring-gu
 test('Agent guidance describes automatic display and retry of the same preview archive after failure',()=>{
   const instructions=authoringInstructions({cliPath:null,nodeExecutable:'node',nodeArgs:[],nodeEnvironment:{},starterPath:'starter',sdkDirectory:'sdk',buildRunnerPath:'build',previewRunnerPath:'preview',runtime:{url:'http://fixture',keyFile:'key-file-reference',archiveRoot:'archive',evidenceRoot:'evidence'}},'A');
   const flow=instructions.flow.join('\n');assert.match(flow,/成功仅表示组件已准备好/);assert.match(flow,/自动在右侧加载展示/);assert.match(flow,/无需要求用户再点击打开/);assert.match(flow,/不自行调用 UI startMount、openDisplay/);assert.match(flow,/UI自动为同publication\/build开启独立显示尝试/);assert.match(flow,/才可称已展示/);assert.match(flow,/重新打开同一构建/);assert.match(flow,/latestDisplay\/displays/);assert.match(flow,/旧frame不得恢复权限/);
+  assert.equal(instructions.previewRequest.mode,'live_readonly');assert.equal(instructions.previewRequest.sessionId,'A');
+  assert.equal(instructions.previewRequest.runtime.url,'http://fixture');assert.deepEqual(instructions.previewRequest.requiredMethods,['getData']);
+  assert.equal('data' in instructions.previewRequest,false);
+  assert.equal(instructions.resultReader.request.runtime.keyFile,'key-file-reference');
 });
 
 test('prepared authoring results produce a fixed original-chat card without claiming a committed view',async()=>{

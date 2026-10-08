@@ -8,18 +8,18 @@ import type {AppsViewData} from '../../app-presentation/src/types.ts';
 import type {SelectionEnvelope} from '../../app-contracts/src/index.ts';
 
 /** Serves only immutable dist bytes, using the production v2 dispatcher. Legacy v1 preview is unchanged. */
-export async function startAuthoringPreview(options:{sources:SourceComponentStore;buildId:string;mode:'fixture'|'live_readonly';data:JsonValue;context?:JsonValue;port?:number;readOnlyCapability?:(input:JsonValue)=>Promise<JsonValue>;refreshData?:(input:JsonValue)=>Promise<JsonValue>;validateSelection?:(input:JsonValue)=>Promise<JsonValue>}) {
+export async function startAuthoringPreview(options:{sources:SourceComponentStore;buildId:string;mode:'fixture'|'live_readonly';data:JsonValue;context?:JsonValue;port?:number;readOnlyCapability?:(input:JsonValue)=>Promise<JsonValue>;refreshData?:(input:JsonValue)=>Promise<JsonValue>;validateSelection?:(input:JsonValue)=>Promise<JsonValue>;readBindingPage?:(input:JsonValue)=>Promise<JsonValue>;closeData?:()=>Promise<unknown>;resetData?:()=>Promise<JsonValue>}) {
   if(!options.sources.verify(options.buildId).valid)throw new Error('PREVIEW_BUILD_INVALID');
   const identity={protocolVersion:'2.0' as const,sessionId:'authoring-preview',viewId:randomUUID(),buildId:options.buildId,frameInstanceId:randomUUID()};
-  const events:{method:string;at:string;result?:JsonValue;error?:string}[]=[],features=['renderReadyV1','uiStateV1'];
-  let ready=false;
+  const events:{method:string;at:string;result?:JsonValue;error?:string}[]=[],features=['renderReadyV1','uiStateV1',...(options.readBindingPage?['bindingPagesV1']:[])];
+  let ready=false,documentNonce:string|undefined;
   let data=options.data;
   const host=new ComponentHost(identity,{
     getData:()=>data,getContext:()=>options.context??{preview:true,mode:options.mode,buildId:options.buildId},
     refresh:async request=>{if(!options.refreshData)throw Object.assign(new Error('Fixture refresh is not configured; refresh has not been verified.'),{code:'PREVIEW_CAPABILITY_UNAVAILABLE'});data=await options.refreshData(request.params);return data;},resize:()=>null,
     attachSelection:async request=>{if(options.validateSelection)return options.validateSelection(request.params);validateDataSelection(data as unknown as AppsViewData,request.params as unknown as SelectionEnvelope);return {status:'validated',preview:true};},
     ...(options.readOnlyCapability?{invokeCapability:(request)=>options.readOnlyCapability!(request.params)}:{}),
-  },{extensionHandlers:{renderReadyV1:request=>{
+  },{extensionHandlers:{...(options.readBindingPage?{bindingPagesV1:async(request:import('../../component-runtime/src/host.ts').ComponentExtensionRequest)=>{if(request.action!=='read')throw new Error('Unknown page action');data=await options.readBindingPage!(request.params);return data;}}:{}),renderReadyV1:request=>{
     const params=request.params as {checks?:{rendered?:boolean;bridgeReady?:boolean;dataRead?:boolean;unhandledErrors?:string[]}};
     if(request.action!=='ready'||!params?.checks?.rendered||!params.checks.bridgeReady||!params.checks.dataRead||!Array.isArray(params.checks.unhandledErrors)||params.checks.unhandledErrors.length)throw Object.assign(new Error('Preview is not render-ready'),{code:'FRAME_NOT_READY'});
     ready=true;return {preview:true,renderReady:true};
@@ -32,7 +32,7 @@ export async function startAuthoringPreview(options:{sources:SourceComponentStor
       if(req.method==='POST'&&url.pathname==='/bridge'){
         if(req.headers.origin!==`http://127.0.0.1:${port}`)throw new Error('PREVIEW_ORIGIN_INVALID');
         let bytes='';for await(const chunk of req){bytes+=chunk;if(Buffer.byteLength(bytes)>262144)throw new Error('BRIDGE_MESSAGE_TOO_LARGE');}
-        const message=JSON.parse(bytes),response=await host.handle(message);const result=response&&'result' in response?response.result as {status?:string;error?:{code?:string}}:undefined;const callError=response&&'error' in response?response.error?.code:result?.status&& !['ok','partial','validated'].includes(result.status)?result.error?.code??'CAPABILITY_FAILED':undefined;events.push({method:message.method??message.type,at:new Date().toISOString(),...(callError?{error:callError}:{})});
+        const message=JSON.parse(bytes);if(message.type==='hello'&&message.documentNonce!==documentNonce){if(documentNonce)data=options.resetData?await options.resetData():options.data;documentNonce=message.documentNonce;ready=false;}const response=await host.handle(message);const result=response&&'result' in response?response.result as {status?:string;error?:{code?:string}}:undefined;const callError=response&&'error' in response?response.error?.code:result?.status&& !['ok','partial','validated'].includes(result.status)?result.error?.code??'CAPABILITY_FAILED':undefined;events.push({method:message.feature==='bindingPagesV1'?'readBindingPage':message.method??message.type,at:new Date().toISOString(),...(callError?{error:callError}:{})});
         res.writeHead(response?200:400,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(response??{error:'INVALID_BRIDGE_MESSAGE'}));return;
       }
       if(req.method!=='GET')throw new Error('PREVIEW_READ_ONLY');
@@ -57,5 +57,5 @@ window.addEventListener('message',async event=>{
   });
   await new Promise<void>((accept,reject)=>{server.once('error',reject);server.listen(options.port??0,'127.0.0.1',accept);});
   const port=(server.address() as {port:number}).port;
-  return {url:`http://127.0.0.1:${port}`,identity,events,close:async()=>{host.dispose();server.closeAllConnections();await new Promise<void>(accept=>server.close(()=>accept()));}};
+  return {url:`http://127.0.0.1:${port}`,identity,events,close:async()=>{await options.closeData?.();host.dispose();server.closeAllConnections();await new Promise<void>(accept=>server.close(()=>accept()));}};
 }

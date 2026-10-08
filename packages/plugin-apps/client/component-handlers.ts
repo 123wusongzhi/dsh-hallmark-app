@@ -22,7 +22,7 @@ export async function createAppsPresentationHandlers(identity:Parameters<Compone
     if(response.ok&&value.adapterReady===true&&value.nativeSessionAdapter==='dsh-0.2.0-rc.2'&&value.hostVersion==='0.2.0-rc.2')features={updateContext:value.updateContext===true,requestAgent:value.requestAgent===true,nativeSessionAdapter:value.nativeSessionAdapter,adapterReady:true,hostVersion:value.hostVersion};
   }catch(error){if(signal.aborted)throw error;}
   let extensionFeatures:string[]=[];
-  if(extensionsEnabled)try{const response=await fetch('/api/dsh-apps?resource=componentFeatures',{credentials:'same-origin',signal}),value=record(await response.json());if(response.ok&&Array.isArray(value.features))extensionFeatures=value.features.filter((feature):feature is string=>feature==='renderReadyV1'||feature==='uiStateV1');}catch(error){if(signal.aborted)throw error;}
+  if(extensionsEnabled)try{const response=await fetch('/api/dsh-apps?resource=componentFeatures',{credentials:'same-origin',signal}),value=record(await response.json());if(response.ok&&Array.isArray(value.features))extensionFeatures=value.features.filter((feature):feature is string=>feature==='renderReadyV1'||feature==='uiStateV1'||feature==='bindingPagesV1');}catch(error){if(signal.aborted)throw error;}
   if(publication?.displayId&&!extensionFeatures.includes('renderReadyV1'))fail('DISPLAY_EXTENSION_UNAVAILABLE','The Host did not provide the component display protocol.');
   const call=async(request:BridgeRequest):Promise<JsonValue>=>{
     checkCurrent();

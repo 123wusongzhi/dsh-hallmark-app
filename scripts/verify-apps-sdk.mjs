@@ -37,7 +37,7 @@ try{
   const diagnostics=ts.getPreEmitDiagnostics(compiler);if(diagnostics.length)throw new Error(ts.formatDiagnosticsWithColorAndContext(diagnostics,{getCurrentDirectory:()=>project,getCanonicalFileName:file=>file,getNewLine:()=> '\n'}));
   execFileSync(process.execPath,['build.mjs'],{cwd:project,encoding:'utf8'});
   const artifacts={};for(const file of ['dist/index.html','dist/app.js','dist/app.css'])artifacts[file]=createHash('sha256').update(await readFile(join(project,file))).digest('hex');
-  const cliEntries={build:join(directory,'package/lib/apps-authoring-build.js'),preview:join(directory,'package/lib/apps-authoring-preview.js')},loadChecks={};
+  const cliEntries={check:join(directory,'package/lib/apps-authoring-check.js'),build:join(directory,'package/lib/apps-authoring-build.js'),preview:join(directory,'package/lib/apps-authoring-preview.js')},loadChecks={};
   for(const [name,entry]of Object.entries(cliEntries)){const probe=spawnSync(process.execPath,[entry],{cwd:directory,encoding:'utf8',env:{...process.env,NODE_PATH:''},timeout:10000});if(probe.status!==1||!probe.stderr.includes('Provide one')||/ERR_MODULE_NOT_FOUND|Unknown file extension/.test(probe.stderr))throw new Error('PACKED_CLI_LOAD_FAILED:'+name);loadChecks[name]={status:'PASS',functionalArgumentErrorObserved:true,sourceCheckoutRequired:false,sha256:createHash('sha256').update(await readFile(entry)).digest('hex')};}
   const workspace=join(directory,'ordinary-cli-project'),archiveRoot=join(cliEvidence,'source-components'),evidenceRoot=join(cliEvidence,'authoring-evidence');await mkdir(workspace);
   await writeFile(join(workspace,'package.json'),JSON.stringify({name:'packed-cli-offline-fixture',version:'1.0.0',private:true,type:'module'},null,2));

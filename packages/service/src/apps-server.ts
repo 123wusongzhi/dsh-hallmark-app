@@ -1,3 +1,4 @@
+import {validateDataSelection} from '../../app-presentation/src/selection.ts';
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { body as readBody, send, sameToken, loopback } from './http.ts';
@@ -46,7 +47,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
     validateClientFeatures(params);
     const prior=runtime.store.get<{value:Grant}>('provider_records',frameKey(identity))?.value;
     if(prior&&(prior.retired||canonicalJson(prior.identity)!==canonicalJson(identity)||prior.documentNonce!==params.documentNonce))throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});
-    const features=(params.clientFeatures as string[]??[]).filter(feature=>['renderReadyV1','uiStateV1'].includes(feature)),grant:Grant={identity,documentNonce:String(params.documentNonce),features,...(candidate?{candidate}:{})};
+    const features=(params.clientFeatures as string[]??[]).filter(feature=>['renderReadyV1','uiStateV1','bindingPagesV1'].includes(feature)),grant:Grant={identity,documentNonce:String(params.documentNonce),features,...(candidate?{candidate}:{})};
     runtime.store.put('provider_records',frameKey(identity),{appId:'apps',connectionId:'presentation',namespace:'frame_grants',recordId:frameKey(identity),value:grant});return {features};
   };
   const legacyPresentation=createLegacyPresentationAdapter(presentation,runtime);
@@ -130,7 +131,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       if(req.method==='POST'&&legacyTool){const input=await body(req);strict(input,['arguments','sessionId','userRequest'],['arguments','sessionId']);return send(res,200,await legacyInvoke({name:legacyTool[1],...input,invocationId:randomUUID(),traceId:randomUUID(),deadlineAt:new Date(Date.now()+90000).toISOString()},controller.signal));}
       if(req.method==='GET'&&path==='/v1/runtime')return send(res,200,runtime.identity());
       if(req.method==='GET'&&path==='/v1/apps')return send(res,200,{apps:runtime.listApps()});
-      if(req.method==='GET'&&path==='/v1/authoring/features')return send(res,200,{features:presentation.authoring?['renderReadyV1','uiStateV1']:[]});
+      if(req.method==='GET'&&path==='/v1/authoring/features')return send(res,200,{features:presentation.authoring?['renderReadyV1','uiStateV1','bindingPagesV1']:[]});
       if(req.method==='GET'&&path==='/v1/views'){const sessionId=url.searchParams.get('sessionId');if(!sessionId)throw new Error('EXPLICIT_SESSION_REQUIRED');return send(res,200,{views:runtime.store.viewsForSession<AppsView>(sessionId)});}
       if(req.method==='GET'&&path==='/v1/component-history')return send(res,200,{revisions:runtime.store.componentSummaries(url.searchParams.get('componentId')??'')});
       if(req.method==='GET'&&path==='/v1/saved')return send(res,200,{components:runtime.store.componentSummaries(),assets:runtime.store.list('saved_assets')});
@@ -147,9 +148,12 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
         switch(authoringAction[1]){
           case 'preview':{
             const view=presentation.ownedView(sessionId,String(params.viewId));
-            if(params.action==='data')return send(res,200,presentation.getData(sessionId,view.viewId));
-            if(params.action==='refresh')return send(res,200,await presentation.refreshView(sessionId,view.viewId,{kind:'agent',sessionId,nativeCallId:randomUUID()},params.bindingIds as string[]|undefined,controller.signal));
-            if(params.action==='selection'){presentation.validateSelection(sessionId,view.viewId,params.selection as never);return send(res,200,{status:'validated',preview:true});}
+            const scope=canonicalJson(['preview',sessionId,view.viewId,params.scopeId??'legacy']);
+            if(params.action==='close'){presentation.clearBindingPages(scope);return send(res,200,{closed:true});}
+            if(params.action==='page')return send(res,200,await presentation.readBindingPage(view,scope,params as never,{kind:'agent',sessionId,nativeCallId:randomUUID()},()=>presentation.ownedView(sessionId,view.viewId),controller.signal));
+            if(params.action==='data')return send(res,200,presentation.scopedData(view,scope));
+            if(params.action==='refresh'){presentation.clearBindingPages(scope);return send(res,200,await presentation.refreshView(sessionId,view.viewId,{kind:'agent',sessionId,nativeCallId:randomUUID()},params.bindingIds as string[]|undefined,controller.signal));}
+            if(params.action==='selection'){validateDataSelection(presentation.scopedData(view,scope),params.selection as never);return send(res,200,{status:'validated',preview:true});}
             if(params.action!=='invoke')throw new Error('PREVIEW_ACTION_UNAVAILABLE');
             const call=params.input as Pick<InvocationRequest,'appId'|'connectionId'|'capabilityId'|'capabilityVersion'|'input'>,descriptor=runtime.describe(call.capabilityId,call.capabilityVersion);
             if(!descriptor||!['query','compute'].includes(descriptor.effect)||/^apps\.(presentation|authoring)\./.test(call.capabilityId))throw new Error('PREVIEW_CAPABILITY_NOT_READ_ONLY');
@@ -175,6 +179,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
           case 'retireFrame':{
             strict(params,['viewId','buildId','frameInstanceId','documentNonce'],['viewId','buildId','frameInstanceId','documentNonce']);presentation.ownedView(sessionId,String(params.viewId));
             const identity:BridgeIdentity={protocolVersion:'2.0',sessionId,viewId:String(params.viewId),buildId:String(params.buildId),frameInstanceId:String(params.frameInstanceId)},grant=frameGrant(identity);if(grant.documentNonce!==params.documentNonce)throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});runtime.store.transaction(()=>{
+              presentation.clearBindingPages(canonicalJson(identity));
               runtime.store.put('provider_records',frameKey(identity),{appId:'apps',connectionId:'presentation',namespace:'frame_grants',recordId:frameKey(identity),value:{...grant,retired:true}});
               // A closed document must not pin its display: the same display may grant exactly one new iframe document afterwards.
               if(grant.candidate?.displayId)authoring.releaseDisplayFrame(sessionId,{displayId:grant.candidate.displayId,frameInstanceId:identity.frameInstanceId,documentNonce:grant.documentNonce});

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
-import {existsSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
+import {existsSync,mkdtempSync,readFileSync,readdirSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
@@ -13,6 +13,22 @@ import type {AuthoringDraft,AuthoringAttempt,AuthoringView,BuildReceipt,PreviewR
 import {runAuthoringPreview} from '../../scripts/apps-authoring-preview.mjs';
 
 const browser=process.env.DSH_PREVIEW_BROWSER_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe';
+
+test('runners automatically register real build and preview receipts and persist diagnostics',{skip:!existsSync(browser),timeout:60000},async()=>{
+ const f=await setup();try{
+  const begin=await f.begin({mode:'new'});project(begin.draft.workspacePath,'Auto record');
+  const keyFile=join(f.directory,'key');writeFileSync(keyFile,f.token);
+  // @ts-expect-error Standalone build runner.
+  const {runAuthoringBuild}=await import('../../scripts/apps-authoring-build.mjs');
+  const input={sessionId:'original',viewId:begin.view.viewId,attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,sourceRevision:begin.draft.sourceRevision,workspacePath:begin.draft.workspacePath,command:[process.execPath,'build.mjs'],archiveRoot:join(f.directory,'source-components'),evidenceRoot:join(f.directory,'authoring-evidence'),runtime:{url:f.url,keyFile},autoRecord:true};
+  const built=await runAuthoringBuild(input);assert.equal(built.verdict,'PASS');assert.ok(built.buildReceiptId);assert.equal(f.store.list('build_receipts').length,1);assert.deepEqual(JSON.parse(readFileSync(built.previewRequestPath,'utf8')),built.previewRequest);
+  const tested=await runAuthoringPreview({...built.previewRequest,browserExecutable:browser,assertions:[{id:'select',action:'click',selector:'#toggle',checkSelector:'#result',check:'text',expected:'selected'}]});
+  assert.equal(tested.report.verdict,'PASS');assert.ok(tested.summary.previewReceiptId);assert.equal(f.store.list('preview_receipts').length,1);
+  const summary=JSON.parse(readFileSync(tested.summaryPath,'utf8'));assert.equal(summary.failures.length,0);assert.equal(summary.viewports.length,2);assert.ok(existsSync(summary.viewports[0].screenshot));
+  await assert.rejects(runAuthoringPreview({...built.previewRequest,buildReportRef:{path:'missing'}}));
+  const failed=JSON.parse(readFileSync(tested.summaryPath,'utf8'));assert.equal(failed.verdict,'ERROR');assert.equal(failed.stage,'preview');assert.ok(failed.error.message);
+ }finally{await f.cleanup();}
+});
 
 test('live preview adapter reads real binding shape, invokes pages, validates selection and refreshes',async()=>{
  const f=await setup();try{
@@ -29,7 +45,12 @@ test('live preview adapter reads real binding shape, invokes pages, validates se
   const page=await adapter.readOnlyCapability({...query,input:{...query.input,cursor:'1'}});assert.equal(page.status,'ok');assert.equal(page.data.items[0].note.id,'b');
   assert.equal((await adapter.validateSelection({bindingId:binding.bindingId,datasetRevision:binding.revision,resources:binding.resources})).status,'validated');
   await assert.rejects(adapter.validateSelection({bindingId:binding.bindingId,datasetRevision:binding.revision,resources:[page.data.items[0].resource]}),/not present/);
+  const boundPage=(await adapter.readBindingPage({bindingId:'notes',cursor:'1'})).bindings[0];
+  assert.equal(boundPage.resources[0].resourceId,'b');
+  assert.equal((await adapter.validateSelection({bindingId:'notes',datasetRevision:boundPage.revision,resources:boundPage.resources})).status,'validated');
+  await assert.rejects(adapter.validateSelection({bindingId:'notes',datasetRevision:binding.revision,resources:binding.resources}),/current ready dataset/);
   assert.deepEqual(await adapter.refreshData({bindingIds:['notes']}),f.presentation.getData('original',begin.view.viewId));
+  await adapter.closeData();
   await assert.rejects(adapter.readOnlyCapability({...query,capabilityId:'notes.notes.create',input:{title:'No write'}}),/PREVIEW_CAPABILITY_NOT_READ_ONLY/);
  }finally{await f.cleanup();}
 });
@@ -161,5 +182,52 @@ test('active source reopens after another build has display history',async()=>{
   const data=await f.call('/v1/component-bridge',request);assert.equal(data.status,200,JSON.stringify(data.body));assert.equal(data.body.result.viewId,view.viewId);
   await f.call('/v1/authoring/retireFrame',{sessionId:'original',params:{viewId:view.viewId,buildId,frameInstanceId:identity.frameInstanceId,documentNonce}});
   assert.equal((await f.call('/v1/component-bridge',{...request,requestId:randomUUID()})).body.error.code,'BRIDGE_IDENTITY_STALE');
+ }finally{await f.cleanup();}
+});
+
+
+test('check resumes lost registration responses without rebuilding or repeating preview and never publishes',{skip:!existsSync(browser),timeout:60000},async()=>{
+ const f=await setup(),originalFetch=globalThis.fetch;try{
+  const begin=await f.begin({mode:'new'});project(begin.draft.workspacePath,'Resume check');const keyFile=join(f.directory,'key');writeFileSync(keyFile,f.token);
+  // @ts-expect-error Standalone combined runner.
+  const {runAuthoringCheck}=await import('../../scripts/apps-authoring-check.mjs');
+  const request={build:{sessionId:'original',viewId:begin.view.viewId,attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,sourceRevision:begin.draft.sourceRevision,workspacePath:begin.draft.workspacePath,command:[process.execPath,'build.mjs'],archiveRoot:join(f.directory,'source-components'),evidenceRoot:join(f.directory,'authoring-evidence'),runtime:{url:f.url,keyFile}},preview:{browserExecutable:browser,requiredMethods:['getData'],assertions:[{id:'select',action:'click',selector:'#toggle',checkSelector:'#result',check:'text',expected:'selected'}]}};
+  const drop=new Set(['apps.authoring.record_build','apps.authoring.record_preview']);
+  globalThis.fetch=async(url,options)=>{const response=await originalFetch(url,options);const capability=typeof options?.body==='string'?JSON.parse(options.body).capabilityId:undefined;if(drop.delete(capability))throw Error('Simulated lost receipt response');return response;};
+  await assert.rejects(runAuthoringCheck(request),/lost receipt/);
+  assert.equal(f.store.list('build_receipts').length,1);assert.equal(f.store.list('preview_receipts').length,0);
+  await assert.rejects(runAuthoringCheck(request),/lost receipt/);
+  assert.equal(f.store.list('preview_receipts').length,1);
+  const count=()=>readdirSync(request.build.evidenceRoot).filter(name=>/^(build|preview)-.*\.json$/.test(name)).length;
+  const before=count(),resumed=await runAuthoringCheck(request),repeated=await runAuthoringCheck(request);
+  assert.equal(resumed.verdict,'PASS');assert.equal(resumed.reusedBuild,true);assert.equal(resumed.reusedPreview,true);assert.equal(repeated.buildId,resumed.buildId);assert.equal(count(),before);
+  assert.equal(f.store.list('view_publications').length,0);assert.equal(f.store.list('components').length,0);
+  await assert.rejects(runAuthoringCheck({...request,preview:{...request.preview,assertions:[{...request.preview.assertions[0],expected:'changed'}]}}),{code:'NEW_ATTEMPT_REQUIRED'});assert.equal(count(),before);
+  writeFileSync(join(begin.draft.workspacePath,'input.html'),'changed source');
+  await assert.rejects(runAuthoringCheck(request),{code:'NEW_ATTEMPT_REQUIRED'});assert.equal(count(),before);
+ }finally{globalThis.fetch=originalFetch;await f.cleanup();}
+});
+
+test('unregistered changed preview plan reruns only preview while build is reused',{skip:!existsSync(browser),timeout:60000},async()=>{
+ const f=await setup();try{
+  const begin=await f.begin({mode:'new'});project(begin.draft.workspacePath,'Preview change');const keyFile=join(f.directory,'key');writeFileSync(keyFile,f.token);
+  // @ts-expect-error Standalone build runner.
+  const {runAuthoringBuild}=await import('../../scripts/apps-authoring-build.mjs');
+  const input={sessionId:'original',viewId:begin.view.viewId,attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,sourceRevision:begin.draft.sourceRevision,workspacePath:begin.draft.workspacePath,command:[process.execPath,'build.mjs'],archiveRoot:join(f.directory,'source-components'),evidenceRoot:join(f.directory,'authoring-evidence'),runtime:{url:f.url,keyFile},autoRecord:true};
+  const built=await runAuthoringBuild(input),plan={...built.previewRequest,autoRecord:false,browserExecutable:browser,assertions:[{id:'select',action:'click',selector:'#toggle',checkSelector:'#result',check:'text',expected:'selected'}]};
+  const first=await runAuthoringPreview(plan),second=await runAuthoringPreview({...plan,assertions:[...plan.assertions,{id:'heading',selector:'h1',check:'text',expected:'Preview change'}]});
+  assert.equal(second.report.verdict,'PASS');assert.equal(second.summary.reusedPreview,false);assert.notEqual(first.reportRef.sha256,second.reportRef.sha256);
+  const reused=await runAuthoringBuild(input);assert.equal(reused.reusedBuild,true);assert.equal(reused.reportRef.sha256,built.reportRef.sha256);assert.equal(f.store.list('build_receipts').length,1);
+ }finally{await f.cleanup();}
+});
+
+
+test('packed check CLI completes four steps and repeats without new execution',{skip:!existsSync(browser)||!existsSync('bundles/apps/lib/apps-authoring-check.js'),timeout:60000},async()=>{
+ const f=await setup();try{
+  const begin=await f.begin({mode:'new'});project(begin.draft.workspacePath,'Packed check');const keyFile=join(f.directory,'key');writeFileSync(keyFile,f.token);
+  const request={build:{sessionId:'original',viewId:begin.view.viewId,attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,sourceRevision:begin.draft.sourceRevision,workspacePath:begin.draft.workspacePath,command:[process.execPath,'build.mjs'],archiveRoot:join(f.directory,'source-components'),evidenceRoot:join(f.directory,'authoring-evidence'),runtime:{url:f.url,keyFile}},preview:{browserExecutable:browser,requiredMethods:['getData'],assertions:[{id:'select',action:'click',selector:'#toggle',checkSelector:'#result',check:'text',expected:'selected'}]}};
+  const path=join(f.directory,'check.json');writeFileSync(path,JSON.stringify(request));const entry=resolve('bundles/apps/lib/apps-authoring-check.js');
+  const run=()=>new Promise<any>((accept,reject)=>{const child=spawn(process.execPath,[entry,path],{cwd:f.directory,windowsHide:true,stdio:['ignore','pipe','pipe']});let out='',err='';child.stdout.on('data',data=>out+=data);child.stderr.on('data',data=>err+=data);child.on('error',reject);child.on('close',code=>{if(code!==0)return reject(new Error(err||out));try{accept(JSON.parse(out));}catch(error){reject(error);}});});
+  const first=await run(),second=await run();assert.equal(first.verdict,'PASS');assert.equal(first.reusedBuild,false);assert.equal(second.reusedBuild,true);assert.equal(second.reusedPreview,true);assert.equal(first.buildReceiptId,second.buildReceiptId);assert.equal(first.previewReceiptId,second.previewReceiptId);assert.equal(f.store.list('view_publications').length,0);assert.equal(f.store.list('components').length,0);
  }finally{await f.cleanup();}
 });

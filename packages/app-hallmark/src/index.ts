@@ -44,7 +44,12 @@ const outputSchemas:Record<string,JsonSchema>={
 function descriptor(suffix:string):CapabilityDescriptor{
  const tool=TOOL_DEFINITIONS.find(tool=>tool.name===`hallmark_${suffix}`)!;
  const mutation=tool.kind==='write';
- return {capabilityId:domainCapabilityIds[suffix],version:'1.0.0',title:tool.name,description:tool.description,effect:mutation?'mutation':tool.kind==='compute'?'compute':'query',inputSchema:tool.parameters as unknown as JsonSchema,outputSchema:outputSchemas[suffix],execution:{mode:mutation?'async':'sync',timeoutMs:mutation?120000:60000,concurrency:mutation||suffix==='refresh_data'?'exclusive':'declared_safe',lockScope:'connection',idempotency:mutation?'runtime_dedup':'not_applicable',completionEvidence:mutation?'readback':'response'},discovery:{defaultVisible:['app_info','list_stores','list_store_products'].includes(suffix),keywords:['hallmark',suffix]},aliases:[tool.name]};
+ const inputSchema=structuredClone(tool.parameters) as unknown as JsonSchema;
+ if(suffix==='list_store_products'){
+  inputSchema.properties={...(inputSchema.properties as Record<string,JsonSchema>),fields:{type:'array',items:{type:'string',enum:['title','imageUrl','sku','status','platformStatus','currency','price','pricing','profit','stock','metrics','sources','declaredWeight','storeName']},description:'可选：只返回指定商品字段；身份字段始终保留。列表推荐 title/imageUrl/sku/status/currency/pricing/profit/stock；详情需要来源或规格时再请求 sources。省略保持完整响应。'}};
+ }
+
+ return {capabilityId:domainCapabilityIds[suffix],version:'1.0.0',title:tool.name,description:tool.description,effect:mutation?'mutation':tool.kind==='compute'?'compute':'query',inputSchema,outputSchema:outputSchemas[suffix],execution:{mode:mutation?'async':'sync',timeoutMs:mutation?120000:60000,concurrency:mutation||suffix==='refresh_data'?'exclusive':'declared_safe',lockScope:'connection',idempotency:mutation?'runtime_dedup':'not_applicable',completionEvidence:mutation?'readback':'response'},discovery:{defaultVisible:['app_info','list_stores','list_store_products'].includes(suffix),keywords:['hallmark',suffix]},aliases:[tool.name]};
 }
 interface ApiRoute { apiOperationId:string;capabilityId:string;description?:string;legacyName?:string;path?:string;method?:'GET'|'POST';sourceMethod?:'getStores'|'getStoreProducts'|'syncStoreProducts'|'getTargetMargin' }
 /** Only interfaces already verified in HallmarkClient enter this catalogue; unknown URLs cannot dispatch. */
@@ -98,6 +103,8 @@ export class HallmarkProvider implements AppProvider {
   if(!isObject(request.input))return this.failure(context,'INPUT_SCHEMA_INVALID','Hallmark 输入须为对象。');
   if(descriptor.effect==='mutation'&&!context.operationId)return this.failure(context,'OPERATION_ID_REQUIRED','变更必须先由 Runtime 持久化操作身份。');
   const domain=this.domain(request.connectionId,context.configRevision),args:RecordData={...request.input};
+  const fields=request.capabilityId==='hallmark.products.list'&&Array.isArray(args.fields)?args.fields as string[]:undefined;
+  if(fields)delete args.fields;
   const source=request.source,sessionId='sessionId' in source?source.sessionId:`runtime:${request.connectionId}`;
   const legacyContext:InvocationContext={sessionId,signal:context.signal,...(context.operationId?{operationId:context.operationId}:{}),...(typeof args.userRequest==='string'?{userRequest:args.userRequest}:{})};
   if(descriptor.effect==='mutation')args.clientOperationKey=canonicalJson([request.appId,request.connectionId,request.capabilityId,request.idempotencyKey]);
@@ -108,6 +115,10 @@ export class HallmarkProvider implements AppProvider {
   // Keep only the original legacy envelope fields for the explicitly marked compatibility call.
   // This is invocation evidence in the same Provider store, not a second business implementation.
   if(source.kind==='agent'&&source.nativeCallId.startsWith('legacy:'))domain.options.store.put('legacy_result_metadata',request.invocationId,{sessionId,invocationId:request.invocationId,capabilityId:request.capabilityId,...(result.provenance?{provenance:result.provenance}:{}),...(result.metricBasis?{metricBasis:result.metricBasis}:{}),...(result.error?{error:result.error}:{})});
+  if(fields&&isObject(result.data)&&Array.isArray(result.data.products)){
+   const keys=new Set(['id','storeId','store_id','offerId','offer_id','productId','product_id',...fields]);
+   result={...result,data:{...(args.storeId!==undefined?{storeId:args.storeId}:{}),products:result.data.products.map((row:RecordData)=>Object.fromEntries(Object.entries(row).filter(([key])=>keys.has(key)))),total:result.data.total,...(result.data.cursor!==undefined?{cursor:result.data.cursor}:{})}};
+  }
   return this.convert(result,context,descriptor);
  }
  private convert(legacy:ToolResult,context:ExecutionContext,descriptor?:CapabilityDescriptor):CapabilityResult{

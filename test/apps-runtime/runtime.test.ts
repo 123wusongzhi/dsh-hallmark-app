@@ -64,6 +64,22 @@ test('model projection caps UTF8 and complete data remains readable; spill failu
   const projection=projectModelResult(store,result);assert.ok(Buffer.byteLength(projection.content)<=16384);assert.ok(projection.fullResultRef);const page=readResultPage(store,projection.fullResultRef!,'0',100);assert.equal(page.total,1000);assert.equal(page.returned,100);assert.equal(page.nextCursor,'100');store.close();
   const failure=projectModelResult(store,result);assert.ok(Buffer.byteLength(failure.content)<=16384);assert.match(failure.content,/RESULT_SPILL_FAILED/);
 });
+
+test('oversized object results retain a labeled sample and exact original result read route',()=>{
+  const store=new RuntimeStore(':memory:');
+  try{
+    const data={total:338,cursor:'60',products:Array.from({length:60},(_,id)=>({id,title:'商品'.repeat(200),profit:{purchaseMinor:100,actualMinor:150,actualMargin:0.2}}))};
+    const result:CapabilityResult={status:'ok',invocationId:'object-result',traceId:'trace',data};
+    const projected=projectModelResult(store,result),summary=JSON.parse(projected.content);
+    assert.ok(Buffer.byteLength(projected.content)<=16384);
+    assert.equal(summary.sample.total,338);assert.equal(summary.sample.cursor,'60');
+    assert.equal(summary.sample.products.length,1);assert.equal(summary.sample.products[0].profit.actualMargin,0.2);
+    assert.equal(summary.sampleTruncated,true);
+    assert.equal(summary.read.path,'/v1/results/result%3Aobject-result?cursor=0&limit=100');
+    assert.deepEqual(readResultPage(store,summary.read.resultRef).result,result);
+    assert.ok(Buffer.byteLength(projectModelResult(store,result,512).content)<=512);
+  }finally{store.close();}
+});
 test('registration rejects duplicate IDs and stopping removes catalog while retaining assets',async()=>{
   const {runtime,store,provider}=fixture(async context=>ok(context));assert.throws(()=>runtime.register(provider),/MANIFEST/);store.put('components','saved',{title:'Keep'});const before=runtime.catalogDigest;await runtime.stopProvider('sample');assert.notEqual(runtime.catalogDigest,before);assert.equal(runtime.describe('sample.rows.query'),undefined);assert.equal(store.get('components','saved')?.title,'Keep');store.close();
 });
@@ -90,4 +106,13 @@ test('inspection unavailability cannot turn uncertain business outcome into fail
   const {runtime,store}=fixture(async()=>{throw new Error('lost');},new RuntimeStore(':memory:'),async(_id,context)=>({invocationId:context.request.invocationId,traceId:context.request.traceId,status:'failed',error:{code:'UNAVAILABLE',message:'Network unavailable',retryPolicy:'inspect_only'}}));
   const original=await runtime.invoke(request('mutation'));
   const result=await runtime.inspect(original.operation!.operationId);assert.equal(result.status,'unknown');assert.equal(result.operation?.state,'unknown');assert.equal(store.get<RuntimeOperation>('operations',original.operation!.operationId)?.state,'unknown');store.close();
+});
+
+
+test('large inspect results retain actionable summary without truncating its identities',()=>{
+ const store=new RuntimeStore(':memory:');try{
+ const summary={lastConfirmedDisplay:{buildId:'old'},preparedBuild:{buildId:'new'},currentDisplay:{buildId:'new',state:'failed'},blockedStage:'display',requiresRebuild:false,nextAction:{action:'reopen_same_build',reason:'Use the verified archive',target:{buildId:'new'},errorCodes:['BRIDGE_TIMEOUT']}};
+ const result:CapabilityResult={status:'ok',invocationId:'inspect-large',traceId:'inspect',data:{summary,attempt:{attemptId:'attempt'},displays:Array.from({length:100},()=>({details:'x'.repeat(1000)}))}};
+ const projected=projectModelResult(store,result);assert.deepEqual(JSON.parse(projected.content).authoringSummary,summary);assert.ok(projected.fullResultRef);
+ }finally{store.close();}
 });
