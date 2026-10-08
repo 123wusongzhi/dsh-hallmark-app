@@ -1,15 +1,19 @@
 # Apps 数据升级、备份、回退与清理
 
-正式验收为**33 PASS/0 FAIL/47 NOT_RUN**：034/035/036/039绑定12，037/038的完整最低FIXTURE/actual-command绑定14，旧12被阻断的历史保留。candidate.15已官方12→15覆盖安装，包778/778与144输入/33产物冻结；独立安装33/源144/核心9774两遍零差异，实际Runtime15/schema4/四GET/健康与原会话前缀核实，启动包装exit1保留。下文持久准入/回退守卫来自14已冻结源码，15仅版本元数据和安装器5项源输入变化；不把14正式卡迁到15，也不代签真实切库、Native、R或四门禁。
+正式验收为**35 PASS/0 FAIL/45 NOT_RUN**，原35卡保持10/11/12/14/15身份，旧BLOCKED/FAIL不改。candidate.17已官方同名16→17覆盖安装：812/812、145输入/33产物冻结，独立包32检查/17负例及官方ValidateOnly通过，20文件源码窄复核闭合；实际Runtime17/schema4/健康/Hallmark与2755行原历史前缀核验。五份冷备保存regular files相同字节与内部junction重定位拓扑，旧拒绝/38B单文件漂移诊断保留。显示、Native内存/原输入、模型/业务/实际切库和R未验，四门禁NOT_ACCEPTED；不能用安装或私有冷备范围代签完整恢复和现场验收。
+
+新增TST-046/047的完整最低本地FIXTURE/实际命令已独立V通过，绑定candidate.15；原33卡保留各自10/11/12/14身份，6项旧source/build材料没有原归档执行hash链，不补原声明、不迁移15，具体I/V/hash与边界见[A.2执行记录](apps-a2-execution.md)。
+
+用户最新确认：在任何原会话用 `@` 选择应用，Agent实际构建并预览后，在原聊天工具卡提供“打开组件”，由用户手动打开到原侧栏；等待点击不计挂载超时、不自动展开。candidate.17增量将成功预览构建与独立显示尝试分开，UI-only openDisplay/authorizeDisplayFrame/reportDisplayError加载同一归档；失败可明确重新打开，新display/frame/generation退役旧文档，Agent可inspect读取phase/code/message。旧startMount一次性协议保留历史兼容，在新侧栏路径中搁置。candidate.17候选包已冻结：812/812、145输入/33产物及旧16冻结材料守卫零差异，独立20文件源码窄复核闭合；归档SHA-256为 `e5cdbfefe9eab592f7cd733009deacdc215bab909a54cc09dd0128868bb3fa56`。candidate.17已官方同名16→17覆盖安装；独立包32检查/17负例及官方ValidateOnly通过，实际Runtime17/schema4/健康/Hallmark与2755行原历史前缀核验；Native内存/侧栏点击显示仍待验，不将局部源码检查算作正式卡或显示成功。契约见[ADR-010](apps-architecture-decisions.md)和[创作流程](source-component-authoring.md)。
 
 ## A.2：离线检查与工具身份
 
-当前[install-desktop-apps.ps1](../scripts/install-desktop-apps.ps1)从明确传入的 `-PackageManifestPath` 读取candidate身份；省略时只使用源码Bundle版本对应的manifest。替换前核对schema4、Bundle/Host/Runtime相同版本、归档SHA、packed身份及全部33项tar成员的二进制SHA，拒绝错版本/多余成员/修改字节；安装后再次核对磁盘33项产物。`-ValidateOnly`仅检查，不停止桌面或安装；实际替换仍由官方desktop profile插件管理器执行并保留原包/配置回退备份。此次已官方12→15覆盖；该脚本不停止Runtime、不迁移app.db、不代签原生内存或现场切库。历史固定12/10安装器快照保留，详情见[执行记录](apps-a2-execution.md)。
+当前[install-desktop-apps.ps1](../scripts/install-desktop-apps.ps1)从明确传入的 `-PackageManifestPath` 读取candidate身份；省略时只使用源码Bundle版本对应的manifest。替换前核对schema4、Bundle/Host/Runtime相同版本、归档SHA、packed身份及全部33项tar成员的二进制SHA，拒绝错版本/多余成员/修改字节；安装后再次核对磁盘33项产物。`-ValidateOnly`仅检查，不停止桌面或安装；实际替换仍由官方desktop profile插件管理器执行并保留原包/配置回退备份。本次已官方16→17覆盖；该脚本不停止Runtime、不迁移app.db、不代签原生内存或现场切库。历史固定12/10安装器快照保留，详情见[执行记录](apps-a2-execution.md)。
 
 先核对明确manifest的官方安装计划；此命令不停止/安装桌面：
 
 ```powershell
-.\scripts\install-desktop-apps.ps1 -PackageManifestPath "evidence/apps-a2-20261007/candidates/1.0.0-candidate.15/package-manifest.json" -ValidateOnly
+.\scripts\install-desktop-apps.ps1 -PackageManifestPath "evidence/apps-a2-20261007/candidates/1.0.0-candidate.17/package-manifest.json" -ValidateOnly
 ```
 
 命令从核实过源码/版本的本仓库根目录执行，Node须支持node:sqlite与原生TypeScript。安装包build/preview CLI使用Host guidance返回的Node方式；本页的 `migrate-apps-schema4.mjs`、`backup-apps.mjs` 是**仓库维护工具**。完整备份模块/CLI不在candidate.10的143打包sourceInputs或安装入口，须独立记源码/hash/日志，不能拼接不存在的已安装lib备份命令。
@@ -17,6 +21,32 @@
 操作前确认实际 schema、源数据/资产根、新目标路径、连接版本和当前进程。冻结源入口并停止所有 Runtime writer，等待实际执行排空；对 queued/dispatching/pending/unknown 按原 operationId/taskId/requestId 只读核实。未决结果不能靠重发写入或删除记录“解决”。优先正常退出官方桌面，再执行官方同名插件更新；本次用户已授权受控停止/重启，若无app.quit端点且Native工具关闭，须核实任务进程、保存完成会话/配置并停写冷备后受控停止，不将Stop-Process记为正常退出验收。不要凭旧 URL 假定服务停止。
 
 `--offline-confirmed` / `--offline` 是操作者明确的停写声明，不会停止进程、屏蔽入口或保证所有业务网络写入都已停。writer lease 还须核对 PID/进程/监听；遇到残留先查所有者，不能删除 lease 绕过唯一 writer。源、备份、目标不能重叠；目标必须新目录，失败产物留作诊断，不覆盖或递归清空来重试。
+
+## 本轮17冷备与内部依赖junction的边界
+
+实际16→17更新前，本轮私有冷备helper在停写状态保存Runtime、desktop userdata、原会话、整个workspace会话目录及实际旧同名插件五份备份。旧遍历守卫拒绝Runtime内部标准pnpm junction，使原stop-backup与冷备v2实际exit1；两次失败原样保留，v2在复制前终止。v3逐项确认junction目标位于同一源根，复制regular files并核对字节，备份根中的内部junction重定位后校验拓扑等价，源变化0；不跟随未知外部链接，不宣称junction绝对link bytes相同。
+
+这是有独立材料的私有停写冷备/恢复操作，不能据此改写下文仓库backup-apps.mjs的缓存排除合约，也不是新安装包维护命令。回退必须保存实际旧插件字节：本轮旧16 lib/index.js预存38B条件漂移、其他32项匹配16 tar，编辑者/意图UNKNOWN_NOT_INFERRED；ValidateOnly仅证明观测38份profile文件前后未变。不能拿纯16归档替代实际旧插件冷备而声称原样恢复。正式rollback脚本、源/备份清单与失败记录在忽略目录保留，具体路径/hash见[A.2执行记录](apps-a2-execution.md)。
+
+官方16→17覆盖/重开/Runtime健康与2755行原会话前缀检查actual exit0；独立后验33安装产物、145源码、原核心9774文件两遍零差异，最终3251引用/337包索引与352当前文件守卫通过。它未打开原SQLite或操作GUI；Native内存、原输入、手动点击/渲染、模型、业务、实际切库和R仍待验。需要恢复时按实际备份根重验目标与引用，不将冷备成功视为完整原生恢复或现场验收。
+
+## A.2：candidate.17独立显示尝试的维护边界
+
+17增量沿用schema4，在现有provider_records保存component_displays和publication_views，完整备份需携带显示历史、准备快照、固定view_revisions、原归档和签名build/preview回执。它区分可恢复的创作结果与一次显示文档；恢复材料不等于恢复旧frame授权。原侧栏的用户点击经UI-only openDisplay/authorizeDisplayFrame开始新display/frame/generation，旧grant退役；等待点击不开始计时，不自动开栏或重跑Agent。
+
+准备态归档也必须可读；真实组合Host+Runtime隔离回归已复现旧503后修正，仍不等于桌面现场加载通过。可信16成功预览归档可由新Host补协议nonce后按17路径打开，Runtime持续严格验证；不用改原归档或仅为重开重复构建。实际原会话、publication/build、成功回执、快照bindings、资源修订和当前连接权限均须重验；失效或被取代目标拒绝，不能猜最新焦点回退。
+
+显示错误用reportDisplayError记录phase/code/message，Agent通过inspect.latestDisplay/displays读取，不自动发送聊天。失败后明确重开产生新display，保留原错误；旧nonce/bridge/error/ready/UI状态回执拒绝。历史P1源码使用原可信view_revisions绑定，不用当前P2数据；重复/历史显示不新增viewRevision或替换当前活动构建。首次实际frame的required assertions必须PASS，明确保存门禁保持。旧startMount仅历史兼容，17新侧栏路径搁置；本轮17已冻结812/812、145输入/33产物，已官方16→17覆盖，独立包/Runtime健康通过；Native和TST-045矩阵待验。
+
+## 历史candidate.16：手动打开候选的一次性维护边界
+
+下文保留16当时协议；17独立显示重开不要求为同一成功归档重新创建authoring attempt。
+
+16仍使用schema4；发布后的prepared记录与publish_ready attempt保存在现有authoring集合中，完整备份应携带这些记录、候选归档和签名build/preview回执。prepared尚未打开时没有mountStartedAt或readyDeadlineAt；超过15秒、Observer通知或重启都不会自动开始挂载或记failed_mount，重启保留prepared。固定publication GET仅在publication.source提供候选，当前view的active/last-good/source保持原值。
+
+用户必须从原会话固定候选卡点击。Client经Host UI路由 `POST /v1/authoring/startMount`，body中的sessionId和params的viewId/publicationId/attemptId/attemptEpoch/buildId/expectedViewRevision缺一不可；这不是模型能力或维护CLI步骤。首次有效调用才建立15秒挂载期限，相同调用不续期；实际frame通过后才提交展示，超时/取消保留旧last-good。prepared取消或新attempt取代时成为终态，不能通过点击/恢复复活。旧mounting在Runtime重启后仍interrupted；旧candidate.15失败pub不自动升级为prepared，应保留原记录并明确新建attempt。
+
+备份/恢复仅恢复持久材料，不等于点击、授权或Native展示；原view/session/publication身份与输入hash须逐项对账，不自动打开组件区或重跑Agent。存在authoring draft时，通用presentation save同样拒绝prepared/mounting或未确认构建，避免绕过明确保存门禁；无authoring draft的旧static/legacy保存路径保持兼容。16包及局部38/38通过仅是源码/隔离执行范围，安装/原生和TST-045完整矩阵仍待验，证据见[执行记录](apps-a2-execution.md)。
 
 ## A.2：schema3→4 独立迁移
 
@@ -73,7 +103,7 @@ source、dist、package.json 和原锁文件仍保存。原锁/依赖路径适�
 
 ## A.2：唯一 writer、入口切换与条件回退
 
-离线迁移/恢复核对完成后，保存新库rollback baseline，审阅原格式/schema4增量，按[A.2验收范围](requirements/A2/docs/03_ACCEPTANCE.md)记录四范围。maintenance CLI的**数据库检查使用只读schema3/4连接**，不隐式迁移；这不等于所有命令无文件副作用。GC apply取得Runtime writer lease后按真实格式写库/删除获准资产；candidate.14的cutover/rollback还会持久修改目标目录的准入文件，必须先阅读下文。当前15包含该守卫；旧12没有持久准入控制，旧12运行结果不能代签新守卫或现场门禁。
+离线迁移/恢复核对完成后，保存新库rollback baseline，审阅原格式/schema4增量，按[A.2验收范围](requirements/A2/docs/03_ACCEPTANCE.md)记录四范围。maintenance CLI的**数据库检查使用只读schema3/4连接**，不隐式迁移；这不等于所有命令无文件副作用。GC apply取得Runtime writer lease后按真实格式写库/删除获准资产；candidate.14的cutover/rollback还会持久修改目标目录的准入文件，必须先阅读下文。当前17包含该守卫；旧12没有持久准入控制，旧12运行结果不能代签新守卫或现场门禁。
 
 ```powershell
 node scripts/apps-maintenance.mjs --directory "E:/new-apps-schema4" --mode baseline --output "E:/operator/schema4-rollback-baseline.json"
@@ -120,7 +150,7 @@ node scripts/verify-a2-release-evidence.mjs --manifest "E:/operator/offline-card
 | BUSINESS-WRITE | CORE+078，共52 | NOT_ACCEPTED |
 | DATA-CUTOVER | CORE+073/079，共53 | NOT_ACCEPTED |
 
-required只允许增加；原48历史CSV仍42项reported remainingReal NOT_RUN，两种获准逐字序列化CRLF `b5b0a728fe4e7d42ed15e7122432ab7e4c6395aaf9a2042adcc61de90382eb92` / LF `5885e2375bc5711a36d90a635647966b27b850ebfe8b7ff0e95a7a342575c779`按选定字节核对，不任意归一化重写历史；A.2派生基线摘要 `f05edf24340f5c9fd904f33ae99dc98f1a0fd31c1ad4d760c95003391e073ceb`。本轮003/004/011/012/013/014/015/017/018/019/020/021/022/023/024/025/026/054/055/056/057/059/060/073/075/076/077二十七卡完整最低scope独立V通过，011旧10基线FAIL原样保留，四张核心卡已在新11真实重跑并独立V通过，当前47卡仍NOT_RUN；维护267断言/独立12窄测试/typecheck和原706包检查分开。073 FIXTURE直接归档浏览器恢复不代签v2/native切库，075/076旧08:24源与trace的复验不发明原执行commit，077资格审查不代签R。详情/实际V身份见 [A.2执行记录](apps-a2-execution.md)。
+required只允许增加；原48历史CSV仍42项reported remainingReal NOT_RUN，两种获准逐字序列化CRLF `b5b0a728fe4e7d42ed15e7122432ab7e4c6395aaf9a2042adcc61de90382eb92` / LF `5885e2375bc5711a36d90a635647966b27b850ebfe8b7ff0e95a7a342575c779`按选定字节核对，不任意归一化重写历史；A.2派生基线摘要 `f05edf24340f5c9fd904f33ae99dc98f1a0fd31c1ad4d760c95003391e073ceb`。本轮003/004/011/012/013/014/015/017/018/019/020/021/022/023/024/025/026/054/055/056/057/059/060/073/075/076/077二十七卡完整最低scope独立V通过，011旧10基线FAIL原样保留，四张核心卡已在新11真实重跑并独立V通过，当前45卡仍NOT_RUN；维护267断言/独立12窄测试/typecheck和原706包检查分开。073 FIXTURE直接归档浏览器恢复不代签v2/native切库，075/076旧08:24源与trace的复验不发明原执行commit，077资格审查不代签R。详情/实际V身份见 [A.2执行记录](apps-a2-execution.md)。
 
 ## A.2 历史验证范围
 

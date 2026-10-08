@@ -1,5 +1,7 @@
 # Apps V1 架构决策与 P0 开发边界
 
+2026-10-08，用户将本轮目标调整为完成可用的应用框架，TODO 与原审计表作为参考。优先完成原 DSH 会话中的应用引用、组件创建和编辑、实际展示、搜索选择和附加到输入框，以及前端外观与交互性能；其他实现保持克制，不擅自新增安全审计或防御性校验。下文保留历史架构与验证事实，严格逐卡验收及原发布门禁不作为本轮交付前置。
+
 2026-10-07，以 `cb871b4086508988485dc4a0a5d6aa5440901267` / Hallmark 0.3.0 为代码基线。需求优先顺序保持 SPEC 编号规则 > TODO 顺序 > ARCH 图示。本记录固定实施边界；不会把拟新增项目协议描述成现有 DSH API。
 
 P0 已冻结 26 个旧工具目录、依赖锁、基线文件和已有构建产物哈希，并在同一只读 SQLite 事务中盘点本地表数量。没有复制业务值、安装 bundle、修改 DSH 核心、重启服务或执行业务变更。441 项既有测试全部通过。证据位于 `evidence/apps-v1-20261007/P0/`。
@@ -18,6 +20,8 @@ G0 允许在隔离开发路径进入 P1，关闭未核实的宿主功能并保�
 | ADR-006 | 原业务事实留原应用，Runtime 管理缓存与资产 | Hallmark 保留真实 HTTP 与默认数据目录；Notes 有独立原应用数据源。快照必须标来源、时间与 stale。 |
 | ADR-007 | 优先 DSH 原生接入；MCP 为未来适配 | 不增加第二 Agent Loop、聊天历史、安装器或权限体系。未核实扩展点直接降级，不猜方法名。 |
 | ADR-008 | 停止旧写入 → 离线迁移 → 验证 → 单写切换 | P5 才允许切换演练；实现真实迁移命令与全资产备份后执行。当前运行服务继续使用现有数据。 |
+| ADR-009 | 构建和预览通过 → 准备组件 → 用户点击 → 验证原生展示 | candidate.16 的历史实现。原聊天卡片固定发布身份，等待点击不启动计时；其一次性挂载协议在新侧栏打开路径中由 ADR-010 取代。 |
+| ADR-010 | 成功预览归档 → 用户打开 → 独立显示尝试 → 失败可重开 | candidate.17 实现中的增量修复。每次明确打开使用新的 display/frame 身份，加载同一成功预览归档；加载错误供 Agent 读取，重开保持会话与数据权限检查。 |
 
 | 事实或资产 | 唯一所有者 |
 |---|---|
@@ -30,6 +34,16 @@ G0 允许在隔离开发路径进入 P1，关闭未核实的宿主功能并保�
 | 模型实际输入、原生会话历史 | DSH 正式会话机制 |
 
 应用交付包含两个半部：P2 Provider 承载业务，P1 原生插件贡献目录与工具/界面投影。两组状态分别表示 `runtimeState` 与 `hostProjectionState`；后端 ready 不意味着宿主 attached。Provider 注册、就绪、停止接收、排空和停止的职责不能由 Host 窗口关闭替代。
+
+ADR-009 是本轮针对桌面挂载问题的增量契约。`publish` 产生 `prepared`，`readyDeadlineAt` 与 `mountStartedAt` 为空；重启保留尚未打开的准备记录。候选保存在 `publication.source`，当前 `activeBuildId`、`lastGoodBuildId` 和已展示源码在等待期间保持原值。原聊天卡片固定 `sessionId/viewId/publicationId/buildId`，不跟随最新焦点或另一个发布；原生 `sidebarRight.mounted` 表示当前中央会话，仍作为所属会话的导航保护。
+
+点击后 Client 经 Host 的 UI 路由调用 `POST /v1/authoring/startMount`，带 `sessionId` 和 `params` 中的 `viewId/publicationId/attemptId/attemptEpoch/buildId/expectedViewRevision`。Runtime 重新核验当前草稿代际、视图版本、构建/预览回执和归档，原子转入 `mounting` 并首次设定截止时间；相同点击不续期，终态不能复活。此操作不注册为模型能力。只有真实 frame 的授权、数据读取、React 提交和必要断言确认后才提升 `active/lastGood`，才称“已展示”；超时保留上一成功版本。candidate.16 已通过 801 项完整测试、类型和实际包内命令检查，并由官方管理器覆盖原同名插件、重开桌面；实际 Runtime16/schema4/健康和原会话历史前缀已核实，独立磁盘检查确认 33 个产物、144 项源码输入及 9774 个原核心文件一致。原生插件内存、用户点击后的真实组件显示与原输入附加仍待验，不能用后台或磁盘检查代签实际显示；正式状态见 [A.2 执行记录](apps-a2-execution.md)。
+
+ADR-010 将创作结果与一次桌面加载分开。构建、预览和不可变归档仍由现有 authoring 回执证明；`publication` 固定原消息对应的构建。用户点击后，UI-only `openDisplay` 创建独立 `displayId/generation`，原侧栏直接加载该归档。等待点击不启动显示计时。准备态读取也必须注册归档资源，不能要求组件已经进入挂载态才允许读取入口。真实组合 Host + Runtime 的隔离回归已复现旧准备态读取 503，并在修复后通过实际构建、浏览器预览和原归档资源读取；此结果不替代桌面现场验收。
+
+显示尝试保存在 Runtime 现有 `provider_records` 中。每次明确重开使用新的 iframe/nonce，并退役上次显示的 grant；旧文档不能借重开恢复桥接或提交回执。授权先核验所属会话、固定 publication/build、预览回执与归档、连接绑定和支持特性，再原子写入 grant。显示失败保留成功构建和工作副本，Agent 经 `apps.authoring.inspect` 读取 `latestDisplay/displays` 中的错误阶段、code 和 message，决定是否需要修复源码。加载错误回执不会自动发送聊天消息。首次实际数据读取、React 提交及必要断言通过可确认展示；再次打开不重复提交创作状态或推进视图版本。
+
+历史原消息保持原构建与可信 `view_revisions` 快照的 bindings，不能把 P1 的源码配上 P2 的数据。历史展示不会覆盖当前活动构建，数据读取与资源选择仍重新检查当前会话权限及资源修订。保存继续由明确的用户请求触发。candidate.17 已通过 812 项完整测试、类型和实际包内命令检查，冻结 145 项构建输入和 33 个产物；归档 SHA256 为 `e5cdbfefe9eab592f7cd733009deacdc215bab909a54cc09dd0128868bb3fa56`。独立源码复核覆盖旧会话拒绝、显示授权、失败重开和真实 candidate.16 SDK 兼容；兼容夹具使用私有归档，Node 侧 ready 模拟，不代表 Bill 原归档或桌面显示。官方管理器已覆盖同名插件并重开桌面，实际 Runtime17/schema4、Hallmark 健康和原会话历史前缀已核实；Host 插件内存、实际显示与原输入附加尚待验证。安装前旧16的 Host 文件只有一处允许 `prepared` 的条件变化，实际旧插件与运行数据均已冷备；内部 pnpm Junction 按等价拓扑重建，原文件字节及源指纹不变。初次链接检查和旧安装漂移检查的失败记录均保留。ADR-009 的旧实现及失败证据保留，正式 A.2 状态没有因新增实现提升。
 
 动态 Schema 默认采用固定 `apps_list` / `apps_describe` / `apps_invoke` / `apps_inspect` 网关。只有支持状态、live 证据等级和真实签名同时具备才启用动态工作集。门禁阻止调用不等于按需发现。
 
@@ -49,4 +63,4 @@ candidate.5 实际独立 Host 的显式适配已通过：发布 revision1 不唤
 
 实际安装观察证明同一 package 路径升级后，磁盘 candidate.2 与运行回调可以短暂不同：管理器 HMR 保留了 candidate.1 的 agent-only 摘要回调。记录磁盘 hash、实际回调特征和失败输出后，仅重启独立 Web Host；fresh process 加载 candidate.2 的 `agent ?? scope` 回调，同一会话组装得到三应用摘要与四工具 Schema。部署必须验证运行结果，必要时按官方管理机制重启目标 Host；不能仅凭磁盘版本宣称升级完成。证据见 `evidence/apps-live-bill-20261007/host-session/{callback-before-restart.json,callback-after-restart.json,prompt-candidate2.json}`。
 
-本轮无协议、状态机或部署边界变更；故无 scope_change。新增运行时代码继续以候选实现交付，不能因本记录称为完整验收版。
+ADR-010 调整用户已授权范围内的组件展示协议，沿用原侧栏与 Runtime 所有权，并以独立显示尝试支持失败重开。固定基线保留，变更记录在本 ADR 和候选执行说明中；新增运行时代码继续以候选实现交付，不能因本记录称为完整验收版。

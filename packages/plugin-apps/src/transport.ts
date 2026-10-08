@@ -24,7 +24,7 @@ export interface AppsHostTransport extends RuntimeTransport {
   dispatchAgent?(sessionId: string,requestId: string,requestHash: string,signal?: AbortSignal): Promise<{dispatchGranted: boolean;intent: ComponentAgentIntent}>;
   agentReceipt?(sessionId: string,requestId: string,requestHash: string,state: 'accepted'|'unknown'|'failed',receipt?: JsonValue,error?: JsonValue,signal?: AbortSignal): Promise<ComponentAgentIntent>;
   view?(sessionId: string, viewId: string, signal?: AbortSignal,version?:{buildId?:string;viewRevision?:number;publicationId?:string}): Promise<JsonValue>;
-  viewData?(sessionId: string, viewId: string, signal?: AbortSignal): Promise<JsonValue>;
+  viewData?(sessionId: string, viewId: string, signal?: AbortSignal, target?:{publicationId?:string;buildId?:string;displayId?:string;displayGeneration?:number}): Promise<JsonValue>;
   nativeBinding?(input:NativeBindingRequest,signal?:AbortSignal):Promise<NativeBindingReceipt>;
   inspectNativeBinding?(sessionId:string,bindRequestId:string,referenceId:string,signal?:AbortSignal):Promise<NativeBindingReceipt|null>;
   serializeNativeReference?(referenceId:string,sessionId:string,signal?:AbortSignal):Promise<{text:string}>;
@@ -34,6 +34,7 @@ export interface AppsHostTransport extends RuntimeTransport {
   presentationAction?(input:{sessionId:string;capabilityId:string;input:JsonValue;requestId:string},signal?:AbortSignal):Promise<JsonValue>;
   presentationRequest?(requestId:string,signal?:AbortSignal):Promise<PresentationInvocation|null>;
   views?(sessionId:string,signal?:AbortSignal):Promise<JsonValue>;
+  componentHistory?(componentId:string,signal?:AbortSignal):Promise<JsonValue>;
   saved?(signal?:AbortSignal):Promise<JsonValue>;
   legacyInvoke(input: {name: string;arguments: JsonValue;sessionId: string;invocationId: string;traceId: string;deadlineAt: string}, signal?: AbortSignal): Promise<ToolResult>;
 }
@@ -63,7 +64,7 @@ export class HttpAppsHostTransport extends HttpRuntimeTransport implements AppsH
   async dispatchAgent(sessionId: string,requestId: string,requestHash: string,signal?: AbortSignal) {return await this.request(`/v1/agent-requests/${encodeURIComponent(requestId)}/dispatch`,{sessionId,requestHash},signal) as {dispatchGranted: boolean;intent: ComponentAgentIntent};}
   async agentReceipt(sessionId: string,requestId: string,requestHash: string,state: 'accepted'|'unknown'|'failed',receipt?: JsonValue,error?: JsonValue,signal?: AbortSignal) {return await this.request(`/v1/agent-requests/${encodeURIComponent(requestId)}/receipt`,{sessionId,requestHash,state,...(receipt===undefined?{}:{receipt}),...(error===undefined?{}:{error})},signal) as ComponentAgentIntent;}
   async view(sessionId: string, viewId: string, signal?: AbortSignal,version?:{buildId?:string;viewRevision?:number;publicationId?:string}) {const query=new URLSearchParams({sessionId,...(version?.publicationId?{publicationId:version.publicationId}:{}),...(version?.buildId?{buildId:version.buildId}:{}),...(version?.viewRevision!==undefined?{viewRevision:String(version.viewRevision)}:{})});return await this.request(`/v1/views/${encodeURIComponent(viewId)}?${query}`, undefined, signal) as JsonValue;}
-  async viewData(sessionId: string, viewId: string, signal?: AbortSignal) {return await this.request(`/v1/views/${encodeURIComponent(viewId)}/data?sessionId=${encodeURIComponent(sessionId)}`, undefined, signal) as JsonValue;}
+  async viewData(sessionId: string, viewId: string, signal?: AbortSignal, target:{publicationId?:string;buildId?:string;displayId?:string;displayGeneration?:number}={}) {const query=new URLSearchParams({sessionId});for(const [key,value]of Object.entries(target))if(value!==undefined)query.set(key,String(value));return await this.request(`/v1/views/${encodeURIComponent(viewId)}/data?${query}`, undefined, signal) as JsonValue;}
   async nativeBinding(input:NativeBindingRequest,signal?:AbortSignal){return await this.request('/v1/native-bindings',input,signal) as NativeBindingReceipt;}
   async inspectNativeBinding(sessionId:string,bindRequestId:string,referenceId:string,signal?:AbortSignal){return await this.request(`/v1/native-bindings?${new URLSearchParams({sessionId,bindRequestId,referenceId})}`,undefined,signal) as NativeBindingReceipt|null;}
   async serializeNativeReference(referenceId:string,sessionId:string,signal?:AbortSignal){return await this.request('/v1/native-references/serialize',{referenceId,sessionId},signal) as {text:string};}
@@ -73,6 +74,7 @@ export class HttpAppsHostTransport extends HttpRuntimeTransport implements AppsH
   async presentationAction(input:{sessionId:string;capabilityId:string;input:JsonValue;requestId:string},signal?:AbortSignal){return await this.request('/v1/presentation-actions',input,signal) as JsonValue;}
   async presentationRequest(requestId:string,signal?:AbortSignal){try{return await this.request(`/v1/invocations/${encodeURIComponent(requestId)}`,undefined,signal) as PresentationInvocation;}catch(error){if((error as {statusCode?:number}).statusCode===404)return null;throw error;}}
   async views(sessionId:string,signal?:AbortSignal){return await this.request(`/v1/views?sessionId=${encodeURIComponent(sessionId)}`,undefined,signal) as JsonValue;}
+  async componentHistory(componentId:string,signal?:AbortSignal){return await this.request(`/v1/component-history?componentId=${encodeURIComponent(componentId)}`,undefined,signal) as JsonValue;}
   async saved(signal?:AbortSignal){return await this.request('/v1/saved',undefined,signal) as JsonValue;}
   async legacyInvoke(input: {name: string;arguments: JsonValue;sessionId: string;invocationId: string;traceId: string;deadlineAt: string}, signal?: AbortSignal) {return await this.request('/v1/legacy-invocations', input, signal) as ToolResult;}
 }

@@ -316,6 +316,7 @@ export class AppsHost {
         const resource = url.searchParams.get('resource');
         if(resource==='hostCapabilities'&&[...url.searchParams.keys()].every(key=>key==='resource'))return jsonResponse(this.hostCapabilities());
         if(resource==='componentFeatures'&&[...url.searchParams.keys()].every(key=>key==='resource'))return jsonResponse(this.transport.componentFeatures?await this.transport.componentFeatures(this.combined(request.signal)):{features:[]});
+        if(resource==='componentHistory'&&url.searchParams.get('componentId'))return jsonResponse(this.transport.componentHistory?await this.transport.componentHistory(url.searchParams.get('componentId')!,this.combined(request.signal)):fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供组件历史。'));
         if(resource==='saved'&&[...url.searchParams.keys()].every(key=>key==='resource'))return jsonResponse(this.transport.saved?await this.transport.saved(this.combined(request.signal)):fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供共享组件库。'));
         if (resource === 'apps' && [...url.searchParams.keys()].every(key => key === 'resource')) return jsonResponse(await this.directory(request.signal));
         if (resource === 'connections' && [...url.searchParams.keys()].every(key => ['resource','appId'].includes(key))) return jsonResponse(await this.transport.listConnections(url.searchParams.get('appId') ?? undefined, request.signal));
@@ -339,10 +340,10 @@ export class AppsHost {
           return jsonResponse(intent);
         }
         const viewId=url.searchParams.get('viewId');
-        const fixedBuild=url.searchParams.get('buildId'),fixedRevision=url.searchParams.get('viewRevision'),publicationId=url.searchParams.get('publicationId');
-        if (['view','viewData'].includes(resource??'')&&sessionId&&viewId&&/^[-a-zA-Z0-9_.:]{1,180}$/.test(viewId)&&(!fixedBuild||/^[-a-zA-Z0-9_]{1,180}$/.test(fixedBuild))&&(!publicationId||/^[-a-zA-Z0-9_.:]{1,180}$/.test(publicationId))&&(!fixedRevision||/^[1-9][0-9]{0,9}$/.test(fixedRevision))&&[...url.searchParams.keys()].every(key=>['resource','sessionId','viewId','buildId','viewRevision','publicationId'].includes(key))&&await this.knownSession(sessionId,request.signal)) {
+        const fixedBuild=url.searchParams.get('buildId'),fixedRevision=url.searchParams.get('viewRevision'),publicationId=url.searchParams.get('publicationId'),displayId=url.searchParams.get('displayId'),displayGeneration=url.searchParams.get('displayGeneration');
+        if (['view','viewData'].includes(resource??'')&&sessionId&&viewId&&/^[-a-zA-Z0-9_.:]{1,180}$/.test(viewId)&&(fixedBuild===null||/^[-a-zA-Z0-9_]{1,180}$/.test(fixedBuild))&&(publicationId===null||/^[-a-zA-Z0-9_.:]{1,180}$/.test(publicationId))&&(fixedRevision===null||/^[1-9][0-9]{0,9}$/.test(fixedRevision))&&(displayId===null||/^[-a-zA-Z0-9_.:]{1,180}$/.test(displayId))&&(displayGeneration===null||/^[1-9][0-9]{0,9}$/.test(displayGeneration))&&((displayId===null)===(displayGeneration===null))&&(resource==='viewData'||displayId===null)&&[...url.searchParams.keys()].every(key=>['resource','sessionId','viewId','buildId','viewRevision','publicationId','displayId','displayGeneration'].includes(key))&&await this.knownSession(sessionId,request.signal)) {
           if(resource==='view'&&this.transport.view){const view=await this.transport.view(sessionId,viewId,request.signal,{...(fixedBuild?{buildId:fixedBuild}:{}),...(fixedRevision?{viewRevision:Number(fixedRevision)}:{}),...(publicationId?{publicationId}:{})});await this.prepareView?.(view,sessionId,request.signal);return jsonResponse(view);}
-          if(resource==='viewData'&&this.transport.viewData)return jsonResponse(await this.transport.viewData(sessionId,viewId,request.signal));
+          if(resource==='viewData'&&this.transport.viewData)return jsonResponse(await this.transport.viewData(sessionId,viewId,request.signal,{...(publicationId?{publicationId}:{}),...(fixedBuild?{buildId:fixedBuild}:{}),...(displayId?{displayId,displayGeneration:Number(displayGeneration)}:{})}));
           return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','当前Runtime未提供组件读取接口。'));
         }
       } else if (request.method === 'POST') {
@@ -355,7 +356,7 @@ export class AppsHost {
             if(!await this.knownSession(value.sessionId,request.signal))return jsonResponse(fail('INVALID_SESSION','没有此本机会话。'),400);if(!this.transport.presentationAction)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供共享界面操作。'),503);
             return jsonResponse(await this.transport.presentationAction({sessionId:value.sessionId,capabilityId:value.capabilityId,input:value.input as JsonValue,requestId:value.requestId},this.combined(request.signal)));
           }
-          if(value.action==='authoring'&&Object.keys(value).every(key=>['action','sessionId','operation','params'].includes(key))&&typeof value.sessionId==='string'&&typeof value.operation==='string'&&['authorizeFrame','negotiateFrame','retireFrame','inspect','failMount','exportUiState','restoreUiState','closeDraft'].includes(value.operation)&&value.params&&typeof value.params==='object'&&!Array.isArray(value.params)){
+          if(value.action==='authoring'&&Object.keys(value).every(key=>['action','sessionId','operation','params'].includes(key))&&typeof value.sessionId==='string'&&typeof value.operation==='string'&&['openDisplay','authorizeDisplayFrame','reportDisplayError','startMount','authorizeFrame','negotiateFrame','retireFrame','inspect','failMount','exportUiState','restoreUiState','closeDraft'].includes(value.operation)&&value.params&&typeof value.params==='object'&&!Array.isArray(value.params)){
             if(!await this.knownSession(value.sessionId,request.signal))return jsonResponse(fail('INVALID_SESSION','没有此本机会话。'),400);if(!this.transport.authoringAction)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供创作界面操作。'),503);
             return jsonResponse(await this.transport.authoringAction(value.operation,value.sessionId,value.params as JsonValue,this.combined(request.signal)));
           }

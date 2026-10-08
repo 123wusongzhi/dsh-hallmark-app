@@ -388,6 +388,22 @@ test('actual Runner verifies original reports and authoring inspect/edit/recordB
   }finally{store?.close();f.cleanup();}
 });
 
+test('resolver reuses relocation rows within an evidence batch and releases them after success or failure',async()=>{
+  const f=await fixture();let store:RuntimeStore|undefined;try{
+    await backupRuntime(f.options);restoreRuntimeBackup({backupDirectory:f.backup,targetDirectory:f.target});
+    store=new RuntimeStore(join(f.target,'apps.db'));let reads=0;
+    const resolver=new EvidencePathResolver({root:f.target,store:{list:<T>(table:string)=>{reads++;return store!.list<T>(table);}}});
+    resolver.withScope(()=>{
+      for(let i=0;i<46;i++)resolver.resolve(f.screenshot.path);
+      resolver.withScope(()=>resolver.resolve(f.current.reportRef.path));
+    });
+    assert.equal(reads,1,'one relocation scan for the whole batch');
+    resolver.withScope(()=>resolver.resolve(f.screenshot.path));assert.equal(reads,2,'next batch reads current rows');
+    assert.throws(()=>resolver.withScope(()=>{resolver.resolve(f.screenshot.path);throw new Error('batch failed');}),/batch failed/);
+    resolver.resolve(f.screenshot.path);assert.equal(reads,4,'failed batch does not retain its index');
+  }finally{store?.close();f.cleanup();}
+});
+
 test('resolver rejects anchor tamper, mapped file tamper, symlink, traversal, unmanifested mappings and conflicting proven facts',async()=>{
   const f=await fixture();let store:RuntimeStore|undefined;try{
     await backupRuntime(f.options);const restored=restoreRuntimeBackup({backupDirectory:f.backup,targetDirectory:f.target});store=new RuntimeStore(join(f.target,'apps.db'));const resolver=new EvidencePathResolver({root:f.target,store});

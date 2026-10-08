@@ -1,6 +1,10 @@
 # DSH 组件设计技能安装与使用
 
-正式验收为**33 PASS/0 FAIL/47 NOT_RUN**：新034/035/036/039绑定12，037/038绑定14，原27张PASS身份保留。candidate.15已官方12→15覆盖，778/778/144输入33产物冻结，独立安装33/源144/原核心9774两遍零差异；实际Runtime15/schema4/健康/四GET/会话前缀核实，启动包装exit1保留。这些结果不代签模型实际读取技能、Native内存/显示或设计质量，四门禁NOT_ACCEPTED、R未签认，见[A.2执行页](apps-a2-execution.md)。
+正式验收为**35 PASS/0 FAIL/45 NOT_RUN**，原35张PASS绑定10/11/12/14/15，不迁17。candidate.17已官方同名16→17覆盖安装，812/812、145输入/33产物冻结，独立包32检查/17负例及官方ValidateOnly通过，20文件源码窄复核闭合；实际Runtime17/schema4/健康/Hallmark与原2755行历史前缀核验。局部兼容使用私有新归档和模拟ready，不代签原Bill/Native。模型读取技能、原侧栏点击/失败重开与设计质量仍待验，四门禁NOT_ACCEPTED、R未签，见[A.2执行页](apps-a2-execution.md)。
+
+新增TST-046/047的完整最低本地FIXTURE/实际命令已独立V通过，绑定candidate.15；原33卡保留各自10/11/12/14身份，6项旧source/build材料没有原归档执行hash链，不补原声明、不迁移15，具体I/V/hash与边界见[A.2执行记录](apps-a2-execution.md)。
+
+用户最新确认：在任何原会话用 `@` 选择应用，Agent实际构建并预览后，在原聊天工具卡提供“打开组件”，由用户手动打开到原侧栏；等待点击不计挂载超时、不自动展开。candidate.17增量将成功预览构建与独立显示尝试分开，UI-only openDisplay/authorizeDisplayFrame/reportDisplayError加载同一归档；失败可明确重新打开，新display/frame/generation退役旧文档，Agent可inspect读取phase/code/message。旧startMount一次性协议保留历史兼容，在新侧栏路径中搁置。candidate.17候选包已冻结：812/812、145输入/33产物及旧16冻结材料守卫零差异，独立20文件源码窄复核闭合；归档SHA-256为 `e5cdbfefe9eab592f7cd733009deacdc215bab909a54cc09dd0128868bb3fa56`。candidate.17已官方同名16→17覆盖安装；独立包32检查/17负例及官方ValidateOnly通过，实际Runtime17/schema4/健康/Hallmark与2755行原历史前缀核验；Native内存/侧栏点击显示仍待验，不将局部源码检查算作正式卡或显示成功。契约见[ADR-010](apps-architecture-decisions.md)和[创作流程](source-component-authoring.md)。
 
 ## A.2：已更新内容及证据范围
 
@@ -30,9 +34,15 @@
 
 这只是使用示例；实际目录列出技能不代表模型已经调用它。如果当前 Host 提供原会话 authoringGuidance，Agent 按其中 nodeExecutable/nodeArgs/nodeEnvironment、starterPath/sdkDirectory、buildRunnerPath/previewRunnerPath 和 Runtime 路径执行，不猜原开发机 node 或仓库地址。密钥从本机 keyFile 读取，不写入聊天。安装包含独立 JS 命令，不要求原 monorepo TS 源码。
 
-先 `apps_list` / `apps_describe` 核实 `apps.authoring.*@1.0.0`，再 begin → 编辑普通工程 → 真实 build → record_build → 真实预览/看图/迭代 → record_preview → publish → 协商 renderReady 确认。新源码使用 `@dsh/apps-component-runtime/apps` 和 `/apps/react` 的 v2 SDK；旧根入口和 `/react` 仍为 v1 兼容路径，不把旧 ViewSpec grammar 当普通源码上限。若 Host 没有新能力，明确报告实际旧版本；不能以旧 open_source、截图或无报错冒充 A.2 验证。
+以下为已安装17的实现流程；实际原生点击/显示仍待验，必须以运行Host返回的guidance/能力为准。16的旧startMount一次性协议保留历史兼容，在17的新侧栏路径中搁置。
 
-用户明确保存时才调用 save_component，以已确认的 viewRevision 和稳定请求身份保存。历史 sourceRevision 与打开时最新元数据基线分开；冲突保留副本，不自动换 revision。筛选/排序/选择不新增模型步，附加选择保留原输入内容并等待用户手动发送；validated/attached/submitted/consumed 分开记录，可选 requestAgent 不替代默认手动路径。
+先 `apps_list` / `apps_describe` 核实 `apps.authoring.*@1.0.0`，再begin → 编辑普通工程 → 真实build → record_build → 同一build真实预览/看图/迭代 → record_preview → 准备publication。Agent在原聊天固定工具卡提供“打开组件”，等待用户点击；不要称“已展示”、自动展开或把等待计为失败。17点击后由UI-only openDisplay/authorizeDisplayFrame在原侧栏直接加载同一预览归档，建立新display/frame/generation；Runtime严格核验固定构建、归属、nonce、资源和数据权限。真实frame完成数据/React提交及required assertions PASS才确认首次展示，模型不能以另一次publish或自造ready代替点击。
+
+失败后用户可明确重新打开同一成功归档，生成新display并退役旧授权；Agent通过 `apps.authoring.inspect` 的latestDisplay/displays读取phase/code/message，判断是否需要修改源码。显示错误不会自动发送聊天，也不会强迫重建；只有真正变更源码才进入新attempt/build/preview。旧nonce/generation与ready/error/UI状态回执拒绝；重复和历史P1展示不增viewRevision，固定快照bindings避免P1源码配P2数据。16旧failed_mount和17每次显示错误原样保留；保存与附加原输入仍需明确用户操作。
+
+新源码使用 `@dsh/apps-component-runtime/apps` 和 `/apps/react` 的 v2 SDK；旧根入口和 `/react` 仍为 v1 兼容路径，不把旧 ViewSpec grammar 当普通源码上限。若 Host 没有新能力，明确报告实际旧版本；不能以旧 open_source、截图或无报错冒充 A.2 验证。
+
+用户明确保存时才调用 save_component，以真实展示确认后的viewRevision和稳定请求身份保存。16中有authoring draft的view不能在prepared/mounting时改用通用presentation save绕过门禁。历史sourceRevision与打开时最新元数据基线分开；冲突保留副本，不自动换revision。筛选/排序/选择不新增模型步，附加选择保留原输入内容并等待用户手动发送；validated/attached/submitted/consumed分开记录，可选requestAgent不替代默认手动路径。
 
 Impeccable、shadcn 等设计方法可用于普通 React 组件；来源/许可保留。json-render 是受约束开发参考，旧 ViewSpec 仍有自己的受支持 grammar；两种入口不要互相塞 React/CSS 或替代 JSON。技能不新增业务权限：真实数据标明来源/时间/币种，缺图/库存/利润/趋势明确缺失，不补装饰性假数据。
 
@@ -51,7 +61,7 @@ Impeccable、shadcn 等设计方法可用于普通 React 组件；来源/许可�
 
 ## A.2 历史验证范围
 
-前轮candidate.12已于11:37:55 UTC通过官方管理器覆盖原同名插件；冷备恢复、33项安装产物/143冻结输入与9774核心文件字节不变已核对。首次启动超时并出现EACCES19387，原日志保留；11:44:02 UTC仅重试桌面后启动，11:45:55 UTC核实Runtime12/schema4、四只读HTTP200及Hallmark健康。Host插件内存身份、原生GUI/@/组件挂载仍NOT_RUN，原22张正式PASS仍绑定10/11；新增12五卡另列，不自动迁移。 A.2的 `hallmark-component-design` 已更新到DSH技能目录，旧版备份/hash及其余上游技能保留。candidate.7原生发现/只读和candidate.9真实源码/构建/预览/读图迭代历史不改，9原生挂载失败。前轮candidate.10通过官方插件管理器覆盖原同名插件并正常重开桌面，安装文件/冻结源输入与实际Runtime健康核对通过；该10阶段GUI/原生插件内存未验的历史保留；当前15新技能调用与新组件挂载仍待实际验收，已有原会话新turn不代签成功。706包检查、26视觉fixture与实际CLI双视口不代签该范围，见 [A.2执行记录](apps-a2-execution.md)。
+前轮candidate.12已于11:37:55 UTC通过官方管理器覆盖原同名插件；冷备恢复、33项安装产物/143冻结输入与9774核心文件字节不变已核对。首次启动超时并出现EACCES19387，原日志保留；11:44:02 UTC仅重试桌面后启动，11:45:55 UTC核实Runtime12/schema4、四只读HTTP200及Hallmark健康。Host插件内存身份、原生GUI/@/组件挂载仍NOT_RUN，原22张正式PASS仍绑定10/11；新增12五卡另列，不自动迁移。 A.2的 `hallmark-component-design` 已更新到DSH技能目录，旧版备份/hash及其余上游技能保留。candidate.7原生发现/只读和candidate.9真实源码/构建/预览/读图迭代历史不改，9原生挂载失败。前轮candidate.10通过官方插件管理器覆盖原同名插件并正常重开桌面，安装文件/冻结源输入与实际Runtime健康核对通过；该10阶段GUI/原生插件内存未验的历史保留；当前17新技能调用与新组件挂载仍待实际验收，已有原会话新turn不代签成功。706包检查、26视觉fixture与实际CLI双视口不代签该范围，见 [A.2执行记录](apps-a2-execution.md)。
 
 TST-023完整最低FIXTURE已由I15/15和独立V17/17验证真实UTF-8字节预算、handle完整分页及query_only spill拒绝；017–020完整FIXTURE由I25/25/V38/38验证幂等、unknown只读恢复、取消与严格CAS。两组都是candidate11隔离执行，原DSH/真实模型原话与桌面创作另验；013–015完整最低FIXTURE/actual-command已独立V通过；上述11证据均冻结于11后续修复开始前。随后profit公共Provider→UI局部2新增/33相关/type通过、传输/Bridge局部回归另记；Pane同view重开最小修复6项React局部回归/29相关/type通过，但源码诊断不证明原桌面挂载因果；12冻结包774/774和实际同名安装/桌面retry已完成，原生输入/组件挂载、模型技能实际消费仍待验。
 
@@ -111,4 +121,4 @@ Impeccable 的设计方法可通过本地适配用于业务组件。shadcn、jso
 - [ ] 勾选后附加到原输入框，保留既有草稿，由用户确认发送。
 - [ ] 取得实际渲染证据与用户反馈后再标记视觉质量通过。
 
-当前 `nativeDiscoveryObserved=false`、`nativeGUIVerified=false`、`agentDesignQualityVerified=false`。插件发布和服务只读联通详见 [0.2.3 记录](release-0.2.3.md)。
+当前 `nativeDiscoveryObserved=false`、`nativeGUIVerified=false`、`agentDesignQualityVerified=false`。插件发布和服务只读联通详见 [0.2.3 记录](release-0.2.3.md)。 独立17安装后验33产物/145源码/原核心9774文件两遍零差异，最终3251引用/337包索引与352当前文件守卫通过；完整scope与旧16预存单文件漂移诊断见[A.2执行记录](apps-a2-execution.md)。

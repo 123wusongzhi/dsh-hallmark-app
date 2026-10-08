@@ -70,6 +70,7 @@ export class RuntimeStore {
     this.db.exec('PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;');
     this.transaction(() => {
       for (const table of this.collections) this.db.exec(`CREATE TABLE IF NOT EXISTS ${table} (id TEXT PRIMARY KEY, value_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`);
+      this.db.exec("CREATE INDEX IF NOT EXISTS views_owner ON views(json_extract(value_json,'$.ownerSessionId'),created_at,id); CREATE INDEX IF NOT EXISTS component_versions_owner ON component_versions(json_extract(value_json,'$.componentId'),created_at,id)");
       if (!version) {
         this.db.exec(`ALTER TABLE operations ADD COLUMN app_id TEXT NOT NULL DEFAULT '';
           ALTER TABLE operations ADD COLUMN connection_id TEXT NOT NULL DEFAULT '';
@@ -91,6 +92,13 @@ export class RuntimeStore {
   }
   list<T = Record<string, JsonValue>>(collection: string): T[] {
     return this.db.prepare(`SELECT value_json FROM ${this.table(collection)} ORDER BY created_at,id`).all().map(row => JSON.parse(String(row.value_json)) as T);
+  }
+  viewsForSession<T>(sessionId:string):T[] {
+    return this.db.prepare(`SELECT value_json FROM ${this.table('views')} WHERE json_extract(value_json,'$.ownerSessionId')=? ORDER BY created_at,id`).all(sessionId).map(row=>JSON.parse(String(row.value_json)) as T);
+  }
+  componentSummaries(componentId?:string):{componentId:string;title:string;revision:number;savedAt:string}[] {
+    const table=this.table(componentId===undefined?'components':'component_versions');
+    return this.db.prepare(`SELECT json_extract(value_json,'$.componentId') AS componentId,json_extract(value_json,'$.title') AS title,json_extract(value_json,'$.revision') AS revision,json_extract(value_json,'$.savedAt') AS savedAt FROM ${table} ${componentId===undefined?'':"WHERE json_extract(value_json,'$.componentId')=?"} ORDER BY ${componentId===undefined?'created_at,id':'revision'}`).all(...(componentId===undefined?[]:[componentId])) as {componentId:string;title:string;revision:number;savedAt:string}[];
   }
   put<T>(collection: string, id: string, value: T): T {
     if (!this.#depth) return this.transaction(() => this.put(collection, id, value));

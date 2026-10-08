@@ -1,0 +1,9 @@
+[
+  {"id":"products","title":"商品经营总表","subtitle":"价格、流量与利润，在同一张表里看清","group":"商品","fields":["price","margin","views","sales","campaign"]},
+  {"id":"collection","title":"采集箱","subtitle":"查看采集商品的信息、SKU 规格与价格","group":"商品","fields":["source","sku","spec","price"]},
+  {"id":"profit","title":"利润贡献排行","subtitle":"同时关注每件收益和整体贡献","group":"分析","fields":["price","unitProfit","margin","sales","profit"]},
+  {"id":"traffic","title":"流量与成交","subtitle":"从关注到成交，找到值得进一步查看的商品","group":"分析","fields":["views","orders","sales","conversion"]},
+  {"id":"pricing","title":"价格调整复盘","subtitle":"对照调价前后的销量与利润变化","group":"分析","fields":["beforePrice","price","beforeSales","sales","beforeProfit","profit"]},
+  {"id":"campaigns","title":"促销报名评估","subtitle":"查看活动要求、商品价格与活动利润预估","group":"促销","fields":["price","activityPrice","activityMargin","stock","campaign"]},
+  {"id":"review","title":"促销效果复盘","subtitle":"销量变化之外，看看利润是否一起增长","group":"促销","fields":["beforeViews","views","beforeSales","sales","beforeProfit","profit"]}
+]

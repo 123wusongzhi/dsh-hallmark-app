@@ -14,7 +14,7 @@ import {apply as attachNotes} from '../../../packages/plugin-notes/src/index.ts'
 import type {NativeSessionAdapterMode} from '../../../packages/dsh-compat/src/index.ts';
 import type {AppsAuthoringGuidance} from '../../../packages/plugin-apps/src/authoring-guidance.ts';
 export const name = 'dsh-plugin-apps-bundle';
-export const version = '1.0.0-candidate.15';
+export const version = '1.0.0-candidate.22';
 export const inject = ['tools', 'commands', 'systemPrompt', 'connection', 'agents', 'sessionQuery'];
 export const Config = Schema.object({
   serviceUrl: Schema.string().default('http://127.0.0.1:4181').description('显式Apps Runtime回环地址；候选包不启动或重启运行服务。'),
@@ -60,11 +60,15 @@ export async function createAppsBundle(ctx: PluginContext & AppsPluginContext, c
     if(!view||typeof view!=='object'||Array.isArray(view))return;
     if(view.ownerSessionId!==sessionId)throw new Error('VIEW_NOT_OWNED');
     if(view.source)await legacy.prepareSource({kind:'source',source:view.source});
-    if(typeof view.pendingPublicationId==='string'&&transport.authoringAction){
+    let publication=view.publication;
+    if(publication===undefined&&typeof view.pendingPublicationId==='string'&&transport.authoringAction){
       const inspected=await transport.authoringAction('inspect',sessionId,{publicationId:view.pendingPublicationId},signal);
       if(!inspected||typeof inspected!=='object'||Array.isArray(inspected))throw new Error('INVALID_PUBLICATION');
-      const publication=inspected.publication;
-      if(!publication||typeof publication!=='object'||Array.isArray(publication)||publication.ownerSessionId!==sessionId||publication.viewId!==view.viewId||publication.publicationId!==view.pendingPublicationId||publication.state!=='mounting')throw new Error('INVALID_PUBLICATION');
+      publication=inspected.publication;
+      if(!publication||typeof publication!=='object'||Array.isArray(publication)||publication.publicationId!==view.pendingPublicationId)throw new Error('INVALID_PUBLICATION');
+    }
+    if(publication!==undefined){
+      if(!publication||typeof publication!=='object'||Array.isArray(publication)||publication.ownerSessionId!==sessionId||publication.viewId!==view.viewId||typeof publication.publicationId!=='string'||!['prepared','mounting','mounted','failed_mount','interrupted'].includes(String(publication.state))||!publication.source||typeof publication.source!=='object'||Array.isArray(publication.source)||publication.source.buildId!==publication.candidateBuildId)throw new Error('INVALID_PUBLICATION');
       await legacy.prepareSource({kind:'source',source:publication.source});
     }
   }});
