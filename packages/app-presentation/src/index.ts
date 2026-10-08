@@ -9,7 +9,7 @@ import {APP_PRESENTATION_DESCRIPTORS} from './descriptors.ts';
 import {ComponentContexts} from './context.ts';
 import {validateDataSelection} from './selection.ts';
 import {AppsAuthoringService} from './authoring.ts';
-import type {AppsAuthoringOptions,CandidateFrameIdentity,ViewPublication} from './authoring-types.ts';
+import type {AppsAuthoringOptions,AuthoringDraft,CandidateFrameIdentity,ViewPublication} from './authoring-types.ts';
 import {APP_AUTHORING_DESCRIPTORS} from './authoring-descriptors.ts';
 export * from './authoring.ts';
 
@@ -199,6 +199,23 @@ export class AppsPresentationService {
   private selectionForView(view:AppsView,envelope:SelectionEnvelope):SelectionEnvelope {
     return validateDataSelection(this.dataForView(view),envelope);
   }
+  private sameSourceContent(view:AppsView,reference:AppsView):boolean {
+    return !!view.source&&view.source.buildId===reference.source?.buildId&&view.activeBuildId===view.source.buildId&&reference.activeBuildId===reference.source.buildId&&canonicalJson([view.source.entry,view.source.files,view.design,view.bindings])===canonicalJson([reference.source.entry,reference.source.files,reference.design,reference.bindings]);
+  }
+  private savedViewBaseline(view:AppsView):AppsView|undefined {
+    if(!view.sourceComponentId)return undefined;
+    const current=this.store.get<AppsComponent>('component_versions',`${view.sourceComponentId}:${view.baseRevision}`);
+    // After this work copy saves, its current target is the anchor. Until then a historical
+    // checkout retains the selected source while its CAS baseline refers to the latest version.
+    const saved=current?.view.viewId===view.viewId?current:this.store.get<AppsComponent>('component_versions',`${view.sourceComponentId}:${view.selectedSourceRevision??view.baseRevision}`);
+    return saved?.view;
+  }
+  /** A checked-out saved version can be saved again without manufacturing a publication. */
+  canReuseSavedView(view:AppsView):boolean {
+    if(view.validationStatus!=='verified'||view.pendingPublicationId||!view.source||!this.sources?.verify(view.source.buildId).valid)return false;
+    const saved=this.savedViewBaseline(view);
+    return saved?.validationStatus==='verified'&&this.sameSourceContent(view,saved);
+  }
   saveComponent(sessionId:string|null,viewId:string,userRequest:string,options:SaveAppsComponentOptions):AppsComponent {
     text(userRequest,'userRequest');const original=this.ownedView(sessionId,viewId),view={...original,title:options.title!==undefined?text(options.title,'title'):original.title};
     if(!['save_as','update'].includes(options.mode))fail('INVALID_SAVE_MODE','Explicit save mode is required.');
@@ -206,19 +223,26 @@ export class AppsPresentationService {
     if(options.mode==='save_as'&&(options.componentId!==undefined||options.expectedRevision!==undefined))fail('INVALID_INPUT','Save-as does not accept update preconditions.');
     return this.store.transaction(()=>{
       // The generic capability shares this write path with explicit authoring saves.
-      // Views outside authoring retain their established static/legacy save behavior.
-      if(this.store.list<{viewId:string}>('authoring_drafts').some(draft=>draft.viewId===view.viewId)){
+      // Static/legacy views keep their established behavior; verified copies reuse their saved evidence.
+      const drafts=this.store.list<AuthoringDraft>('authoring_drafts').filter(draft=>draft.viewId===view.viewId&&draft.ownerSessionId===sessionId);
+      if(drafts.length||view.validationStatus==='verified'||this.savedViewBaseline(view)?.validationStatus==='verified'){
         if(view.pendingPublicationId)fail('VIEW_CONFLICT','Open and confirm the pending authoring publication before saving.');
-        const mounted=this.store.list<ViewPublication>('view_publications').find(publication=>publication.viewId===view.viewId&&publication.ownerSessionId===sessionId&&publication.state==='mounted'&&publication.committedViewRevision===view.viewRevision&&publication.candidateBuildId===view.activeBuildId);
-        if(view.validationStatus!=='verified'||!Number.isSafeInteger(view.viewRevision)||!view.source||view.activeBuildId!==view.source.buildId||!mounted||!this.sources?.verify(view.source.buildId).valid)fail('BUILD_EVIDENCE_INVALID','Authoring views require a confirmed mounted build before saving.');
+        if(!this.canReuseSavedView(view)){
+          const mounted=this.store.list<ViewPublication>('view_publications').find(publication=>publication.viewId===view.viewId&&publication.ownerSessionId===sessionId&&publication.state==='mounted'&&publication.committedViewRevision===view.viewRevision&&publication.candidateBuildId===view.activeBuildId);
+          const confirmed=mounted&&this.store.get<{value:AppsView}>('provider_records','view-revision:'+canonicalJson([sessionId,view.viewId,mounted.committedViewRevision]))?.value;
+          if(view.validationStatus!=='verified'||!Number.isSafeInteger(view.viewRevision)||!view.source||!confirmed||!this.sameSourceContent(view,confirmed)||!this.sources?.verify(view.source.buildId).valid)fail('BUILD_EVIDENCE_INVALID','保存内容已变化，请完成当前内容的预览和发布后再保存。');
+        }
       }
       if(options.legacyComponentId!==undefined&&(options.mode!=='save_as'||options.legacyComponentId!==view.viewId))fail('INVALID_INPUT','Historical component identity must match its owning draft.');
       const componentId=options.mode==='save_as'?options.legacyComponentId??randomUUID():options.componentId!,previous=this.store.get<AppsComponent>('components',componentId);
       if(options.legacyComponentId!==undefined&&previous)fail('COMPONENT_CONFLICT','Historical component already exists. Reopen it before updating.');
+      if(options.mode==='update'&&view.sourceComponentId&&(componentId!==view.sourceComponentId||options.expectedRevision!==(view.baseRevision??view.baseRevisionAtOpen)))fail('COMPONENT_CONFLICT','工作副本的保存目标或更新基线已变化，请使用当前工作副本的保存信息。');
       if(options.mode==='update'&&(!previous||previous.revision!==options.expectedRevision))fail('COMPONENT_CONFLICT','Component changed. Reopen it or save as a new component.');
       if(view.source&&this.sources)view.source=this.sources.withPreview(view.source);
-      const revision=(previous?.revision??0)+1,component:AppsComponent={componentId,revision,title:view.title,view:clone(view),userRequest,savedAt:new Date().toISOString(),...(options.legacyTemplate??previous?.legacyTemplate?{legacyTemplate:clone(options.legacyTemplate??previous!.legacyTemplate!)}:{})};
+      const revision=(previous?.revision??0)+1;view.sourceComponentId=componentId;view.baseRevision=revision;
+      const component:AppsComponent={componentId,revision,title:view.title,view:clone(view),userRequest,savedAt:new Date().toISOString(),...(options.legacyTemplate??previous?.legacyTemplate?{legacyTemplate:clone(options.legacyTemplate??previous!.legacyTemplate!)}:{})};
       this.store.put('views',view.viewId,view);
+      for(const draft of drafts)this.store.put('authoring_drafts',draft.draftId,{...draft,sourceComponentId:componentId,updatedAt:component.savedAt});
       this.store.put('component_versions',`${componentId}:${revision}`,component);this.store.put('components',componentId,component);
       const entries=this.store.list<Record<string,JsonValue>>('saved_assets').filter(asset=>asset.kind==='entry'),entry=entries.find(asset=>asset.componentId===componentId),assetId=entry?.assetId??randomUUID();
       this.store.put('saved_assets',`entry:${assetId}`,{...entry,assetId,kind:'entry',entryKind:'component',componentId,title:view.title,userRequest,pinned:entry?.pinned??false,order:entry?.order??entries.length});

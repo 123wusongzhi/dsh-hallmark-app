@@ -50,7 +50,7 @@ class ConnectionQueue {
 
 export class AppsRuntime {
   readonly store: RuntimeStore;
-  readonly runtimeVersion = '1.0.0-candidate.35';
+  readonly runtimeVersion = '1.0.0-candidate.36';
   readonly transportMajor = 1;
   readonly catalogSchemaVersion = 1;
   #providers = new Map<string, RegisteredProvider>();

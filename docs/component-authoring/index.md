@@ -5,6 +5,7 @@
 ## 先选现有入口
 
 - 用户要打开已有组件：使用 `apps.presentation.open_component`，返回的工作副本属于当前会话。仅查看、搜索、翻页、刷新数据无需初始化工程、构建或预览。
+- 用户要保存或另存当前已有组件：源码构建、设计和绑定定义未变时，直接 `apps.authoring.save_component`；无需为保存而重新构建或发布。连续更新使用上次成功回执的 `view.sourceComponentId` 和 `view.baseRevision`，详见 [保存与历史](lifecycle.md#保存与历史)。
 - 用户要使用已有模板：使用 `apps.presentation.render_view` 的 `templateId`，复用已有设计和绑定。连接的复用与不可用提示见 [加载与复用](lifecycle.md)。
 - 用户要修改已有组件的源码或增加新交互：使用 `apps.authoring.begin` 的 `edit` / `open_saved`，继续原工程，再走下方检查发布流程。
 - 没有合适的已有组件或模板时，才开始新源码工程。修改绑定定义后需验证新的真实查询并发布；不要把修改前的展示或回执当作新绑定的验证结果。
@@ -23,7 +24,7 @@
 | 内容 | 文档 |
 | --- | --- |
 | getData / payload / resources / revision / 商品金额单位 | [data.md](data.md) |
-| 首次加载、刷新、当前页与数据隔离 | [lifecycle.md](lifecycle.md) |
+| 首次加载、刷新、当前页、保存与历史 | [lifecycle.md](lifecycle.md) |
 | 检查请求、Windows 启动、续跑、截图、发布 | [check-and-publish.md](check-and-publish.md) |
 | 可直接初始化的分页商品列表 | [示例说明](examples/product-list/README.md) |
 

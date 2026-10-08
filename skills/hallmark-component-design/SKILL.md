@@ -30,7 +30,7 @@ Host 提供的 `authoringGuidance` 是安装目录、source starter、SDK、构�
 
 ## 普通源码、构建与反馈循环
 
-1. 先查询现有组件、模板与真实业务数据。新建调用 `apps.authoring.begin` 的 `mode:new`；编辑当前会话组件使用 `mode:edit` 和原 viewId；打开保存版本使用 `mode:open_saved`、componentId 及可选 revision。保留返回的 draftId、attemptId、epoch、sourceRevision、expectedViewRevision、workspacePath。同一 begin 重试使用相同 attemptId；新一轮源码修改明确开始下一 attempt。
+1. 先查询现有组件、模板与真实业务数据。仅使用已有组件调用 `apps.presentation.open_component`，不开始源码创作；新建调用 `apps.authoring.begin` 的 `mode:new`；修改当前会话组件源码使用 `mode:edit` 和原 viewId；从保存版本修改源码使用 `mode:open_saved`、componentId 及可选 revision。保留返回的 draftId、attemptId、epoch、sourceRevision、expectedViewRevision、workspacePath。同一 begin 重试使用相同 attemptId；新一轮源码修改明确开始下一 attempt。
 2. `begin` 已创建独立工作副本目录。用安装包 starter 初始化该空目录，或复制合适模板的源码、资源、package.json 与锁文件；不复制 node_modules。生成器拒绝覆盖非空目录。普通 npm 依赖可按实际设计安装，保留真实产生的锁文件，不能伪造 lockfile 或 build PASS。
 3. 直接编辑 TSX、CSS、JavaScript、图片与其他资源。允许条件、循环、局部状态、搜索、排序、图表与派生计算，不把旧 ViewSpec 词表或宿主 React 版本当作源码上限。新 A.2 页面使用 `@dsh/apps-component-runtime/apps/react` 的 v2 SDK，旧 v1 页面继续使用原根入口与 `/react`；协议必须与预览和 Host 匹配。新 SDK 的 required readiness assertions 必须实际读取 React commit 后的 DOM/数据，不能返回固定 PASS。
 4. 先读 authoringGuidance.developerDocs.index，按其中流程用 checkRunner.prepareRequest 自动准备请求（仅填 attemptId）；只维护 `.preview/plan.json`，不要将请求放在源码根目录或手改 epoch/sourceRevision。build 使用 Host 的实际路径与 begin 返回身份；preview 使用 live_readonly 和真实交互断言。搜索、勾选、分页、刷新、附加按实际功能验证，requiredMethods 与动作对应。fixture 仅用于明确离线测试。
@@ -50,9 +50,11 @@ Host 提供的 `authoringGuidance` 是安装目录、source starter、SDK、构�
 
 ## 明确保存、冲突、历史与 UI 状态
 
-新建、编辑、显示与正式保存是独立动作。用户明确说“保存为某名称”或点击保存，就调用同一个 `apps.authoring.save_component`；不增加第二次无必要审批。必须使用已确认的 viewRevision，并记录用户保存原话。`save_as` 使用稳定 idempotencyKey 防止重试生成重复组件；`update` 另带 componentId 和打开时捕获的 baseRevisionAtOpen。
+新建、编辑、显示与正式保存是独立动作。用户明确说“保存为某名称”或点击保存，就调用同一个 `apps.authoring.save_component`；不增加第二次无必要审批。必须使用当前已确认的 viewRevision，并记录用户保存原话。已验证保存版本的构建、设计和绑定定义未变时，普通打开或重开编辑后均可直接保存，无需重新构建、预览或发布。尚未发布的源码修改不在当前保存内容中，需先检查并发布才能保存新设计。
 
-打开历史时，selectedSourceRevision 是选择的源码版本，baseRevisionAtOpen 是打开那一刻的库项最新元数据版本。更新使用该最新基线做 CAS，不能用选中的历史 revision 冒充基线。历史恢复在独立副本上构建/预览/确认，再保存为新增版本，保留旧版。
+`save_as` 使用稳定 idempotencyKey 防止重试生成重复组件；`update` 使用当前 view.sourceComponentId 和 view.baseRevision。成功回执的 component.view 是后续保存目标与基线；另存成功后更新新组件，同一副本连续保存无需重开。只跟随本次成功回执推进，不把其他旧副本的基线自动提高。
+
+打开历史时，selectedSourceRevision 是选择的源码版本，baseRevisionAtOpen 是打开那一刻的库项最新元数据版本；当前更新基线由 view.baseRevision 表示。不能用选中的历史 revision 冒充当前基线。未改设计的历史副本可直接保存为新增版本；修改后才构建、预览、确认，旧版本保留。
 
 VIEW_CONFLICT / COMPONENT_CONFLICT / ATTEMPT_SUPERSEDED 时保留工作副本，展示最新信息与“保留副本、查看最新、另存”选项；不自动提高预期版本或重试覆盖。重命名比较当前元数据 revision 并新增历史版本。关闭/从会话移除只管理视图；组件库删除移除库项，不删除已有工作副本、历史版本或仍被引用的 build。物理 purge 由独立维护流程处理。
 

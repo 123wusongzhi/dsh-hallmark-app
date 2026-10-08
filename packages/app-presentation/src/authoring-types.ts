@@ -90,6 +90,7 @@ export interface AuthoringPresentationPort {
   ownedView(sessionId:string,viewId:string):AppsView;
   createView(sessionId:string,input:{title:string;design?:JsonValue;bindings?:DatasetBinding[];viewId?:string}):AppsView;
   openComponent(sessionId:string,componentId:string,options?:{revision?:number;directory?:string}):AppsView;
+  canReuseSavedView?(view:AppsView):boolean;
   saveComponent(sessionId:string,viewId:string,userRequest:string,options:SaveAppsComponentOptions):AppsComponent;
   manageSaved?(input:Record<string,JsonValue>):JsonValue;
   validateSelection?(sessionId:string,viewId:string,selection:SelectionEnvelope):SelectionEnvelope;

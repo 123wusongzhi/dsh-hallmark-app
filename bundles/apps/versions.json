@@ -1,8 +1,8 @@
 {
   "releaseId": "apps-a2-20261007",
-  "bundleVersion": "1.0.0-candidate.35",
-  "hostPluginVersion": "1.0.0-candidate.35",
-  "runtimeVersion": "1.0.0-candidate.35",
+  "bundleVersion": "1.0.0-candidate.36",
+  "hostPluginVersion": "1.0.0-candidate.36",
+  "runtimeVersion": "1.0.0-candidate.36",
   "transportMajor": 1,
   "catalogSchemaVersion": 1,
   "databaseSchemaVersion": 4,
@@ -24,7 +24,7 @@
   "legacyNativeToolProjection": "explicit compatibility option; default false",
   "hostCompatibility": {
     "installedCli": "0.2.0-rc.2",
-    "liveBundleAcceptance": "candidate.35 verified in official DSH Web 0.2.0-rc.2: saved component reuse, paging during real platform sync, immediate connection summary and refreshed data timestamps. Desktop Host remains candidate.31; this is not candidate.35 Desktop acceptance. See docs/product-readiness.md for scope and evidence.",
+    "liveBundleAcceptance": "Official DSH Web 0.2.0-rc.2 acceptance is recorded per candidate in docs/product-readiness.md. Desktop Host remains candidate.31; Web evidence and package validation do not imply Desktop acceptance.",
     "authoringCli": "standalone Node ESM build/preview entries; immutable receipts and exact attempt epoch",
     "dynamicSchema": "unsupported; fixed gateway",
     "nativeSessionAdapter": "disabled by default; explicit dsh-0.2.0-rc.2 contract opt-in with strict ACTIVE service lifecycle",

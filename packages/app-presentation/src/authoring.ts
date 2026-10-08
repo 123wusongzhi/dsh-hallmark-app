@@ -375,11 +375,11 @@ export class AppsAuthoringService {
   saveComponent(sessionId:string,input:SaveAuthoringInput):AppsComponent {
     required(input.userRequest,'userRequest');return this.store.transaction(()=>{
       const view=this.view(sessionId,input.viewId);if(view.viewRevision!==integer(input.expectedViewRevision,'expectedViewRevision')||view.pendingPublicationId)fail('VIEW_CONFLICT','Save requires the current confirmed view revision.');
-      const publication=this.store.list<ViewPublication>('view_publications').find(row=>row.viewId===view.viewId&&row.ownerSessionId===sessionId&&row.state==='mounted'&&row.committedViewRevision===view.viewRevision&&row.candidateBuildId===view.activeBuildId);
-      if(view.validationStatus!=='verified'||!publication||!view.source||!this.sources.verify(view.source.buildId).valid)fail('BUILD_EVIDENCE_INVALID','Only an explicitly confirmed authoring view may be saved through the new path.');
-      const draft=this.store.list<AuthoringDraft>('authoring_drafts').find(row=>row.viewId===view.viewId&&row.ownerSessionId===sessionId&&row.status!=='discarded');
-      const attempt=this.store.get<AuthoringAttempt>('authoring_attempts',publication.attemptId),build=this.store.get<BuildReceipt>('build_receipts',publication.buildReceiptId),preview=this.store.get<PreviewReceipt>('preview_receipts',publication.previewReceiptId);if(!attempt||build?.verdict!=='PASS'||preview?.verdict!=='PASS')fail('BUILD_EVIDENCE_INVALID','Confirmed view evidence is missing.');this.verifyReceiptFiles(attempt,build,preview);
-      if(input.mode==='update'&&draft?.sourceComponentId&&(input.componentId!==draft.sourceComponentId||input.expectedRevision!==draft.baseRevisionAtOpen))fail('COMPONENT_CONFLICT','Update must compare the latest revision baseline captured when this component was opened.');
+      if(!this.options.presentation.canReuseSavedView?.(view)){
+        const publication=this.store.list<ViewPublication>('view_publications').find(row=>row.viewId===view.viewId&&row.ownerSessionId===sessionId&&row.state==='mounted'&&row.committedViewRevision===view.viewRevision&&row.candidateBuildId===view.activeBuildId);
+        if(view.validationStatus!=='verified'||!publication||!view.source||!this.sources.verify(view.source.buildId).valid)fail('BUILD_EVIDENCE_INVALID','此工作副本没有可复用的已验证版本，请完成当前内容的预览和发布后再保存。');
+        const attempt=this.store.get<AuthoringAttempt>('authoring_attempts',publication.attemptId),build=this.store.get<BuildReceipt>('build_receipts',publication.buildReceiptId),preview=this.store.get<PreviewReceipt>('preview_receipts',publication.previewReceiptId);if(!attempt||build?.verdict!=='PASS'||preview?.verdict!=='PASS')fail('BUILD_EVIDENCE_INVALID','Confirmed view evidence is missing.');this.verifyReceiptFiles(attempt,build,preview);
+      }
       return this.options.presentation.saveComponent(sessionId,view.viewId,input.userRequest,{mode:input.mode,...(input.componentId!==undefined?{componentId:input.componentId}:{}),...(input.expectedRevision!==undefined?{expectedRevision:input.expectedRevision}:{}),...(input.title!==undefined?{title:input.title}:{})});
     });
   }

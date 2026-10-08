@@ -305,6 +305,70 @@ test('restart marks only unfinished build/preview/mount attempts interrupted and
   assert.equal(f.store.get<AuthoringAttempt>('authoring_attempts',completed.begin.attempt.attemptId)?.state,'mounted');assert.equal(f.store.get<AuthoringView>('views',mounting.begin.view.viewId)?.pendingPublicationId,null);assert.ok(existsSync(building.draft.workspacePath));assert.equal(f.store.list('components').length,0);
 });
 
+for(const mode of ['open_component','open_saved'])test(`unchanged verified ${mode} saves without new receipts and advances only its own current baseline`,async t=>{
+  const f=setup(t),candidate=await prepared(f),mounted=f.authoring.confirmReady(session,candidate.ready).view;
+  const seed=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Save verified seed',mode:'save_as'});
+  const opened=mode==='open_saved'?f.authoring.begin(session,{mode:'open_saved',componentId:seed.componentId}).view:f.presentation.openComponent(session,seed.componentId),stale=f.presentation.openComponent(session,seed.componentId);
+  const evidence={builds:f.store.list('build_receipts'),previews:f.store.list('preview_receipts'),publications:f.store.list('view_publications')};
+  assert.equal(f.store.list<AuthoringDraft>('authoring_drafts').some(draft=>draft.viewId===opened.viewId),mode==='open_saved');
+  const second=f.authoring.saveComponent(session,{viewId:opened.viewId,expectedViewRevision:opened.viewRevision!,userRequest:'Update reusable component',mode:'update',componentId:seed.componentId,expectedRevision:opened.baseRevision,title:'Second'});
+  assert.equal(second.revision,2);assert.equal(second.view.sourceComponentId,seed.componentId);assert.equal(second.view.baseRevision,2);assert.equal(second.view.baseRevisionAtOpen,1);assert.equal(second.view.selectedSourceRevision,1);assert.deepEqual(second.view,f.presentation.getView(opened.viewId));
+  const third=f.presentation.saveComponent(session,opened.viewId,'Update through shared entry',{mode:'update',componentId:seed.componentId,expectedRevision:second.view.baseRevision,title:'Third'});assert.equal(third.revision,3);
+  const editing=f.authoring.begin(session,{mode:'edit',viewId:opened.viewId});assert.equal(editing.view.baseRevision,3);assert.equal(editing.draft.baseRevisionAtOpen,1);
+  const fourth=f.authoring.saveComponent(session,{viewId:opened.viewId,expectedViewRevision:editing.view.viewRevision,userRequest:'Save unchanged edit',mode:'update',componentId:seed.componentId,expectedRevision:editing.view.baseRevision,title:'Fourth'});assert.equal(fourth.revision,4);
+  assert.equal(f.store.get<AuthoringDraft>('authoring_drafts',editing.draft.draftId)?.sourceComponentId,seed.componentId);assert.deepEqual(fourth.view.source,second.view.source);assert.equal(fourth.view.viewRevision,opened.viewRevision);assert.equal(fourth.view.selectedSourceRevision,1);
+  assert.throws(()=>f.authoring.saveComponent(session,{viewId:stale.viewId,expectedViewRevision:stale.viewRevision!,userRequest:'Stale update',mode:'update',componentId:seed.componentId,expectedRevision:stale.baseRevision}),{code:'COMPONENT_CONFLICT'});
+  assert.throws(()=>f.presentation.saveComponent(session,stale.viewId,'Do not retarget stale copy',{mode:'update',componentId:seed.componentId,expectedRevision:4}),{code:'COMPONENT_CONFLICT'});
+  assert.deepEqual(f.presentation.getView(stale.viewId),stale);assert.deepEqual({builds:f.store.list('build_receipts'),previews:f.store.list('preview_receipts'),publications:f.store.list('view_publications')},evidence);
+});
+
+test('save-as retargets the same view and draft while preserving historical source numbers',async t=>{
+  const f=setup(t),candidate=await prepared(f),mounted=f.authoring.confirmReady(session,candidate.ready).view,first=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Save original',mode:'save_as'});
+  const second=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Original version two',mode:'update',componentId:first.componentId,expectedRevision:1});
+  const opened=f.authoring.begin(session,{mode:'open_saved',componentId:first.componentId}),before=f.store.get('components',first.componentId);
+  const copy=f.authoring.saveComponent(session,{viewId:opened.view.viewId,expectedViewRevision:opened.view.viewRevision,userRequest:'Save as independent copy',mode:'save_as',title:'Copy'});
+  assert.notEqual(copy.componentId,first.componentId);assert.equal(copy.view.sourceComponentId,copy.componentId);assert.equal(copy.view.baseRevision,1);assert.equal(copy.view.baseRevisionAtOpen,2);assert.equal(copy.view.selectedSourceRevision,2);assert.deepEqual(copy.view,f.presentation.getView(opened.view.viewId));
+  const draft=f.store.get<AuthoringDraft>('authoring_drafts',opened.draft.draftId)!;assert.equal(draft.sourceComponentId,copy.componentId);assert.equal(draft.baseRevisionAtOpen,2);assert.equal(draft.selectedSourceRevision,2);
+  assert.throws(()=>f.authoring.saveComponent(session,{viewId:copy.view.viewId,expectedViewRevision:copy.view.viewRevision!,userRequest:'Must not write former target',mode:'update',componentId:first.componentId,expectedRevision:second.revision}),{code:'COMPONENT_CONFLICT'});
+  const updated=f.authoring.saveComponent(session,{viewId:copy.view.viewId,expectedViewRevision:copy.view.viewRevision!,userRequest:'Update independent copy',mode:'update',componentId:copy.componentId,expectedRevision:copy.view.baseRevision});assert.equal(updated.revision,2);assert.deepEqual(updated.view,f.presentation.getView(copy.view.viewId));assert.deepEqual(f.store.get('components',first.componentId),before);
+});
+
+test('historical verified content restores without rebuilding and the restored work copy can save again',async t=>{
+  const f=setup(t),candidate=await prepared(f),mounted=f.authoring.confirmReady(session,candidate.ready).view,first=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Save version one',mode:'save_as'});
+  const edit=f.authoring.begin(session,{mode:'open_saved',componentId:first.componentId}),changed=await prepared(f,edit,'Different version two'),newView=f.authoring.confirmReady(session,changed.ready).view;
+  const second=f.authoring.saveComponent(session,{viewId:newView.viewId,expectedViewRevision:newView.viewRevision,userRequest:'Save changed source',mode:'update',componentId:first.componentId,expectedRevision:1});assert.notEqual(first.view.source!.buildId,second.view.source!.buildId);
+  const historical=f.authoring.begin(session,{mode:'open_saved',componentId:first.componentId,revision:1}),history=f.presentation.componentVersions(first.componentId),receipts=f.store.list('build_receipts');
+  assert.equal(historical.view.baseRevision,2);assert.equal(historical.view.selectedSourceRevision,1);
+  const third=f.authoring.saveComponent(session,{viewId:historical.view.viewId,expectedViewRevision:historical.view.viewRevision,userRequest:'Restore version one as a new version',mode:'update',componentId:first.componentId,expectedRevision:historical.view.baseRevision});assert.equal(third.revision,3);assert.equal(third.view.source!.buildId,first.view.source!.buildId);
+  const fourth=f.authoring.saveComponent(session,{viewId:third.view.viewId,expectedViewRevision:third.view.viewRevision!,userRequest:'Save restored work again',mode:'update',componentId:first.componentId,expectedRevision:third.view.baseRevision});assert.equal(fourth.revision,4);assert.equal(fourth.view.selectedSourceRevision,1);assert.equal(fourth.view.baseRevisionAtOpen,2);assert.equal(fourth.view.baseRevision,4);
+  assert.deepEqual(f.presentation.componentVersions(first.componentId).slice(0,2),history);assert.deepEqual(f.store.list('build_receipts'),receipts);
+});
+
+test('changed design or binding cannot reuse a saved or mounted verification; template saving stays independent',async t=>{
+  const f=setup(t),candidate=await prepared(f),mounted=f.authoring.confirmReady(session,candidate.ready).view,seed=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Save original',mode:'save_as'});
+  for(const change of ['design','bindings'])for(const entry of ['opened','mounted']){
+    const view=entry==='opened'?f.authoring.begin(session,{mode:'open_saved',componentId:seed.componentId}).view:f.presentation.getView(mounted.viewId)!;
+    f.presentation.createView(session,{viewId:view.viewId,title:view.title,...(change==='design'?{design:{changed:true}}:{bindings:[binding]})});
+    const before=f.store.list('component_versions');
+    assert.throws(()=>f.authoring.saveComponent(session,{viewId:view.viewId,expectedViewRevision:view.viewRevision!,userRequest:'Unverified change',mode:'save_as'}),{code:'BUILD_EVIDENCE_INVALID'});
+    assert.throws(()=>f.presentation.saveComponent(session,view.viewId,'Unverified change',{mode:'save_as'}),{code:'BUILD_EVIDENCE_INVALID'});assert.deepEqual(f.store.list('component_versions'),before);
+    const template=f.presentation.saveTemplate(session,view.viewId,'Reusable draft template','Save template');assert.equal(template.kind,'template');
+    if(entry==='mounted')f.presentation.createView(session,{viewId:view.viewId,title:view.title,design:seed.view.design,bindings:seed.view.bindings});
+  }
+});
+
+test('changed source and unverified saved source still require authoring validation',async t=>{
+  const f=setup(t),candidate=await prepared(f),mounted=f.authoring.confirmReady(session,candidate.ready).view,seed=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Save verified',mode:'save_as'});
+  const other=join(f.directory,'unverified');mkdirSync(join(other,'dist'),{recursive:true});writeFileSync(join(other,'dist','index.html'),'<p>Changed source</p>');
+  for(const mode of ['open_component','open_saved']){
+    const opened=mode==='open_saved'?f.authoring.begin(session,{mode:'open_saved',componentId:seed.componentId}).view:f.presentation.openComponent(session,seed.componentId),changed=f.presentation.openSource(session,other,{viewId:opened.viewId});assert.notEqual(changed.source!.buildId,seed.view.source!.buildId);
+    assert.throws(()=>f.authoring.saveComponent(session,{viewId:changed.viewId,expectedViewRevision:changed.viewRevision!,userRequest:'Save changed build',mode:'save_as'}),{code:'BUILD_EVIDENCE_INVALID'});assert.throws(()=>f.presentation.saveComponent(session,changed.viewId,'Save changed build',{mode:'save_as'}),{code:'BUILD_EVIDENCE_INVALID'});
+  }
+  const legacy=f.presentation.openSource(session,other),legacySaved=f.presentation.saveComponent(session,legacy.viewId,'Existing compatibility source save',{mode:'save_as'}),unverified=f.presentation.openComponent(session,legacySaved.componentId);
+  assert.throws(()=>f.authoring.saveComponent(session,{viewId:unverified.viewId,expectedViewRevision:unverified.viewRevision!,userRequest:'No verified source to reuse',mode:'save_as'}),{code:'BUILD_EVIDENCE_INVALID'});
+  assert.equal(f.presentation.saveComponent(session,unverified.viewId,'Legacy source remains compatible',{mode:'update',componentId:legacySaved.componentId,expectedRevision:unverified.baseRevision}).revision,2);
+});
+
 test('explicit save requires the confirmed view CAS and history restores compare the current metadata baseline',async t=>{
   const f=setup(t),first=await prepared(f);assert.throws(()=>f.authoring.saveComponent(session,{viewId:first.begin.view.viewId,expectedViewRevision:1,userRequest:'Save as First',mode:'save_as'}),{code:'VIEW_CONFLICT'});
   const good=f.authoring.confirmReady(session,first.ready).view,saved=f.authoring.saveComponent(session,{viewId:good.viewId,expectedViewRevision:good.viewRevision,userRequest:'Save as First',mode:'save_as',title:'First'});assert.equal(saved.revision,1);
