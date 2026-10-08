@@ -7,6 +7,7 @@ export * from './types.ts';
 export * from './descriptors.ts';
 import {APP_PRESENTATION_DESCRIPTORS} from './descriptors.ts';
 import {ComponentContexts} from './context.ts';
+import {validateDataSelection} from './selection.ts';
 import {AppsAuthoringService} from './authoring.ts';
 import type {AppsAuthoringOptions,CandidateFrameIdentity,ViewPublication} from './authoring-types.ts';
 import {APP_AUTHORING_DESCRIPTORS} from './authoring-descriptors.ts';
@@ -98,7 +99,10 @@ export class AppsPresentationService {
   private dataForView(view:AppsView):AppsViewData {
     return {viewId:view.viewId,bindings:view.bindings.map(binding=>{
       const id=binding.datasetId??datasetId(binding),snapshot=this.store.get<DatasetSnapshot>('datasets',id);
+      const descriptor=this.runtime.describe(binding.capabilityId);
+      const query=descriptor&&Number(descriptor.version.split('.')[0])===binding.capabilityMajor?{appId:binding.appId,connectionId:binding.connectionId,capabilityId:binding.capabilityId,capabilityVersion:descriptor.version,input:clone(binding.input),projection:clone(binding.projection)}:undefined;
       const base:AppsBindingData={bindingId:binding.bindingId,appId:binding.appId,connectionId:binding.connectionId,datasetId:id,revision:null,payload:null,resources:[],freshness:'unknown',state:'empty',lastSuccessAt:null,sourceDataTime:null,provenance:[]};
+      if(query)base.query=query;
       if(!snapshot)return base;
       return {...base,revision:snapshot.revision,payload:clone(snapshot.payload),resources:clone(snapshot.resources),freshness:snapshot.freshness,state:snapshot.state,lastSuccessAt:snapshot.lastSuccessAt,sourceDataTime:snapshot.sourceDataTime,provenance:clone(snapshot.provenance),...(snapshot.error?{error:clone(snapshot.error)}:{})};
     })};
@@ -154,16 +158,7 @@ export class AppsPresentationService {
     return this.selectionForView(this.authoring.display(sessionId,{...identity,displayId:identity.displayId,displayGeneration:identity.displayGeneration}).view,envelope);
   }
   private selectionForView(view:AppsView,envelope:SelectionEnvelope):SelectionEnvelope {
-    const binding=view.bindings.find(item=>item.bindingId===envelope?.bindingId);
-    if(!binding)fail('BINDING_NOT_FOUND','Selection binding is not part of the view.');
-    const snapshot=this.store.get<DatasetSnapshot>('datasets',binding.datasetId??datasetId(binding));
-    if(!snapshot||typeof envelope.datasetRevision!=='string'||snapshot.revision!==envelope.datasetRevision)fail('SELECTION_STALE','Dataset changed. Select resources again from the current revision.');
-    if(snapshot.state!=='ready')fail('SELECTION_STALE','Refresh failed. Refresh and select the current resources again.');
-    if(!Array.isArray(envelope.resources)||!envelope.resources.length)fail('INVALID_SELECTION','At least one ResourceRef is required.');
-    this.checkResources(binding,envelope.resources);
-    const available=new Set(snapshot.resources.map(resourceKey));
-    if(envelope.resources.some(resource=>!available.has(resourceKey(resource))))fail('SELECTION_STALE','Selected resource is not present in the current dataset.');
-    return clone(envelope);
+    return validateDataSelection(this.dataForView(view),envelope);
   }
   saveComponent(sessionId:string|null,viewId:string,userRequest:string,options:SaveAppsComponentOptions):AppsComponent {
     text(userRequest,'userRequest');const original=this.ownedView(sessionId,viewId),view={...original,title:options.title!==undefined?text(options.title,'title'):original.title};

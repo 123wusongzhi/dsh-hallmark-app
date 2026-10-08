@@ -60,6 +60,7 @@ export interface DatasetSnapshot {
   error?:FailureInfo;
 }
 export interface AppsBindingData {
+  query?:import('../../app-contracts/src/index.ts').BindingQuery;
   bindingId:string;
   appId:string;
   connectionId:string;

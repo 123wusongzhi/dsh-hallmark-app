@@ -145,6 +145,17 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       if(req.method==='POST'&&authoringAction){
         const input=await body(req);strict(input,['sessionId','params'],['sessionId','params']);const sessionId=String(input.sessionId),params=input.params as Record<string,unknown>,authoring=presentation.authoring;if(!authoring)throw new Error('AUTHORING_UNAVAILABLE');
         switch(authoringAction[1]){
+          case 'preview':{
+            const view=presentation.ownedView(sessionId,String(params.viewId));
+            if(params.action==='data')return send(res,200,presentation.getData(sessionId,view.viewId));
+            if(params.action==='refresh')return send(res,200,await presentation.refreshView(sessionId,view.viewId,{kind:'agent',sessionId,nativeCallId:randomUUID()},params.bindingIds as string[]|undefined,controller.signal));
+            if(params.action==='selection'){presentation.validateSelection(sessionId,view.viewId,params.selection as never);return send(res,200,{status:'validated',preview:true});}
+            if(params.action!=='invoke')throw new Error('PREVIEW_ACTION_UNAVAILABLE');
+            const call=params.input as Pick<InvocationRequest,'appId'|'connectionId'|'capabilityId'|'capabilityVersion'|'input'>,descriptor=runtime.describe(call.capabilityId,call.capabilityVersion);
+            if(!descriptor||!['query','compute'].includes(descriptor.effect)||/^apps\.(presentation|authoring)\./.test(call.capabilityId))throw new Error('PREVIEW_CAPABILITY_NOT_READ_ONLY');
+            if(!view.bindings.some(binding=>binding.appId===call.appId&&binding.connectionId===call.connectionId))throw new Error('CONNECTION_NOT_BOUND');
+            return send(res,200,await runtime.invoke({protocolVersion:'1.0',invocationId:randomUUID(),traceId:randomUUID(),appId:call.appId,connectionId:call.connectionId,capabilityId:call.capabilityId,capabilityVersion:call.capabilityVersion,input:call.input,source:{kind:'agent',sessionId,nativeCallId:randomUUID()},deadlineAt:new Date(Date.now()+30000).toISOString()},controller.signal));
+          }
           case 'openDisplay':{
             strict(params,['viewId','publicationId','attemptId','attemptEpoch','buildId','expectedViewRevision','displayId'],['viewId','publicationId','attemptId','attemptEpoch','buildId','expectedViewRevision','displayId']);
             return send(res,200,runtime.store.transaction(()=>{presentation.ownedView(sessionId,String(params.viewId));const state=authoring.inspect(sessionId,{publicationId:String(params.publicationId)});const publication=state.publication;if(!publication||publication.viewId!==params.viewId)throw Object.assign(new Error('PUBLICATION_TARGET_MISMATCH'),{code:'PUBLICATION_TARGET_MISMATCH'});const existingSnapshot=publication.state==='mounted'?runtime.store.get<{value:AppsView}>('provider_records','view-revision:'+canonicalJson([sessionId,publication.viewId,publication.committedViewRevision]))?.value:state.view;if(!existingSnapshot)throw Object.assign(new Error('PUBLICATION_UNAVAILABLE'),{code:'PUBLICATION_UNAVAILABLE'});assertDisplayBindings(sessionId,existingSnapshot);const opened=authoring.openDisplay(sessionId,params as never);return {...opened,data:presentation.getData(sessionId,opened.display.viewId,{publicationId:opened.display.publicationId,buildId:opened.display.buildId,displayId:opened.display.displayId,displayGeneration:opened.display.generation})};}));

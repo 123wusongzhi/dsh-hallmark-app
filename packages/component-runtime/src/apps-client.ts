@@ -5,6 +5,7 @@ export interface AppsUiStateExportInput {uiStateSchemaVersion:number;expectedSta
 
 /** Project-owned component protocol. Historical builds continue to use hallmark.source.v1. */
 export const COMPONENT_CHANNEL = 'dsh.apps.component.v2';
+export type {BindingQuery} from '../../app-contracts/src/index.ts';
 export const COMPONENT_METHODS: BridgeRequest['method'][] = ['getData','getContext','refresh','attachSelection','resize','invokeCapability','updateContext','requestAgent'];
 export interface ComponentMessage extends BridgeIdentity {channel: typeof COMPONENT_CHANNEL; requestId: string}
 export interface ComponentResponse extends ComponentMessage {result?: JsonValue; error?: FailureInfo}

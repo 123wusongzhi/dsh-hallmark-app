@@ -1,4 +1,5 @@
 import {previewImages} from './preview-images.mjs';
+import {previewData} from './preview-data.mjs';
 import {spawn} from 'node:child_process';
 import {existsSync,mkdirSync,readFileSync,writeFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
@@ -21,7 +22,7 @@ export async function runAuthoringPreview(input){
  const startedAt=new Date().toISOString(),runDirectory=join(runner.root,'preview-'+randomUUID());mkdirSync(runDirectory,{recursive:true});
  const executable=input.browserExecutable??process.env.DSH_PREVIEW_BROWSER_PATH??['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(existsSync);
  if(!executable)throw new Error('PREVIEW_BROWSER_UNAVAILABLE');
- const preview=await startAuthoringPreview({sources,buildId:build.archiveBuildId,mode:input.mode,data:input.data??{viewId:'preview',bindings:[]},context:input.context});
+ const preview=await startAuthoringPreview({sources,buildId:build.archiveBuildId,mode:input.mode,...await previewData(input),context:input.context});
  const images=previewImages(join(runner.root,'preview-image-cache')),imageTasks=new Set();
  const portServer=createServer();await new Promise(accept=>portServer.listen(0,'127.0.0.1',accept));const port=portServer.address().port;await new Promise(accept=>portServer.close(accept));
  const child=spawn(executable,['--headless=new','--disable-gpu','--disable-background-networking','--disable-component-update','--disable-extensions','--no-first-run','--no-default-browser-check',`--remote-debugging-port=${port}`,`--user-data-dir=${join(runDirectory,'browser-profile')}`,'about:blank'],{windowsHide:true,stdio:['ignore','ignore','pipe']});
@@ -71,7 +72,12 @@ export async function runAuthoringPreview(input){
      }
      await pause(50);
      const target=JSON.stringify(item.checkSelector??item.selector);
+     const checkDeadline=Date.now()+5000;
+     do{
      actual=await evaluate(`(()=>{const d=document.querySelector('iframe').contentDocument;${item.check==='count'?`return d.querySelectorAll(${target}).length`:`const el=d.querySelector(${target});return ${item.check==='checked'?'el?.checked':item.check==='value'?'el?.value':item.check==='visible'?'!!el&&el.getBoundingClientRect().height>0':'el?.textContent?.trim()'}`};})()`);
+     if(item.check==='contains'?String(actual).includes(String(item.expected)):actual===item.expected)break;
+     await pause(50);
+     }while(Date.now()<checkDeadline);
      const pass=item.check==='contains'?String(actual).includes(String(item.expected)):actual===item.expected;assert(item.id,item.required!==false,JSON.stringify(item.expected),actual,pass);
     }catch(error){assert(item.id,item.required!==false,JSON.stringify(item.expected),error.message,false);}
    }
@@ -82,7 +88,11 @@ export async function runAuthoringPreview(input){
    viewportResults.push({id:`width-${width}`,contentWidthCssPx:width,heightCssPx:900,deviceScaleFactor:1,screenshot,pageErrors:[...pageErrors],unhandledRejections:rejections,failedRequests:failedRequests.map(item=>JSON.stringify(item)),bridgeReady:state?.bridgeReady===true,assertionIds:assertions.map(item=>item.id),interactionCaseIds,interactiveControlCount,assertions});
   }
   const assertionResults=viewportResults.flatMap(view=>view.assertions.map(item=>({...item,id:`${view.id}:${item.id}`})));for(const view of viewportResults){view.assertionIds=view.assertions.map(item=>`${view.id}:${item.id}`);delete view.assertions;}
-  const incomplete=testPlan.errors.length||testPlan.mode==='noninteractive'&&viewportResults.some(view=>view.interactiveControlCount>0);
+  const missingMethods=(input.requiredMethods??[]).filter(method=>!preview.events.some(event=>event.method===method&&!event.error));
+  const bridgeFailures=preview.events.filter(event=>event.error&&['invokeCapability','refresh','attachSelection'].includes(event.method));
+  for(const method of missingMethods)assertionResults.push({id:`bridge:${method}`,required:true,expected:'A successful bridge call',actual:'Required feature was not exercised successfully',status:'NOT_RUN',evidenceRefs:[]});
+  for(const [index,event] of bridgeFailures.entries())assertionResults.push({id:`bridge:error:${index}`,required:true,expected:'Successful bridge operation',actual:`${event.method}: ${event.error}`,status:event.error==='PREVIEW_CAPABILITY_UNAVAILABLE'||event.error==='UNSUPPORTED_HOST_CAPABILITY'?'BLOCKED':'FAIL',evidenceRefs:[]});
+  const incomplete=testPlan.errors.length||missingMethods.length||assertionResults.some(item=>item.status==='BLOCKED')||testPlan.mode==='noninteractive'&&viewportResults.some(view=>view.interactiveControlCount>0);
   const verdict=incomplete?'INCOMPLETE':viewportResults.some(view=>view.pageErrors.length||view.unhandledRejections.length||view.failedRequests.length||!view.bridgeReady)||assertionResults.some(item=>item.required&&item.status!=='PASS')?'FAIL':'PASS';
   const report={schemaVersion:1,attemptId:input.attemptId,epoch:input.epoch,buildReceiptId:input.buildReceiptId,buildId:build.archiveBuildId,protocol:'dsh.apps.component.v2',mode:input.mode,runnerVersion:'dsh-authoring-preview/1',startedAt,finishedAt:new Date().toISOString(),viewportResults,assertionResults,testPlan,verdict};
   await images.finish();await Promise.all([...imageTasks]);timings.totalMs=Math.round(performance.now()-timingStart);

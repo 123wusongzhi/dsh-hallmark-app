@@ -65,6 +65,7 @@ export interface DatasetBinding extends AppRef {
  bindingId: string; capabilityId: CapabilityId; capabilityMajor: number; input: JsonValue; projection: string[];
  datasetId?: string; refresh: { mode: 'manual' | 'scheduled'; scheduleId?: string };
 }
+export interface BindingQuery extends AppRef {capabilityId:CapabilityId;capabilityVersion:string;input:JsonValue;projection:string[]}
 export interface SelectionEnvelope { bindingId: string; datasetRevision: string; resources: ResourceRef[] }
 export interface BridgeIdentity { protocolVersion: '2.0'; sessionId: string; viewId: string; buildId: string; frameInstanceId: string }
 export interface BridgeRequest extends BridgeIdentity {

@@ -13,6 +13,26 @@ import type {AuthoringDraft,AuthoringAttempt,AuthoringView,BuildReceipt,PreviewR
 import {runAuthoringPreview} from '../../scripts/apps-authoring-preview.mjs';
 
 const browser=process.env.DSH_PREVIEW_BROWSER_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe';
+
+test('live preview adapter reads real binding shape, invokes pages, validates selection and refreshes',async()=>{
+ const f=await setup();try{
+  f.runtime.addConnection({appId:'notes',connectionId:'preview-notes',displayName:'Preview notes',config:{},configRevision:1,enabled:true});f.runtime.bind({sessionId:'original',appId:'notes',connectionId:'preview-notes',enabled:true,boundAt:new Date().toISOString()});
+  const at=new Date().toISOString();for(const id of ['a','b'])f.store.put('provider_records',canonicalJson(['notes','preview-notes','notes',id]),{appId:'notes',connectionId:'preview-notes',namespace:'notes',recordId:id,value:{id,title:id,content:'Preview fixture',revision:'1',createdAt:at,updatedAt:at}});
+  const begin=await f.begin({mode:'new',bindings:[{bindingId:'notes',appId:'notes',connectionId:'preview-notes',capabilityId:'notes.notes.list',capabilityMajor:1,input:{limit:1},projection:[],refresh:{mode:'manual'}}]});
+  await f.presentation.refreshView('original',begin.view.viewId,{kind:'agent',sessionId:'original',nativeCallId:'preview-init'});
+  const keyFile=join(f.directory,'preview-key');writeFileSync(keyFile,f.token);
+  // @ts-expect-error Standalone runner adapter.
+  const {previewData}=await import('../../scripts/preview-data.mjs');
+  const adapter=await previewData({mode:'live_readonly',sessionId:'original',viewId:begin.view.viewId,runtime:{url:f.url,keyFile},data:{fake:true}});
+  assert.deepEqual(adapter.data,f.presentation.getData('original',begin.view.viewId));
+  const binding=adapter.data.bindings[0],{projection,...query}=binding.query;assert.equal(query.capabilityId,'notes.notes.list');
+  const page=await adapter.readOnlyCapability({...query,input:{...query.input,cursor:'1'}});assert.equal(page.status,'ok');assert.equal(page.data.items[0].note.id,'b');
+  assert.equal((await adapter.validateSelection({bindingId:binding.bindingId,datasetRevision:binding.revision,resources:binding.resources})).status,'validated');
+  await assert.rejects(adapter.validateSelection({bindingId:binding.bindingId,datasetRevision:binding.revision,resources:[page.data.items[0].resource]}),/not present/);
+  assert.deepEqual(await adapter.refreshData({bindingIds:['notes']}),f.presentation.getData('original',begin.view.viewId));
+  await assert.rejects(adapter.readOnlyCapability({...query,capabilityId:'notes.notes.create',input:{title:'No write'}}),/PREVIEW_CAPABILITY_NOT_READ_ONLY/);
+ }finally{await f.cleanup();}
+});
 async function setup(){
  const directory=mkdtempSync(join(tmpdir(),'apps-authoring-http-')),instance=composeAppsRuntime(directory,{connections:[]}),token='a'.repeat(64),server=createAppsServer({...instance,token});
  await new Promise<void>(accept=>server.listen(0,'127.0.0.1',accept));const url=`http://127.0.0.1:${(server.address() as {port:number}).port}`;

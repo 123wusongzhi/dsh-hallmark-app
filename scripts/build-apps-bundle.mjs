@@ -4,7 +4,7 @@ import {mkdir, readFile, writeFile, cp, readdir, rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {join, resolve} from 'node:path';
-const sourceInputPaths=new Set(['scripts/build-apps-bundle.mjs','scripts/create-apps-source.mjs','scripts/apps-authoring-build.mjs','scripts/apps-authoring-preview.mjs','scripts/preview-images.mjs','scripts/verify-apps-sdk.mjs','scripts/install-desktop-apps.ps1','scripts/install-design-skills.ps1','skills/hallmark-component-design/SKILL.md','bundles/apps/package.json','bundles/apps/versions.json','bundles/apps/cordis.patch.yml','pnpm-lock.yaml']);
+const sourceInputPaths=new Set(['scripts/build-apps-bundle.mjs','scripts/create-apps-source.mjs','scripts/apps-authoring-build.mjs','scripts/apps-authoring-preview.mjs','scripts/preview-images.mjs','scripts/preview-data.mjs','scripts/verify-apps-sdk.mjs','scripts/install-desktop-apps.ps1','scripts/install-design-skills.ps1','skills/hallmark-component-design/SKILL.md','bundles/apps/package.json','bundles/apps/versions.json','bundles/apps/cordis.patch.yml','pnpm-lock.yaml']);
 async function build(options){
   const result=await esbuild({...options,metafile:true});
   for(const path of Object.keys(result.metafile.inputs))if(/^(packages|bundles)\//.test(path.replaceAll('\\','/')))sourceInputPaths.add(path.replaceAll('\\','/'));

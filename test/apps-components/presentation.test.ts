@@ -28,6 +28,16 @@ function setup(t:{after:(action:()=>void)=>void}) {
 }
 const source={kind:'agent' as const,sessionId:'session-a',nativeCallId:'call-a'};
 
+test('binding data exposes resolved query separately from payload, including an empty snapshot',async t=>{
+ const f=setup(t),input=binding('notes'),view=f.service.createView('session-a',{title:'Query metadata',bindings:[input]});
+ const empty=f.service.getData('session-a',view.viewId).bindings[0];
+ assert.deepEqual(empty.query,{appId:'notes',connectionId:'notes-local',capabilityId:'notes.list',capabilityVersion:'1.0.0',input:{query:'all'},projection:[]});
+ await f.service.refreshView('session-a',view.viewId,source);
+ const loaded=f.service.getData('session-a',view.viewId).bindings[0];assert.deepEqual(loaded.query,empty.query);assert.equal(loaded.state,'ready');
+ (loaded.query!.input as {query:string}).query='changed';assert.deepEqual(f.service.getData('session-a',view.viewId).bindings[0].query!.input,{query:'all'});
+ f.providerUnavailable();const offline=f.service.getData('session-a',view.viewId).bindings[0];assert.equal(offline.query,undefined);assert.deepEqual(offline.payload,loaded.payload);
+});
+
 test('bindings refresh independently and retain the failed backend last successful payload, revision and time',async t=>{
   const f=setup(t),view=f.service.createView('session-a',{title:'Product and note',bindings:[binding('hallmark'),binding('notes')]});
   assert.equal(f.store.list('components').length,0);
