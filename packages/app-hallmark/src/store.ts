@@ -4,7 +4,7 @@ import type { RecordStore } from '../../app-contracts/src/index.ts';
 
 export type ProviderRecordStore = RecordStore;
 interface ProviderRecord { appId:string; connectionId:string; namespace:string; recordId:string; configRevision?:number; value:RecordData }
-const connectionCaches=new Set(['snapshots','queries','result_sets','settings','internal_tasks']);
+const connectionCaches=new Set(['snapshots','queries','result_sets','settings','internal_tasks','ozon_read_cursors','ozon_weight_queries','ozon_composition_cursors','ozon_composition_snapshots','ozon_composition_sources','ozon_composition_source_results','ozon_composition_cooldowns','complete_snapshots','complete_snapshot_authorization']);
 
 /** Domain evidence lives in provider_records; Runtime operations remain the sole public ledger. */
 export class HallmarkStorePort implements CoreStore {

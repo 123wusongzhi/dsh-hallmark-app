@@ -5,7 +5,7 @@ import {dirname,isAbsolute,join,relative,resolve,sep} from 'node:path';
 import {canonicalJson} from '../../app-contracts/src/index.ts';
 import type {CapabilityResult,ExecutionContext,JsonValue,ResourceRef} from '../../app-contracts/src/index.ts';
 import {distDigest} from '../../source-components/src/authoring-evidence.ts';
-import type {AppsComponent} from './types.ts';
+import type {AppsComponent,AppsView} from './types.ts';
 import type {AppsAuthoringOptions,AuthoringAssertion,AuthoringAttempt,AuthoringAttemptInput,AuthoringDraft,AuthoringState,AuthoringView,BeginAuthoringInput,BuildExecutionEvidence,BuildReceipt,CandidateFrameIdentity,ComponentDisplay,DisplayFrameAuthorizationInput,FileEvidenceRef,FrameAuthorizationInput,ManageAuthoringComponentInput,OpenDisplayInput,PreviewReceipt,PreviewValidationEvidence,PublishAuthoringInput,RecordBuildInput,RecordPreviewInput,RenderReadyInput,ReportDisplayErrorInput,SaveAuthoringInput,StartMountInput,UiStateExportInput,UiStateRestoreInput,UiStateSnapshot,ViewPublication} from './authoring-types.ts';
 export * from './authoring-types.ts';
 
@@ -93,16 +93,17 @@ export class AppsAuthoringService {
     let view:AuthoringView,draft:AuthoringDraft|undefined;
     const draftId=randomUUID(),defaultPath=join(this.sources.workspace,`draft-${draftId}`);
     if(input.mode==='edit'){
-      view=this.view(sessionId,required(input.viewId,'viewId'));draft=this.store.list<AuthoringDraft>('authoring_drafts').find(row=>row.ownerSessionId===sessionId&&row.viewId===view.viewId&&row.status!=='discarded');
+      view=this.view(sessionId,required(input.viewId,'viewId'));if(input.context||input.sourceRefs||input.bindings)view=this.options.presentation.createView(sessionId,{viewId:view.viewId,title:input.title??view.title,...(input.bindings?{bindings:input.bindings}:{}),...(input.sourceRefs?{sourceRefs:input.sourceRefs}:{}),...(input.context?{context:input.context}:{})}) as AuthoringView;draft=this.store.list<AuthoringDraft>('authoring_drafts').find(row=>row.ownerSessionId===sessionId&&row.viewId===view.viewId&&row.status!=='discarded');
       if(draft&&input.workspacePath&&this.resolvePath(input.workspacePath)!==this.resolvePath(draft.workspacePath))fail('WORKSPACE_CONFLICT','An existing draft has a different recoverable workspace.');
     }else if(input.mode==='open_saved'){
-      const componentId=required(input.componentId,'componentId'),path=resolve(input.workspacePath??defaultPath);
-      if(existsSync(path)&&readdirSync(path).length)fail('WORKSPACE_NOT_EMPTY','A saved component needs an independent empty checkout directory.');
-      view=this.options.presentation.openComponent(sessionId,componentId,{...(input.revision!==undefined?{revision:integer(input.revision,'revision')}:{}),directory:path}) as AuthoringView;
+      const componentId=required(input.componentId,'componentId');
+      view=this.options.presentation.openComponent(sessionId,componentId,{...(input.revision!==undefined?{revision:integer(input.revision,'revision')}:{}),...(input.workspacePath?{directory:resolve(input.workspacePath)}:{}),...(input.context?{context:input.context}:{}),...(input.newCopy?{newCopy:true}:{})}) as AuthoringView;
       view=this.view(sessionId,view.viewId);
+      draft=this.store.list<AuthoringDraft>('authoring_drafts').find(row=>row.ownerSessionId===sessionId&&row.viewId===view.viewId&&row.status!=='discarded');
+      if(draft&&input.workspacePath&&this.resolvePath(input.workspacePath)!==this.resolvePath(draft.workspacePath))fail('WORKSPACE_CONFLICT','An existing draft has a different recoverable workspace.');
     }else{
       if(input.workspacePath&&existsSync(resolve(input.workspacePath))&&readdirSync(resolve(input.workspacePath)).length)fail('WORKSPACE_NOT_EMPTY','New authoring workspaces must be independent empty directories.');
-      view=this.options.presentation.createView(sessionId,{title:input.title??'新组件',design:{kind:'source'},...(input.bindings?{bindings:input.bindings}:{})}) as AuthoringView;view=this.view(sessionId,view.viewId);
+      view=this.options.presentation.createView(sessionId,{title:input.title??'新组件',design:{kind:'source'},...(input.bindings?{bindings:input.bindings}:{}),...(input.sourceRefs?{sourceRefs:input.sourceRefs}:{}),...(input.context?{context:input.context}:{})}) as AuthoringView;view=this.view(sessionId,view.viewId);
     }
     const workspacePath=draft?this.resolvePath(draft.workspacePath):resolve(input.workspacePath??(input.mode==='open_saved'?view.source?.directory:undefined)??defaultPath);
     if(!draft&&input.mode!=='open_saved'){
@@ -123,7 +124,8 @@ export class AppsAuthoringService {
         superseded.push({attemptId:previous.attemptId,epoch:previous.epoch});
         if(previous.publicationId){const publication=this.store.get<ViewPublication>('view_publications',previous.publicationId);if(publication?.state==='prepared'||publication?.state==='mounting')this.store.put('view_publications',publication.publicationId,{...publication,state:'superseded',updatedAt:at});}
       }
-      this.store.put('views',view.viewId,{...view,pendingPublicationId:null});this.store.put('authoring_drafts',next.draftId,next);this.store.put('authoring_attempts',attemptId,attempt);return {draft:clone(next),attempt:clone(attempt),view:clone(view)};
+      view={...view,panelState:'open',pendingPublicationId:null};delete view.closedAt;
+      this.store.put('views',view.viewId,view);this.store.put('authoring_drafts',next.draftId,next);this.store.put('authoring_attempts',attemptId,attempt);return {draft:clone(next),attempt:clone(attempt),view:clone(view)};
     });
     for(const previous of superseded)this.notifyCancellation(previous.attemptId,previous.epoch);
     return result;
@@ -424,7 +426,17 @@ export class AppsAuthoringService {
     this.view(sessionId,viewId);if(!['keep','discard'].includes(action))fail('INVALID_INPUT','Explicit keep/discard action is required.');
     const drafts=this.store.list<AuthoringDraft>('authoring_drafts').filter(row=>row.ownerSessionId===sessionId&&row.viewId===viewId),draft=drafts.find(row=>row.status!=='discarded')??drafts.at(-1);if(!draft)fail('DRAFT_NOT_FOUND','This view has no authoring draft.');
     const active=this.store.list<AuthoringAttempt>('authoring_attempts').find(row=>row.draftId===draft.draftId&&row.epoch===draft.epoch&&!terminal.has(row.state));if(active)this.cancel(sessionId,{attemptId:active.attemptId,expectedEpoch:active.epoch,reason:`User closed draft: ${action}.`});
-    return this.store.transaction(()=>{const current=this.store.get<AuthoringDraft>('authoring_drafts',draft.draftId)!;return this.store.put('authoring_drafts',current.draftId,{...current,status:action==='keep'?'closed':'discarded',updatedAt:this.stamp()});});
+    return this.store.transaction(()=>{const current=this.store.get<AuthoringDraft>('authoring_drafts',draft.draftId)!,at=this.stamp();this.store.put('views',viewId,{...this.view(sessionId,viewId),panelState:'closed',closedAt:at});return this.store.put('authoring_drafts',current.draftId,{...current,status:action==='keep'?'closed':'discarded',updatedAt:at});});
+  }
+  /** Panel closure is reversible even for copies opened without an authoring draft. */
+  closeView(sessionId:string,viewId:string,action:'keep'|'discard'):AuthoringDraft|AppsView {
+    const view=this.view(sessionId,viewId);if(!['keep','discard'].includes(action))fail('INVALID_INPUT','Explicit keep/discard action is required.');
+    if(this.store.list<AuthoringDraft>('authoring_drafts').some(row=>row.ownerSessionId===sessionId&&row.viewId===viewId))return this.closeDraft(sessionId,viewId,action);
+    return clone(this.store.put('views',viewId,{...view,panelState:'closed' as const,closedAt:this.stamp()}));
+  }
+  restoreView(sessionId:string,viewId:string):AppsView {
+    const view={...this.view(sessionId,viewId),panelState:'open' as const};delete view.closedAt;
+    return clone(this.store.put('views',viewId,view));
   }
   async execute(context:ExecutionContext):Promise<CapabilityResult> {
     const {request}=context,sessionId='sessionId' in request.source?request.source.sessionId:undefined;

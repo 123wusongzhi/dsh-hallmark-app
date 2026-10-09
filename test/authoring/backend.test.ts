@@ -308,7 +308,7 @@ test('restart marks only unfinished build/preview/mount attempts interrupted and
 for(const mode of ['open_component','open_saved'])test(`unchanged verified ${mode} saves without new receipts and advances only its own current baseline`,async t=>{
   const f=setup(t),candidate=await prepared(f),mounted=f.authoring.confirmReady(session,candidate.ready).view;
   const seed=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Save verified seed',mode:'save_as'});
-  const opened=mode==='open_saved'?f.authoring.begin(session,{mode:'open_saved',componentId:seed.componentId}).view:f.presentation.openComponent(session,seed.componentId),stale=f.presentation.openComponent(session,seed.componentId);
+  const opened=mode==='open_saved'?f.authoring.begin(session,{mode:'open_saved',componentId:seed.componentId,newCopy:true}).view:f.presentation.openComponent(session,seed.componentId,{newCopy:true}),stale=f.presentation.openComponent(session,seed.componentId,{newCopy:true});
   const evidence={builds:f.store.list('build_receipts'),previews:f.store.list('preview_receipts'),publications:f.store.list('view_publications')};
   assert.equal(f.store.list<AuthoringDraft>('authoring_drafts').some(draft=>draft.viewId===opened.viewId),mode==='open_saved');
   const second=f.authoring.saveComponent(session,{viewId:opened.viewId,expectedViewRevision:opened.viewRevision!,userRequest:'Update reusable component',mode:'update',componentId:seed.componentId,expectedRevision:opened.baseRevision,title:'Second'});
@@ -322,10 +322,25 @@ for(const mode of ['open_component','open_saved'])test(`unchanged verified ${mod
   assert.deepEqual(f.presentation.getView(stale.viewId),stale);assert.deepEqual({builds:f.store.list('build_receipts'),previews:f.store.list('preview_receipts'),publications:f.store.list('view_publications')},evidence);
 });
 
+test('verified source code reuses pinned source references in another shop without rebuilding, but changed definitions need evidence',async t=>{
+  const f=setup(t),scoped={...descriptor,inputSchema:{type:'object',properties:{storeId:{type:'string'},limit:{type:'integer'}},required:['storeId'],additionalProperties:false}};
+  f.runtime.describe=()=>scoped;Object.assign(f.runtime,{getConnection:()=>({enabled:true}),bind:(value:unknown)=>value,sessionBindings:()=>[]});
+  const definition:import('../../packages/app-presentation/src/types.ts').DataSourceDraft={id:'notes-products',title:'商品',appId:'notes',connectionId:'notes-test',capabilityId:'notes.list',capabilityMajor:1,storeScoped:true,input:{limit:1},parameters:[{name:'storeId',label:'店铺',type:'string',required:true,editable:false},{name:'limit',label:'数量',type:'integer'}],rowsPath:'resources',fields:[{path:'resourceId',role:'product.id',confirmed:true}],operations:{search:{scope:'loaded'},sort:{scope:'loaded'}}};
+  f.presentation.dataSources.installCatalog([definition]);
+  const candidate=await prepared(f,f.authoring.begin(session,{mode:'new',sourceRefs:{main:{id:definition.id,revision:1,params:{}}},context:{storeId:'A'}}));
+  const mounted=f.authoring.confirmReady(session,candidate.ready).view,seed=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Save scoped source',mode:'save_as'});
+  const opened=f.authoring.begin(session,{mode:'open_saved',componentId:seed.componentId,context:{storeId:'B'}}).view;
+  assert.equal((opened.bindings[0].input as {storeId:string}).storeId,'B');assert.equal(opened.source?.buildId,seed.view.source?.buildId);assert.equal(f.presentation.canReuseSavedView(opened),true);
+  const receipts=f.store.list('build_receipts');const saved=f.authoring.saveComponent(session,{viewId:opened.viewId,expectedViewRevision:opened.viewRevision,userRequest:'Reuse for shop B',mode:'save_as'});assert.equal(saved.view.context?.storeId,'B');assert.deepEqual(f.store.list('build_receipts'),receipts);
+  f.presentation.dataSources.installCatalog([{...definition,input:{limit:2}}]);
+  const changed=f.presentation.createView(session,{viewId:opened.viewId,title:opened.title,sourceRefs:{main:{id:definition.id,revision:2,params:{}}}});
+  assert.equal(f.presentation.canReuseSavedView(changed),false);assert.throws(()=>f.presentation.saveComponent(session,changed.viewId,'Changed definition',{mode:'save_as'}),{code:'BUILD_EVIDENCE_INVALID'});
+});
+
 test('save-as retargets the same view and draft while preserving historical source numbers',async t=>{
   const f=setup(t),candidate=await prepared(f),mounted=f.authoring.confirmReady(session,candidate.ready).view,first=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Save original',mode:'save_as'});
   const second=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Original version two',mode:'update',componentId:first.componentId,expectedRevision:1});
-  const opened=f.authoring.begin(session,{mode:'open_saved',componentId:first.componentId}),before=f.store.get('components',first.componentId);
+  const opened=f.authoring.begin(session,{mode:'open_saved',componentId:first.componentId,newCopy:true}),before=f.store.get('components',first.componentId);
   const copy=f.authoring.saveComponent(session,{viewId:opened.view.viewId,expectedViewRevision:opened.view.viewRevision,userRequest:'Save as independent copy',mode:'save_as',title:'Copy'});
   assert.notEqual(copy.componentId,first.componentId);assert.equal(copy.view.sourceComponentId,copy.componentId);assert.equal(copy.view.baseRevision,1);assert.equal(copy.view.baseRevisionAtOpen,2);assert.equal(copy.view.selectedSourceRevision,2);assert.deepEqual(copy.view,f.presentation.getView(opened.view.viewId));
   const draft=f.store.get<AuthoringDraft>('authoring_drafts',opened.draft.draftId)!;assert.equal(draft.sourceComponentId,copy.componentId);assert.equal(draft.baseRevisionAtOpen,2);assert.equal(draft.selectedSourceRevision,2);

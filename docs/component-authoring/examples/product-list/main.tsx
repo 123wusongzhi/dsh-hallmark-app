@@ -43,7 +43,7 @@ function Component(){
   return <main data-app-component data-ready={!apps.loading&&!apps.error&&binding?.state==='ready'?'true':'false'}>
     <header><div><small>当前页商品</small><h1>商品价格与参考利润率</h1><p>源数据时间：{binding?.sourceDataTime??'未知'} · 读取当前快照</p></div><button data-testid="refresh" disabled={busy||!binding} onClick={()=>void refresh()}>刷新</button></header>
     <section className="toolbar"><input aria-label="搜索当前页" placeholder="搜索当前页名称、SKU" value={search} onChange={event=>setSearch(event.target.value)}/></section>
-    <p role="status">{apps.loading?'正在读取…':notice}</p>{apps.error||binding?.error?<p role="alert">{apps.error?.message??binding?.error?.message}</p>:null}
+    <p role="status">{apps.loading?'正在更新，当前内容保留':notice}</p>{apps.error||binding?.error?<p role={products.length?'status':'alert'}>{products.length?'显示已缓存数据，稍后自动更新。':apps.error?.message??binding?.error?.message}</p>:null}
     <div className="products">{visible.map(row=><article data-product-row key={row.productId??row.offerId}>
       <strong>{row.title}</strong>
       <p>SKU：{row.sku??'—'}</p><dl><div><dt>采购成本</dt><dd>{money(row.profit?.purchaseMinor,row.currency)}</dd></div><div><dt>实际售价</dt><dd>{money(row.pricing?.sellerMinor,row.currency)}</dd></div><div><dt>参考利润率</dt><dd>{row.profit?.actualMargin==null?'—':`${(row.profit.actualMargin*100).toFixed(2)}%`}</dd></div></dl>{row.profit?.reason?<small>{row.profit.reason}</small>:null}

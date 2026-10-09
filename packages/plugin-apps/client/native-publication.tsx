@@ -6,21 +6,27 @@ import type {NativeSidebarRight} from '../../dsh-plugin/client/sidebar-contract.
 import {appsAuthoring,appsResource} from './api.ts';
 
 type ViewsListener={controller:AbortController;onViews:(views:AppsView[],signal:AbortSignal)=>void|Promise<void>;isCurrent:()=>boolean;onError?:(error:unknown)=>void;last?:string};
-const viewWatches=new Map<string,{listeners:Set<ViewsListener>;poll:()=>Promise<void>;stop:()=>void;views?:AppsView[]}>();
+const viewWatches=new Map<string,{listeners:Set<ViewsListener>;poll:()=>Promise<void>;stop:()=>void;update:(view:AppsView)=>void;views?:AppsView[]}>();
+/** Publish a confirmed panel change immediately; an older catalogue read cannot undo it. */
+export function updateOwnedAppsView(view:AppsView):void {if(!view.ownerSessionId)return;viewWatches.get(view.ownerSessionId)?.update(view);if(typeof window!=='undefined')window.dispatchEvent(new CustomEvent('hallmark-view-updated',{detail:{sessionId:view.ownerSessionId}}));}
 /** One poll per session, with independent lifetimes for its consumers. */
 export function watchOwnedAppsViews(sessionId:string,onViews:ViewsListener['onViews'],isCurrent:()=>boolean,onError?:ViewsListener['onError'],pollMs=3000):()=>void {
   const listener:ViewsListener={controller:new AbortController(),onViews,isCurrent,onError};
   let watch=viewWatches.get(sessionId);
   const deliver=async(item:ViewsListener,views:AppsView[])=>{if(item.controller.signal.aborted||!item.isCurrent())return;const snapshot=JSON.stringify(views);if(item.last===snapshot)return;try{await item.onViews(views,item.controller.signal);item.last=snapshot;}catch(error){if(!item.controller.signal.aborted)item.onError?.(error);}};
   if(!watch){
-    const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined,running=false;
-    const current={listeners:new Set<ViewsListener>(),views:undefined as AppsView[]|undefined,poll:async()=>{
+    const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined,running=false,revision=0;
+    const current={listeners:new Set<ViewsListener>(),views:undefined as AppsView[]|undefined,update:(view:AppsView)=>{
+      if(controller.signal.aborted||view.ownerSessionId!==sessionId)return;
+      revision++;const rows=current.views??[];current.views=rows.some(row=>row.viewId===view.viewId)?rows.map(row=>row.viewId===view.viewId?view:row):[...rows,view];
+      for(const item of current.listeners)void deliver(item,current.views);
+    },poll:async()=>{
       if(running||controller.signal.aborted)return;
       if(timer!==undefined)clearTimeout(timer);
       if(typeof document!=='undefined'&&document.hidden)return;
-      running=true;
+      running=true;const requestedRevision=revision;
       try{const value=await appsResource<{views:AppsView[]}>('views',{sessionId},AbortSignal.any([controller.signal,AbortSignal.timeout(5000)]));
-        if(!controller.signal.aborted){const views=(value.views??[]).filter(view=>view.ownerSessionId===sessionId),changed=current.views!==undefined&&JSON.stringify(current.views)!==JSON.stringify(views);current.views=views;if(changed&&typeof window!=='undefined')window.dispatchEvent(new CustomEvent('hallmark-view-updated',{detail:{sessionId}}));await Promise.all([...current.listeners].map(item=>deliver(item,views)));}
+        if(!controller.signal.aborted&&requestedRevision===revision){const views=(value.views??[]).filter(view=>view.ownerSessionId===sessionId),changed=current.views!==undefined&&JSON.stringify(current.views)!==JSON.stringify(views);current.views=views;if(changed&&typeof window!=='undefined')window.dispatchEvent(new CustomEvent('hallmark-view-updated',{detail:{sessionId}}));await Promise.all([...current.listeners].map(item=>deliver(item,views)));}
       }catch(error){if(!controller.signal.aborted)for(const item of current.listeners)if(item.isCurrent())item.onError?.(error);}
       finally{running=false;if(!controller.signal.aborted&&!(typeof document!=='undefined'&&document.hidden))timer=setTimeout(()=>void current.poll(),pollMs);}
     },stop:()=>{controller.abort();if(timer!==undefined)clearTimeout(timer);if(typeof document!=='undefined')document.removeEventListener('visibilitychange',visibility);}};
@@ -39,9 +45,10 @@ export function useOwnedAppsViews(sessionId:string|undefined,onViews:(views:Apps
 export function publicationKey(sessionId:string,viewId:string,publicationId:string):string {return JSON.stringify([sessionId,viewId,publicationId]);}
 /** Expired/terminal historical candidates are observed without remounting or changing their receipts. */
 export async function readOwnedPendingPublication(sessionId:string,view:AppsView,signal:AbortSignal):Promise<ViewPublication|undefined> {
-  if(view.ownerSessionId!==sessionId||!view.pendingPublicationId)return;
+  if(view.ownerSessionId!==sessionId||view.panelState==='closed'||!view.pendingPublicationId)return;
   const current=await appsResource<AppsView&{publication?:ViewPublication}>('view',{sessionId,viewId:view.viewId,publicationId:view.pendingPublicationId},AbortSignal.any([signal,AbortSignal.timeout(5000)]));
   const publication=current.publication;
+  if(current.panelState==='closed'||viewWatches.get(sessionId)?.views?.some(view=>view.viewId===current.viewId&&view.panelState==='closed'))return;
   if(current.ownerSessionId!==sessionId||current.viewId!==view.viewId||publication?.ownerSessionId!==sessionId||publication.viewId!==view.viewId||publication.publicationId!==view.pendingPublicationId)throw new Error('候选发布不属于当前屏幕会话。');
   if(publication.state==='prepared'||publication.state==='mounting'&&publication.readyDeadlineAt!==null&&Date.parse(publication.readyDeadlineAt)>Date.now())return publication;
 }
@@ -81,7 +88,7 @@ export function NativePublicationObserver({sidebarRight}:{sidebarRight?:NativeSi
   const sessionId=useSyncExternalStore(store.subscribe??absentMounted.subscribe,store.getSnapshot,store.getSnapshot);
   const consumed=useRef(new Set<string>());
   useOwnedAppsViews(sessionId,async(views,signal)=>{
-    for(const view of views.filter(view=>view.pendingPublicationId).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,1)){
+    for(const view of views.filter(view=>view.panelState!=='closed'&&view.pendingPublicationId).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,1)){
       if(!view.pendingPublicationId||sidebarRight?.mounted.getSnapshot()!==sessionId)continue;
       const key=publicationKey(sessionId!,view.viewId,view.pendingPublicationId);if(consumed.current.has(key))continue;
       const publication=await readOwnedPendingPublication(sessionId!,view,signal);

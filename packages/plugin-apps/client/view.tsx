@@ -13,7 +13,8 @@ import type {ExtendedComponentHandlers,ComponentFrameError} from '../../dsh-plug
 import type {AuthoringView,ViewPublication,ComponentDisplay} from '../../app-presentation/src/authoring-types.ts';
 import {AppsIcon,appsDisplayTime} from './ui.tsx';
 import {APPS_WORKSPACE_STYLES} from './styles.ts';
-import {appsAuthoring} from './api.ts';
+import {appsResource,appsAuthoring,appsRefreshView,mergeCachedAppsData} from './api.ts';
+import {cacheFallbackAllowed,cacheRetryAt} from '../../presentation/src/cache-display.ts';
 import {ownedPublication,openOwnedPublicationDisplay,readOwnedDisplay,latestOpenedDisplayId} from './native-publication.tsx';
 
 interface AppsViewReference {sessionId:string;viewId:string;buildId?:string;viewRevision?:number;publicationId?:string}
@@ -24,8 +25,7 @@ export function appsToolViewReference(props:{sessionId?:string;phase?:string;blo
   return {sessionId:props.sessionId,viewId:meta.viewId,...(typeof meta.publicationId==='string'?{publicationId:meta.publicationId}:{}),...(typeof meta.buildId==='string'?{buildId:meta.buildId}:{}),...(Number.isSafeInteger(meta.viewRevision)?{viewRevision:Number(meta.viewRevision)}:{})};
 }
 async function read(resource:'view'|'viewData',sessionId:string,viewId:string,signal:AbortSignal,version?:{buildId?:string;viewRevision?:number;publicationId?:string;displayId?:string;displayGeneration?:number}):Promise<unknown> {
-  const query=new URLSearchParams({resource,sessionId,viewId,...(version?.publicationId?{publicationId:version.publicationId}:{}),...(version?.buildId?{buildId:version.buildId}:{}),...(version?.displayId?{displayId:version.displayId}:{}),...(version?.displayGeneration!==undefined?{displayGeneration:String(version.displayGeneration)}:{}),...(!version?.publicationId&&version?.viewRevision!==undefined?{viewRevision:String(version.viewRevision)}:{})}),response=await fetch(`/api/dsh-apps?${query}`,{credentials:'same-origin',signal});
-  const value:unknown=await response.json();if(!response.ok)throw new Error(String(object(object(value).error).message??'Apps component could not be read.'));return value;
+  return appsResource(resource,{sessionId,viewId,...(version?.publicationId?{publicationId:version.publicationId}:{}),...(version?.buildId?{buildId:version.buildId}:{}),...(version?.displayId?{displayId:version.displayId}:{}),...(version?.displayGeneration!==undefined?{displayGeneration:String(version.displayGeneration)}:{}),...(!version?.publicationId&&version?.viewRevision!==undefined?{viewRevision:String(version.viewRevision)}:{})},signal);
 }
 function sourceDraft(view:AppsView):boolean {return !view.source&&object(view.design).kind==='source';}
 function sameSavedView(saved:AppsView|undefined,current:AppsView|undefined):boolean {return !!saved&&!!current&&saved.ownerSessionId===current.ownerSessionId&&saved.viewId===current.viewId&&saved.viewRevision===current.viewRevision&&saved.source?.buildId===current.source?.buildId;}
@@ -62,7 +62,7 @@ export function AppsNativeView({sessionId,viewId,expectedBuildId,expectedViewRev
       setView(opened?.view??current);setData(payload);setRefreshedData(undefined);setPublication(fixed);setDisplay(opened);setLoadedOwner(identity);
       if(opened?.state==='failed')setError(opened.errors.at(-1)?.message??'组件加载失败，请重新打开。');
       if(opened?.state==='retired')setError('此展示已关闭，请重新打开组件。');
-    })().catch(cause=>{if(alive()){const message=cause instanceof Error?cause.message:String(cause);if(loadedOwner===identity&&view?.source)setNotice(`组件重新读取失败，当前展示继续保留：${message}`);else setError(message);}});
+    })().catch(cause=>{if(alive()){const message=cause instanceof Error?cause.message:String(cause);if(loadedOwner===identity&&view?.source&&cacheFallbackAllowed(cause))setNotice(`组件重新读取失败，当前展示继续保留：${message}`);else {setData(undefined);setRefreshedData(undefined);setError(message);}}});
     return()=>{controller.abort();if(loadGeneration.current===generation)loadGeneration.current++;};
   },[identity,revision,visibilitySignal]);
   const current=loadedOwner===identity?view:undefined,currentData=loadedOwner===identity?data:undefined;
@@ -73,6 +73,34 @@ export function AppsNativeView({sessionId,viewId,expectedBuildId,expectedViewRev
   },[identity,current]);
   // Before an explicit candidate open, only the existing active source may remain visible.
   const source=display&&publication&&['opening','ready'].includes(display.state)?publication.source:(!display&&!expectedPublicationId||!display&&publication?.state==='prepared'?current?.source:undefined);
+  const [refreshingData,setRefreshingData]=useState(false),[refreshRetryAt,setRefreshRetryAt]=useState(0),[documentVisible,setDocumentVisible]=useState(()=>typeof document==='undefined'||!document.hidden);
+  const nativeRefresh=useRef<AbortController>();
+  useEffect(()=>{setRefreshingData(false);setRefreshRetryAt(0);return()=>{nativeRefresh.current?.abort();nativeRefresh.current=undefined;};},[identity,revision,visibilitySignal]);
+  useEffect(()=>{if(typeof document==='undefined')return;const change=()=>setDocumentVisible(!document.hidden);document.addEventListener('visibilitychange',change);return()=>document.removeEventListener('visibilitychange',change);},[]);
+  const refreshNative=async(forceRefresh:boolean)=>{
+    if(source||!current||nativeRefresh.current||forceRefresh&&nativeBackgroundRefreshing||!currentIdentity())return;
+    const controller=new AbortController(),generation=loadGeneration.current;nativeRefresh.current=controller;setRefreshingData(true);
+    const alive=()=>!controller.signal.aborted&&currentIdentity()&&loadGeneration.current===generation;
+    try{
+      const payload=await appsRefreshView<AppsViewData>(sessionId,viewId,forceRefresh,visibilitySignal?AbortSignal.any([controller.signal,visibilitySignal]):controller.signal);
+      if(!alive())return;
+      if(payload.viewId!==viewId||!Array.isArray(payload.bindings))throw new Error('数据视图身份已变化，请重新打开。');
+      const merged=mergeCachedAppsData(payload,currentData);
+      setData(merged.data);setError('');setNotice(merged.retained.length?'部分信息暂时无法更新，继续显示上次成功的数据，稍后自动更新。':merged.failed.length?'部分信息待更新，其余可继续查看。':'');setRefreshRetryAt(merged.retryAt);
+    }catch(cause){if(alive()){const fallback=cacheFallbackAllowed(cause),message=cause instanceof Error?cause.message:String(cause);
+      if(fallback&&currentData?.bindings.some(binding=>binding.payload!==null))setNotice(`暂时无法更新，继续显示上次成功的数据：${message}`);
+      else {setNotice('');setError(message);if(!fallback){setData(undefined);setRefreshedData(undefined);}}
+      setRefreshRetryAt(fallback?cacheRetryAt(cause):0);}}
+    finally{if(nativeRefresh.current===controller){nativeRefresh.current=undefined;if(alive())setRefreshingData(false);}}
+  };
+  const nativeCacheTimes=(currentData?.bindings??[]).map(binding=>object(object(binding.payload).cache)).map(cache=>Date.parse(String(cache.nextRefreshAt??cache.expiresAt??''))).filter(Number.isFinite);
+  const nativeBackgroundRefreshing=(currentData?.bindings??[]).some(binding=>object(object(binding.payload).cache).refreshing===true);
+  const nextNativeRefresh=nativeCacheTimes.length?Math.min(...nativeCacheTimes):undefined;
+  useEffect(()=>{
+    const next=nextNativeRefresh??(refreshRetryAt||undefined);
+    if(source||!documentVisible||refreshingData||next===undefined||!currentIdentity())return;
+    const timer=setTimeout(()=>void refreshNative(false),Math.max(1000,Math.max(next,refreshRetryAt)-Date.now()));return()=>clearTimeout(timer);
+  },[identity,source?.buildId,documentVisible,refreshingData,nextNativeRefresh,refreshRetryAt]);
   const abort=useMemo(()=>new AbortController(),[identity,source?.buildId,display?.displayId,visibilitySignal]);useEffect(()=>()=>abort.abort(),[abort]);
   const frameSignal=useMemo(()=>visibilitySignal?AbortSignal.any([abort.signal,visibilitySignal]):abort.signal,[abort,visibilitySignal]);
   const failing=useRef<string>();
@@ -136,8 +164,9 @@ export function AppsNativeView({sessionId,viewId,expectedBuildId,expectedViewRev
   const sourceTimes=[...new Set((timeData?.bindings??[]).map(binding=>binding.sourceDataTime).filter((value):value is string=>!!value))],readTimes=[...new Set((timeData?.bindings??[]).map(binding=>binding.lastSuccessAt).filter((value):value is string=>!!value))];
   if(!currentIdentity())return null;
   const status=draft?'组件正在制作，尚未构建':display?.state==='failed'?'展示失败 · 可以重新打开':display?.state==='opening'?'正在加载原构建':saved?`已保存到组件库 · 版本 ${saved.revision}`:display?.state==='ready'?'已展示':publication?'正在加载组件':current?.validationStatus==='verified'?'已展示':'当前聊天工作视图';
-  const visibleNotice=notice||(saved?`已明确保存“${saved.title}”版本 ${saved.revision}。`:'');
-  return <section className="hm-root hm-view apps-component"><style>{STYLES}{APPS_WORKSPACE_STYLES}</style><header><div className="apps-component-heading"><span className="apps-component-mark"><AppsIcon name="component"/></span><div><h3>{current?.title??'应用组件'}</h3><p>{status}</p></div></div><div className="apps-component-actions">{publication&&(error||!display&&notice||display?.state==='failed')?<button type="button" disabled={starting} onClick={()=>void open()}>{starting?'正在打开…':'重试'}</button>:null}<button type="button" disabled={starting} onClick={()=>setRevision(value=>value+1)}>重新读取</button>{onOpenSidebar?<button type="button" onClick={onOpenSidebar}>侧栏查看</button>:null}</div></header>{currentData?<div className="apps-component-times"><span>源数据时间：{sourceTimes.length?sourceTimes.map(time=>appsDisplayTime(time)).join(' / '):'暂无时间证据'}</span><span>读取成功：{readTimes.length?readTimes.map(time=>appsDisplayTime(time)).join(' / '):'暂无成功读取时间'}</span></div>:null}{visibleNotice?<p role="status">{visibleNotice}</p>:null}{error?<ErrorView message={error}/>:!current||!currentData||source&&!handlers?<LoadingView/>:<RenderBoundary key={JSON.stringify([identity,display?.displayId])}>{source&&handlers?<AppsSourceFrame key={display?.displayId??'active'} frameKey={display?.displayId} sessionId={sessionId} viewId={viewId} buildId={source.buildId} title={current.title} url={`/api/hallmark-source/${encodeURIComponent(source.buildId)}/${source.entry.split('/').map(encodeURIComponent).join('/')}`} data={currentData as unknown as JsonValue} context={display?undefined:{sessionId,viewId,buildId:source.buildId,contextRevision:0}} handlers={handlers} onFrameError={display?problem=>void reportRef.current(problem):undefined} onLoadError={display?undefined:()=>setError('组件构建未能加载，请重新读取。')}/>:publication?<EmptyView message="组件已准备好" detail="正在自动加载…"/>:draft?<EmptyView message="组件正在制作，尚未构建" detail="请在原聊天继续完成构建和预览；准备好后会自动显示。"/>:spec?<ViewRenderer spec={spec} data={bindings}/>:<EmptyView message="组件设计尚无对应展示器" detail="源码组件可按原构建打开；请查看此调用的原生文字结果。"/>}</RenderBoundary>}</section>;
+  const partial=(timeData?.bindings??[]).some(binding=>{const states=object(binding.payload).sourceStates;return Array.isArray(states)&&states.some(state=>object(state).status==='missing');});
+  const visibleNotice=notice||(nativeBackgroundRefreshing?'正在后台更新 · 当前快照可继续查看':partial?'部分信息待更新，其余可继续查看。':saved?`已明确保存“${saved.title}”版本 ${saved.revision}。`:'');
+  return <section className="hm-root hm-view apps-component"><style>{STYLES}{APPS_WORKSPACE_STYLES}</style><header><div className="apps-component-heading"><span className="apps-component-mark"><AppsIcon name="component"/></span><div><h3>{current?.title??'应用组件'}</h3><p>{status}</p></div></div><div className="apps-component-actions">{publication&&(error||!display&&notice||display?.state==='failed')?<button type="button" disabled={starting} onClick={()=>void open()}>{starting?'正在打开…':'重试'}</button>:null}<button type="button" disabled={starting||refreshingData||!source&&nativeBackgroundRefreshing} onClick={()=>{if(source||!current)setRevision(value=>value+1);else void refreshNative(true);}}>{source||!current?'重新读取':refreshingData||nativeBackgroundRefreshing?'更新中…':'立即更新'}</button>{onOpenSidebar?<button type="button" onClick={onOpenSidebar}>侧栏查看</button>:null}</div></header>{currentData?<div className="apps-component-times"><span>源数据时间：{sourceTimes.length?sourceTimes.map(time=>appsDisplayTime(time)).join(' / '):'暂无时间证据'}</span><span>读取成功：{readTimes.length?readTimes.map(time=>appsDisplayTime(time)).join(' / '):'暂无成功读取时间'}</span></div>:null}{visibleNotice?<p role="status">{visibleNotice}</p>:null}{error?<ErrorView message={error}/>:!current||!currentData||source&&!handlers?<LoadingView/>:<RenderBoundary key={JSON.stringify([identity,display?.displayId])}>{source&&handlers?<AppsSourceFrame key={display?.displayId??'active'} frameKey={display?.displayId} sessionId={sessionId} viewId={viewId} buildId={source.buildId} title={current.title} url={`/api/hallmark-source/${encodeURIComponent(source.buildId)}/${source.entry.split('/').map(encodeURIComponent).join('/')}`} data={currentData as unknown as JsonValue} context={display?undefined:{sessionId,viewId,buildId:source.buildId,contextRevision:0}} handlers={handlers} onFrameError={display?problem=>void reportRef.current(problem):undefined} onLoadError={display?undefined:()=>setError('组件构建未能加载，请重新读取。')}/>:publication?<EmptyView message="组件已准备好" detail="正在自动加载…"/>:draft?<EmptyView message="组件正在制作，尚未构建" detail="请在原聊天继续完成构建和预览；准备好后会自动显示。"/>:spec?<ViewRenderer spec={spec} data={bindings}/>:<EmptyView message="组件设计尚无对应展示器" detail="源码组件可按原构建打开；请查看此调用的原生文字结果。"/>}</RenderBoundary>}</section>;
 }
 export function AppsToolView(props:{sessionId?:string;phase?:string;block?:{meta?:unknown};sidebarRight?:NativeSidebarRight}) {
   const reference=appsToolViewReference(props),[notice,setNotice]=useState(''),[title,setTitle]=useState('应用组件'),[draft,setDraft]=useState<boolean>(),[publication,setPublication]=useState<ViewPublication>(),[display,setDisplay]=useState<ComponentDisplay>(),[opening,setOpening]=useState<string>(),inFlight=useRef<string>(),openingController=useRef<{fixed:string;controller:AbortController}>();

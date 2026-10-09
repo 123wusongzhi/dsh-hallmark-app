@@ -8,12 +8,13 @@ import type { BridgeIdentity, CapabilityResult, InvocationRequest, InvocationSou
 import { canonicalJson } from '../../app-contracts/src/index.ts';
 import type { AppsRuntime, AppConnection, InvocationRecord, RuntimeOperation } from '../../app-runtime/src/index.ts';
 import { projectModelResult, readResultPage } from '../../app-runtime/src/projection.ts';
-import type { AppsPresentationService, AppsView } from '../../app-presentation/src/index.ts';
+import type { AppsComponent, AppsPresentationService, AppsView } from '../../app-presentation/src/index.ts';
 import type { Operation } from '../../core/src/types.ts';
 import { createLegacyPresentationAdapter, normalizeLegacyPresentationInput, projectLegacyPresentationResult, projectLegacySpec } from './apps-legacy-presentation.ts';
 import {NativeAppBindings} from './native-bindings.ts';
 import type {CandidateFrameIdentity} from '../../app-presentation/src/authoring-types.ts';
 import type {AppsSnapshotScheduler} from './apps-scheduler.ts';
+import {workbenchRoutes} from './workbench-routes.ts';
 
 function strict(value:Record<string,unknown>,keys:readonly string[],required:readonly string[]=[]):void {
   const invalid=Object.keys(value).filter(key=>!keys.includes(key));const missing=required.filter(key=>!Object.hasOwn(value,key));
@@ -27,6 +28,7 @@ function legacyResult(result:CapabilityResult):ToolResult {
 }
 export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsPresentationService;token:string;port?:number;allowedOrigins?:string[];health?:()=>Promise<unknown>;scheduler?:AppsSnapshotScheduler}) {
   const {runtime,presentation}=options;if(options.token.length<32)throw new Error('SERVICE_KEY_TOO_SHORT');
+  const workbench=workbenchRoutes(runtime,presentation);
   const body=async(req:Parameters<typeof readBody>[0])=>{const input=await readBody(req);runtime.assertAdmission();return input;};
   const nativeBindings=new NativeAppBindings(runtime);
   const frameKey=(value:{sessionId:string;viewId:string;frameInstanceId:string})=>canonicalJson(['apps','presentation','frame_grants',value.sessionId,value.viewId,value.frameInstanceId]);
@@ -95,7 +97,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       projected={...withoutProvenance,...(metadata.value.provenance?{provenance:metadata.value.provenance}:{}),...(metadata.value.metricBasis?{metricBasis:metadata.value.metricBasis}:{}),...(metadata.value.error?{error:metadata.value.error}:{})};
     }
     if(name==='hallmark_app_info'&&result.status==='ok'&&result.data&&typeof result.data==='object'&&!Array.isArray(result.data)){
-      const sessionComponents=runtime.store.viewsForSession<AppsView>(sessionId).map(view=>{
+      const sessionComponents=runtime.store.viewsForSession<AppsView>(sessionId).filter(view=>view.panelState!=='closed').map(view=>{
         const spec=projectLegacySpec(view);
         return {viewId:spec.id,title:spec.title,kind:spec.kind??'view-spec',...(spec.kind==='source'&&spec.source?{source:{directory:spec.source.directory,buildId:spec.source.buildId}}:{})};
       });
@@ -131,16 +133,27 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       if(req.method==='POST'&&legacyTool){const input=await body(req);strict(input,['arguments','sessionId','userRequest'],['arguments','sessionId']);return send(res,200,await legacyInvoke({name:legacyTool[1],...input,invocationId:randomUUID(),traceId:randomUUID(),deadlineAt:new Date(Date.now()+90000).toISOString()},controller.signal));}
       if(req.method==='GET'&&path==='/v1/runtime')return send(res,200,runtime.identity());
       if(req.method==='GET'&&path==='/v1/apps')return send(res,200,{apps:runtime.listApps()});
+      if(req.method==='GET'&&path==='/v1/workbench')return send(res,200,await workbench.read(url.searchParams.get('resource')??'workbench',url.searchParams.get('appId')));
+      if(req.method==='POST'&&path==='/v1/workbench')return send(res,200,await workbench.write(await body(req),controller.signal));
       if(req.method==='GET'&&path==='/v1/authoring/features')return send(res,200,{features:presentation.authoring?['renderReadyV1','uiStateV1','bindingPagesV1']:[]});
       if(req.method==='GET'&&path==='/v1/views'){const sessionId=url.searchParams.get('sessionId');if(!sessionId)throw new Error('EXPLICIT_SESSION_REQUIRED');return send(res,200,{views:runtime.store.viewsForSession<AppsView>(sessionId)});}
       if(req.method==='GET'&&path==='/v1/component-history')return send(res,200,{revisions:runtime.store.componentSummaries(url.searchParams.get('componentId')??'')});
-      if(req.method==='GET'&&path==='/v1/saved')return send(res,200,{components:runtime.store.componentSummaries(),assets:runtime.store.list('saved_assets')});
+      if(req.method==='GET'&&path==='/v1/saved')return send(res,200,{components:runtime.store.componentSummaries(),assets:runtime.store.list<{kind:string}>('saved_assets').filter(asset=>['entry','template'].includes(asset.kind))});
+      if(req.method==='GET'&&path==='/v1/component-thumbnail'){
+        const componentId=url.searchParams.get('componentId')??'',revisionText=url.searchParams.get('revision')??'';
+        if([...url.searchParams.keys()].some(key=>!['componentId','revision'].includes(key))||!/^[-a-zA-Z0-9_.:]{1,180}$/.test(componentId)||! /^[1-9][0-9]{0,9}$/.test(revisionText))throw Object.assign(new Error('INVALID_COMPONENT_THUMBNAIL'),{statusCode:400});
+        const latest=runtime.store.get<AppsComponent>('components',componentId),revision=Number(revisionText),component=latest&&(runtime.store.get<AppsComponent>('component_versions',`${componentId}:${revision}`)??(latest.revision===revision?latest:undefined)),source=component?.view.source;
+        // Only saved versions may disclose their exact preview. No source checkout, browser, or business query is started.
+        const bytes=source?.preview&&source.thumbnail&&/^[a-f0-9]{64}$/.test(source.buildId)?presentation.sources?.thumbnail(source.buildId):undefined;
+        if(!bytes)return send(res,404,{error:'COMPONENT_PREVIEW_NOT_FOUND'});
+        res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'});res.end(bytes);return;
+      }
       if(req.method==='POST'&&path==='/v1/presentation-actions'){
         const input=await body(req);strict(input,['sessionId','capabilityId','input','requestId'],['sessionId','capabilityId','input','requestId']);
         const sessionId=String(input.sessionId),capabilityId=String(input.capabilityId),descriptor=runtime.describe(capabilityId);
         if(!sessionId||!String(input.requestId)||!/^apps\.(presentation|authoring)\./.test(capabilityId)||!descriptor)throw new Error('PRESENTATION_ACTION_UNAVAILABLE');
         runtime.bind({sessionId,appId:'apps',connectionId:'presentation',enabled:true,boundAt:new Date().toISOString()});
-        return send(res,200,await runtime.invoke({protocolVersion:'1.0',invocationId:String(input.requestId),traceId:String(input.requestId),appId:'apps',connectionId:'presentation',capabilityId,capabilityVersion:descriptor.version,input:input.input as JsonValue,source:{kind:'agent',sessionId,nativeCallId:String(input.requestId)},deadlineAt:new Date(Date.now()+30000).toISOString(),...(descriptor.effect==='mutation'?{idempotencyKey:String(input.requestId)}:{})},controller.signal));
+        return send(res,200,await runtime.invoke({protocolVersion:'1.0',invocationId:String(input.requestId),traceId:String(input.requestId),appId:'apps',connectionId:'presentation',capabilityId,capabilityVersion:descriptor.version,input:input.input as JsonValue,source:{kind:'agent',sessionId,nativeCallId:String(input.requestId)},deadlineAt:new Date(Date.now()+descriptor.execution.timeoutMs).toISOString(),...(descriptor.effect==='mutation'?{idempotencyKey:String(input.requestId)}:{})},controller.signal));
       }
       const authoringAction=path.match(/^\/v1\/authoring\/([a-zA-Z]+)$/);
       if(req.method==='POST'&&authoringAction){
@@ -152,13 +165,13 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
             if(params.action==='close'){presentation.clearBindingPages(scope);return send(res,200,{closed:true});}
             if(params.action==='page')return send(res,200,await presentation.readBindingPage(view,scope,params as never,{kind:'agent',sessionId,nativeCallId:randomUUID()},()=>presentation.ownedView(sessionId,view.viewId),controller.signal));
             if(params.action==='data')return send(res,200,presentation.scopedData(view,scope));
-            if(params.action==='refresh'){presentation.clearBindingPages(scope);return send(res,200,await presentation.refreshView(sessionId,view.viewId,{kind:'agent',sessionId,nativeCallId:randomUUID()},params.bindingIds as string[]|undefined,controller.signal));}
+            if(params.action==='refresh'){if(params.forceRefresh!==undefined&&typeof params.forceRefresh!=='boolean')throw new Error('INVALID_FORCE_REFRESH');presentation.clearBindingPages(scope);return send(res,200,await presentation.refreshView(sessionId,view.viewId,{kind:'agent',sessionId,nativeCallId:randomUUID()},params.bindingIds as string[]|undefined,controller.signal,{forceRefresh:params.forceRefresh!==false}));}
             if(params.action==='selection'){validateDataSelection(presentation.scopedData(view,scope),params.selection as never);return send(res,200,{status:'validated',preview:true});}
             if(params.action!=='invoke')throw new Error('PREVIEW_ACTION_UNAVAILABLE');
             const call=params.input as Pick<InvocationRequest,'appId'|'connectionId'|'capabilityId'|'capabilityVersion'|'input'>,descriptor=runtime.describe(call.capabilityId,call.capabilityVersion);
             if(!descriptor||!['query','compute'].includes(descriptor.effect)||/^apps\.(presentation|authoring)\./.test(call.capabilityId))throw new Error('PREVIEW_CAPABILITY_NOT_READ_ONLY');
             if(!view.bindings.some(binding=>binding.appId===call.appId&&binding.connectionId===call.connectionId))throw new Error('CONNECTION_NOT_BOUND');
-            return send(res,200,await runtime.invoke({protocolVersion:'1.0',invocationId:randomUUID(),traceId:randomUUID(),appId:call.appId,connectionId:call.connectionId,capabilityId:call.capabilityId,capabilityVersion:call.capabilityVersion,input:call.input,source:{kind:'agent',sessionId,nativeCallId:randomUUID()},deadlineAt:new Date(Date.now()+30000).toISOString()},controller.signal));
+            return send(res,200,await runtime.invoke({protocolVersion:'1.0',invocationId:randomUUID(),traceId:randomUUID(),appId:call.appId,connectionId:call.connectionId,capabilityId:call.capabilityId,capabilityVersion:call.capabilityVersion,input:call.input,source:{kind:'agent',sessionId,nativeCallId:randomUUID()},deadlineAt:new Date(Date.now()+descriptor.execution.timeoutMs).toISOString()},controller.signal));
           }
           case 'openDisplay':{
             strict(params,['viewId','publicationId','attemptId','attemptEpoch','buildId','expectedViewRevision','displayId'],['viewId','publicationId','attemptId','attemptEpoch','buildId','expectedViewRevision','displayId']);
@@ -190,7 +203,8 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
           case 'failMount':strict(params,['publicationId','reason'],['publicationId','reason']);return send(res,200,authoring.failMount(sessionId,String(params.publicationId),String(params.reason)));
           case 'exportUiState':if(usesDisplay(sessionId,String(params.viewId)))throw Object.assign(new Error('Display UI state requires the current authorized iframe extension.'),{code:'BRIDGE_IDENTITY_STALE'});return send(res,200,authoring.exportUiState(sessionId,params as never));
           case 'restoreUiState':if(usesDisplay(sessionId,String(params.viewId)))throw Object.assign(new Error('Display UI state requires the current authorized iframe extension.'),{code:'BRIDGE_IDENTITY_STALE'});return send(res,200,authoring.restoreUiState(sessionId,params as never));
-          case 'closeDraft':strict(params,['viewId','action'],['viewId','action']);return send(res,200,authoring.closeDraft(sessionId,String(params.viewId),params.action as 'keep'|'discard'));
+          case 'closeDraft':strict(params,['viewId','action'],['viewId','action']);return send(res,200,authoring.closeView(sessionId,String(params.viewId),params.action as 'keep'|'discard'));
+          case 'restoreView':strict(params,['viewId'],['viewId']);return send(res,200,authoring.restoreView(sessionId,String(params.viewId)));
           default:throw new Error('AUTHORING_ACTION_UNKNOWN');
         }
       }
@@ -262,7 +276,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       const operation=path.match(/^\/v1\/operations\/([^/]+)(\/inspect)?$/);if(operation){const id=decodeURIComponent(operation[1]);if(req.method==='POST'&&operation[2]){const input=await readBody(req);strict(input,[]);return send(res,200,await runtime.inspect(id,controller.signal));}if(req.method==='GET'&&!operation[2]){const record=runtime.store.get<RuntimeOperation>('operations',id);return send(res,record?200:404,record?{...record,events:runtime.store.list<{operationId:string}>('operation_events').filter(row=>row.operationId===id)}:{error:'OPERATION_NOT_FOUND'});}}
       if(path==='/v1/session-bindings'){if(req.method==='GET')return send(res,200,{bindings:runtime.sessionBindings(url.searchParams.get('sessionId')??'')});if(req.method==='POST'){const input=await body(req);strict(input,['sessionId','appId','connectionId','enabled','boundAt'],['sessionId','appId','connectionId','enabled','boundAt']);return send(res,200,runtime.bind(input as unknown as SessionAppBinding));}}
       if(path==='/v1/connections'){if(req.method==='GET')return send(res,200,{connections:runtime.listConnections(url.searchParams.get('appId')??undefined)});if(req.method==='POST'){const input=await body(req);strict(input,['appId','connectionId','displayName','config','configRevision','enabled'],['appId','connectionId','displayName','config','configRevision','enabled']);return send(res,200,runtime.addConnection(input as unknown as AppConnection));}if(req.method==='PATCH'){const input=await body(req);strict(input,['appId','connectionId','displayName','config','expectedConfigRevision','enabled','drainTimeoutMs'],['appId','connectionId','expectedConfigRevision']);return send(res,200,await runtime.updateConnection(input as never,controller.signal));}}
-      if(req.method==='POST'&&path==='/v1/views/open'){const input=await body(req);strict(input,['sessionId','title','directory','design','bindings','viewId','componentId','revision'],['sessionId']);const sessionId=String(input.sessionId);const view=input.componentId?presentation.openComponent(sessionId,String(input.componentId),{revision:input.revision as number|undefined,directory:input.directory as string|undefined}):input.directory?presentation.openSource(sessionId,String(input.directory),input as never):presentation.createView(sessionId,input as never);return send(res,200,view);}
+      if(req.method==='POST'&&path==='/v1/views/open'){const input=await body(req);strict(input,['sessionId','title','directory','design','bindings','viewId','componentId','revision','context','newCopy'],['sessionId']);const sessionId=String(input.sessionId);const view=input.componentId?presentation.openComponent(sessionId,String(input.componentId),{revision:input.revision as number|undefined,directory:input.directory as string|undefined,context:input.context as AppsView['context'],newCopy:input.newCopy as boolean|undefined}):input.directory?presentation.openSource(sessionId,String(input.directory),input as never):presentation.createView(sessionId,input as never);return send(res,200,view);}
       const viewRoute=path.match(/^\/v1\/views\/([^/]+)(\/data|\/refresh)?$/);if(viewRoute){const viewId=decodeURIComponent(viewRoute[1]);if(req.method==='GET'){
         const sessionId=url.searchParams.get('sessionId')??'',current=presentation.ownedView(sessionId,viewId);
         if(viewRoute[2]){
@@ -292,7 +306,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
           throw Object.assign(new Error('The message names an unavailable historical view; current source is not substituted.'),{code:'VIEW_REVISION_NOT_FOUND'});
         }
         return send(res,200,current);
-      }if(req.method==='POST'&&viewRoute[2]==='/refresh'){const input=await body(req);strict(input,['sessionId','bindingIds'],['sessionId']);return send(res,200,await presentation.refreshView(String(input.sessionId),viewId,source(String(input.sessionId)),input.bindingIds as string[]|undefined,controller.signal));}}
+      }if(req.method==='POST'&&viewRoute[2]==='/refresh'){const input=await body(req);strict(input,['sessionId','bindingIds','forceRefresh'],['sessionId']);if(input.forceRefresh!==undefined&&typeof input.forceRefresh!=='boolean')throw new Error('INVALID_FORCE_REFRESH');return send(res,200,await presentation.refreshView(String(input.sessionId),viewId,source(String(input.sessionId)),input.bindingIds as string[]|undefined,controller.signal,{forceRefresh:input.forceRefresh!==false}));}}
       if(path==='/v1/components'){if(req.method==='GET')return send(res,200,{components:runtime.store.list('components')});if(req.method==='POST'){const input=await body(req);strict(input,['sessionId','viewId','userRequest','mode','componentId','expectedRevision'],['sessionId','viewId','userRequest','mode']);return send(res,200,presentation.saveComponent(String(input.sessionId),String(input.viewId),String(input.userRequest),input as never));}}
       const resultRoute=path.match(/^\/v1\/results\/(.+)$/);if(req.method==='GET'&&resultRoute)return send(res,200,readResultPage(runtime.store,decodeURIComponent(resultRoute[1]),url.searchParams.get('cursor')??'0',Number(url.searchParams.get('limit')??100)));
       if(req.method==='POST'&&path==='/v1/model-result'){const input=await body(req);strict(input,['invocationId'],['invocationId']);const record=runtime.store.get<InvocationRecord>('invocations',String(input.invocationId));if(!record?.result)return send(res,404,{error:'INVOCATION_NOT_FOUND'});return send(res,200,projectModelResult(runtime.store,record.result));}

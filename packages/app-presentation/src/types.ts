@@ -24,9 +24,15 @@ export interface AppsView {
   title:string;
   design:JsonValue;
   bindings:DatasetBinding[];
+  /** Versioned library references; concrete bindings are rebuilt for the selected shop. */
+  sourceRefs?:Record<string,WorkbenchDataSourceRef>;
+  context?:WorkbenchContext;
   source?:SourceArtifact;
   createdAt:string;
   updatedAt:string;
+  /** Closing a panel preserves its draft, immutable history and saved assets. */
+  panelState?:'open'|'closed';
+  closedAt?:string;
   sourceComponentId?:string;
   baseRevision?:number;
   /** Metadata revision at open is independent of the selected historical source revision. */
@@ -89,4 +95,48 @@ export interface AppsPresentationOptions {
   resources?:(binding:DatasetBinding,result:CapabilityResult)=>ResourceRef[];
   attachSelection?:(identity:BridgeIdentity,selection:SelectionEnvelope)=>Promise<JsonValue>|JsonValue;
   scheduledBinding?:(binding:DatasetBinding)=>void;
+  /** Provider-owned suggestions. Each definition must pass a real read before registration. */
+  dataSources?:()=>DataSourceDraft[];
 }
+
+export type FieldFormat='text'|'currency'|'percent'|'integer'|'datetime'|'image';
+export interface FieldRole {key:string;label:string;description:string;format:FieldFormat;unit?:string}
+export interface DataSourceField {
+  /** Stable column identity; semantic roles may repeat across different sources. */
+  key?:string;origin?:{source:string;label:string};
+  path:string;role:string;confirmed:boolean;label?:string;description?:string;unit?:string;
+  currency?:string;currencyPath?:string;percentScale?:'fraction'|'whole';numericScale?:number;
+}
+export interface DataSourceParameter {name:string;label:string;type:'string'|'number'|'integer'|'boolean';required?:boolean;default?:JsonValue;linked?:boolean;editable?:boolean;choices?:{label:string;value:string|number|boolean}[]}
+export interface DataSourceOperations {
+  pagination?:{cursorParam:string;limitParam?:string;nextCursorPath?:string;totalPath?:string};
+  search:{scope:'server'|'loaded';param?:string};
+  sort:{scope:'server'|'loaded';param?:string;directionParam?:string};
+}
+export interface DataSourceDraft {
+  id:string;title:string;description?:string;appId:string;connectionId:string;capabilityId:string;capabilityMajor:number;
+  /** Store is supplied by the workbench, never embedded in a reusable source. */
+  storeScoped?:boolean;
+  input:Record<string,JsonValue>;parameters:DataSourceParameter[];fields:DataSourceField[];rowsPath:string;operations:DataSourceOperations;
+}
+export interface DataSourceValidation {status:'verified'|'failed'|'unverified';checkedAt:string;invocationId?:string;sampleCount:number;issues:string[];empty?:boolean;storeId?:string}
+export interface DataSourceDefinition extends DataSourceDraft {kind:'data_source';revision:number;validation:DataSourceValidation}
+export interface WorkbenchContext {storeId:string}
+export interface RegisterDataSourceInput {definition:DataSourceDraft;expectedRevision?:number;context?:WorkbenchContext;params?:Record<string,JsonValue>}
+export interface ResolveDataSourceInput {id:string;revision:number;bindingId:string;context?:WorkbenchContext;params?:Record<string,JsonValue>}
+export interface WorkbenchInstance {
+  instanceId:string;title:string;materialId:string;materialVersion:number;design:JsonValue;
+  dataSource?:WorkbenchDataSourceRef;
+  dataSources?:Record<string,WorkbenchDataSourceRef>;
+  /** Resolved on save, never accepted from the caller as authorization. */
+  bindings?:DatasetBinding[];
+  position:{order:number;span?:number};
+}
+/** A pinned library revision is a launcher, not another source checkout or data binding. */
+export interface WorkbenchSavedComponent {componentId:string;revision:number;title:string;buildId?:string;hasPreview?:boolean;position?:{order:number}}
+export interface Workbench {kind:'workbench';workbenchId:string;appId:string;revision:number;instances:WorkbenchInstance[];savedComponents?:WorkbenchSavedComponent[];updatedAt:string;context?:WorkbenchContext}
+export interface SaveWorkbenchInput {expectedRevision:number;instances:WorkbenchInstance[];context?:WorkbenchContext}
+export interface WorkbenchDataSourceRef {id:string;revision:number;params:Record<string,JsonValue>;/** Unsaved definition, accepted for preview and explicitly verified on save. */draft?:DataSourceDraft}
+export interface ReadWorkbenchInstanceInput {refresh?:boolean;forceRefresh?:boolean;bindingId?:string;cursor?:string|null;params?:Record<string,JsonValue>;scope?:string;context?:WorkbenchContext}
+export interface WorkbenchPage {cursor:string|null;nextCursor:string|null;hasMore:boolean;total?:number;loadedCount:number}
+export interface WorkbenchInstanceData {instanceId:string;view:AppsView;data:AppsViewData;dataSource:DataSourceDefinition;dataSources:Record<string,DataSourceDefinition>;pages:Record<string,WorkbenchPage>}

@@ -85,6 +85,10 @@ export class ComponentHost {
     const request=message as BridgeRequest;
     if(!COMPONENT_METHODS.includes(request.method))return response({code:'UNKNOWN_BRIDGE_METHOD',message:'Unknown component method.',retryPolicy:'never'});
     if(!this.supportedMethods.includes(request.method))return response(unsupported(request.method));
+    if(request.method==='refresh'&&request.params!==null){
+      const params=request.params as Record<string,unknown>;
+      if(typeof params!=='object'||Array.isArray(params)||Object.keys(params).some(key=>!['bindingIds','forceRefresh'].includes(key))||params.bindingIds!==undefined&&(!Array.isArray(params.bindingIds)||params.bindingIds.some(id=>typeof id!=='string'||!id))||params.forceRefresh!==undefined&&typeof params.forceRefresh!=='boolean')return response({code:'INVALID_BRIDGE_MESSAGE',message:'Refresh accepts bindingIds and a boolean forceRefresh.',retryPolicy:'never'});
+    }
     try{
       const handler=this.handlers[request.method as keyof ComponentHostHandlers]!;
       const result=await handler(request);

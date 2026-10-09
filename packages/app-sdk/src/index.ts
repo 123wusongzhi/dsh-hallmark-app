@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { canonicalJson, validateResult } from '../../app-contracts/src/index.ts';
 import type { AppRef, CapabilityDescriptor, CapabilityResult, InvocationRequest, InvocationSource, JsonSchema, JsonValue } from '../../app-contracts/src/index.ts';
+/** Shared ceiling for composed data reads; catalogue and control requests keep their shorter bound. */
+export const APPS_DATA_REQUEST_TIMEOUT_MS=150000;
 export interface RuntimeTransport {
   identity(signal?:AbortSignal): Promise<{transportMajor:number;catalogSchemaVersion:number;catalogDigest:string}>;
   describe(id:string,version?:string): Promise<CapabilityDescriptor|undefined>;
@@ -66,8 +68,8 @@ export class HttpRuntimeTransport implements RuntimeTransport {
     this.url=url;this.token=token;this.fetcher=fetcher;
     const parsed=new URL(url);if(parsed.protocol!=='http:'||!['127.0.0.1','[::1]'].includes(parsed.hostname)||parsed.username||parsed.password||parsed.pathname!=='/')throw new Error('LOOPBACK_RUNTIME_REQUIRED');
   }
-  private async read(path:string,body?:unknown,signal?:AbortSignal):Promise<unknown> {
-    const bounded=AbortSignal.any([AbortSignal.timeout(90000),...(signal?[signal]:[])]);
+  private async read(path:string,body?:unknown,signal?:AbortSignal,timeoutMs=90000):Promise<unknown> {
+    const bounded=AbortSignal.any([AbortSignal.timeout(timeoutMs),...(signal?[signal]:[])]);
     const response=await this.fetcher(new URL(path,this.url),{method:body===undefined?'GET':'POST',headers:{Authorization:`Bearer ${this.token}`,...(body===undefined?{}:{'Content-Type':'application/json'})},...(body===undefined?{}:{body:JSON.stringify(body)}),redirect:'error',signal:bounded});
     const value:unknown=await response.json();if(!response.ok)throw Object.assign(new Error('RUNTIME_TRANSPORT_ERROR'),{statusCode:response.status,details:value});return value;
   }
@@ -77,7 +79,7 @@ export class HttpRuntimeTransport implements RuntimeTransport {
     const remaining=Date.parse(request.deadlineAt)-Date.now(),deadline=Number.isFinite(remaining)?AbortSignal.timeout(Math.max(0,Math.min(remaining,2147483647))):AbortSignal.abort();
     const bounded=AbortSignal.any([deadline,...(signal?[signal]:[])]);
     if(bounded.aborted||remaining<=0)return {invocationId:request.invocationId,traceId:request.traceId,status:'cancelled',error:{code:'CANCELLED_BEFORE_DISPATCH',message:'Capability invocation was not submitted.',retryPolicy:'never'}};
-    try{return await this.read('/v1/invocations',request,bounded) as CapabilityResult;}
+    try{return await this.read('/v1/invocations',request,bounded,APPS_DATA_REQUEST_TIMEOUT_MS) as CapabilityResult;}
     catch(error){
       const rejected=runtimeHttpError(error,request);if(rejected)return rejected;
       // Read the same attempt record. Never submit another mutation after a lost response.

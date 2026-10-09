@@ -50,7 +50,7 @@ class ConnectionQueue {
 
 export class AppsRuntime {
   readonly store: RuntimeStore;
-  readonly runtimeVersion = '1.0.0-candidate.36';
+  readonly runtimeVersion = '1.0.0-candidate.55';
   readonly transportMajor = 1;
   readonly catalogSchemaVersion = 1;
   #providers = new Map<string, RegisteredProvider>();
@@ -201,6 +201,16 @@ export class AppsRuntime {
     if(!connection?.enabled)return failure(request,'CONNECTION_NOT_FOUND','An explicit enabled connection is required.');
     try{this.lifecycle(request.appId,request.connectionId).assertReady();}catch{return failure(request,'CONNECTION_UPDATING','Connection configuration is draining.','unavailable','read_retry');}
     if('sessionId' in request.source&&!this.sessionBindings(request.source.sessionId).some(row=>row.appId===request.appId&&row.connectionId===request.connectionId&&row.enabled))return failure(request,'APP_NOT_ACTIVE','This connection is not enabled in the source session.');
+    if(request.source.kind==='workbench'){
+      if(entry.descriptor.effect==='mutation')return failure(request,'WORKBENCH_READ_ONLY','Workbench instances can only query or compute data.');
+      const source=request.source;
+      const board=this.store.get<{kind:string;workbenchId:string;context?:{storeId:string};instances:{instanceId:string;bindings?:{appId:string;connectionId:string;capabilityId:string;capabilityMajor:number;input?:JsonValue}[]}[]}>('saved_assets',source.workbenchId);
+      const instance=board?.kind==='workbench'&&board.workbenchId===source.workbenchId?board.instances.find(item=>item.instanceId===source.instanceId):undefined;
+      if(!instance?.bindings?.some(binding=>binding.appId===request.appId&&binding.connectionId===request.connectionId&&binding.capabilityId===request.capabilityId&&binding.capabilityMajor===Number(request.capabilityVersion.split('.')[0])))return failure(request,'WORKBENCH_BINDING_REQUIRED','The capability and connection must be explicitly bound to this workbench instance.');
+      const matched=instance.bindings.filter(binding=>binding.appId===request.appId&&binding.connectionId===request.connectionId&&binding.capabilityId===request.capabilityId&&binding.capabilityMajor===Number(request.capabilityVersion.split('.')[0]));
+      const storeScoped=matched.some(binding=>binding.input&&typeof binding.input==='object'&&!Array.isArray(binding.input)&&typeof binding.input.storeId==='string');
+      if(storeScoped&&board?.context&&(!request.input||typeof request.input!=='object'||Array.isArray(request.input)||request.input.storeId!==board.context.storeId))return failure(request,'WORKBENCH_STORE_MISMATCH','The query store must match the selected workbench store.');
+    }
     if(request.source.kind==='recovery')return failure(request,'INSPECT_REQUIRED','Recovery must inspect the original operation.');
     const errors=registered.inputs.get(request.capabilityId)!(request.input);
     if(errors.length)return failure(request,'INPUT_SCHEMA_INVALID',errors.join('; '),'failed','never',errors);

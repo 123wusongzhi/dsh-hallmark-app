@@ -13,6 +13,7 @@ export type InvocationSource =
  | { kind: 'agent'; sessionId: string; nativeCallId: string }
  | { kind: 'script'; sessionId: string; runId: string; stepKey: string }
  | { kind: 'component'; sessionId: string; viewId: string; frameInstanceId: string }
+ | { kind: 'workbench'; workbenchId: string; instanceId: string }
  | { kind: 'scheduler'; scheduleId: string; runId: string }
  | { kind: 'recovery'; operationId: string };
 export interface InvocationRequest extends AppRef {
@@ -195,6 +196,7 @@ const sourceSchema:JsonSchema={oneOf:[
  {type:'object',properties:{kind:{const:'agent'},sessionId:stringSchema,nativeCallId:stringSchema},required:['kind','sessionId','nativeCallId'],additionalProperties:false},
  {type:'object',properties:{kind:{const:'script'},sessionId:stringSchema,runId:stringSchema,stepKey:stringSchema},required:['kind','sessionId','runId','stepKey'],additionalProperties:false},
  {type:'object',properties:{kind:{const:'component'},sessionId:stringSchema,viewId:stringSchema,frameInstanceId:stringSchema},required:['kind','sessionId','viewId','frameInstanceId'],additionalProperties:false},
+ {type:'object',properties:{kind:{const:'workbench'},workbenchId:stringSchema,instanceId:stringSchema},required:['kind','workbenchId','instanceId'],additionalProperties:false},
  {type:'object',properties:{kind:{const:'scheduler'},scheduleId:stringSchema,runId:stringSchema},required:['kind','scheduleId','runId'],additionalProperties:false},
  {type:'object',properties:{kind:{const:'recovery'},operationId:stringSchema},required:['kind','operationId'],additionalProperties:false},
 ]};

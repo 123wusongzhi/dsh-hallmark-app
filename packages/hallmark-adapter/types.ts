@@ -92,6 +92,8 @@ export interface ArchiveProductsResult extends AdapterResult<ArchiveProductsRaw>
 }
 export interface HallmarkClientOptions {
   baseUrl?: string;
+  /** Optional store data gateway; legacy queries and every mutation retain baseUrl. */
+  ozonDataBaseUrl?: string;
   fetchImpl?: typeof fetch;
   operatorToken?: string | (() => string | undefined | Promise<string | undefined>);
   readTimeoutMs?: number; platformTimeoutMs?: number; healthTimeoutMs?: number; healthCacheMs?: number;

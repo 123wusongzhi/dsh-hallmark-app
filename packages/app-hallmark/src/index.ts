@@ -4,6 +4,12 @@ import { TOOL_DEFINITIONS } from '../../contracts/src/index.ts';
 import type { ToolResult, InvocationContext } from '../../contracts/src/index.ts';
 import type { CoreStore, CoreClient, CoreBroker, RecordData } from '../../core/src/types.ts';
 import { HallmarkDomain } from './domain.ts';
+import {OZON_DESCRIPTORS,OZON_KINDS,readOzonData} from './ozon-data.ts';
+import type {OzonKind} from './ozon-data.ts';
+import {OZON_COMPOSE_DESCRIPTOR,readOzonComposition} from './ozon-compose.ts';
+import {PROCUREMENT_DESCRIPTOR,readProcurement} from './procurement.ts';
+export {hallmarkOzonSources} from './ozon-data.ts';
+export {createOzonCompositionDraft,OZON_COMPOSITION_FIELDS,OZON_COMPOSITION_SOURCES,DEFAULT_PRODUCT_FIELDS} from './ozon-composition.ts';
 import { validateLoopbackUrl } from '../../hallmark-adapter/client.ts';
 export { HallmarkStorePort } from './store.ts';
 export type { ProviderRecordStore } from './store.ts';
@@ -11,6 +17,7 @@ export type { HallmarkDomainOptions } from './domain.ts';
 export function validateHallmarkConnection(config:JsonValue):void {
  if(!config||typeof config!=='object'||Array.isArray(config)||typeof config.baseUrl!=='string')throw new Error('EXPLICIT_HALLMARK_BACKEND_REQUIRED');
  validateLoopbackUrl(config.baseUrl);
+ if(config.ozonDataBaseUrl!==undefined){if(typeof config.ozonDataBaseUrl!=='string')throw new Error('INVALID_OZON_DATA_BASE_URL');validateLoopbackUrl(config.ozonDataBaseUrl);}
 }
 
 export const HALLMARK_MANIFEST:AppManifest={manifestVersion:1,appId:'hallmark',displayName:'Hallmark',providerPackage:'app-hallmark',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:['store','product','collected-item','category','operation']};
@@ -78,7 +85,8 @@ function apiDescriptor(route:ApiRoute):CapabilityDescriptor{
  const outputSchema=route.sourceMethod==='getStores'?outputSchemas.list_stores:route.sourceMethod==='getStoreProducts'?sourceProductsSchema:route.sourceMethod==='syncStoreProducts'||route.sourceMethod==='getTargetMargin'?rawObject:inherited.outputSchema;
  return {...inherited,capabilityId:route.capabilityId,title:route.apiOperationId,description:route.description??`已登记接口 ${route.apiOperationId}；使用 Hallmark 原实现并保留请求/响应证据`,inputSchema:inputSchema as JsonSchema,outputSchema,aliases:[],apiOperationId:route.apiOperationId,discovery:{defaultVisible:false,keywords:['hallmark','api',route.apiOperationId]}};
 }
-export const HALLMARK_DESCRIPTORS:readonly CapabilityDescriptor[]=[...Object.keys(domainCapabilityIds).map(descriptor),...HALLMARK_API_OPERATIONS.map(apiDescriptor)];
+const skuDescriptors:CapabilityDescriptor[]=['products','collected'].map(kind=>({...descriptor('get_collected_item'),capabilityId:`hallmark.${kind}.skus`,title:kind==='products'?'商品 SKU 明细':'采集商品 SKU 明细',description:kind==='products'?'按店铺及商品编号精确读取当前商品对应SKU的已有规格、售价与币种，不推测其他规格。':'读取已有采集商品的结构化SKU规格、价格与币种，不进行选品评估或业务写入。',aliases:[],inputSchema:{type:'object',properties:kind==='products'?{storeId:text,productId:text}:{itemId:text},required:kind==='products'?['storeId','productId']:['itemId'],additionalProperties:false} as JsonSchema,outputSchema:{type:'object',properties:{items:{type:'array',items:rawObject},total:count},required:['items','total'],additionalProperties:false},discovery:{defaultVisible:false,keywords:['sku','规格','素材库']}}));
+export const HALLMARK_DESCRIPTORS:readonly CapabilityDescriptor[]=[...Object.keys(domainCapabilityIds).map(descriptor),...HALLMARK_API_OPERATIONS.map(apiDescriptor),...skuDescriptors,...OZON_DESCRIPTORS,OZON_COMPOSE_DESCRIPTOR,PROCUREMENT_DESCRIPTOR];
 export interface HallmarkProviderOptions {
  store:CoreStore|((connectionId:string,configRevision?:number)=>CoreStore);
  client:CoreClient|((connectionId:string,configRevision?:number)=>CoreClient);
@@ -107,6 +115,19 @@ export class HallmarkProvider implements AppProvider {
   if(fields)delete args.fields;
   const source=request.source,sessionId='sessionId' in source?source.sessionId:`runtime:${request.connectionId}`;
   const legacyContext:InvocationContext={sessionId,signal:context.signal,...(context.operationId?{operationId:context.operationId}:{}),...(typeof args.userRequest==='string'?{userRequest:args.userRequest}:{})};
+  const ozonKind=request.capabilityId.replace(/^hallmark\.ozon\./,'') as OzonKind;
+  if(request.capabilityId==='hallmark.products.procurement')return this.convert(await readProcurement(args,domain.options.store,domain.options.client,context.signal),context,descriptor);
+  if(request.capabilityId==='hallmark.ozon.compose')return this.convert(await readOzonComposition(args,domain.options.store,domain.options.client,context.signal),context,descriptor);
+  if(OZON_KINDS.includes(ozonKind))return this.convert(await readOzonData(ozonKind,args,domain.options.store,domain.options.client,context.signal),context,descriptor);
+  if(request.capabilityId==='hallmark.products.skus')return this.convert(await domain.readProductSku(args.storeId,args.productId),context,descriptor);
+  if(request.capabilityId==='hallmark.collected.skus'){
+   if(!domain.options.client.getCollectedItemDetail)return this.failure(context,'SKU_DETAILS_UNAVAILABLE','连接没有结构化 SKU 明细接口。');
+   const detail=await domain.options.client.getCollectedItemDetail(args.itemId);
+   if(detail.status!=='ok')return this.convert({status:detail.status,error:detail.error},context,descriptor);
+   if(detail.raw?.id!==args.itemId||!Array.isArray(detail.raw.skus))return this.failure(context,'SKU_DETAILS_INVALID','采集商品编号或 SKU 列表不完整。');
+   const items=detail.raw.skus.map((sku:RecordData)=>({productId:detail.raw!.id,title:detail.raw!.title??null,sku:String(sku.sourceSkuId??sku.code??sku.id??''),spec:sku.spec??null,price:typeof sku.price==='number'?sku.price:null,currency:sku.currency??detail.raw!.currency??null,image:sku.image??null}));
+   return this.convert({status:'ok',data:{items,total:items.length},provenance:detail.provenance},context,descriptor);
+  }
   if(descriptor.effect==='mutation')args.clientOperationKey=canonicalJson([request.appId,request.connectionId,request.capabilityId,request.idempotencyKey]);
   const route=HALLMARK_API_OPERATIONS.find(row=>row.capabilityId===request.capabilityId);
   let result:ToolResult;
@@ -126,7 +147,7 @@ export class HallmarkProvider implements AppProvider {
   let operationRef=legacy.operation?{operationId:legacy.operation.operationId,state:state(legacy.operation.state)}:context.operationId?{operationId:context.operationId,state:'unknown' as const}:undefined;
   const error=(fallback:string,retryPolicy:FailureInfo['retryPolicy']):FailureInfo=>({code:legacy.error?.code==='IDEMPOTENCY_KEY_CONFLICT'?'IDEMPOTENCY_CONFLICT':legacy.error?.code??fallback,message:legacy.error?.message??'Hallmark 未取得业务结果证据。',retryPolicy,...(legacy.error?.retryAfterMs!==undefined?{retryAfterMs:legacy.error.retryAfterMs}:{})});
   let provenance:DataProvenance[]|undefined;
-  if(legacy.provenance||legacy.metricBasis){const old=legacy.provenance,input:RecordData=isObject(request.input)?request.input:{},snapshot=input.storeId?this.domain(request.connectionId,context.configRevision).options.store.get('snapshots',`store_products:${input.storeId}`):undefined;provenance=[{appId:'hallmark',connectionId:request.connectionId,sourceKind:old?.source==='hallmark_compute'?'derived':old?.source==='app_snapshot'||old?.source==='hallmark_snapshot'?'snapshot':'application',sourceRef:old?.endpoint??descriptor?.capabilityId??request.capabilityId,fetchedAt:old?.fetchedAt??snapshot?.lastSuccessAt??new Date().toISOString(),sourceDataTime:old?.dataTime??null,freshness:snapshot?.state==='failed'?'stale':'unknown',...(legacy.metricBasis?{metricBasis:legacy.metricBasis}:{})}];}
+if(legacy.provenance||legacy.metricBasis){const old=legacy.provenance,input:RecordData=isObject(request.input)?request.input:{},snapshot=input.storeId?this.domain(request.connectionId,context.configRevision).options.store.get('snapshots',`store_products:${input.storeId}`):undefined;provenance=[{appId:'hallmark',connectionId:request.connectionId,sourceKind:old?.source==='hallmark_compute'?'derived':old?.source==='app_snapshot'||old?.source==='hallmark_snapshot'?'snapshot':'application',sourceRef:old?.endpoint??descriptor?.capabilityId??request.capabilityId,fetchedAt:old?.fetchedAt??snapshot?.lastSuccessAt??new Date().toISOString(),sourceDataTime:old?.dataTime??null,freshness:['hallmark.ozon.compose','hallmark.products.procurement'].includes(request.capabilityId)&&isObject(legacy.data)&&isObject(legacy.data.cache)?legacy.data.cache.stale?'stale':'fresh':snapshot?.state==='failed'?'stale':'unknown',...(legacy.metricBasis?{metricBasis:legacy.metricBasis}:{})}];}
   const common={...base,...(provenance?{provenance}:{}),...(operationRef?{operation:operationRef}:{})};
   let result:CapabilityResult;
   if(legacy.status==='ok')result={...common,status:'ok',data:legacy.data as JsonValue};

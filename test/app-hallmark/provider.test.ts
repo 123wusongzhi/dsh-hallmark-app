@@ -21,7 +21,28 @@ function fixture(){
  return {store,ports,port,provider,runtime,client,broker,calls,invoke,executes:()=>executes,setUnknown:()=>{unknown=true;price='50';},confirm:()=>{price='100';},down:()=>{unavailable=true;}};
 }
 function data(result:CapabilityResult):any{assert.ok('data' in result,JSON.stringify(result));return result.data;}
+test('SKU reads retain exact item identity and source prices without inventing variant rows',async()=>{
+ const f=fixture();try{
+  f.client.getCollectedItemDetail=async id=>ok({id,title:'采集商品',currency:'CNY',skus:[{sourceSkuId:'sku-1',spec:'颜色:蓝色',price:22.68,image:'https://example.com/blue.jpg'},{sourceSkuId:'sku-2',spec:'颜色:白色'}]});
+  const collected=data(await f.invoke('hallmark.collected.skus',{itemId:'item'}));
+  assert.equal(collected.items[0].productId,'item');assert.equal(collected.items[0].price,22.68);assert.equal(collected.items[0].currency,'CNY');assert.equal(collected.items[1].price,null);
+  f.client.getStoreProducts=async()=>ok({stores:[{id:'shop'}],products:[{storeId:'shop',productId:1,sku:'platform-sku',title:'店铺商品',currency:'CNY',pricing:{sellerMinor:4497,currency:'CNY'},sources:[{sourceSkuMatched:false,sourceSpec:'错误规格'},{sourceSkuMatched:true,sourceSpec:'颜色:蓝色'}]}]});
+  const listed=data(await f.invoke('hallmark.products.skus',{storeId:'shop',productId:'1'}));
+  assert.equal(listed.total,1);assert.equal(listed.items[0].price,44.97);assert.equal(listed.items[0].spec,'颜色:蓝色');
+  assert.equal(data(await f.invoke('hallmark.products.skus',{storeId:'shop',productId:'unknown'})).total,0);
+ }finally{await f.runtime.dispose();f.store.close();}
+});
 const priceInput={storeId:'shop',offerIds:['A'],price:100,currency:'RUB',valueSource:'user',userRequest:'把 A 价格改为 100 RUB'};
+
+test('Ozon business reads execute through store gateway with schema validation, no listing task and timezone-safe provenance',async()=>{
+ const f=fixture();try{
+  let taskCalls=0;f.broker.getStoreTask=async()=>{taskCalls++;throw new Error('must not obtain listing task');};
+  (f.client as any).storeDataRead=async(storeId:string,input:any)=>ok({storeId,outcome:'response_received',httpStatus:200,response:input.path==='/v1/analytics/data'?{result:{data:[{dimensions:[{id:'1',name:'Product'},{id:'2026-09-01'}],metrics:[1,2,3,4,5]}]},timestamp:'2026-09-02 12:00:00'}:{items:[{product_id:1,price:{price:'100',marketing_seller_price:'80',currency_code:'CNY'}}],total:1}});
+  const prices=data(await f.invoke('hallmark.ozon.prices',{storeId:'shop'}));assert.equal(prices.items[0].price,80);assert.equal(prices.items[0].ordinaryPrice,100);
+  const analytics=await f.invoke('hallmark.ozon.analytics',{storeId:'shop',dateFrom:'2026-09-01',dateTo:'2026-09-02'});assert.equal(analytics.status,'ok',JSON.stringify(analytics));assert.equal(analytics.provenance?.[0].sourceDataTime,null);assert.equal(taskCalls,0);
+  assert.equal((await f.invoke('hallmark.ozon.prices',{storeId:'shop',body:{}})).status,'failed');
+ }finally{await f.runtime.dispose();f.store.close();}
+});
 
 test('product fields trim transport while preserving identity, cursor, total and original snapshot',async()=>{
  const f=fixture();try{
@@ -89,6 +110,34 @@ test('unknown remains inspect_only; explicit readback resolves without submittin
 });
 test('registered API endpoint shares the same domain execution and rejects unknown operation before dispatch',async()=>{
  const f=fixture();try{const result=await f.invoke('hallmark.api.warehouses.list',{storeId:'shop',body:{}});assert.equal(result.status,'ok');assert.equal(f.calls[0].path,'/v2/warehouse/list');assert.equal(f.calls[0].write,false);const missing=await f.invoke('hallmark.api.unregistered',{});assert.equal(missing.status,'failed');assert.equal(f.executes(),1);assert.equal(f.calls.length,1);}finally{await f.runtime.dispose();f.store.close();}
+});
+test('legacy activity query prefers the store gateway while retaining its raw envelope and operation receipt',async()=>{
+ const f=fixture();try{
+  let taskCalls=0;f.broker.getStoreTask=async()=>{taskCalls++;throw Error('unrelated listing task must not be read');};
+  const response={storeId:'shop',outcome:'response_received',httpStatus:200,response:{result:[{id:7,title:'Activity'}]}};
+  (f.client as any).storeDataRead=async(storeId:string,input:any)=>{assert.equal(storeId,'shop');assert.equal(input.path,'/v1/actions');assert.equal(input.method,'GET');return ok(response);};
+  const result=await f.invoke('hallmark.api.actions.list',{storeId:'shop',body:{}});assert.deepEqual(data(result),response);assert.equal(taskCalls,0);assert.equal(f.calls.length,0);assert.equal(result.operation?.state,'succeeded');
+  const receipt=f.port('c').get('operations',result.operation!.operationId)!;assert.equal(receipt.hallmarkRefs[0].route,'store_data_read');assert.equal(receipt.hallmarkRefs[0].taskId,undefined);
+ }finally{await f.runtime.dispose();f.store.close();}
+});
+test('only a missing local store gateway falls back to legacy task reads; denied, invalid and unknown results do not',async()=>{
+ for(const code of ['HALLMARK_HTTP_404','HALLMARK_HTTP_403','PLATFORM_ERROR','OUTCOME_UNKNOWN']){
+  const f=fixture();try{
+   let directCalls=0,taskCalls=0;f.broker.getStoreTask=async()=>{taskCalls++;return ok({taskId:'task'});};
+   (f.client as any).storeDataRead=async()=>{directCalls++;return {status:'failed',error:{code,message:code,retryable:false}};};
+   const result=await f.invoke('hallmark.api.actions.list',{storeId:'shop',body:{}});assert.equal(directCalls,1);
+   if(code==='HALLMARK_HTTP_404'){assert.equal(result.status,'ok');assert.equal(taskCalls,1);assert.equal(f.calls.length,1);assert.equal(f.calls[0].write,false);assert.equal(f.calls[0].path,'/v1/actions');}
+   else{assert.equal(result.status,'failed');assert.equal(taskCalls,0);assert.equal(f.calls.length,0);}
+  }finally{await f.runtime.dispose();f.store.close();}
+ }
+});
+test('legacy gateway compatibility only covers read whitelist intersection and leaves mutations on original path',async()=>{
+ const f=fixture();try{
+  let directCalls=0;(f.client as any).storeDataRead=async()=>{directCalls++;throw Error('not allowed');};
+  assert.equal((await f.invoke('hallmark.api.products.import_inspect',{storeId:'shop',body:{task_id:'existing-import'}})).status,'ok');assert.equal(directCalls,0);assert.equal(f.calls[0].path,'/v1/product/import/info');
+  assert.equal((await f.invoke('hallmark.platform.read',{storeId:'shop',path:'/v1/product/import/prices',method:'POST',body:{}})).status,'failed');assert.equal(directCalls,0);
+  assert.equal((await f.invoke('hallmark.products.update_price',priceInput,{idempotencyKey:'unchanged-price-route'})).status,'ok');assert.equal(directCalls,0);assert.ok(f.calls.some(c=>c.write===true));
+ }finally{await f.runtime.dispose();f.store.close();}
 });
 test('registered API price operation inherits strict conditional CNY fallback with the same source operation ID',async()=>{
  const f=fixture();let submissions=0,sourceOperationId='';

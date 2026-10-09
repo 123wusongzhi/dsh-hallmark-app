@@ -1,7 +1,7 @@
 import {createHash,randomUUID} from 'node:crypto';
 import {canonicalJson, compileSchema, validateResult} from '../../app-contracts/src/index.ts';
 import type {BridgeRequest, CapabilityDescriptor, CapabilityResult, ComponentAgentIntent, FailureInfo, InvocationRequest, JsonSchema, JsonValue, SessionAppBinding, HostProjectionState} from '../../app-contracts/src/index.ts';
-import {recoverInvocationResult,runtimeHttpError} from '../../app-sdk/src/index.ts';
+import {APPS_DATA_REQUEST_TIMEOUT_MS,recoverInvocationResult,runtimeHttpError} from '../../app-sdk/src/index.ts';
 import {hostFeatureModes, requireHostCapability, type HostCapabilityMatrix, type NativeSessionAdapterMode} from '../../dsh-compat/src/index.ts';
 import type {AppsHostTransport, RuntimeApp, ModelProjection} from './transport.ts';
 import {nativeInputReceipt} from '../../dsh-compat/src/native-receipt.ts';
@@ -125,7 +125,7 @@ export class AppsHost {
     try {
       for (const [name, parameters] of Object.entries(gatewaySchemas)) {
         const validate = compileSchema(parameters);
-        this.disposers.push(this.ctx.tools.register({name, description:gatewayDescriptions[name], parameters, output: {schema: {}, render: (_args,value) => [{type: 'text', text: this.renderModel(value)}],presentationMeta: (args,value)=>this.presentationMeta(args,value)}, timeoutMs: 90000, isConcurrencySafe: () => name !== 'apps_invoke', execute: async (args, execution) => {
+        this.disposers.push(this.ctx.tools.register({name, description:gatewayDescriptions[name], parameters, output: {schema: {}, render: (_args,value) => [{type: 'text', text: this.renderModel(value)}],presentationMeta: (args,value)=>this.presentationMeta(args,value)}, timeoutMs: name==='apps_invoke'?APPS_DATA_REQUEST_TIMEOUT_MS:90000, isConcurrencySafe: () => name !== 'apps_invoke', execute: async (args, execution) => {
           const errors = validate(args);if (errors.length) return fail('INVALID_INPUT', errors.join('; '));
           const sessionId = this.trusted(execution.agent);if (!sessionId) return fail('INVALID_SESSION', '需要当前原生会话身份。');
           let runtimeResult=false;
@@ -195,11 +195,16 @@ export class AppsHost {
         return fail('CAPABILITY_NOT_FOUND',`精确能力版本未登记（请求 ${capabilityVersion}；当前 ${registeredVersion??'未登记'}）。`,invocationId,traceId,{expected:{appId,capabilityId,capabilityVersion},actual:{capabilityVersion:registeredVersion}});
       }
       const [connections, bindings] = await Promise.all([this.transport.listConnections(appId,signal), this.transport.sessionBindings(sessionId,signal)]);
+      // Shared presentation is an internal Host service, like the existing
+      // presentation-actions route. This never enables business connections.
+      if(appId==='apps'&&/^apps\.(presentation|authoring)\./.test(descriptor.capabilityId)&&(input.connectionId===undefined||input.connectionId==='presentation')&&connections.some(row=>row.connectionId==='presentation'&&row.enabled)&&!bindings.some(binding=>binding.appId==='apps'&&binding.connectionId==='presentation'&&binding.enabled)){
+        bindings.push(await this.transport.bind({sessionId,appId:'apps',connectionId:'presentation',enabled:true,boundAt:new Date().toISOString()},signal));
+      }
       const candidates = connections.filter(row => row.enabled && bindings.some(binding => binding.appId === appId && binding.connectionId === row.connectionId && binding.enabled));
       const matches = typeof input.connectionId === 'string' ? candidates.filter(row => row.connectionId === input.connectionId) : candidates;
       if (matches.length !== 1) return {invocationId, traceId, status: 'needs_clarification', missing: ['connectionId'], candidates: candidates.map(row => ({appId, connectionId: row.connectionId, displayName: row.displayName})), question: '请明确一个在当前会话启用的connectionId。'};
       if(signal?.aborted)return {invocationId,traceId,status:'cancelled',error:{code:'CANCELLED_BEFORE_DISPATCH',message:'Capability invocation was not submitted.',retryPolicy:'never'}};
-      submitted={protocolVersion: '1.0', invocationId, traceId, appId, connectionId: matches[0].connectionId, capabilityId: descriptor.capabilityId, capabilityVersion: descriptor.version, input: input.input, source: {kind: 'agent', sessionId, nativeCallId: nativeCallId ?? invocationId}, deadlineAt: typeof input.deadlineAt === 'string' ? input.deadlineAt : new Date(Date.now() + Math.min(90000, descriptor.execution.timeoutMs)).toISOString(), ...(typeof input.idempotencyKey === 'string' ? {idempotencyKey: input.idempotencyKey} : {}), ...(typeof input.expectedResourceRevision === 'string' ? {expectedResourceRevision: input.expectedResourceRevision} : {})};
+      submitted={protocolVersion: '1.0', invocationId, traceId, appId, connectionId: matches[0].connectionId, capabilityId: descriptor.capabilityId, capabilityVersion: descriptor.version, input: input.input, source: {kind: 'agent', sessionId, nativeCallId: nativeCallId ?? invocationId}, deadlineAt: typeof input.deadlineAt === 'string' ? input.deadlineAt : new Date(Date.now() + Math.min(APPS_DATA_REQUEST_TIMEOUT_MS, descriptor.execution.timeoutMs)).toISOString(), ...(typeof input.idempotencyKey === 'string' ? {idempotencyKey: input.idempotencyKey} : {}), ...(typeof input.expectedResourceRevision === 'string' ? {expectedResourceRevision: input.expectedResourceRevision} : {})};
       const result = await this.transport.invoke(submitted, signal);
       onRuntimeResult?.();
       const identityMatches=result?.invocationId===invocationId&&result?.traceId===traceId;
@@ -226,6 +231,19 @@ export class AppsHost {
     if (!await this.knownSession(sessionId, signal)) return fail('INVALID_SESSION', '没有此本机会话。');
     await this.handshake();
     return this.transport.bind({sessionId, appId, connectionId, enabled, boundAt: new Date().toISOString()}, signal);
+  }
+  private async prepareWorkbench(sessionId:string,appId:string,params:unknown,signal?:AbortSignal) {
+    if(!params||typeof params!=='object'||Array.isArray(params)||Object.keys(params).some(key=>key!=='connectionIds'))return fail('INVALID_INPUT','请提供明确选择的 connectionIds。');
+    const connectionIds=(params as {connectionIds?:unknown}).connectionIds;
+    if(!Array.isArray(connectionIds)||connectionIds.some(id=>typeof id!=='string'||!id.trim())||new Set(connectionIds).size!==connectionIds.length)return fail('INVALID_INPUT','connectionIds 必须是明确且不重复的连接编号。');
+    const [business,shared]=await Promise.all([this.transport.listConnections(appId,signal),this.transport.listConnections('apps',signal)]);
+    if(connectionIds.some(id=>!business.some(connection=>connection.appId===appId&&connection.connectionId===id&&connection.enabled)))return fail('CONNECTION_NOT_FOUND','所选数据连接不存在或尚未启用。');
+    if(!shared.some(connection=>connection.appId==='apps'&&connection.connectionId==='presentation'&&connection.enabled))return fail('PRESENTATION_UNAVAILABLE','共享组件服务尚未启用。');
+    // Validate the complete selection before enabling any binding. Use the same
+    // authenticated Runtime endpoint as the ordinary application bind action.
+    for(const connectionId of connectionIds)await this.transport.bind({sessionId,appId,connectionId,enabled:true,boundAt:new Date().toISOString()},signal);
+    await this.transport.bind({sessionId,appId:'apps',connectionId:'presentation',enabled:true,boundAt:new Date().toISOString()},signal);
+    return {status:'ok',sessionId,appId,connectionIds,presentationReady:true};
   }
   requestAgent() {return requireHostCapability(this.capabilities, 'requestAgent') ?? fail('UNSUPPORTED_HOST_CAPABILITY', '此独立入口不接收输入。需通过完整组件bridge身份、requestId与revision显式请求。');}
   updateContext() {return requireHostCapability(this.capabilities, 'persistentContext') ?? fail('UNSUPPORTED_HOST_CAPABILITY', '此独立入口不接收上下文。需通过完整组件bridge身份与revision显式发布。');}
@@ -314,6 +332,19 @@ export class AppsHost {
       const url = new URL(request.url);
       if (request.method === 'GET') {
         const resource = url.searchParams.get('resource');
+        if(resource==='componentThumbnail'&&[...url.searchParams.keys()].every(key=>['resource','componentId','revision'].includes(key))){
+          const componentId=url.searchParams.get('componentId')??'',revision=url.searchParams.get('revision')??'';
+          if(!/^[-a-zA-Z0-9_.:]{1,180}$/.test(componentId)||! /^[1-9][0-9]{0,9}$/.test(revision))return jsonResponse(fail('INVALID_INPUT','组件预览参数无效。'),400);
+          if(!this.transport.componentThumbnail)return new Response(null,{status:404});
+          const response=await this.transport.componentThumbnail(componentId,Number(revision),this.combined(request.signal));
+          if(response.status===404)return new Response(null,{status:404,headers:{'Cache-Control':'no-store'}});
+          if(!response.ok||response.headers.get('content-type')?.split(';')[0].trim()!=='image/png')return new Response(null,{status:502});
+          return new Response(response.body,{headers:{'Content-Type':'image/png','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
+        }
+        if(['workbench','materials','dataSources','stores'].includes(resource??'')&&[...url.searchParams.keys()].every(key=>['resource','appId'].includes(key))){
+          if(!this.transport.workbenchResource)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime尚未提供工作台。'),503);
+          return jsonResponse(await this.transport.workbenchResource(resource!,url.searchParams.get('appId')??'hallmark',this.combined(request.signal)));
+        }
         if(resource==='hostCapabilities'&&[...url.searchParams.keys()].every(key=>key==='resource'))return jsonResponse(this.hostCapabilities());
         if(resource==='componentFeatures'&&[...url.searchParams.keys()].every(key=>key==='resource'))return jsonResponse(this.transport.componentFeatures?await this.transport.componentFeatures(this.combined(request.signal)):{features:[]});
         if(resource==='componentHistory'&&url.searchParams.get('componentId'))return jsonResponse(this.transport.componentHistory?await this.transport.componentHistory(url.searchParams.get('componentId')!,this.combined(request.signal)):fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供组件历史。'));
@@ -352,11 +383,25 @@ export class AppsHost {
         const input: unknown = JSON.parse(body);
         if (input && typeof input === 'object' && !Array.isArray(input)) {
           const value = input as Record<string,unknown>;
+          if(value.action==='refreshView'&&Object.keys(value).every(key=>['action','sessionId','viewId','forceRefresh'].includes(key))&&typeof value.sessionId==='string'&&typeof value.viewId==='string'&&/^[-a-zA-Z0-9_.:]{1,180}$/.test(value.viewId)&&typeof value.forceRefresh==='boolean'){
+            if(!await this.knownSession(value.sessionId,request.signal))return jsonResponse(fail('INVALID_SESSION','没有此本机会话。'),400);
+            if(!this.transport.refreshView)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime 未提供数据更新。'),503);
+            return jsonResponse(await this.transport.refreshView(value.sessionId,value.viewId,value.forceRefresh,this.combined(request.signal)));
+          }
+          if(value.action==='workbench'&&Object.keys(value).every(key=>['action','appId','operation','params','sessionId'].includes(key))&&typeof value.appId==='string'&&typeof value.operation==='string'&&['save','read','preview','initialize','prepare','pinComponent','unpinComponent'].includes(value.operation)){
+            if(value.sessionId!==undefined&&(typeof value.sessionId!=='string'||!await this.knownSession(value.sessionId,request.signal)))return jsonResponse(fail('INVALID_SESSION','没有此本机会话。'),400);
+            if(value.operation==='prepare'){
+              if(typeof value.sessionId!=='string')return jsonResponse(fail('INVALID_SESSION','准备数据源需求需要明确的原聊天。'),400);
+              const result=await this.prepareWorkbench(value.sessionId,value.appId,value.params,this.combined(request.signal));return jsonResponse(result,result.status==='ok'?200:400);
+            }
+            if(!this.transport.workbenchAction)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime尚未提供工作台。'),503);
+            return jsonResponse(await this.transport.workbenchAction({appId:value.appId,operation:value.operation,params:value.params as JsonValue,...(typeof value.sessionId==='string'?{sessionId:value.sessionId}:{})},this.combined(request.signal)));
+          }
           if(value.action==='presentation'&&Object.keys(value).every(key=>['action','sessionId','capabilityId','input','requestId'].includes(key))&&typeof value.sessionId==='string'&&typeof value.capabilityId==='string'&&/^apps\.(presentation|authoring)\.[a-z_]+$/.test(value.capabilityId)&&typeof value.requestId==='string'&&value.requestId.length<=160&&Object.hasOwn(value,'input')){
             if(!await this.knownSession(value.sessionId,request.signal))return jsonResponse(fail('INVALID_SESSION','没有此本机会话。'),400);if(!this.transport.presentationAction)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供共享界面操作。'),503);
             return jsonResponse(await this.transport.presentationAction({sessionId:value.sessionId,capabilityId:value.capabilityId,input:value.input as JsonValue,requestId:value.requestId},this.combined(request.signal)));
           }
-          if(value.action==='authoring'&&Object.keys(value).every(key=>['action','sessionId','operation','params'].includes(key))&&typeof value.sessionId==='string'&&typeof value.operation==='string'&&['openDisplay','authorizeDisplayFrame','reportDisplayError','startMount','authorizeFrame','negotiateFrame','retireFrame','inspect','failMount','exportUiState','restoreUiState','closeDraft'].includes(value.operation)&&value.params&&typeof value.params==='object'&&!Array.isArray(value.params)){
+          if(value.action==='authoring'&&Object.keys(value).every(key=>['action','sessionId','operation','params'].includes(key))&&typeof value.sessionId==='string'&&typeof value.operation==='string'&&['openDisplay','authorizeDisplayFrame','reportDisplayError','startMount','authorizeFrame','negotiateFrame','retireFrame','inspect','failMount','exportUiState','restoreUiState','closeDraft','restoreView'].includes(value.operation)&&value.params&&typeof value.params==='object'&&!Array.isArray(value.params)){
             if(!await this.knownSession(value.sessionId,request.signal))return jsonResponse(fail('INVALID_SESSION','没有此本机会话。'),400);if(!this.transport.authoringAction)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime未提供创作界面操作。'),503);
             return jsonResponse(await this.transport.authoringAction(value.operation,value.sessionId,value.params as JsonValue,this.combined(request.signal)));
           }
@@ -377,7 +422,7 @@ export class AppsHost {
           if (value.action === 'bind' && Object.keys(value).every(key => ['action','sessionId','appId','connectionId','enabled'].includes(key)) && typeof value.sessionId === 'string' && typeof value.appId === 'string' && typeof value.connectionId === 'string' && typeof value.enabled === 'boolean') return jsonResponse(await this.bind(value.sessionId,value.appId,value.connectionId,value.enabled,request.signal));
           if(value.action==='componentBridge'&&Object.keys(value).every(key=>['action','request'].includes(key))&&value.request&&typeof value.request==='object'&&!Array.isArray(value.request)) {
             const bridge=value.request as BridgeRequest;if(typeof bridge.sessionId!=='string'||!await this.knownSession(bridge.sessionId,request.signal))return jsonResponse(fail('INVALID_SESSION','没有此本机会话。'),400);
-            return jsonResponse(await this.componentBridge(bridge,AbortSignal.any([this.combined(request.signal),AbortSignal.timeout(90000)])));
+            return jsonResponse(await this.componentBridge(bridge,AbortSignal.any([this.combined(request.signal),AbortSignal.timeout(['refresh','invokeCapability'].includes(bridge.method)?APPS_DATA_REQUEST_TIMEOUT_MS:90000)])));
           }
           if (value.action === 'requestAgent' || value.action === 'updateContext') return jsonResponse(value.action === 'requestAgent' ? this.requestAgent() : this.updateContext());
         }

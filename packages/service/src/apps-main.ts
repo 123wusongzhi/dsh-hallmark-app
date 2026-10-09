@@ -30,9 +30,9 @@ export function composeAppsRuntime(directory:string,configuration:AppsConfigurat
   const cacheKey=(id:string,revision:number)=>canonicalJson([id,revision]);
   const clientFor=(connectionId:string,revision?:number)=>{
     const currentRevision=generation(connectionId,revision),key=cacheKey(connectionId,currentRevision);let client=clients.get(key);if(client)return client;
-    const connection=runtime.getConnection('hallmark',connectionId),config=connection?.config as {baseUrl?:string}|undefined;
+    const connection=runtime.getConnection('hallmark',connectionId),config=connection?.config as {baseUrl?:string;ozonDataBaseUrl?:string}|undefined;
     if(!config?.baseUrl)throw new Error('EXPLICIT_HALLMARK_BACKEND_REQUIRED');
-    client=new HallmarkClient({baseUrl:config.baseUrl,spillDirectory:join(directory,'datasets','hallmark-spill',encodeURIComponent(connectionId),String(currentRevision)),...(process.env.HALLMARK_OPERATOR_TOKEN?{operatorToken:process.env.HALLMARK_OPERATOR_TOKEN}:{}),fetchImpl:(url,options)=>{const signal=signals.getStore();return fetch(url,{...options,signal:signal?AbortSignal.any([signal,...(options?.signal?[options.signal]:[])]):options?.signal});}});clients.set(key,client);return client;
+    client=new HallmarkClient({baseUrl:config.baseUrl,ozonDataBaseUrl:config.ozonDataBaseUrl,spillDirectory:join(directory,'datasets','hallmark-spill',encodeURIComponent(connectionId),String(currentRevision)),...(process.env.HALLMARK_OPERATOR_TOKEN?{operatorToken:process.env.HALLMARK_OPERATOR_TOKEN}:{}),fetchImpl:(url,options)=>{const signal=signals.getStore();return fetch(url,{...options,signal:signal?AbortSignal.any([signal,...(options?.signal?[options.signal]:[])]):options?.signal});}});clients.set(key,client);return client;
   };
   const storeFor=(id:string,revision?:number)=>{const currentRevision=generation(id,revision),key=cacheKey(id,currentRevision);let port=ports.get(key);if(!port){port=new HallmarkStorePort(store,id,currentRevision);ports.set(key,port);}return port;};
   const brokerFor=(id:string,revision?:number)=>{const currentRevision=generation(id,revision),key=cacheKey(id,currentRevision);let broker=brokers.get(key);if(!broker){broker=new TaskBroker(clientFor(id,currentRevision),storeFor(id,currentRevision));brokers.set(key,broker);}return broker;};

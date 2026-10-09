@@ -1,5 +1,7 @@
 # Hallmark 视觉规范
 
+用户偏好和数据体验统一以 Host 的 `developerDocs.userPreferences`（随包 `authoring-docs/user-preferences.md`）为准；本文件补充视觉实现，历史讨论不能覆盖最新确认的简洁蓝白方向、全量逻辑结果与 15 分钟后台刷新原则。
+
 ## 用户确认的方向
 
 2026-10-06：用户要求组件有颜色和成熟的设计，并指定龙海的[《人人都是 UI 设计师》](https://x.com/longhaiqwe123/status/2106216781174251724)为设计参考。已阅读正文；文章整理自 Refactoring UI。其方法强调先建立信息层级，再用色阶、间距和操作权重完善视觉。灰度适合检查结构，交付预览应呈现完整配色。

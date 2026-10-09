@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 /** Initializes an explicitly named absent or empty workspace without overwriting files. */
 export async function createAppsSource({directory,sdkDirectory,template}) {
   if(!directory||!sdkDirectory)throw new Error('Usage: node create-apps-source.mjs --directory <new-project> --sdk <sdk/component-runtime>');
-  if(template!==undefined&&template!=='product-list')throw new Error('UNKNOWN_SOURCE_TEMPLATE');
+  if(template!==undefined&&!['product-list','composed-table'].includes(template))throw new Error('UNKNOWN_SOURCE_TEMPLATE');
   const target=resolve(directory),sdk=resolve(sdkDirectory),sdkManifest=JSON.parse(await readFile(join(sdk,'package.json'),'utf8'));
   if(sdkManifest.name!=='@dsh/apps-component-runtime')throw new Error('INVALID_COMPONENT_SDK');
   try{const current=await lstat(target);if(!current.isDirectory()||current.isSymbolicLink()||(await readdir(target)).length)throw new Error('SOURCE_WORKSPACE_NOT_EMPTY');}catch(error){if(error.code!=='ENOENT')throw error;await mkdir(target);}
@@ -29,10 +29,11 @@ function ImageContent({src,alt,width,height}:{src?:string;alt:string;width:numbe
     'src/style.css':'body{margin:0;background:#f8fafc;color:#172033;font:16px system-ui,sans-serif}main{padding:24px;max-width:960px;margin:auto}header{display:flex;align-items:center;justify-content:space-between;gap:16px}small{color:#51627d}h1{font-size:24px}label{display:block;margin:18px 0}input{display:block;box-sizing:border-box;width:100%;margin-top:8px;padding:10px;border:1px solid #c4cbd8;border-radius:6px}button{padding:10px 16px;border:1px solid #b8c6db;border-radius:6px;background:white;color:inherit;cursor:pointer}button:disabled{opacity:.5}ul{padding:0;list-style:none}li{padding:16px;margin:12px 0;background:white;border:1px solid #dbe2eb;border-radius:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere}\n',
     'README.md':'# Apps 源码组件\n\n在项目目录执行 `npm install`，保留生成的 `package-lock.json`，然后执行 `npm run build`。项目是普通 React/TSX/CSS，构建输出为 `dist/index.html`、`app.js` 与 `app.css`。将整个项目（包括源码、依赖锁和 dist，排除 node_modules）交给既有 Source Component 构建/预览入口。\n\nSDK 仅通过宿主 bridge 取数据与刷新；过滤和计数保留在组件本地状态。独立打开网页会明确报告宿主未连接。`requestAgent`/正式持久上下文需要经验证的 DSH adapter，本候选版本保持 unsupported。\n\n生成器可初始化不存在或已由 authoring.begin 创建的空工作目录；非空目录拒绝覆盖。不执行安装、不复制业务数据，也不伪造依赖锁。\n'
   };
-  if(template==='product-list'){
-    const here=dirname(fileURLToPath(import.meta.url)),examples=resolve(here,here.endsWith('source-starter')?'../authoring-docs/examples/product-list':'../docs/component-authoring/examples/product-list');
+  if(template==='product-list'||template==='composed-table'){
+    const here=dirname(fileURLToPath(import.meta.url)),examples=resolve(here,here.endsWith('source-starter')?`../authoring-docs/examples/${template}`:`../docs/component-authoring/examples/${template}`);
     for(const [target,source]of [['src/main.tsx','main.tsx'],['src/style.css','style.css'],['.preview/plan.json','preview.json'],['README.md','README.md']])files[target]=await readFile(join(examples,source),'utf8');
   }
+  if(template==='composed-table'){const here=dirname(fileURLToPath(import.meta.url)),examples=resolve(here,here.endsWith('source-starter')?'../authoring-docs/examples/composed-table':'../docs/component-authoring/examples/composed-table');files['src/data.ts']=await readFile(join(examples,'data.ts'),'utf8');}
   for(const [path,content]of Object.entries(files)){await mkdir(dirname(join(target,path)),{recursive:true});await writeFile(join(target,path),content);}
   return {directory:target,sdkDirectory:sdk,files:Object.keys(files),installed:false,built:false};
 }

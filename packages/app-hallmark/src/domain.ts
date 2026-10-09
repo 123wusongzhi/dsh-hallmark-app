@@ -7,8 +7,10 @@ import { prepareCollected, readCollected } from '../../core/src/collected.ts';
 import { projectOperationReceipt } from '../../core/src/receipt.ts';
 import { WriteOperations } from '../../core/src/write.ts';
 import { wrapped, storeId, productStoreId, productId, offerId, profitRows, METRIC_BASIS, APP_BOUNDARIES, clean, now, sourceTime } from '../../core/src/types.ts';
-import type { CoreOptions, CoreStore, CoreClient, CoreBroker, RecordData, Operation } from '../../core/src/types.ts';
+import type { AdapterResponse, CoreOptions, CoreStore, CoreClient, CoreBroker, RecordData, Operation } from '../../core/src/types.ts';
 import { PLATFORM_READ_ENDPOINTS } from '../../hallmark-adapter/client.ts';
+import type {HallmarkClient} from '../../hallmark-adapter/client.ts';
+import {OZON_STORE_READ_ENDPOINTS} from '../../hallmark-adapter/ozon-read-routes.ts';
 
 export interface HallmarkDomainOptions { store:CoreStore; client:CoreClient; broker:CoreBroker }
 /** Compatibility domain implementation. Session routing and presentation belong to Runtime. */
@@ -17,6 +19,15 @@ export class HallmarkDomain {
  readonly refresher:DatasetRefresher;
  readonly writes:WriteOperations;
  constructor(options:HallmarkDomainOptions){this.options=options;this.refresher=new DatasetRefresher(options.store,options.client);this.writes=new WriteOperations({...options,presentation:{} as CoreOptions['presentation']});}
+ /** One platform product row is one SKU; do not invent sibling variants. */
+ async readProductSku(store:string,id:string):Promise<ToolResult>{
+  const source=await this.products(store);if(source.result)return source.result;
+  const row=(source.payload?.products as RecordData[]??[]).find(item=>String(item.productId??item.product_id??item.offerId??item.offer_id)===id);
+  if(!row)return {status:'ok',data:{items:[],total:0},provenance:source.provenance};
+  const matched=Array.isArray(row.sources)?row.sources.find((item:RecordData)=>item.sourceSkuMatched===true):undefined;
+  const minor=row.pricing?.sellerMinor;
+  return {status:'ok',data:{items:[{productId:id,title:row.title??null,sku:row.sku??null,spec:matched?.sourceSpec??null,image:row.imageUrl??null,price:typeof minor==='number'?minor/100:null,currency:row.pricing?.currency??row.currency??null}],total:1},provenance:source.provenance};
+ }
  async invoke(name:string,args:RecordData,context:InvocationContext):Promise<ToolResult>{
   const definition=TOOL_DEFINITIONS.find(tool=>tool.name===name);if(!definition)return failed('TOOL_NOT_FOUND','未知工具。');
   const missing=(definition.parameters.required??[]).filter(key=>!Object.hasOwn(args,key));if(missing.length)return clarify(missing,'请补充必要信息。');
@@ -46,10 +57,21 @@ export class HallmarkDomain {
    if(kind==='get_platform_data'){
     if(!Object.hasOwn(PLATFORM_READ_ENDPOINTS,args.path))return failed('ENDPOINT_NOT_ALLOWED','仅允许已核实只读白名单。');
     const method=args.method??PLATFORM_READ_ENDPOINTS[args.path];if(method!==PLATFORM_READ_ENDPOINTS[args.path])return failed('ENDPOINT_NOT_ALLOWED','接口方法与已登记只读契约不一致。');
-    const task=await this.options.broker.getStoreTask(id);if(task.status!=='ok')return wrapped(task);
     const operationId=context.operationId??randomUUID(),timestamp=now(),requestId=this.options.broker.requestId('read',operationId,0);
-    const op:Operation={operationId,kind:'platform_read',sessionId:context.sessionId,storeId:id,targets:[],input:args,state:'running',hallmarkRefs:[{taskId:task.raw.taskId,requestId}],items:[],createdAt:timestamp,updatedAt:timestamp};this.options.store.put('operations',operationId,op);projectOperationReceipt(this.options.store,operationId);
-    const response=await this.options.client.platformRead(task.raw.taskId,{requestId,agentId:'dsh-hallmark-app',path:args.path,method,body:args.body??{}});const result=wrapped(response),state=response.status==='ok'?'succeeded':response.status==='unknown'?'unknown':'failed';this.options.store.put('operations',operationId,clean({...op,state,result,updatedAt:now()}));projectOperationReceipt(this.options.store,operationId);return {...result,operation:{operationId,state}};
+    const op:Operation={operationId,kind:'platform_read',sessionId:context.sessionId,storeId:id,targets:[],input:args,state:'running',hallmarkRefs:[],items:[],createdAt:timestamp,updatedAt:timestamp};
+    const persist=()=>{this.options.store.put('operations',operationId,clean(op));projectOperationReceipt(this.options.store,operationId);};
+    const finish=(response:AdapterResponse):ToolResult=>{const result=wrapped(response),state=response.status==='ok'?'succeeded':response.status==='unknown'?'unknown':'failed';this.options.store.put('operations',operationId,clean({...op,state,result,updatedAt:now()}));projectOperationReceipt(this.options.store,operationId);return {...result,operation:{operationId,state}};};
+    const client=this.options.client as CoreClient&Partial<Pick<HallmarkClient,'storeDataRead'>>,input={requestId,agentId:'dsh-hallmark-app',path:args.path,method,body:args.body??{}};
+    if(client.storeDataRead&&OZON_STORE_READ_ENDPOINTS[args.path]===method){
+     op.hallmarkRefs.push({storeId:id,requestId,route:'store_data_read'});persist();
+     const response=await client.storeDataRead(id,input);
+     // Only a missing local gateway can use the existing read path. An upstream
+     // 404, denied authorization, malformed response or timeout must stay visible.
+     if(response.error?.code!=='HALLMARK_HTTP_404')return finish(response);
+    }
+    const task=await this.options.broker.getStoreTask(id);if(task.status!=='ok')return op.hallmarkRefs.length?finish(task):wrapped(task);
+    op.hallmarkRefs.push({taskId:task.raw.taskId,requestId});persist();
+    return finish(await this.options.client.platformRead(task.raw.taskId,input));
    }
    if(['list_store_products','compute_profit','filter_products'].includes(kind)){
     const source=await this.products(id);if(source.result)return source.result;

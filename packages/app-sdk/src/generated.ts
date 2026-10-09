@@ -32,6 +32,9 @@ export const catalog = [
               "type": "string",
               "minLength": 1
             },
+            "newCopy": {
+              "type": "boolean"
+            },
             "title": {
               "type": "string",
               "minLength": 1
@@ -39,8 +42,110 @@ export const catalog = [
             "bindings": {
               "type": "array",
               "items": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "bindingId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "appId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "connectionId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityMajor": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "input": {},
+                  "projection": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "datasetId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "refresh": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "enum": [
+                          "manual",
+                          "scheduled"
+                        ]
+                      },
+                      "scheduleId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "mode"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "bindingId",
+                  "appId",
+                  "connectionId",
+                  "capabilityId",
+                  "capabilityMajor",
+                  "input",
+                  "projection",
+                  "refresh"
+                ],
+                "additionalProperties": false
               }
+            },
+            "sourceRefs": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "params": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "revision",
+                  "params"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "context": {
+              "type": "object",
+              "properties": {
+                "storeId": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "storeId"
+              ],
+              "additionalProperties": false
             },
             "invocationId": {
               "type": "string",
@@ -78,6 +183,9 @@ export const catalog = [
               "type": "string",
               "minLength": 1
             },
+            "newCopy": {
+              "type": "boolean"
+            },
             "title": {
               "type": "string",
               "minLength": 1
@@ -85,8 +193,110 @@ export const catalog = [
             "bindings": {
               "type": "array",
               "items": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "bindingId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "appId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "connectionId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityMajor": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "input": {},
+                  "projection": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "datasetId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "refresh": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "enum": [
+                          "manual",
+                          "scheduled"
+                        ]
+                      },
+                      "scheduleId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "mode"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "bindingId",
+                  "appId",
+                  "connectionId",
+                  "capabilityId",
+                  "capabilityMajor",
+                  "input",
+                  "projection",
+                  "refresh"
+                ],
+                "additionalProperties": false
               }
+            },
+            "sourceRefs": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "params": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "revision",
+                  "params"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "context": {
+              "type": "object",
+              "properties": {
+                "storeId": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "storeId"
+              ],
+              "additionalProperties": false
             },
             "invocationId": {
               "type": "string",
@@ -125,6 +335,9 @@ export const catalog = [
               "type": "string",
               "minLength": 1
             },
+            "newCopy": {
+              "type": "boolean"
+            },
             "title": {
               "type": "string",
               "minLength": 1
@@ -132,8 +345,110 @@ export const catalog = [
             "bindings": {
               "type": "array",
               "items": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "bindingId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "appId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "connectionId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityMajor": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "input": {},
+                  "projection": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "datasetId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "refresh": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "enum": [
+                          "manual",
+                          "scheduled"
+                        ]
+                      },
+                      "scheduleId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "mode"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "bindingId",
+                  "appId",
+                  "connectionId",
+                  "capabilityId",
+                  "capabilityMajor",
+                  "input",
+                  "projection",
+                  "refresh"
+                ],
+                "additionalProperties": false
               }
+            },
+            "sourceRefs": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "params": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "revision",
+                  "params"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "context": {
+              "type": "object",
+              "properties": {
+                "storeId": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "storeId"
+              ],
+              "additionalProperties": false
             },
             "invocationId": {
               "type": "string",
@@ -372,8 +687,110 @@ export const catalog = [
             "bindings": {
               "type": "array",
               "items": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "bindingId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "appId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "connectionId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityMajor": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "input": {},
+                  "projection": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "datasetId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "refresh": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "enum": [
+                          "manual",
+                          "scheduled"
+                        ]
+                      },
+                      "scheduleId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "mode"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "bindingId",
+                  "appId",
+                  "connectionId",
+                  "capabilityId",
+                  "capabilityMajor",
+                  "input",
+                  "projection",
+                  "refresh"
+                ],
+                "additionalProperties": false
               }
+            },
+            "sourceRefs": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "params": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "revision",
+                  "params"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "context": {
+              "type": "object",
+              "properties": {
+                "storeId": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "storeId"
+              ],
+              "additionalProperties": false
             },
             "source": {
               "type": "object",
@@ -1264,8 +1681,110 @@ export const catalog = [
             "bindings": {
               "type": "array",
               "items": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "bindingId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "appId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "connectionId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityMajor": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "input": {},
+                  "projection": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "datasetId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "refresh": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "enum": [
+                          "manual",
+                          "scheduled"
+                        ]
+                      },
+                      "scheduleId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "mode"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "bindingId",
+                  "appId",
+                  "connectionId",
+                  "capabilityId",
+                  "capabilityMajor",
+                  "input",
+                  "projection",
+                  "refresh"
+                ],
+                "additionalProperties": false
               }
+            },
+            "sourceRefs": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "params": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "revision",
+                  "params"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "context": {
+              "type": "object",
+              "properties": {
+                "storeId": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "storeId"
+              ],
+              "additionalProperties": false
             },
             "source": {
               "type": "object",
@@ -1437,8 +1956,110 @@ export const catalog = [
                     "bindings": {
                       "type": "array",
                       "items": {
-                        "type": "object"
+                        "type": "object",
+                        "properties": {
+                          "bindingId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "appId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "connectionId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "capabilityId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "capabilityMajor": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "input": {},
+                          "projection": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "datasetId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "refresh": {
+                            "type": "object",
+                            "properties": {
+                              "mode": {
+                                "enum": [
+                                  "manual",
+                                  "scheduled"
+                                ]
+                              },
+                              "scheduleId": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": [
+                              "mode"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "bindingId",
+                          "appId",
+                          "connectionId",
+                          "capabilityId",
+                          "capabilityMajor",
+                          "input",
+                          "projection",
+                          "refresh"
+                        ],
+                        "additionalProperties": false
                       }
+                    },
+                    "sourceRefs": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "params": {
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "revision",
+                          "params"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "context": {
+                      "type": "object",
+                      "properties": {
+                        "storeId": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "storeId"
+                      ],
+                      "additionalProperties": false
                     },
                     "source": {
                       "type": "object",
@@ -1687,8 +2308,110 @@ export const catalog = [
                   "bindings": {
                     "type": "array",
                     "items": {
-                      "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "bindingId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "appId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "connectionId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "capabilityId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "capabilityMajor": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "input": {},
+                        "projection": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "datasetId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "refresh": {
+                          "type": "object",
+                          "properties": {
+                            "mode": {
+                              "enum": [
+                                "manual",
+                                "scheduled"
+                              ]
+                            },
+                            "scheduleId": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "mode"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "bindingId",
+                        "appId",
+                        "connectionId",
+                        "capabilityId",
+                        "capabilityMajor",
+                        "input",
+                        "projection",
+                        "refresh"
+                      ],
+                      "additionalProperties": false
                     }
+                  },
+                  "sourceRefs": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "params": {
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "revision",
+                        "params"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "context": {
+                    "type": "object",
+                    "properties": {
+                      "storeId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "storeId"
+                    ],
+                    "additionalProperties": false
                   },
                   "source": {
                     "type": "object",
@@ -1931,8 +2654,110 @@ export const catalog = [
                 "bindings": {
                   "type": "array",
                   "items": {
-                    "type": "object"
+                    "type": "object",
+                    "properties": {
+                      "bindingId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "appId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "capabilityId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "capabilityMajor": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "input": {},
+                      "projection": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "datasetId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "refresh": {
+                        "type": "object",
+                        "properties": {
+                          "mode": {
+                            "enum": [
+                              "manual",
+                              "scheduled"
+                            ]
+                          },
+                          "scheduleId": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "mode"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "bindingId",
+                      "appId",
+                      "connectionId",
+                      "capabilityId",
+                      "capabilityMajor",
+                      "input",
+                      "projection",
+                      "refresh"
+                    ],
+                    "additionalProperties": false
                   }
+                },
+                "sourceRefs": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "revision": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "params": {
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "revision",
+                      "params"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "context": {
+                  "type": "object",
+                  "properties": {
+                    "storeId": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "storeId"
+                  ],
+                  "additionalProperties": false
                 },
                 "source": {
                   "type": "object",
@@ -3497,6 +4322,473 @@ export const catalog = [
     "aliases": []
   },
   {
+    "capabilityId": "apps.presentation.list_data_sources",
+    "version": "1.0.0",
+    "title": "listDataSources",
+    "description": "Shared component listDataSources. Builds and drafts remain separate from explicit saved assets.",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "appId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": {
+                "type": "string"
+              },
+              "appId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "connectionId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capabilityMajor": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "storeScoped": {
+                "type": "boolean"
+              },
+              "input": {
+                "type": "object"
+              },
+              "rowsPath": {
+                "type": "string"
+              },
+              "parameters": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "type": {
+                      "enum": [
+                        "string",
+                        "number",
+                        "integer",
+                        "boolean"
+                      ]
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "default": {},
+                    "linked": {
+                      "type": "boolean"
+                    },
+                    "editable": {
+                      "type": "boolean"
+                    },
+                    "choices": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "value": {
+                            "type": [
+                              "string",
+                              "number",
+                              "boolean"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "label",
+                    "type"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "fields": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "origin": {
+                      "type": "object",
+                      "properties": {
+                        "source": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "source",
+                        "label"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "role": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "confirmed": {
+                      "type": "boolean"
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "unit": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "currency": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "currencyPath": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "percentScale": {
+                      "enum": [
+                        "fraction",
+                        "whole"
+                      ]
+                    },
+                    "numericScale": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "role",
+                    "confirmed"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "operations": {
+                "type": "object",
+                "properties": {
+                  "pagination": {
+                    "type": "object",
+                    "properties": {
+                      "cursorParam": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "limitParam": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "nextCursorPath": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "totalPath": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "cursorParam"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "search": {
+                    "type": "object",
+                    "properties": {
+                      "scope": {
+                        "enum": [
+                          "server",
+                          "loaded"
+                        ]
+                      },
+                      "param": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "scope"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "sort": {
+                    "type": "object",
+                    "properties": {
+                      "scope": {
+                        "enum": [
+                          "server",
+                          "loaded"
+                        ]
+                      },
+                      "param": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "directionParam": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "scope"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "search",
+                  "sort"
+                ],
+                "additionalProperties": false
+              },
+              "kind": {
+                "const": "data_source"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "validation": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "verified",
+                      "failed",
+                      "unverified"
+                    ]
+                  },
+                  "checkedAt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "invocationId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sampleCount": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "issues": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "empty": {
+                    "type": "boolean"
+                  },
+                  "storeId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "status",
+                  "checkedAt",
+                  "sampleCount",
+                  "issues"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "appId",
+              "connectionId",
+              "capabilityId",
+              "capabilityMajor",
+              "input",
+              "parameters",
+              "fields",
+              "rowsPath",
+              "operations",
+              "kind",
+              "revision",
+              "validation"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "sources"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 30000,
+      "concurrency": "exclusive",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "component",
+        "presentation",
+        "source"
+      ]
+    },
+    "aliases": [
+      "hallmark_list_data_sources"
+    ]
+  },
+  {
+    "capabilityId": "apps.presentation.list_materials",
+    "version": "1.0.0",
+    "title": "listMaterials",
+    "description": "Shared component listMaterials. Builds and drafts remain separate from explicit saved assets.",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "materials": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "fieldRoles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1
+              },
+              "format": {
+                "enum": [
+                  "text",
+                  "currency",
+                  "percent",
+                  "integer",
+                  "datetime",
+                  "image"
+                ]
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "key",
+              "label",
+              "description",
+              "format"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "materials",
+        "fieldRoles"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 30000,
+      "concurrency": "exclusive",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "component",
+        "presentation",
+        "source"
+      ]
+    },
+    "aliases": [
+      "hallmark_list_materials"
+    ]
+  },
+  {
     "capabilityId": "apps.presentation.list_saved",
     "version": "1.0.0",
     "title": "listSaved",
@@ -3616,6 +4908,44 @@ export const catalog = [
                       "additionalProperties": false
                     }
                   },
+                  "sourceRefs": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "params": {
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "revision",
+                        "params"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "context": {
+                    "type": "object",
+                    "properties": {
+                      "storeId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "storeId"
+                    ],
+                    "additionalProperties": false
+                  },
                   "source": {
                     "type": "object",
                     "properties": {
@@ -3684,6 +5014,16 @@ export const catalog = [
                     "minLength": 1
                   },
                   "updatedAt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "panelState": {
+                    "enum": [
+                      "open",
+                      "closed"
+                    ]
+                  },
+                  "closedAt": {
                     "type": "string",
                     "minLength": 1
                   },
@@ -4096,6 +5436,44 @@ export const catalog = [
                       "additionalProperties": false
                     }
                   },
+                  "sourceRefs": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "params": {
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "revision",
+                        "params"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "context": {
+                    "type": "object",
+                    "properties": {
+                      "storeId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "storeId"
+                    ],
+                    "additionalProperties": false
+                  },
                   "source": {
                     "type": "object",
                     "properties": {
@@ -4363,6 +5741,44 @@ export const catalog = [
                     "additionalProperties": false
                   }
                 },
+                "sourceRefs": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "revision": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "params": {
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "revision",
+                      "params"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "context": {
+                  "type": "object",
+                  "properties": {
+                    "storeId": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "storeId"
+                  ],
+                  "additionalProperties": false
+                },
                 "source": {
                   "type": "object",
                   "properties": {
@@ -4431,6 +5847,16 @@ export const catalog = [
                   "minLength": 1
                 },
                 "updatedAt": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "panelState": {
+                  "enum": [
+                    "open",
+                    "closed"
+                  ]
+                },
+                "closedAt": {
                   "type": "string",
                   "minLength": 1
                 },
@@ -4838,6 +6264,44 @@ export const catalog = [
                 "additionalProperties": false
               }
             },
+            "sourceRefs": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "params": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "revision",
+                  "params"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "context": {
+              "type": "object",
+              "properties": {
+                "storeId": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "storeId"
+              ],
+              "additionalProperties": false
+            },
             "source": {
               "type": "object",
               "properties": {
@@ -4979,6 +6443,22 @@ export const catalog = [
         "directory": {
           "type": "string",
           "minLength": 1
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "storeId"
+          ],
+          "additionalProperties": false
+        },
+        "newCopy": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -5074,6 +6554,44 @@ export const catalog = [
             "additionalProperties": false
           }
         },
+        "sourceRefs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "params": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "revision",
+              "params"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "storeId"
+          ],
+          "additionalProperties": false
+        },
         "source": {
           "type": "object",
           "properties": {
@@ -5142,6 +6660,16 @@ export const catalog = [
           "minLength": 1
         },
         "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "panelState": {
+          "enum": [
+            "open",
+            "closed"
+          ]
+        },
+        "closedAt": {
           "type": "string",
           "minLength": 1
         },
@@ -5241,7 +6769,7 @@ export const catalog = [
     },
     "execution": {
       "mode": "sync",
-      "timeoutMs": 30000,
+      "timeoutMs": 150000,
       "concurrency": "exclusive",
       "lockScope": "connection",
       "idempotency": "not_applicable",
@@ -5349,6 +6877,44 @@ export const catalog = [
             ],
             "additionalProperties": false
           }
+        },
+        "sourceRefs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "params": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "revision",
+              "params"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "storeId"
+          ],
+          "additionalProperties": false
         },
         "legacyBindings": {
           "type": "array",
@@ -5488,6 +7054,44 @@ export const catalog = [
             "additionalProperties": false
           }
         },
+        "sourceRefs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "params": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "revision",
+              "params"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "storeId"
+          ],
+          "additionalProperties": false
+        },
         "source": {
           "type": "object",
           "properties": {
@@ -5556,6 +7160,16 @@ export const catalog = [
           "minLength": 1
         },
         "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "panelState": {
+          "enum": [
+            "open",
+            "closed"
+          ]
+        },
+        "closedAt": {
           "type": "string",
           "minLength": 1
         },
@@ -5655,7 +7269,7 @@ export const catalog = [
     },
     "execution": {
       "mode": "sync",
-      "timeoutMs": 30000,
+      "timeoutMs": 150000,
       "concurrency": "exclusive",
       "lockScope": "connection",
       "idempotency": "not_applicable",
@@ -5671,6 +7285,664 @@ export const catalog = [
     },
     "aliases": [
       "hallmark_open_source_component"
+    ]
+  },
+  {
+    "capabilityId": "apps.presentation.register_data_source",
+    "version": "1.0.0",
+    "title": "registerDataSource",
+    "description": "Shared component registerDataSource. Builds and drafts remain separate from explicit saved assets.",
+    "effect": "mutation",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "definition": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": {
+              "type": "string"
+            },
+            "appId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "connectionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capabilityMajor": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "storeScoped": {
+              "type": "boolean"
+            },
+            "input": {
+              "type": "object"
+            },
+            "rowsPath": {
+              "type": "string"
+            },
+            "parameters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "enum": [
+                      "string",
+                      "number",
+                      "integer",
+                      "boolean"
+                    ]
+                  },
+                  "required": {
+                    "type": "boolean"
+                  },
+                  "default": {},
+                  "linked": {
+                    "type": "boolean"
+                  },
+                  "editable": {
+                    "type": "boolean"
+                  },
+                  "choices": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "value": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "label",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "name",
+                  "label",
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "fields": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "origin": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "label"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "role": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "confirmed": {
+                    "type": "boolean"
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "currency": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "currencyPath": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "percentScale": {
+                    "enum": [
+                      "fraction",
+                      "whole"
+                    ]
+                  },
+                  "numericScale": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "path",
+                  "role",
+                  "confirmed"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "operations": {
+              "type": "object",
+              "properties": {
+                "pagination": {
+                  "type": "object",
+                  "properties": {
+                    "cursorParam": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "limitParam": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "nextCursorPath": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "totalPath": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "cursorParam"
+                  ],
+                  "additionalProperties": false
+                },
+                "search": {
+                  "type": "object",
+                  "properties": {
+                    "scope": {
+                      "enum": [
+                        "server",
+                        "loaded"
+                      ]
+                    },
+                    "param": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "scope"
+                  ],
+                  "additionalProperties": false
+                },
+                "sort": {
+                  "type": "object",
+                  "properties": {
+                    "scope": {
+                      "enum": [
+                        "server",
+                        "loaded"
+                      ]
+                    },
+                    "param": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "directionParam": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "scope"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "search",
+                "sort"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "appId",
+            "connectionId",
+            "capabilityId",
+            "capabilityMajor",
+            "input",
+            "parameters",
+            "fields",
+            "rowsPath",
+            "operations"
+          ],
+          "additionalProperties": false
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "storeId"
+          ],
+          "additionalProperties": false
+        },
+        "params": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "definition"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "appId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "connectionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capabilityId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capabilityMajor": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "storeScoped": {
+          "type": "boolean"
+        },
+        "input": {
+          "type": "object"
+        },
+        "rowsPath": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "enum": [
+                  "string",
+                  "number",
+                  "integer",
+                  "boolean"
+                ]
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "default": {},
+              "linked": {
+                "type": "boolean"
+              },
+              "editable": {
+                "type": "boolean"
+              },
+              "choices": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "value": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "label",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "name",
+              "label",
+              "type"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "origin": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "source",
+                  "label"
+                ],
+                "additionalProperties": false
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "role": {
+                "type": "string",
+                "minLength": 1
+              },
+              "confirmed": {
+                "type": "boolean"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": {
+                "type": "string"
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1
+              },
+              "currency": {
+                "type": "string",
+                "minLength": 1
+              },
+              "currencyPath": {
+                "type": "string",
+                "minLength": 1
+              },
+              "percentScale": {
+                "enum": [
+                  "fraction",
+                  "whole"
+                ]
+              },
+              "numericScale": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "path",
+              "role",
+              "confirmed"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "operations": {
+          "type": "object",
+          "properties": {
+            "pagination": {
+              "type": "object",
+              "properties": {
+                "cursorParam": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "limitParam": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "nextCursorPath": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "totalPath": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "cursorParam"
+              ],
+              "additionalProperties": false
+            },
+            "search": {
+              "type": "object",
+              "properties": {
+                "scope": {
+                  "enum": [
+                    "server",
+                    "loaded"
+                  ]
+                },
+                "param": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "scope"
+              ],
+              "additionalProperties": false
+            },
+            "sort": {
+              "type": "object",
+              "properties": {
+                "scope": {
+                  "enum": [
+                    "server",
+                    "loaded"
+                  ]
+                },
+                "param": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "directionParam": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "scope"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "search",
+            "sort"
+          ],
+          "additionalProperties": false
+        },
+        "kind": {
+          "const": "data_source"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "validation": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "verified",
+                "failed",
+                "unverified"
+              ]
+            },
+            "checkedAt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "invocationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sampleCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "issues": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "empty": {
+              "type": "boolean"
+            },
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "status",
+            "checkedAt",
+            "sampleCount",
+            "issues"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "appId",
+        "connectionId",
+        "capabilityId",
+        "capabilityMajor",
+        "input",
+        "parameters",
+        "fields",
+        "rowsPath",
+        "operations",
+        "kind",
+        "revision",
+        "validation"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 150000,
+      "concurrency": "exclusive",
+      "lockScope": "connection",
+      "idempotency": "runtime_dedup",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "component",
+        "presentation",
+        "source"
+      ]
+    },
+    "aliases": [
+      "hallmark_register_data_source"
     ]
   },
   {
@@ -5756,6 +8028,44 @@ export const catalog = [
             ],
             "additionalProperties": false
           }
+        },
+        "sourceRefs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "params": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "revision",
+              "params"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "storeId"
+          ],
+          "additionalProperties": false
         },
         "viewId": {
           "type": "string",
@@ -5921,6 +8231,44 @@ export const catalog = [
             "additionalProperties": false
           }
         },
+        "sourceRefs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "params": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "revision",
+              "params"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "storeId"
+          ],
+          "additionalProperties": false
+        },
         "source": {
           "type": "object",
           "properties": {
@@ -5989,6 +8337,16 @@ export const catalog = [
           "minLength": 1
         },
         "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "panelState": {
+          "enum": [
+            "open",
+            "closed"
+          ]
+        },
+        "closedAt": {
           "type": "string",
           "minLength": 1
         },
@@ -6088,7 +8446,7 @@ export const catalog = [
     },
     "execution": {
       "mode": "sync",
-      "timeoutMs": 30000,
+      "timeoutMs": 150000,
       "concurrency": "exclusive",
       "lockScope": "connection",
       "idempotency": "not_applicable",
@@ -6104,6 +8462,185 @@ export const catalog = [
     },
     "aliases": [
       "hallmark_render_view"
+    ]
+  },
+  {
+    "capabilityId": "apps.presentation.resolve_data_source",
+    "version": "1.0.0",
+    "title": "resolveDataSource",
+    "description": "Shared component resolveDataSource. Builds and drafts remain separate from explicit saved assets.",
+    "effect": "compute",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "bindingId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "storeId"
+          ],
+          "additionalProperties": false
+        },
+        "params": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "bindingId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "binding": {
+          "type": "object",
+          "properties": {
+            "bindingId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "appId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "connectionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capabilityMajor": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "input": {},
+            "projection": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "datasetId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "refresh": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "manual",
+                    "scheduled"
+                  ]
+                },
+                "scheduleId": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "bindingId",
+            "appId",
+            "connectionId",
+            "capabilityId",
+            "capabilityMajor",
+            "input",
+            "projection",
+            "refresh"
+          ],
+          "additionalProperties": false
+        },
+        "sourceRef": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "params": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "id",
+            "revision",
+            "params"
+          ],
+          "additionalProperties": false
+        },
+        "fieldMap": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "fieldMeta": {
+          "type": "object"
+        },
+        "rowsPath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "binding",
+        "sourceRef",
+        "fieldMap",
+        "fieldMeta",
+        "rowsPath"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 30000,
+      "concurrency": "exclusive",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "component",
+        "presentation",
+        "source"
+      ]
+    },
+    "aliases": [
+      "hallmark_resolve_data_source"
     ]
   },
   {
@@ -6257,6 +8794,44 @@ export const catalog = [
                 "additionalProperties": false
               }
             },
+            "sourceRefs": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "params": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "revision",
+                  "params"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "context": {
+              "type": "object",
+              "properties": {
+                "storeId": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "storeId"
+              ],
+              "additionalProperties": false
+            },
             "source": {
               "type": "object",
               "properties": {
@@ -6325,6 +8900,16 @@ export const catalog = [
               "minLength": 1
             },
             "updatedAt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "panelState": {
+              "enum": [
+                "open",
+                "closed"
+              ]
+            },
+            "closedAt": {
               "type": "string",
               "minLength": 1
             },
@@ -6944,6 +9529,44 @@ export const catalog = [
             "additionalProperties": false
           }
         },
+        "sourceRefs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "params": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "revision",
+              "params"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "storeId"
+          ],
+          "additionalProperties": false
+        },
         "source": {
           "type": "object",
           "properties": {
@@ -7133,6 +9756,44 @@ export const catalog = [
             ],
             "additionalProperties": false
           }
+        },
+        "sourceRefs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "params": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "revision",
+              "params"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "storeId"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -7228,6 +9889,44 @@ export const catalog = [
             "additionalProperties": false
           }
         },
+        "sourceRefs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "params": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "revision",
+              "params"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "storeId"
+          ],
+          "additionalProperties": false
+        },
         "source": {
           "type": "object",
           "properties": {
@@ -7296,6 +9995,16 @@ export const catalog = [
           "minLength": 1
         },
         "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "panelState": {
+          "enum": [
+            "open",
+            "closed"
+          ]
+        },
+        "closedAt": {
           "type": "string",
           "minLength": 1
         },
@@ -7411,6 +10120,380 @@ export const catalog = [
     },
     "aliases": [
       "hallmark_update_view"
+    ]
+  },
+  {
+    "capabilityId": "apps.presentation.validate_data_source",
+    "version": "1.0.0",
+    "title": "validateDataSource",
+    "description": "Shared component validateDataSource. Builds and drafts remain separate from explicit saved assets.",
+    "effect": "compute",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "definition": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": {
+              "type": "string"
+            },
+            "appId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "connectionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capabilityMajor": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "storeScoped": {
+              "type": "boolean"
+            },
+            "input": {
+              "type": "object"
+            },
+            "rowsPath": {
+              "type": "string"
+            },
+            "parameters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "enum": [
+                      "string",
+                      "number",
+                      "integer",
+                      "boolean"
+                    ]
+                  },
+                  "required": {
+                    "type": "boolean"
+                  },
+                  "default": {},
+                  "linked": {
+                    "type": "boolean"
+                  },
+                  "editable": {
+                    "type": "boolean"
+                  },
+                  "choices": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "value": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "label",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "name",
+                  "label",
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "fields": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "origin": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "label"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "role": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "confirmed": {
+                    "type": "boolean"
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "currency": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "currencyPath": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "percentScale": {
+                    "enum": [
+                      "fraction",
+                      "whole"
+                    ]
+                  },
+                  "numericScale": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "path",
+                  "role",
+                  "confirmed"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "operations": {
+              "type": "object",
+              "properties": {
+                "pagination": {
+                  "type": "object",
+                  "properties": {
+                    "cursorParam": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "limitParam": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "nextCursorPath": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "totalPath": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "cursorParam"
+                  ],
+                  "additionalProperties": false
+                },
+                "search": {
+                  "type": "object",
+                  "properties": {
+                    "scope": {
+                      "enum": [
+                        "server",
+                        "loaded"
+                      ]
+                    },
+                    "param": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "scope"
+                  ],
+                  "additionalProperties": false
+                },
+                "sort": {
+                  "type": "object",
+                  "properties": {
+                    "scope": {
+                      "enum": [
+                        "server",
+                        "loaded"
+                      ]
+                    },
+                    "param": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "directionParam": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "scope"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "search",
+                "sort"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "appId",
+            "connectionId",
+            "capabilityId",
+            "capabilityMajor",
+            "input",
+            "parameters",
+            "fields",
+            "rowsPath",
+            "operations"
+          ],
+          "additionalProperties": false
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "storeId"
+          ],
+          "additionalProperties": false
+        },
+        "params": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "definition"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "verified",
+            "failed",
+            "unverified"
+          ]
+        },
+        "checkedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "invocationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sampleCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "empty": {
+          "type": "boolean"
+        },
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "status",
+        "checkedAt",
+        "sampleCount",
+        "issues"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 150000,
+      "concurrency": "exclusive",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "component",
+        "presentation",
+        "source"
+      ]
+    },
+    "aliases": [
+      "hallmark_validate_data_source"
     ]
   },
   {
@@ -9456,6 +12539,64 @@ export const catalog = [
     ]
   },
   {
+    "capabilityId": "hallmark.collected.skus",
+    "version": "1.0.0",
+    "title": "采集商品 SKU 明细",
+    "description": "读取已有采集商品的结构化SKU规格、价格与币种，不进行选品评估或业务写入。",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "itemId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "itemId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "items",
+        "total"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 60000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "sku",
+        "规格",
+        "素材库"
+      ]
+    },
+    "aliases": []
+  },
+  {
     "capabilityId": "hallmark.datasets.refresh",
     "version": "1.0.0",
     "title": "hallmark_refresh_data",
@@ -9802,6 +12943,3464 @@ export const catalog = [
     "aliases": [
       "hallmark_list_operations"
     ]
+  },
+  {
+    "capabilityId": "hallmark.ozon.analytics",
+    "version": "1.0.0",
+    "title": "Ozon 商品流量与订购表现",
+    "description": "按 SKU 与日期读取自有商品表现；可选择按商品汇总整个期间。不包含选品数据。日期须截至昨天，最长90天。",
+    "effect": "query",
+    "aliases": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "loadAll": {
+          "type": "boolean"
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        },
+        "dateFrom": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "dateTo": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "groupBy": {
+          "enum": [
+            "day",
+            "sku"
+          ]
+        }
+      },
+      "required": [
+        "storeId",
+        "dateFrom",
+        "dateTo"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sku": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 为商品分配的 SKU。"
+              },
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的商品名称。"
+              },
+              "date": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台统计或记账日期。"
+              },
+              "impressions": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "商品在搜索结果和分类页面的曝光次数。"
+              },
+              "views": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "商品详情页被浏览的次数。"
+              },
+              "cartEvents": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "商品被加入购物车的次数。"
+              },
+              "orderedUnits": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "统计期间下单订购的商品件数，包含尚未完成的订单。"
+              },
+              "visitors": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "商品详情页的访问会话次数，跨日汇总不代表去重人数。"
+              }
+            },
+            "required": [
+              "sku",
+              "title",
+              "date",
+              "impressions",
+              "views",
+              "cartEvents",
+              "orderedUnits",
+              "visitors"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataTime": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "dateFrom": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dateTo": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "dateFrom",
+            "dateTo"
+          ],
+          "additionalProperties": false
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttlMs": {
+              "const": 900000
+            },
+            "fetchedAt": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "string"
+            },
+            "nextRefreshAt": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "refreshing": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ttlMs",
+            "fetchedAt",
+            "expiresAt",
+            "nextRefreshAt",
+            "stale"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "items",
+        "dataTime",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 60000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "Ozon",
+        "数据源",
+        "商品流量与订购表现"
+      ]
+    }
+  },
+  {
+    "capabilityId": "hallmark.ozon.compose",
+    "version": "1.0.0",
+    "title": "Ozon 跨接口组合数据",
+    "description": "按商品或包裹组合已封装接口字段。统一店铺，完整读取关联页后分页；费用只允许包裹粒度，不推测商品分摊。字段目录和组合定义可供工作台、Agent、源码组件复用。",
+    "effect": "query",
+    "aliases": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recipe": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": 1
+            },
+            "grain": {
+              "enum": [
+                "product",
+                "posting"
+              ]
+            },
+            "fields": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 30,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "products.productId",
+                  "products.offerId",
+                  "products.sku",
+                  "products.title",
+                  "products.image",
+                  "products.status",
+                  "products.statusCode",
+                  "products.statusRaw",
+                  "products.errorReason",
+                  "prices.productId",
+                  "prices.offerId",
+                  "prices.price",
+                  "prices.ordinaryPrice",
+                  "prices.oldPrice",
+                  "prices.currency",
+                  "warehouses.warehouseId",
+                  "warehouses.warehouseName",
+                  "warehouses.fulfillment",
+                  "warehouses.status",
+                  "warehouses.statusCode",
+                  "warehouses.statusRaw",
+                  "warehouses.deliveryMethods",
+                  "stocks.productId",
+                  "stocks.sku",
+                  "stocks.offerId",
+                  "stocks.warehouseId",
+                  "stocks.warehouseName",
+                  "stocks.stockPresent",
+                  "stocks.stockReserved",
+                  "stocks.stockAvailable",
+                  "analytics.sku",
+                  "analytics.title",
+                  "analytics.date",
+                  "analytics.impressions",
+                  "analytics.views",
+                  "analytics.cartEvents",
+                  "analytics.orderedUnits",
+                  "analytics.visitors",
+                  "orders.orderId",
+                  "orders.orderNumber",
+                  "orders.postingNumber",
+                  "orders.sku",
+                  "orders.offerId",
+                  "orders.title",
+                  "orders.quantity",
+                  "orders.orderPrice",
+                  "orders.currency",
+                  "orders.status",
+                  "orders.statusCode",
+                  "orders.statusRaw",
+                  "orders.createdAt",
+                  "orders.shipmentAt",
+                  "orders.trackingNumber",
+                  "weights.postingNumber",
+                  "weights.sku",
+                  "weights.offerId",
+                  "weights.quantity",
+                  "weights.actualWeight",
+                  "weights.declaredWeight",
+                  "weights.weightDifference",
+                  "weights.weightScope",
+                  "weights.shipmentAt",
+                  "finance.accrualId",
+                  "finance.unitNumber",
+                  "finance.postingNumber",
+                  "finance.date",
+                  "finance.accrualType",
+                  "finance.amount",
+                  "finance.commission",
+                  "finance.logisticsFee",
+                  "finance.feeDetails",
+                  "finance.currency",
+                  "promotions.actionId",
+                  "promotions.actionName",
+                  "promotions.productId",
+                  "promotions.participation",
+                  "promotions.actionPrice",
+                  "promotions.maxActionPrice",
+                  "promotions.currency",
+                  "promotions.startsAt",
+                  "promotions.endsAt",
+                  "returns.returnId",
+                  "returns.postingNumber",
+                  "returns.orderId",
+                  "returns.orderNumber",
+                  "returns.sku",
+                  "returns.offerId",
+                  "returns.title",
+                  "returns.quantity",
+                  "returns.returnReason",
+                  "returns.status",
+                  "returns.statusCode",
+                  "returns.statusRaw",
+                  "returns.createdAt",
+                  "returns.orderPrice",
+                  "returns.currency"
+                ]
+              }
+            }
+          },
+          "required": [
+            "version",
+            "grain",
+            "fields"
+          ],
+          "additionalProperties": false
+        },
+        "dateFrom": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "dateTo": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "warehouseId": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "actionId": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "participation": {
+          "enum": [
+            "joined",
+            "eligible"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "loadAll": {
+          "type": "boolean"
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "storeId",
+        "recipe"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "products": {
+                "type": "object",
+                "properties": {
+                  "productId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "offerId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "title": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "image": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "status": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "statusCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "statusRaw": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "errorReason": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "productId",
+                  "offerId",
+                  "sku",
+                  "title",
+                  "image",
+                  "status",
+                  "statusCode",
+                  "statusRaw",
+                  "errorReason"
+                ],
+                "additionalProperties": false
+              },
+              "prices": {
+                "type": "object",
+                "properties": {
+                  "productId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "offerId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "price": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "ordinaryPrice": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "oldPrice": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "currency": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "productId",
+                  "offerId",
+                  "price",
+                  "ordinaryPrice",
+                  "oldPrice",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "warehouses": {
+                "type": "object",
+                "properties": {
+                  "warehouseId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "warehouseName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "fulfillment": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "status": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "statusCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "statusRaw": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "deliveryMethods": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "warehouseId",
+                  "warehouseName",
+                  "fulfillment",
+                  "status",
+                  "statusCode",
+                  "statusRaw",
+                  "deliveryMethods"
+                ],
+                "additionalProperties": false
+              },
+              "stocks": {
+                "type": "object",
+                "properties": {
+                  "productId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "offerId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "warehouseId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "warehouseName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "stockPresent": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "stockReserved": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "stockAvailable": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "productId",
+                  "sku",
+                  "offerId",
+                  "warehouseId",
+                  "warehouseName",
+                  "stockPresent",
+                  "stockReserved",
+                  "stockAvailable"
+                ],
+                "additionalProperties": false
+              },
+              "analytics": {
+                "type": "object",
+                "properties": {
+                  "sku": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "title": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "date": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "impressions": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "views": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "cartEvents": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "orderedUnits": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "visitors": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "sku",
+                  "title",
+                  "date",
+                  "impressions",
+                  "views",
+                  "cartEvents",
+                  "orderedUnits",
+                  "visitors"
+                ],
+                "additionalProperties": false
+              },
+              "orders": {
+                "type": "object",
+                "properties": {
+                  "orderId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "orderNumber": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "postingNumber": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "offerId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "title": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "quantity": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "orderPrice": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "currency": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "status": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "statusCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "statusRaw": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "createdAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "shipmentAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "trackingNumber": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "orderId",
+                  "orderNumber",
+                  "postingNumber",
+                  "sku",
+                  "offerId",
+                  "title",
+                  "quantity",
+                  "orderPrice",
+                  "currency",
+                  "status",
+                  "statusCode",
+                  "statusRaw",
+                  "createdAt",
+                  "shipmentAt",
+                  "trackingNumber"
+                ],
+                "additionalProperties": false
+              },
+              "weights": {
+                "type": "object",
+                "properties": {
+                  "postingNumber": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "offerId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "quantity": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "actualWeight": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "declaredWeight": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "weightDifference": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "weightScope": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "shipmentAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "postingNumber",
+                  "sku",
+                  "offerId",
+                  "quantity",
+                  "actualWeight",
+                  "declaredWeight",
+                  "weightDifference",
+                  "weightScope",
+                  "shipmentAt"
+                ],
+                "additionalProperties": false
+              },
+              "finance": {
+                "type": "object",
+                "properties": {
+                  "accrualId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "unitNumber": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "postingNumber": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "date": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "accrualType": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "amount": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "commission": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "logisticsFee": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "feeDetails": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "currency": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "accrualId",
+                  "unitNumber",
+                  "postingNumber",
+                  "date",
+                  "accrualType",
+                  "amount",
+                  "commission",
+                  "logisticsFee",
+                  "feeDetails",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "promotions": {
+                "type": "object",
+                "properties": {
+                  "actionId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "actionName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "productId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "participation": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "actionPrice": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "maxActionPrice": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "currency": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "startsAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "endsAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "actionId",
+                  "actionName",
+                  "productId",
+                  "participation",
+                  "actionPrice",
+                  "maxActionPrice",
+                  "currency",
+                  "startsAt",
+                  "endsAt"
+                ],
+                "additionalProperties": false
+              },
+              "returns": {
+                "type": "object",
+                "properties": {
+                  "returnId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "postingNumber": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "orderId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "orderNumber": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "offerId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "title": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "quantity": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "returnReason": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "status": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "statusCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "statusRaw": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "createdAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "orderPrice": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "currency": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "returnId",
+                  "postingNumber",
+                  "orderId",
+                  "orderNumber",
+                  "sku",
+                  "offerId",
+                  "title",
+                  "quantity",
+                  "returnReason",
+                  "status",
+                  "statusCode",
+                  "statusRaw",
+                  "createdAt",
+                  "orderPrice",
+                  "currency"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataTime": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sourceStates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "enum": [
+                  "ready",
+                  "empty",
+                  "missing"
+                ]
+              },
+              "rowCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "pageCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "dataTime": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fetchedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "cacheHit": {
+                "type": "boolean"
+              },
+              "freshness": {
+                "enum": [
+                  "fresh",
+                  "stale"
+                ]
+              },
+              "cacheReason": {
+                "enum": [
+                  "none",
+                  "ttl",
+                  "rate_limit",
+                  "upstream_unavailable",
+                  "refresh_due"
+                ]
+              },
+              "nextRetryAt": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "source",
+              "status",
+              "rowCount",
+              "pageCount",
+              "dataTime",
+              "fetchedAt",
+              "cacheHit",
+              "freshness",
+              "cacheReason"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttlMs": {
+              "const": 900000
+            },
+            "fetchedAt": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "string"
+            },
+            "nextRefreshAt": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "refreshing": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ttlMs",
+            "fetchedAt",
+            "expiresAt",
+            "nextRefreshAt",
+            "stale"
+          ],
+          "additionalProperties": false
+        },
+        "fieldMeta": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1
+              },
+              "format": {
+                "type": "string",
+                "minLength": 1
+              },
+              "currencyPath": {
+                "type": "string",
+                "minLength": 1
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "key",
+              "source",
+              "label",
+              "description",
+              "format"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "dateFrom": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dateTo": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "dateFrom",
+            "dateTo"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "dataTime",
+        "warnings",
+        "sourceStates",
+        "fieldMeta",
+        "cache"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 120000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "Ozon",
+        "组合",
+        "跨接口",
+        "字段",
+        "数据源",
+        "模板",
+        "商品",
+        "包裹"
+      ]
+    }
+  },
+  {
+    "capabilityId": "hallmark.ozon.finance",
+    "version": "1.0.0",
+    "title": "Ozon 订单费用与平台记账",
+    "description": "逐日读取平台记账记录，保留有符号金额和币种；不当作净利润。",
+    "effect": "query",
+    "aliases": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "loadAll": {
+          "type": "boolean"
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        },
+        "dateFrom": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "dateTo": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      },
+      "required": [
+        "storeId",
+        "dateFrom",
+        "dateTo"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "accrualId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "每条平台财务记账记录的编号。"
+              },
+              "unitNumber": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "费用或收入关联的订单、包裹等业务编号。"
+              },
+              "postingNumber": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "订单发货包裹的编号，一个订单可能包含多个包裹。"
+              },
+              "date": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台统计或记账日期。"
+              },
+              "accrualType": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台记录的收入或费用类别。"
+              },
+              "amount": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "平台记录的收入或扣费金额；不是店铺净利润。"
+              },
+              "commission": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "与记账币种一致的平台佣金合计，未提供时显示未知。"
+              },
+              "logisticsFee": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "平台明确列出的物流费用，未提供时显示未知。"
+              },
+              "feeDetails": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "各项费用的编号、金额和币种。"
+              },
+              "currency": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "金额使用的货币，未提供时显示未知。"
+              }
+            },
+            "required": [
+              "accrualId",
+              "unitNumber",
+              "postingNumber",
+              "date",
+              "accrualType",
+              "amount",
+              "commission",
+              "logisticsFee",
+              "feeDetails",
+              "currency"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataTime": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "dateFrom": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dateTo": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "dateFrom",
+            "dateTo"
+          ],
+          "additionalProperties": false
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttlMs": {
+              "const": 900000
+            },
+            "fetchedAt": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "string"
+            },
+            "nextRefreshAt": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "refreshing": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ttlMs",
+            "fetchedAt",
+            "expiresAt",
+            "nextRefreshAt",
+            "stale"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "items",
+        "dataTime",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 60000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "Ozon",
+        "数据源",
+        "订单费用与平台记账"
+      ]
+    }
+  },
+  {
+    "capabilityId": "hallmark.ozon.orders",
+    "version": "1.0.0",
+    "title": "Ozon 订单与发货进度",
+    "description": "rFBS/FBS 订单按包裹商品展开；保留商品件数和原币金额。",
+    "effect": "query",
+    "aliases": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "loadAll": {
+          "type": "boolean"
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        },
+        "dateFrom": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "dateTo": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "postingNumber": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "storeId",
+        "dateFrom",
+        "dateTo"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "orderId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台内部用于识别订单的编号。"
+              },
+              "orderNumber": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "店铺查看和核对订单时使用的订单号。"
+              },
+              "postingNumber": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "订单发货包裹的编号，一个订单可能包含多个包裹。"
+              },
+              "sku": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 为商品分配的 SKU。"
+              },
+              "offerId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "卖家设置的商品货号。"
+              },
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的商品名称。"
+              },
+              "quantity": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "该行商品的件数。"
+              },
+              "orderPrice": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "订单中该商品的每件价格。"
+              },
+              "currency": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "金额使用的货币，未提供时显示未知。"
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "明确认识的状态以中文展示；其他状态标注未映射并保留原文。"
+              },
+              "statusCode": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的状态代码。"
+              },
+              "statusRaw": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的原始状态文字，供核对。"
+              },
+              "createdAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台记录的创建时间。"
+              },
+              "shipmentAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台记录的包裹交运或发货时间。"
+              },
+              "trackingNumber": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "用于查询物流进度的跟踪编号。"
+              }
+            },
+            "required": [
+              "orderId",
+              "orderNumber",
+              "postingNumber",
+              "sku",
+              "offerId",
+              "title",
+              "quantity",
+              "orderPrice",
+              "currency",
+              "status",
+              "statusCode",
+              "statusRaw",
+              "createdAt",
+              "shipmentAt",
+              "trackingNumber"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataTime": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "dateFrom": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dateTo": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "dateFrom",
+            "dateTo"
+          ],
+          "additionalProperties": false
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttlMs": {
+              "const": 900000
+            },
+            "fetchedAt": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "string"
+            },
+            "nextRefreshAt": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "refreshing": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ttlMs",
+            "fetchedAt",
+            "expiresAt",
+            "nextRefreshAt",
+            "stale"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "items",
+        "dataTime",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 60000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "Ozon",
+        "数据源",
+        "订单与发货进度"
+      ]
+    }
+  },
+  {
+    "capabilityId": "hallmark.ozon.prices",
+    "version": "1.0.0",
+    "title": "Ozon 商品价格",
+    "description": "当前卖家价、普通售价与划线价；币种由平台返回。",
+    "effect": "query",
+    "aliases": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "loadAll": {
+          "type": "boolean"
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        },
+        "productId": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        }
+      },
+      "required": [
+        "storeId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 商品编号；不同于平台 SKU。"
+              },
+              "offerId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "卖家设置的商品货号。"
+              },
+              "price": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "商品当前的卖家销售价格。"
+              },
+              "ordinaryPrice": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "商品设置的普通基础售价。"
+              },
+              "oldPrice": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "商品展示的划线参考价格。"
+              },
+              "currency": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "金额使用的货币，未提供时显示未知。"
+              }
+            },
+            "required": [
+              "productId",
+              "offerId",
+              "price",
+              "ordinaryPrice",
+              "oldPrice",
+              "currency"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataTime": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "dateFrom": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dateTo": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "dateFrom",
+            "dateTo"
+          ],
+          "additionalProperties": false
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttlMs": {
+              "const": 900000
+            },
+            "fetchedAt": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "string"
+            },
+            "nextRefreshAt": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "refreshing": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ttlMs",
+            "fetchedAt",
+            "expiresAt",
+            "nextRefreshAt",
+            "stale"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "items",
+        "dataTime",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 60000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "Ozon",
+        "数据源",
+        "商品价格"
+      ]
+    }
+  },
+  {
+    "capabilityId": "hallmark.ozon.products",
+    "version": "1.0.0",
+    "title": "Ozon 商品资料与状态",
+    "description": "读取店铺商品资料、平台状态和异常说明。",
+    "effect": "query",
+    "aliases": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "loadAll": {
+          "type": "boolean"
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        },
+        "productId": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "sku": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        }
+      },
+      "required": [
+        "storeId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 商品编号；不同于平台 SKU。"
+              },
+              "offerId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "卖家设置的商品货号。"
+              },
+              "sku": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 为商品分配的 SKU。"
+              },
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的商品名称。"
+              },
+              "image": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的商品主图。"
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "明确认识的状态以中文展示；其他状态标注未映射并保留原文。"
+              },
+              "statusCode": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的状态代码。"
+              },
+              "statusRaw": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的原始状态文字，供核对。"
+              },
+              "errorReason": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台明确返回的错误或不可售说明。"
+              }
+            },
+            "required": [
+              "productId",
+              "offerId",
+              "sku",
+              "title",
+              "image",
+              "status",
+              "statusCode",
+              "statusRaw",
+              "errorReason"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataTime": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "dateFrom": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dateTo": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "dateFrom",
+            "dateTo"
+          ],
+          "additionalProperties": false
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttlMs": {
+              "const": 900000
+            },
+            "fetchedAt": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "string"
+            },
+            "nextRefreshAt": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "refreshing": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ttlMs",
+            "fetchedAt",
+            "expiresAt",
+            "nextRefreshAt",
+            "stale"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "items",
+        "dataTime",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 60000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "Ozon",
+        "数据源",
+        "商品资料与状态"
+      ]
+    }
+  },
+  {
+    "capabilityId": "hallmark.ozon.promotions",
+    "version": "1.0.0",
+    "title": "Ozon 活动商品与活动价格",
+    "description": "活动目录及指定活动商品；2026-10-13 协议切换后的兼容性须以实店返回验证。",
+    "effect": "query",
+    "aliases": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "loadAll": {
+          "type": "boolean"
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        },
+        "actionId": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "participation": {
+          "enum": [
+            "joined",
+            "eligible"
+          ]
+        }
+      },
+      "required": [
+        "storeId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "actionId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 促销活动编号。"
+              },
+              "actionName": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台促销活动的名称。"
+              },
+              "productId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 商品编号；不同于平台 SKU。"
+              },
+              "participation": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "商品已参加活动，或符合该活动的参加条件。"
+              },
+              "actionPrice": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "商品参加活动时的价格。"
+              },
+              "maxActionPrice": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "参加活动所允许的最高商品价格。"
+              },
+              "currency": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "金额使用的货币，未提供时显示未知。"
+              },
+              "startsAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "活动开始时间。"
+              },
+              "endsAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "活动结束时间。"
+              }
+            },
+            "required": [
+              "actionId",
+              "actionName",
+              "productId",
+              "participation",
+              "actionPrice",
+              "maxActionPrice",
+              "currency",
+              "startsAt",
+              "endsAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataTime": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "dateFrom": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dateTo": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "dateFrom",
+            "dateTo"
+          ],
+          "additionalProperties": false
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttlMs": {
+              "const": 900000
+            },
+            "fetchedAt": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "string"
+            },
+            "nextRefreshAt": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "refreshing": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ttlMs",
+            "fetchedAt",
+            "expiresAt",
+            "nextRefreshAt",
+            "stale"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "items",
+        "dataTime",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 60000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "Ozon",
+        "数据源",
+        "活动商品与活动价格"
+      ]
+    }
+  },
+  {
+    "capabilityId": "hallmark.ozon.returns",
+    "version": "1.0.0",
+    "title": "Ozon rFBS 退货退款申请",
+    "description": "读取 rFBS 售后申请；传入售后单编号可读详情原因。不执行退款或售后处理。",
+    "effect": "query",
+    "aliases": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "loadAll": {
+          "type": "boolean"
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        },
+        "returnId": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        }
+      },
+      "required": [
+        "storeId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "returnId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "rFBS 退货退款申请编号。"
+              },
+              "postingNumber": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "订单发货包裹的编号，一个订单可能包含多个包裹。"
+              },
+              "orderId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台内部用于识别订单的编号。"
+              },
+              "orderNumber": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "店铺查看和核对订单时使用的订单号。"
+              },
+              "sku": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 为商品分配的 SKU。"
+              },
+              "offerId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "卖家设置的商品货号。"
+              },
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的商品名称。"
+              },
+              "quantity": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "该行商品的件数。"
+              },
+              "returnReason": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的退货退款原因。"
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "明确认识的状态以中文展示；其他状态标注未映射并保留原文。"
+              },
+              "statusCode": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的状态代码。"
+              },
+              "statusRaw": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的原始状态文字，供核对。"
+              },
+              "createdAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台记录的创建时间。"
+              },
+              "orderPrice": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "订单中该商品的每件价格。"
+              },
+              "currency": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "金额使用的货币，未提供时显示未知。"
+              }
+            },
+            "required": [
+              "returnId",
+              "postingNumber",
+              "orderId",
+              "orderNumber",
+              "sku",
+              "offerId",
+              "title",
+              "quantity",
+              "returnReason",
+              "status",
+              "statusCode",
+              "statusRaw",
+              "createdAt",
+              "orderPrice",
+              "currency"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataTime": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "dateFrom": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dateTo": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "dateFrom",
+            "dateTo"
+          ],
+          "additionalProperties": false
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttlMs": {
+              "const": 900000
+            },
+            "fetchedAt": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "string"
+            },
+            "nextRefreshAt": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "refreshing": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ttlMs",
+            "fetchedAt",
+            "expiresAt",
+            "nextRefreshAt",
+            "stale"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "items",
+        "dataTime",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 60000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "Ozon",
+        "数据源",
+        "rFBS 退货退款申请"
+      ]
+    }
+  },
+  {
+    "capabilityId": "hallmark.ozon.stocks",
+    "version": "1.0.0",
+    "title": "Ozon 商品分仓库存",
+    "description": "按商品和仓库展示平台库存；缺失的可售或预留数量保持未知。",
+    "effect": "query",
+    "aliases": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "loadAll": {
+          "type": "boolean"
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        },
+        "sku": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "warehouseId": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        }
+      },
+      "required": [
+        "storeId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 商品编号；不同于平台 SKU。"
+              },
+              "sku": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 为商品分配的 SKU。"
+              },
+              "offerId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "卖家设置的商品货号。"
+              },
+              "warehouseId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 仓库编号。"
+              },
+              "warehouseName": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "店铺为仓库设置的名称。"
+              },
+              "stockPresent": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "平台记录的仓库商品数量。"
+              },
+              "stockReserved": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "已经预留的商品数量。"
+              },
+              "stockAvailable": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "平台确认可用于销售的商品数量。"
+              }
+            },
+            "required": [
+              "productId",
+              "sku",
+              "offerId",
+              "warehouseId",
+              "warehouseName",
+              "stockPresent",
+              "stockReserved",
+              "stockAvailable"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataTime": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "dateFrom": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dateTo": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "dateFrom",
+            "dateTo"
+          ],
+          "additionalProperties": false
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttlMs": {
+              "const": 900000
+            },
+            "fetchedAt": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "string"
+            },
+            "nextRefreshAt": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "refreshing": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ttlMs",
+            "fetchedAt",
+            "expiresAt",
+            "nextRefreshAt",
+            "stale"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "items",
+        "dataTime",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 60000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "Ozon",
+        "数据源",
+        "商品分仓库存"
+      ]
+    }
+  },
+  {
+    "capabilityId": "hallmark.ozon.warehouses",
+    "version": "1.0.0",
+    "title": "Ozon 仓库与配送渠道",
+    "description": "读取仓库履约方式和对应配送渠道；仓库名称不作为规则。",
+    "effect": "query",
+    "aliases": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "loadAll": {
+          "type": "boolean"
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        },
+        "warehouseId": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        }
+      },
+      "required": [
+        "storeId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "warehouseId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 仓库编号。"
+              },
+              "warehouseName": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "店铺为仓库设置的名称。"
+              },
+              "fulfillment": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "该仓库采用的发货和配送方式。"
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "明确认识的状态以中文展示；其他状态标注未映射并保留原文。"
+              },
+              "statusCode": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的状态代码。"
+              },
+              "statusRaw": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的原始状态文字，供核对。"
+              },
+              "deliveryMethods": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "可用配送渠道及当前状态。"
+              }
+            },
+            "required": [
+              "warehouseId",
+              "warehouseName",
+              "fulfillment",
+              "status",
+              "statusCode",
+              "statusRaw",
+              "deliveryMethods"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataTime": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "dateFrom": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dateTo": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "dateFrom",
+            "dateTo"
+          ],
+          "additionalProperties": false
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttlMs": {
+              "const": 900000
+            },
+            "fetchedAt": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "string"
+            },
+            "nextRefreshAt": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "refreshing": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ttlMs",
+            "fetchedAt",
+            "expiresAt",
+            "nextRefreshAt",
+            "stale"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "items",
+        "dataTime",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 60000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "Ozon",
+        "数据源",
+        "仓库与配送渠道"
+      ]
+    }
+  },
+  {
+    "capabilityId": "hallmark.ozon.weights",
+    "version": "1.0.0",
+    "title": "Ozon 物流实重与重量差异",
+    "description": "展示已核实单件商品的物流实重与申报重量差异；多件包裹不计入单品实重。",
+    "effect": "query",
+    "aliases": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "loadAll": {
+          "type": "boolean"
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        },
+        "dateFrom": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "dateTo": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      },
+      "required": [
+        "storeId",
+        "dateFrom",
+        "dateTo"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "postingNumber": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "订单发货包裹的编号，一个订单可能包含多个包裹。"
+              },
+              "sku": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 为商品分配的 SKU。"
+              },
+              "offerId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "卖家设置的商品货号。"
+              },
+              "quantity": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "该行商品的件数。"
+              },
+              "actualWeight": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "承运商报告的实际重量，单位为克。"
+              },
+              "declaredWeight": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "商品包装申报重量，单位为克。"
+              },
+              "weightDifference": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "物流实重减去申报重量，单位为克。"
+              },
+              "weightScope": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "说明该重量是否为已核实的单件商品实重。"
+              },
+              "shipmentAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台记录的包裹交运或发货时间。"
+              }
+            },
+            "required": [
+              "postingNumber",
+              "sku",
+              "offerId",
+              "quantity",
+              "actualWeight",
+              "declaredWeight",
+              "weightDifference",
+              "weightScope",
+              "shipmentAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataTime": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "dateFrom": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dateTo": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "dateFrom",
+            "dateTo"
+          ],
+          "additionalProperties": false
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttlMs": {
+              "const": 900000
+            },
+            "fetchedAt": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "string"
+            },
+            "nextRefreshAt": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "refreshing": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ttlMs",
+            "fetchedAt",
+            "expiresAt",
+            "nextRefreshAt",
+            "stale"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "items",
+        "dataTime",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 60000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "Ozon",
+        "数据源",
+        "物流实重与重量差异"
+      ]
+    }
   },
   {
     "capabilityId": "hallmark.platform.read",
@@ -10386,6 +16985,527 @@ export const catalog = [
     "aliases": [
       "hallmark_list_product"
     ]
+  },
+  {
+    "capabilityId": "hallmark.products.procurement",
+    "version": "1.0.0",
+    "title": "商品-采购对照表",
+    "description": "同一店铺在售商品与精确采购来源对照。支持全量快照读取或搜索后分页，读取真实物流渠道并按库存仓分批关联匹配；接口无报价时需补充明确渠道的费用才能试算，缺失不按零计算。",
+    "effect": "query",
+    "aliases": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "query": {
+          "type": "string"
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "loadAll": {
+          "type": "boolean"
+        },
+        "planMode": {
+          "enum": [
+            "delivery",
+            "platform",
+            "custom"
+          ]
+        },
+        "deliveryMethodId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fixedFeeYuan": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "logisticsYuanPerKg": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "commissionPercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 99.9999
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "storeId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "products": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "offerId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sku": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "imageUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "currency": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "productUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "salesSpecification": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "purchaseSpecification": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "purchaseLinks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "label"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "purchaseMinor": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "sellerMinor": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "packageGrams": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "referenceProfit": {
+                "type": "object",
+                "properties": {
+                  "margin": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "profitMinor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "logisticsMinor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "commissionMinor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "fixedMinor": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "reason": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "metricBasis": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "margin",
+                  "profitMinor",
+                  "logisticsMinor",
+                  "commissionMinor",
+                  "fixedMinor",
+                  "reason",
+                  "metricBasis"
+                ],
+                "additionalProperties": false
+              },
+              "logisticsMatch": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "unique",
+                      "choice",
+                      "unavailable",
+                      "unknown"
+                    ]
+                  },
+                  "candidatePlanIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "selectedPlanId": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "status",
+                  "candidatePlanIds",
+                  "label",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "productId",
+              "offerId",
+              "sku",
+              "title",
+              "imageUrl",
+              "currency",
+              "productUrl",
+              "salesSpecification",
+              "purchaseSpecification",
+              "purchaseLinks",
+              "purchaseMinor",
+              "sellerMinor",
+              "packageGrams",
+              "referenceProfit",
+              "logisticsMatch"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cursor": {
+          "type": "string"
+        },
+        "dataTime": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "plan": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "enum": [
+                "delivery",
+                "platform",
+                "custom"
+              ]
+            },
+            "label": {
+              "type": "string"
+            },
+            "settingsRevision": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "fixedFeeYuan": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "logisticsYuanPerKg": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "commissionPercent": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "deliveryMethodId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "choices": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "warehouseId": {
+                    "type": "string"
+                  },
+                  "warehouseName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "warehouseId",
+                  "warehouseName",
+                  "active"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "selectionNote": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mode",
+            "label",
+            "settingsRevision",
+            "fixedFeeYuan",
+            "logisticsYuanPerKg",
+            "commissionPercent",
+            "reason",
+            "deliveryMethodId",
+            "choices",
+            "selectionNote"
+          ],
+          "additionalProperties": false
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttlMs": {
+              "const": 900000
+            },
+            "fetchedAt": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "string"
+            },
+            "nextRefreshAt": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "refreshing": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ttlMs",
+            "fetchedAt",
+            "expiresAt",
+            "nextRefreshAt",
+            "stale"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "products",
+        "total",
+        "dataTime",
+        "warnings",
+        "plan",
+        "cache"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 60000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "商品",
+        "采购",
+        "对照",
+        "利润",
+        "在售",
+        "素材库"
+      ]
+    }
+  },
+  {
+    "capabilityId": "hallmark.products.skus",
+    "version": "1.0.0",
+    "title": "商品 SKU 明细",
+    "description": "按店铺及商品编号精确读取当前商品对应SKU的已有规格、售价与币种，不推测其他规格。",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "productId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "storeId",
+        "productId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "items",
+        "total"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 60000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "sku",
+        "规格",
+        "素材库"
+      ]
+    },
+    "aliases": []
   },
   {
     "capabilityId": "hallmark.products.update_price",
@@ -11525,8 +18645,8 @@ export const catalog = [
     "aliases": []
   }
 ] as const;
-export type Input0 = { "mode": "new"; "viewId"?: string; "componentId"?: string; "revision"?: number; "workspacePath"?: string; "title"?: string; "bindings"?: Array<({  } & { [key: string]: JsonValue })>; "invocationId"?: string; "attemptId"?: string } | { "mode": "edit"; "viewId": string; "componentId"?: string; "revision"?: number; "workspacePath"?: string; "title"?: string; "bindings"?: Array<({  } & { [key: string]: JsonValue })>; "invocationId"?: string; "attemptId"?: string } | { "mode": "open_saved"; "viewId"?: string; "componentId": string; "revision"?: number; "workspacePath"?: string; "title"?: string; "bindings"?: Array<({  } & { [key: string]: JsonValue })>; "invocationId"?: string; "attemptId"?: string };
-export type Output0 = { "draft": { "schemaVersion": 1; "draftId": string; "ownerSessionId": string; "viewId": string; "workspacePath": string; "sourceRevision": number; "epoch": number; "status": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted" | "closed" | "discarded"; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "selectedSourceRevision"?: number; "baseRevisionAtOpen"?: number }; "attempt": { "attemptId": string; "draftId": string; "epoch": number; "sourceRevision": number; "state": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "startedAt": string; "expectedViewRevision": number; "invocationRefs": Array<string>; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "terminalReason": string | null; "buildReceiptId"?: string; "previewReceiptId"?: string; "publicationId"?: string; "requestHash"?: string }; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<({  } & { [key: string]: JsonValue })>; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }) };
+export type Input0 = { "mode": "new"; "viewId"?: string; "componentId"?: string; "revision"?: number; "workspacePath"?: string; "newCopy"?: boolean; "title"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "invocationId"?: string; "attemptId"?: string } | { "mode": "edit"; "viewId": string; "componentId"?: string; "revision"?: number; "workspacePath"?: string; "newCopy"?: boolean; "title"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "invocationId"?: string; "attemptId"?: string } | { "mode": "open_saved"; "viewId"?: string; "componentId": string; "revision"?: number; "workspacePath"?: string; "newCopy"?: boolean; "title"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "invocationId"?: string; "attemptId"?: string };
+export type Output0 = { "draft": { "schemaVersion": 1; "draftId": string; "ownerSessionId": string; "viewId": string; "workspacePath": string; "sourceRevision": number; "epoch": number; "status": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted" | "closed" | "discarded"; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "selectedSourceRevision"?: number; "baseRevisionAtOpen"?: number }; "attempt": { "attemptId": string; "draftId": string; "epoch": number; "sourceRevision": number; "state": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "startedAt": string; "expectedViewRevision": number; "invocationRefs": Array<string>; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "terminalReason": string | null; "buildReceiptId"?: string; "previewReceiptId"?: string; "publicationId"?: string; "requestHash"?: string }; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }) };
 export function call0(client: AppsClient, ref: AppRef, input: Input0, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output0>> { return client.invoke(ref, catalog[0], input as JsonValue, options) as Promise<CapabilityResult<Output0>>; }
 
 export type Input1 = { "attemptId": string; "expectedEpoch": number; "reason": string };
@@ -11534,7 +18654,7 @@ export type Output1 = { "status": "cancelled" | "already_published"; "activeBuil
 export function call1(client: AppsClient, ref: AppRef, input: Input1, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output1>> { return client.invoke(ref, catalog[1], input as JsonValue, options) as Promise<CapabilityResult<Output1>>; }
 
 export type Input2 = { "attemptId": string; "displayId"?: string } | { "publicationId": string; "displayId"?: string };
-export type Output2 = { "summary": { "lastConfirmedDisplay": ({  } & { [key: string]: JsonValue }) | null; "preparedBuild": ({  } & { [key: string]: JsonValue }) | null; "currentDisplay": ({  } & { [key: string]: JsonValue }) | null; "blockedStage": string; "nextAction": { "action": string; "reason": string; "target": ({  } & { [key: string]: JsonValue }); "errorCodes": Array<string> }; "requiresRebuild": boolean | null }; "draft": { "schemaVersion": 1; "draftId": string; "ownerSessionId": string; "viewId": string; "workspacePath": string; "sourceRevision": number; "epoch": number; "status": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted" | "closed" | "discarded"; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "selectedSourceRevision"?: number; "baseRevisionAtOpen"?: number }; "attempt": { "attemptId": string; "draftId": string; "epoch": number; "sourceRevision": number; "state": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "startedAt": string; "expectedViewRevision": number; "invocationRefs": Array<string>; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "terminalReason": string | null; "buildReceiptId"?: string; "previewReceiptId"?: string; "publicationId"?: string; "requestHash"?: string }; "publication": { "publicationId": string; "viewId": string; "ownerSessionId": string; "attemptId": string; "attemptEpoch": number; "expectedViewRevision": number; "candidateBuildId": string; "priorActiveBuildId": string | null; "state": "prepared" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "readyDeadlineAt": string | null; "mountStartedAt"?: string | null; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "createdAt": string; "updatedAt": string; "buildReceiptId": string; "previewReceiptId": string; "source": ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "frameInstanceId"?: string; "documentNonce"?: string; "committedViewRevision"?: number; "terminalReason"?: string } | null; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<({  } & { [key: string]: JsonValue })>; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }); "latestDisplay": { "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<({  } & { [key: string]: JsonValue })>; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string } | null; "displays": Array<{ "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<({  } & { [key: string]: JsonValue })>; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string }>; "display"?: { "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<({  } & { [key: string]: JsonValue })>; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string }; "workspaceAvailable": boolean; "missingEvidence": Array<string> };
+export type Output2 = { "summary": { "lastConfirmedDisplay": ({  } & { [key: string]: JsonValue }) | null; "preparedBuild": ({  } & { [key: string]: JsonValue }) | null; "currentDisplay": ({  } & { [key: string]: JsonValue }) | null; "blockedStage": string; "nextAction": { "action": string; "reason": string; "target": ({  } & { [key: string]: JsonValue }); "errorCodes": Array<string> }; "requiresRebuild": boolean | null }; "draft": { "schemaVersion": 1; "draftId": string; "ownerSessionId": string; "viewId": string; "workspacePath": string; "sourceRevision": number; "epoch": number; "status": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted" | "closed" | "discarded"; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "selectedSourceRevision"?: number; "baseRevisionAtOpen"?: number }; "attempt": { "attemptId": string; "draftId": string; "epoch": number; "sourceRevision": number; "state": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "startedAt": string; "expectedViewRevision": number; "invocationRefs": Array<string>; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "terminalReason": string | null; "buildReceiptId"?: string; "previewReceiptId"?: string; "publicationId"?: string; "requestHash"?: string }; "publication": { "publicationId": string; "viewId": string; "ownerSessionId": string; "attemptId": string; "attemptEpoch": number; "expectedViewRevision": number; "candidateBuildId": string; "priorActiveBuildId": string | null; "state": "prepared" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "readyDeadlineAt": string | null; "mountStartedAt"?: string | null; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "createdAt": string; "updatedAt": string; "buildReceiptId": string; "previewReceiptId": string; "source": ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "frameInstanceId"?: string; "documentNonce"?: string; "committedViewRevision"?: number; "terminalReason"?: string } | null; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }); "latestDisplay": { "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string } | null; "displays": Array<{ "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string }>; "display"?: { "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified" } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string }; "workspaceAvailable": boolean; "missingEvidence": Array<string> };
 export function call2(client: AppsClient, ref: AppRef, input: Input2, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output2>> { return client.invoke(ref, catalog[2], input as JsonValue, options) as Promise<CapabilityResult<Output2>>; }
 
 export type Input3 = { "attemptId": string; "epoch": number; "viewId": string; "expectedViewRevision": number; "buildId": string; "buildReceiptId": string; "previewReceiptId": string; "publicationId"?: string };
@@ -11553,60 +18673,60 @@ export type Input6 = { "viewId": string; "expectedViewRevision": number; "userRe
 export type Output6 = ({ "componentId": string; "revision": number; "title": string; "view": ({  } & { [key: string]: JsonValue }); "userRequest": string; "savedAt": string } & { [key: string]: JsonValue });
 export function call6(client: AppsClient, ref: AppRef, input: Input6, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output6>> { return client.invoke(ref, catalog[6], input as JsonValue, options) as Promise<CapabilityResult<Output6>>; }
 
-export type Input7 = {  };
-export type Output7 = { "components": Array<{ "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> }>; "assets": Array<JsonValue | JsonValue | { "assetId": string; "kind": "template"; "title": string; "description"?: string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "userRequest": string; "savedAt"?: string }> };
+export type Input7 = { "appId"?: string };
+export type Output7 = { "sources": Array<{ "id": string; "title": string; "description"?: string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "storeScoped"?: boolean; "input": ({  } & { [key: string]: JsonValue }); "rowsPath": string; "parameters": Array<{ "name": string; "label": string; "type": "string" | "number" | "integer" | "boolean"; "required"?: boolean; "default"?: JsonValue; "linked"?: boolean; "editable"?: boolean; "choices"?: Array<{ "label": string; "value": string | number | boolean }> }>; "fields": Array<{ "key"?: string; "origin"?: { "source": string; "label": string }; "path": string; "role": string; "confirmed": boolean; "label"?: string; "description"?: string; "unit"?: string; "currency"?: string; "currencyPath"?: string; "percentScale"?: "fraction" | "whole"; "numericScale"?: number }>; "operations": { "pagination"?: { "cursorParam": string; "limitParam"?: string; "nextCursorPath"?: string; "totalPath"?: string }; "search": { "scope": "server" | "loaded"; "param"?: string }; "sort": { "scope": "server" | "loaded"; "param"?: string; "directionParam"?: string } }; "kind": "data_source"; "revision": number; "validation": { "status": "verified" | "failed" | "unverified"; "checkedAt": string; "invocationId"?: string; "sampleCount": number; "issues": Array<string>; "empty"?: boolean; "storeId"?: string } }> };
 export function call7(client: AppsClient, ref: AppRef, input: Input7, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output7>> { return client.invoke(ref, catalog[7], input as JsonValue, options) as Promise<CapabilityResult<Output7>>; }
 
-export type Input8 = { "kind": "component" | "entry" | "template"; "id": string; "action": "rename" | "delete" | "pin" | "reorder"; "name"?: string; "order"?: number; "pinned"?: boolean; "expectedRevision"?: number };
-export type Output8 = { "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> } | JsonValue | JsonValue | { "assetId": string; "kind": "template"; "title": string; "description"?: string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "userRequest": string; "savedAt"?: string } | { "deleted": true; "id": string };
+export type Input8 = {  };
+export type Output8 = { "materials": Array<({  } & { [key: string]: JsonValue })>; "fieldRoles": Array<{ "key": string; "label": string; "description": string; "format": "text" | "currency" | "percent" | "integer" | "datetime" | "image"; "unit"?: string }> };
 export function call8(client: AppsClient, ref: AppRef, input: Input8, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output8>> { return client.invoke(ref, catalog[8], input as JsonValue, options) as Promise<CapabilityResult<Output8>>; }
 
-export type Input9 = { "componentId": string; "revision"?: number; "directory"?: string };
-export type Output9 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
+export type Input9 = {  };
+export type Output9 = { "components": Array<{ "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> }>; "assets": Array<JsonValue | JsonValue | { "assetId": string; "kind": "template"; "title": string; "description"?: string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "userRequest": string; "savedAt"?: string }> };
 export function call9(client: AppsClient, ref: AppRef, input: Input9, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output9>> { return client.invoke(ref, catalog[9], input as JsonValue, options) as Promise<CapabilityResult<Output9>>; }
 
-export type Input10 = { "directory": string; "title"?: string; "viewId"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "legacyBindings"?: Array<{ "id": string; "datasetKey"?: string; "fieldMap": ({  } & { [key: string]: JsonValue }); "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }> };
-export type Output10 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
+export type Input10 = { "kind": "component" | "entry" | "template"; "id": string; "action": "rename" | "delete" | "pin" | "reorder"; "name"?: string; "order"?: number; "pinned"?: boolean; "expectedRevision"?: number };
+export type Output10 = { "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> } | JsonValue | JsonValue | { "assetId": string; "kind": "template"; "title": string; "description"?: string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "userRequest": string; "savedAt"?: string } | { "deleted": true; "id": string };
 export function call10(client: AppsClient, ref: AppRef, input: Input10, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output10>> { return client.invoke(ref, catalog[10], input as JsonValue, options) as Promise<CapabilityResult<Output10>>; }
 
-export type Input11 = { "title": string; "design"?: JsonValue; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "viewId"?: string; "legacyViewId"?: string; "templateId"?: string; "directory"?: string; "legacyBindings"?: Array<{ "id": string; "datasetKey"?: string; "fieldMap": ({  } & { [key: string]: JsonValue }); "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }>; "requiredBindingIds"?: Array<string>; "legacyNeedsSpecification"?: boolean };
-export type Output11 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
+export type Input11 = { "componentId": string; "revision"?: number; "directory"?: string; "context"?: { "storeId": string }; "newCopy"?: boolean };
+export type Output11 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
 export function call11(client: AppsClient, ref: AppRef, input: Input11, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output11>> { return client.invoke(ref, catalog[11], input as JsonValue, options) as Promise<CapabilityResult<Output11>>; }
 
-export type Input12 = { "viewId": string; "userRequest": string; "title"?: string; "mode": "save_as" | "update"; "componentId"?: string; "expectedRevision"?: number; "legacyComponentId"?: string; "legacyTemplate"?: JsonValue };
-export type Output12 = { "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> };
+export type Input12 = { "directory": string; "title"?: string; "viewId"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "legacyBindings"?: Array<{ "id": string; "datasetKey"?: string; "fieldMap": ({  } & { [key: string]: JsonValue }); "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }> };
+export type Output12 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
 export function call12(client: AppsClient, ref: AppRef, input: Input12, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output12>> { return client.invoke(ref, catalog[12], input as JsonValue, options) as Promise<CapabilityResult<Output12>>; }
 
-export type Input13 = { "title": string; "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }; "legacyBinding"?: { "id": string; "datasetKey"?: string; "fieldMap": ({  } & { [key: string]: JsonValue }); "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }; "legacyFieldOrder"?: Array<string>; "userRequest": string };
-export type Output13 = JsonValue | JsonValue;
+export type Input13 = { "definition": { "id": string; "title": string; "description"?: string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "storeScoped"?: boolean; "input": ({  } & { [key: string]: JsonValue }); "rowsPath": string; "parameters": Array<{ "name": string; "label": string; "type": "string" | "number" | "integer" | "boolean"; "required"?: boolean; "default"?: JsonValue; "linked"?: boolean; "editable"?: boolean; "choices"?: Array<{ "label": string; "value": string | number | boolean }> }>; "fields": Array<{ "key"?: string; "origin"?: { "source": string; "label": string }; "path": string; "role": string; "confirmed": boolean; "label"?: string; "description"?: string; "unit"?: string; "currency"?: string; "currencyPath"?: string; "percentScale"?: "fraction" | "whole"; "numericScale"?: number }>; "operations": { "pagination"?: { "cursorParam": string; "limitParam"?: string; "nextCursorPath"?: string; "totalPath"?: string }; "search": { "scope": "server" | "loaded"; "param"?: string }; "sort": { "scope": "server" | "loaded"; "param"?: string; "directionParam"?: string } } }; "expectedRevision"?: number; "context"?: { "storeId": string }; "params"?: ({  } & { [key: string]: JsonValue }) };
+export type Output13 = { "id": string; "title": string; "description"?: string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "storeScoped"?: boolean; "input": ({  } & { [key: string]: JsonValue }); "rowsPath": string; "parameters": Array<{ "name": string; "label": string; "type": "string" | "number" | "integer" | "boolean"; "required"?: boolean; "default"?: JsonValue; "linked"?: boolean; "editable"?: boolean; "choices"?: Array<{ "label": string; "value": string | number | boolean }> }>; "fields": Array<{ "key"?: string; "origin"?: { "source": string; "label": string }; "path": string; "role": string; "confirmed": boolean; "label"?: string; "description"?: string; "unit"?: string; "currency"?: string; "currencyPath"?: string; "percentScale"?: "fraction" | "whole"; "numericScale"?: number }>; "operations": { "pagination"?: { "cursorParam": string; "limitParam"?: string; "nextCursorPath"?: string; "totalPath"?: string }; "search": { "scope": "server" | "loaded"; "param"?: string }; "sort": { "scope": "server" | "loaded"; "param"?: string; "directionParam"?: string } }; "kind": "data_source"; "revision": number; "validation": { "status": "verified" | "failed" | "unverified"; "checkedAt": string; "invocationId"?: string; "sampleCount": number; "issues": Array<string>; "empty"?: boolean; "storeId"?: string } };
 export function call13(client: AppsClient, ref: AppRef, input: Input13, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output13>> { return client.invoke(ref, catalog[13], input as JsonValue, options) as Promise<CapabilityResult<Output13>>; }
 
-export type Input14 = { "viewId": string; "name": string; "description"?: string; "userRequest": string };
-export type Output14 = { "assetId": string; "kind": "template"; "title": string; "description"?: string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "userRequest": string; "savedAt"?: string };
+export type Input14 = { "title": string; "design"?: JsonValue; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "viewId"?: string; "legacyViewId"?: string; "templateId"?: string; "directory"?: string; "legacyBindings"?: Array<{ "id": string; "datasetKey"?: string; "fieldMap": ({  } & { [key: string]: JsonValue }); "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }>; "requiredBindingIds"?: Array<string>; "legacyNeedsSpecification"?: boolean };
+export type Output14 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
 export function call14(client: AppsClient, ref: AppRef, input: Input14, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output14>> { return client.invoke(ref, catalog[14], input as JsonValue, options) as Promise<CapabilityResult<Output14>>; }
 
-export type Input15 = { "viewId": string; "title"?: string; "design"?: JsonValue; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }> };
-export type Output15 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
+export type Input15 = { "id": string; "revision": number; "bindingId": string; "context"?: { "storeId": string }; "params"?: ({  } & { [key: string]: JsonValue }) };
+export type Output15 = { "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }; "sourceRef": { "id": string; "revision": number; "params": ({  } & { [key: string]: JsonValue }) }; "fieldMap": ({  } & { [key: string]: JsonValue }); "fieldMeta": ({  } & { [key: string]: JsonValue }); "rowsPath": string };
 export function call15(client: AppsClient, ref: AppRef, input: Input15, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output15>> { return client.invoke(ref, catalog[15], input as JsonValue, options) as Promise<CapabilityResult<Output15>>; }
 
-export type Input16 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
-export type Output16 = JsonValue | JsonValue;
+export type Input16 = { "viewId": string; "userRequest": string; "title"?: string; "mode": "save_as" | "update"; "componentId"?: string; "expectedRevision"?: number; "legacyComponentId"?: string; "legacyTemplate"?: JsonValue };
+export type Output16 = { "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> };
 export function call16(client: AppsClient, ref: AppRef, input: Input16, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output16>> { return client.invoke(ref, catalog[16], input as JsonValue, options) as Promise<CapabilityResult<Output16>>; }
 
-export type Input17 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Input17 = { "title": string; "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }; "legacyBinding"?: { "id": string; "datasetKey"?: string; "fieldMap": ({  } & { [key: string]: JsonValue }); "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }; "legacyFieldOrder"?: Array<string>; "userRequest": string };
 export type Output17 = JsonValue | JsonValue;
 export function call17(client: AppsClient, ref: AppRef, input: Input17, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output17>> { return client.invoke(ref, catalog[17], input as JsonValue, options) as Promise<CapabilityResult<Output17>>; }
 
-export type Input18 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
-export type Output18 = JsonValue | JsonValue;
+export type Input18 = { "viewId": string; "name": string; "description"?: string; "userRequest": string };
+export type Output18 = { "assetId": string; "kind": "template"; "title": string; "description"?: string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "userRequest": string; "savedAt"?: string };
 export function call18(client: AppsClient, ref: AppRef, input: Input18, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output18>> { return client.invoke(ref, catalog[18], input as JsonValue, options) as Promise<CapabilityResult<Output18>>; }
 
-export type Input19 = { "storeId"?: string; "store"?: string; "mode": "search" | "show" | "template" | "values" | "validate_value" | "sync"; "q"?: string; "descriptionCategoryId"?: string; "typeId"?: string; "attributeId"?: string; "valueId"?: string; "dictionaryId"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number };
-export type Output19 = JsonValue | JsonValue;
+export type Input19 = { "viewId": string; "title"?: string; "design"?: JsonValue; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string } };
+export type Output19 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "datasetId"?: string; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string } }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "createdAt": string; "updatedAt": string; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
 export function call19(client: AppsClient, ref: AppRef, input: Input19, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output19>> { return client.invoke(ref, catalog[19], input as JsonValue, options) as Promise<CapabilityResult<Output19>>; }
 
-export type Input20 = { "itemId": string };
-export type Output20 = JsonValue | JsonValue;
+export type Input20 = { "definition": { "id": string; "title": string; "description"?: string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "storeScoped"?: boolean; "input": ({  } & { [key: string]: JsonValue }); "rowsPath": string; "parameters": Array<{ "name": string; "label": string; "type": "string" | "number" | "integer" | "boolean"; "required"?: boolean; "default"?: JsonValue; "linked"?: boolean; "editable"?: boolean; "choices"?: Array<{ "label": string; "value": string | number | boolean }> }>; "fields": Array<{ "key"?: string; "origin"?: { "source": string; "label": string }; "path": string; "role": string; "confirmed": boolean; "label"?: string; "description"?: string; "unit"?: string; "currency"?: string; "currencyPath"?: string; "percentScale"?: "fraction" | "whole"; "numericScale"?: number }>; "operations": { "pagination"?: { "cursorParam": string; "limitParam"?: string; "nextCursorPath"?: string; "totalPath"?: string }; "search": { "scope": "server" | "loaded"; "param"?: string }; "sort": { "scope": "server" | "loaded"; "param"?: string; "directionParam"?: string } } }; "expectedRevision"?: number; "context"?: { "storeId": string }; "params"?: ({  } & { [key: string]: JsonValue }) };
+export type Output20 = { "status": "verified" | "failed" | "unverified"; "checkedAt": string; "invocationId"?: string; "sampleCount": number; "issues": Array<string>; "empty"?: boolean; "storeId"?: string };
 export function call20(client: AppsClient, ref: AppRef, input: Input20, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output20>> { return client.invoke(ref, catalog[20], input as JsonValue, options) as Promise<CapabilityResult<Output20>>; }
 
 export type Input21 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
@@ -11621,118 +18741,194 @@ export type Input23 = { "storeId"?: string; "store"?: string; "body"?: ({  } & {
 export type Output23 = JsonValue | JsonValue;
 export function call23(client: AppsClient, ref: AppRef, input: Input23, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output23>> { return client.invoke(ref, catalog[23], input as JsonValue, options) as Promise<CapabilityResult<Output23>>; }
 
-export type Input24 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Input24 = { "storeId"?: string; "store"?: string; "mode": "search" | "show" | "template" | "values" | "validate_value" | "sync"; "q"?: string; "descriptionCategoryId"?: string; "typeId"?: string; "attributeId"?: string; "valueId"?: string; "dictionaryId"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number };
 export type Output24 = JsonValue | JsonValue;
 export function call24(client: AppsClient, ref: AppRef, input: Input24, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output24>> { return client.invoke(ref, catalog[24], input as JsonValue, options) as Promise<CapabilityResult<Output24>>; }
 
-export type Input25 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Input25 = { "itemId": string };
 export type Output25 = JsonValue | JsonValue;
 export function call25(client: AppsClient, ref: AppRef, input: Input25, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output25>> { return client.invoke(ref, catalog[25], input as JsonValue, options) as Promise<CapabilityResult<Output25>>; }
 
-export type Input26 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "price"?: number; "currency"?: string; "oldPrice"?: number; "actionId"?: number };
-export type Output26 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export type Input26 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output26 = JsonValue | JsonValue;
 export function call26(client: AppsClient, ref: AppRef, input: Input26, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output26>> { return client.invoke(ref, catalog[26], input as JsonValue, options) as Promise<CapabilityResult<Output26>>; }
 
-export type Input27 = {  };
+export type Input27 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
 export type Output27 = JsonValue | JsonValue;
 export function call27(client: AppsClient, ref: AppRef, input: Input27, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output27>> { return client.invoke(ref, catalog[27], input as JsonValue, options) as Promise<CapabilityResult<Output27>>; }
 
-export type Input28 = {  };
-export type Output28 = ({  } & { [key: string]: JsonValue });
+export type Input28 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output28 = JsonValue | JsonValue;
 export function call28(client: AppsClient, ref: AppRef, input: Input28, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output28>> { return client.invoke(ref, catalog[28], input as JsonValue, options) as Promise<CapabilityResult<Output28>>; }
 
-export type Input29 = {  };
-export type Output29 = Array<JsonValue | JsonValue | JsonValue>;
+export type Input29 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output29 = JsonValue | JsonValue;
 export function call29(client: AppsClient, ref: AppRef, input: Input29, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output29>> { return client.invoke(ref, catalog[29], input as JsonValue, options) as Promise<CapabilityResult<Output29>>; }
 
-export type Input30 = {  };
-export type Output30 = ({  } & { [key: string]: JsonValue });
+export type Input30 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output30 = JsonValue | JsonValue;
 export function call30(client: AppsClient, ref: AppRef, input: Input30, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output30>> { return client.invoke(ref, catalog[30], input as JsonValue, options) as Promise<CapabilityResult<Output30>>; }
 
-export type Input31 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
-export type Output31 = JsonValue | JsonValue;
+export type Input31 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "price"?: number; "currency"?: string; "oldPrice"?: number; "actionId"?: number };
+export type Output31 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
 export function call31(client: AppsClient, ref: AppRef, input: Input31, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output31>> { return client.invoke(ref, catalog[31], input as JsonValue, options) as Promise<CapabilityResult<Output31>>; }
 
 export type Input32 = {  };
-export type Output32 = ({ "appId": "hallmark"; "instructions": string; "tools": Array<{ "name": string; "kind": string }>; "boundaries": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
+export type Output32 = JsonValue | JsonValue;
 export function call32(client: AppsClient, ref: AppRef, input: Input32, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output32>> { return client.invoke(ref, catalog[32], input as JsonValue, options) as Promise<CapabilityResult<Output32>>; }
 
-export type Input33 = { "storeId"?: string; "store"?: string; "mode": "search" | "show" | "template" | "values" | "validate_value" | "sync"; "q"?: string; "descriptionCategoryId"?: string; "typeId"?: string; "attributeId"?: string; "valueId"?: string; "dictionaryId"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number };
-export type Output33 = JsonValue | JsonValue;
+export type Input33 = {  };
+export type Output33 = ({  } & { [key: string]: JsonValue });
 export function call33(client: AppsClient, ref: AppRef, input: Input33, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output33>> { return client.invoke(ref, catalog[33], input as JsonValue, options) as Promise<CapabilityResult<Output33>>; }
 
-export type Input34 = { "itemId": string };
-export type Output34 = JsonValue | JsonValue;
+export type Input34 = {  };
+export type Output34 = Array<JsonValue | JsonValue | JsonValue>;
 export function call34(client: AppsClient, ref: AppRef, input: Input34, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output34>> { return client.invoke(ref, catalog[34], input as JsonValue, options) as Promise<CapabilityResult<Output34>>; }
 
-export type Input35 = { "cursor"?: string; "limit"?: number; "query"?: string };
-export type Output35 = ({ "datasetKey": string; "items": Array<({  } & { [key: string]: JsonValue })>; "total": number; "cursor"?: string } & { [key: string]: JsonValue }) | ({ "datasetKey": string; "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "total": number; "cursor": string; "limit": number } & { [key: string]: JsonValue });
+export type Input35 = {  };
+export type Output35 = ({  } & { [key: string]: JsonValue });
 export function call35(client: AppsClient, ref: AppRef, input: Input35, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output35>> { return client.invoke(ref, catalog[35], input as JsonValue, options) as Promise<CapabilityResult<Output35>>; }
 
-export type Input36 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
-export type Output36 = ({ "datasetKey": string; "snapshot": ({  } & { [key: string]: JsonValue }); "counts": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
+export type Input36 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output36 = JsonValue | JsonValue;
 export function call36(client: AppsClient, ref: AppRef, input: Input36, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output36>> { return client.invoke(ref, catalog[36], input as JsonValue, options) as Promise<CapabilityResult<Output36>>; }
 
-export type Input37 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
-export type Output37 = ({ "datasetKey": string; "state": string; "lastSuccessAt": string | null; "lastError": JsonValue } & { [key: string]: JsonValue });
+export type Input37 = {  };
+export type Output37 = ({ "appId": "hallmark"; "instructions": string; "tools": Array<{ "name": string; "kind": string }>; "boundaries": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
 export function call37(client: AppsClient, ref: AppRef, input: Input37, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output37>> { return client.invoke(ref, catalog[37], input as JsonValue, options) as Promise<CapabilityResult<Output37>>; }
 
-export type Input38 = { "operationId": string };
-export type Output38 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export type Input38 = { "storeId"?: string; "store"?: string; "mode": "search" | "show" | "template" | "values" | "validate_value" | "sync"; "q"?: string; "descriptionCategoryId"?: string; "typeId"?: string; "attributeId"?: string; "valueId"?: string; "dictionaryId"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number };
+export type Output38 = JsonValue | JsonValue;
 export function call38(client: AppsClient, ref: AppRef, input: Input38, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output38>> { return client.invoke(ref, catalog[38], input as JsonValue, options) as Promise<CapabilityResult<Output38>>; }
 
-export type Input39 = { "storeId"?: string; "since"?: string; "limit"?: number };
-export type Output39 = Array<({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })>;
+export type Input39 = { "itemId": string };
+export type Output39 = JsonValue | JsonValue;
 export function call39(client: AppsClient, ref: AppRef, input: Input39, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output39>> { return client.invoke(ref, catalog[39], input as JsonValue, options) as Promise<CapabilityResult<Output39>>; }
 
-export type Input40 = { "storeId"?: string; "store"?: string; "path": string; "method"?: "GET" | "POST"; "body"?: ({  } & { [key: string]: JsonValue }) };
-export type Output40 = JsonValue | JsonValue;
+export type Input40 = { "cursor"?: string; "limit"?: number; "query"?: string };
+export type Output40 = ({ "datasetKey": string; "items": Array<({  } & { [key: string]: JsonValue })>; "total": number; "cursor"?: string } & { [key: string]: JsonValue }) | ({ "datasetKey": string; "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "total": number; "cursor": string; "limit": number } & { [key: string]: JsonValue });
 export function call40(client: AppsClient, ref: AppRef, input: Input40, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output40>> { return client.invoke(ref, catalog[40], input as JsonValue, options) as Promise<CapabilityResult<Output40>>; }
 
-export type Input41 = { "storeId"?: string; "store"?: string; "minMargin"?: number; "maxMargin"?: number; "minPrice"?: number; "maxPrice"?: number; "minStock"?: number; "maxStock"?: number; "status"?: string; "resultSetId"?: string };
-export type Output41 = ({ "resultSetId": string; "storeId": string; "expiresAt": string; "payload": JsonValue | JsonValue } & { [key: string]: JsonValue });
+export type Input41 = { "itemId": string };
+export type Output41 = { "items": Array<({  } & { [key: string]: JsonValue })>; "total": number };
 export function call41(client: AppsClient, ref: AppRef, input: Input41, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output41>> { return client.invoke(ref, catalog[41], input as JsonValue, options) as Promise<CapabilityResult<Output41>>; }
 
-export type Input42 = { "storeId"?: string; "store"?: string; "cursor"?: string; "limit"?: number; "query"?: string; "status"?: string; "fields"?: Array<"title" | "imageUrl" | "sku" | "status" | "platformStatus" | "currency" | "price" | "pricing" | "profit" | "stock" | "metrics" | "sources" | "declaredWeight" | "storeName"> };
-export type Output42 = ({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue }) | ({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue });
+export type Input42 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
+export type Output42 = ({ "datasetKey": string; "snapshot": ({  } & { [key: string]: JsonValue }); "counts": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
 export function call42(client: AppsClient, ref: AppRef, input: Input42, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output42>> { return client.invoke(ref, catalog[42], input as JsonValue, options) as Promise<CapabilityResult<Output42>>; }
 
-export type Input43 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "collectedItemId"?: string; "skuScope"?: Array<string>; "importItems"?: Array<({  } & { [key: string]: JsonValue })> };
-export type Output43 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export type Input43 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
+export type Output43 = ({ "datasetKey": string; "state": string; "lastSuccessAt": string | null; "lastError": JsonValue } & { [key: string]: JsonValue });
 export function call43(client: AppsClient, ref: AppRef, input: Input43, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output43>> { return client.invoke(ref, catalog[43], input as JsonValue, options) as Promise<CapabilityResult<Output43>>; }
 
-export type Input44 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "price"?: number; "currency"?: string; "oldPrice"?: number; "actionId"?: number };
+export type Input44 = { "operationId": string };
 export type Output44 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
 export function call44(client: AppsClient, ref: AppRef, input: Input44, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output44>> { return client.invoke(ref, catalog[44], input as JsonValue, options) as Promise<CapabilityResult<Output44>>; }
 
-export type Input45 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "stock"?: number; "warehouseId"?: string };
-export type Output45 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export type Input45 = { "storeId"?: string; "since"?: string; "limit"?: number };
+export type Output45 = Array<({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })>;
 export function call45(client: AppsClient, ref: AppRef, input: Input45, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output45>> { return client.invoke(ref, catalog[45], input as JsonValue, options) as Promise<CapabilityResult<Output45>>; }
 
-export type Input46 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string> };
-export type Output46 = ({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue }) | ({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue });
+export type Input46 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "dateFrom": string; "dateTo": string; "groupBy"?: "day" | "sku" };
+export type Output46 = { "items": Array<{ "sku": string | null; "title": string | null; "date": string | null; "impressions": number | null; "views": number | null; "cartEvents": number | null; "orderedUnits": number | null; "visitors": number | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call46(client: AppsClient, ref: AppRef, input: Input46, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output46>> { return client.invoke(ref, catalog[46], input as JsonValue, options) as Promise<CapabilityResult<Output46>>; }
 
-export type Input47 = {  };
-export type Output47 = Array<JsonValue | JsonValue | JsonValue>;
+export type Input47 = { "storeId": string; "recipe": { "version": 1; "grain": "product" | "posting"; "fields": Array<"products.productId" | "products.offerId" | "products.sku" | "products.title" | "products.image" | "products.status" | "products.statusCode" | "products.statusRaw" | "products.errorReason" | "prices.productId" | "prices.offerId" | "prices.price" | "prices.ordinaryPrice" | "prices.oldPrice" | "prices.currency" | "warehouses.warehouseId" | "warehouses.warehouseName" | "warehouses.fulfillment" | "warehouses.status" | "warehouses.statusCode" | "warehouses.statusRaw" | "warehouses.deliveryMethods" | "stocks.productId" | "stocks.sku" | "stocks.offerId" | "stocks.warehouseId" | "stocks.warehouseName" | "stocks.stockPresent" | "stocks.stockReserved" | "stocks.stockAvailable" | "analytics.sku" | "analytics.title" | "analytics.date" | "analytics.impressions" | "analytics.views" | "analytics.cartEvents" | "analytics.orderedUnits" | "analytics.visitors" | "orders.orderId" | "orders.orderNumber" | "orders.postingNumber" | "orders.sku" | "orders.offerId" | "orders.title" | "orders.quantity" | "orders.orderPrice" | "orders.currency" | "orders.status" | "orders.statusCode" | "orders.statusRaw" | "orders.createdAt" | "orders.shipmentAt" | "orders.trackingNumber" | "weights.postingNumber" | "weights.sku" | "weights.offerId" | "weights.quantity" | "weights.actualWeight" | "weights.declaredWeight" | "weights.weightDifference" | "weights.weightScope" | "weights.shipmentAt" | "finance.accrualId" | "finance.unitNumber" | "finance.postingNumber" | "finance.date" | "finance.accrualType" | "finance.amount" | "finance.commission" | "finance.logisticsFee" | "finance.feeDetails" | "finance.currency" | "promotions.actionId" | "promotions.actionName" | "promotions.productId" | "promotions.participation" | "promotions.actionPrice" | "promotions.maxActionPrice" | "promotions.currency" | "promotions.startsAt" | "promotions.endsAt" | "returns.returnId" | "returns.postingNumber" | "returns.orderId" | "returns.orderNumber" | "returns.sku" | "returns.offerId" | "returns.title" | "returns.quantity" | "returns.returnReason" | "returns.status" | "returns.statusCode" | "returns.statusRaw" | "returns.createdAt" | "returns.orderPrice" | "returns.currency"> }; "dateFrom"?: string; "dateTo"?: string; "warehouseId"?: string; "actionId"?: string; "participation"?: "joined" | "eligible"; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean };
+export type Output47 = { "items": Array<{ "products"?: { "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "image": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "errorReason": string | null }; "prices"?: { "productId": string | null; "offerId": string | null; "price": number | null; "ordinaryPrice": number | null; "oldPrice": number | null; "currency": string | null }; "warehouses"?: { "warehouseId": string | null; "warehouseName": string | null; "fulfillment": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "deliveryMethods": string | null }; "stocks"?: { "productId": string | null; "sku": string | null; "offerId": string | null; "warehouseId": string | null; "warehouseName": string | null; "stockPresent": number | null; "stockReserved": number | null; "stockAvailable": number | null }; "analytics"?: { "sku": string | null; "title": string | null; "date": string | null; "impressions": number | null; "views": number | null; "cartEvents": number | null; "orderedUnits": number | null; "visitors": number | null }; "orders"?: { "orderId": string | null; "orderNumber": string | null; "postingNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "orderPrice": number | null; "currency": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "shipmentAt": string | null; "trackingNumber": string | null }; "weights"?: { "postingNumber": string | null; "sku": string | null; "offerId": string | null; "quantity": number | null; "actualWeight": number | null; "declaredWeight": number | null; "weightDifference": number | null; "weightScope": string | null; "shipmentAt": string | null }; "finance"?: { "accrualId": string | null; "unitNumber": string | null; "postingNumber": string | null; "date": string | null; "accrualType": string | null; "amount": number | null; "commission": number | null; "logisticsFee": number | null; "feeDetails": string | null; "currency": string | null }; "promotions"?: { "actionId": string | null; "actionName": string | null; "productId": string | null; "participation": string | null; "actionPrice": number | null; "maxActionPrice": number | null; "currency": string | null; "startsAt": string | null; "endsAt": string | null }; "returns"?: { "returnId": string | null; "postingNumber": string | null; "orderId": string | null; "orderNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "returnReason": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "orderPrice": number | null; "currency": string | null } }>; "cursor"?: string; "total": number; "dataTime": string | null; "warnings": Array<string>; "sourceStates": Array<{ "source": string; "status": "ready" | "empty" | "missing"; "rowCount": number; "pageCount": number; "dataTime": string | null; "fetchedAt": string | null; "cacheHit": boolean; "freshness": "fresh" | "stale"; "cacheReason": "none" | "ttl" | "rate_limit" | "upstream_unavailable" | "refresh_due"; "nextRetryAt"?: string }>; "cache": { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean }; "fieldMeta": Array<{ "key": string; "source": string; "label": string; "description": string; "format": string; "currencyPath"?: string; "unit"?: string }>; "period"?: { "dateFrom": string; "dateTo": string } };
 export function call47(client: AppsClient, ref: AppRef, input: Input47, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output47>> { return client.invoke(ref, catalog[47], input as JsonValue, options) as Promise<CapabilityResult<Output47>>; }
 
-export type Input48 = { "query": string };
-export type Output48 = JsonValue | JsonValue | JsonValue;
+export type Input48 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "dateFrom": string; "dateTo": string };
+export type Output48 = { "items": Array<{ "accrualId": string | null; "unitNumber": string | null; "postingNumber": string | null; "date": string | null; "accrualType": string | null; "amount": number | null; "commission": number | null; "logisticsFee": number | null; "feeDetails": string | null; "currency": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call48(client: AppsClient, ref: AppRef, input: Input48, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output48>> { return client.invoke(ref, catalog[48], input as JsonValue, options) as Promise<CapabilityResult<Output48>>; }
 
-export type Input49 = { "id"?: string; "title": string; "content": string };
-export type Output49 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export type Input49 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "dateFrom": string; "dateTo": string; "postingNumber"?: string; "status"?: string };
+export type Output49 = { "items": Array<{ "orderId": string | null; "orderNumber": string | null; "postingNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "orderPrice": number | null; "currency": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "shipmentAt": string | null; "trackingNumber": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call49(client: AppsClient, ref: AppRef, input: Input49, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output49>> { return client.invoke(ref, catalog[49], input as JsonValue, options) as Promise<CapabilityResult<Output49>>; }
 
-export type Input50 = { "id": string };
-export type Output50 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export type Input50 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "productId"?: string };
+export type Output50 = { "items": Array<{ "productId": string | null; "offerId": string | null; "price": number | null; "ordinaryPrice": number | null; "oldPrice": number | null; "currency": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call50(client: AppsClient, ref: AppRef, input: Input50, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output50>> { return client.invoke(ref, catalog[50], input as JsonValue, options) as Promise<CapabilityResult<Output50>>; }
 
-export type Input51 = { "query"?: string; "cursor"?: string; "limit"?: number };
-export type Output51 = { "items": Array<{ "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } }>; "total": number; "returned": number; "nextCursor": string | null; "completeness": "complete" | "partial" };
+export type Input51 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "productId"?: string; "sku"?: string };
+export type Output51 = { "items": Array<{ "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "image": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "errorReason": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call51(client: AppsClient, ref: AppRef, input: Input51, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output51>> { return client.invoke(ref, catalog[51], input as JsonValue, options) as Promise<CapabilityResult<Output51>>; }
 
-export type Input52 = JsonValue | JsonValue;
-export type Output52 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export type Input52 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "actionId"?: string; "participation"?: "joined" | "eligible" };
+export type Output52 = { "items": Array<{ "actionId": string | null; "actionName": string | null; "productId": string | null; "participation": string | null; "actionPrice": number | null; "maxActionPrice": number | null; "currency": string | null; "startsAt": string | null; "endsAt": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call52(client: AppsClient, ref: AppRef, input: Input52, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output52>> { return client.invoke(ref, catalog[52], input as JsonValue, options) as Promise<CapabilityResult<Output52>>; }
+
+export type Input53 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "returnId"?: string };
+export type Output53 = { "items": Array<{ "returnId": string | null; "postingNumber": string | null; "orderId": string | null; "orderNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "returnReason": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "orderPrice": number | null; "currency": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export function call53(client: AppsClient, ref: AppRef, input: Input53, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output53>> { return client.invoke(ref, catalog[53], input as JsonValue, options) as Promise<CapabilityResult<Output53>>; }
+
+export type Input54 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "sku"?: string; "warehouseId"?: string };
+export type Output54 = { "items": Array<{ "productId": string | null; "sku": string | null; "offerId": string | null; "warehouseId": string | null; "warehouseName": string | null; "stockPresent": number | null; "stockReserved": number | null; "stockAvailable": number | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export function call54(client: AppsClient, ref: AppRef, input: Input54, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output54>> { return client.invoke(ref, catalog[54], input as JsonValue, options) as Promise<CapabilityResult<Output54>>; }
+
+export type Input55 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "warehouseId"?: string };
+export type Output55 = { "items": Array<{ "warehouseId": string | null; "warehouseName": string | null; "fulfillment": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "deliveryMethods": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export function call55(client: AppsClient, ref: AppRef, input: Input55, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output55>> { return client.invoke(ref, catalog[55], input as JsonValue, options) as Promise<CapabilityResult<Output55>>; }
+
+export type Input56 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "dateFrom": string; "dateTo": string };
+export type Output56 = { "items": Array<{ "postingNumber": string | null; "sku": string | null; "offerId": string | null; "quantity": number | null; "actualWeight": number | null; "declaredWeight": number | null; "weightDifference": number | null; "weightScope": string | null; "shipmentAt": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export function call56(client: AppsClient, ref: AppRef, input: Input56, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output56>> { return client.invoke(ref, catalog[56], input as JsonValue, options) as Promise<CapabilityResult<Output56>>; }
+
+export type Input57 = { "storeId"?: string; "store"?: string; "path": string; "method"?: "GET" | "POST"; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output57 = JsonValue | JsonValue;
+export function call57(client: AppsClient, ref: AppRef, input: Input57, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output57>> { return client.invoke(ref, catalog[57], input as JsonValue, options) as Promise<CapabilityResult<Output57>>; }
+
+export type Input58 = { "storeId"?: string; "store"?: string; "minMargin"?: number; "maxMargin"?: number; "minPrice"?: number; "maxPrice"?: number; "minStock"?: number; "maxStock"?: number; "status"?: string; "resultSetId"?: string };
+export type Output58 = ({ "resultSetId": string; "storeId": string; "expiresAt": string; "payload": JsonValue | JsonValue } & { [key: string]: JsonValue });
+export function call58(client: AppsClient, ref: AppRef, input: Input58, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output58>> { return client.invoke(ref, catalog[58], input as JsonValue, options) as Promise<CapabilityResult<Output58>>; }
+
+export type Input59 = { "storeId"?: string; "store"?: string; "cursor"?: string; "limit"?: number; "query"?: string; "status"?: string; "fields"?: Array<"title" | "imageUrl" | "sku" | "status" | "platformStatus" | "currency" | "price" | "pricing" | "profit" | "stock" | "metrics" | "sources" | "declaredWeight" | "storeName"> };
+export type Output59 = ({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue }) | ({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue });
+export function call59(client: AppsClient, ref: AppRef, input: Input59, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output59>> { return client.invoke(ref, catalog[59], input as JsonValue, options) as Promise<CapabilityResult<Output59>>; }
+
+export type Input60 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "collectedItemId"?: string; "skuScope"?: Array<string>; "importItems"?: Array<({  } & { [key: string]: JsonValue })> };
+export type Output60 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export function call60(client: AppsClient, ref: AppRef, input: Input60, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output60>> { return client.invoke(ref, catalog[60], input as JsonValue, options) as Promise<CapabilityResult<Output60>>; }
+
+export type Input61 = { "storeId": string; "query"?: string; "cursor"?: string; "limit"?: number; "loadAll"?: boolean; "planMode"?: "delivery" | "platform" | "custom"; "deliveryMethodId"?: string; "fixedFeeYuan"?: number; "logisticsYuanPerKg"?: number; "commissionPercent"?: number; "forceRefresh"?: boolean };
+export type Output61 = { "products": Array<{ "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "imageUrl": string | null; "currency": string | null; "productUrl": string | null; "salesSpecification": string | null; "purchaseSpecification": string | null; "purchaseLinks": Array<{ "url": string; "label": string }>; "purchaseMinor": number | null; "sellerMinor": number | null; "packageGrams": number | null; "referenceProfit": { "margin": number | null; "profitMinor": number | null; "logisticsMinor": number | null; "commissionMinor": number | null; "fixedMinor": number | null; "reason": string | null; "metricBasis": string }; "logisticsMatch": { "status": "unique" | "choice" | "unavailable" | "unknown"; "candidatePlanIds": Array<string>; "selectedPlanId"?: string; "label": string; "reason": string | null } }>; "total": number; "cursor"?: string; "dataTime": string | null; "warnings": Array<string>; "plan": { "mode": "delivery" | "platform" | "custom"; "label": string; "settingsRevision": number | null; "fixedFeeYuan": number | null; "logisticsYuanPerKg": number | null; "commissionPercent": number | null; "reason": string | null; "deliveryMethodId": string | null; "choices": Array<{ "id": string; "name": string; "warehouseId": string; "warehouseName": string | null; "active": boolean }>; "selectionNote": string }; "cache": { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export function call61(client: AppsClient, ref: AppRef, input: Input61, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output61>> { return client.invoke(ref, catalog[61], input as JsonValue, options) as Promise<CapabilityResult<Output61>>; }
+
+export type Input62 = { "storeId": string; "productId": string };
+export type Output62 = { "items": Array<({  } & { [key: string]: JsonValue })>; "total": number };
+export function call62(client: AppsClient, ref: AppRef, input: Input62, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output62>> { return client.invoke(ref, catalog[62], input as JsonValue, options) as Promise<CapabilityResult<Output62>>; }
+
+export type Input63 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "price"?: number; "currency"?: string; "oldPrice"?: number; "actionId"?: number };
+export type Output63 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export function call63(client: AppsClient, ref: AppRef, input: Input63, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output63>> { return client.invoke(ref, catalog[63], input as JsonValue, options) as Promise<CapabilityResult<Output63>>; }
+
+export type Input64 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "stock"?: number; "warehouseId"?: string };
+export type Output64 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export function call64(client: AppsClient, ref: AppRef, input: Input64, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output64>> { return client.invoke(ref, catalog[64], input as JsonValue, options) as Promise<CapabilityResult<Output64>>; }
+
+export type Input65 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string> };
+export type Output65 = ({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue }) | ({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue });
+export function call65(client: AppsClient, ref: AppRef, input: Input65, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output65>> { return client.invoke(ref, catalog[65], input as JsonValue, options) as Promise<CapabilityResult<Output65>>; }
+
+export type Input66 = {  };
+export type Output66 = Array<JsonValue | JsonValue | JsonValue>;
+export function call66(client: AppsClient, ref: AppRef, input: Input66, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output66>> { return client.invoke(ref, catalog[66], input as JsonValue, options) as Promise<CapabilityResult<Output66>>; }
+
+export type Input67 = { "query": string };
+export type Output67 = JsonValue | JsonValue | JsonValue;
+export function call67(client: AppsClient, ref: AppRef, input: Input67, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output67>> { return client.invoke(ref, catalog[67], input as JsonValue, options) as Promise<CapabilityResult<Output67>>; }
+
+export type Input68 = { "id"?: string; "title": string; "content": string };
+export type Output68 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export function call68(client: AppsClient, ref: AppRef, input: Input68, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output68>> { return client.invoke(ref, catalog[68], input as JsonValue, options) as Promise<CapabilityResult<Output68>>; }
+
+export type Input69 = { "id": string };
+export type Output69 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export function call69(client: AppsClient, ref: AppRef, input: Input69, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output69>> { return client.invoke(ref, catalog[69], input as JsonValue, options) as Promise<CapabilityResult<Output69>>; }
+
+export type Input70 = { "query"?: string; "cursor"?: string; "limit"?: number };
+export type Output70 = { "items": Array<{ "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } }>; "total": number; "returned": number; "nextCursor": string | null; "completeness": "complete" | "partial" };
+export function call70(client: AppsClient, ref: AppRef, input: Input70, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output70>> { return client.invoke(ref, catalog[70], input as JsonValue, options) as Promise<CapabilityResult<Output70>>; }
+
+export type Input71 = JsonValue | JsonValue;
+export type Output71 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export function call71(client: AppsClient, ref: AppRef, input: Input71, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output71>> { return client.invoke(ref, catalog[71], input as JsonValue, options) as Promise<CapabilityResult<Output71>>; }

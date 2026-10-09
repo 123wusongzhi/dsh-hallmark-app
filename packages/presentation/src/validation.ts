@@ -1,7 +1,7 @@
 import type { DataBinding, ViewSpec, WidgetType } from './types.ts';
 import { TOOL_DEFINITIONS } from '../../contracts/src/index.ts';
 
-export const WIDGET_TYPES: WidgetType[] = ['stat_card', 'table', 'bar_chart', 'line_chart', 'product_card', 'status_badge', 'text'];
+export const WIDGET_TYPES: WidgetType[] = ['stat_card', 'table', 'bar_chart', 'line_chart', 'product_card', 'product_list', 'sku_detail', 'status_badge', 'text'];
 export const READ_QUERY_TOOLS = new Set(TOOL_DEFINITIONS.filter(tool => tool.readOnly && ['read','compute'].includes(tool.kind) && !['hallmark_app_info','hallmark_resolve_store','hallmark_list_saved','hallmark_get_operation','hallmark_list_operations','hallmark_get_data_status'].includes(tool.name)).map(tool => tool.name));
 export class PresentationError extends Error { code: string; constructor(code: string, message: string) { super(message); this.code = code; } }
 const unsafe = new Set(['__proto__', 'prototype', 'constructor']);
@@ -41,7 +41,7 @@ export function validateBinding(binding: unknown): asserts binding is DataBindin
 export function validateViewSpec(value: unknown): asserts value is ViewSpec {
   safeJSON(value);
   const v: any = value;
-  object(v, ['id','title','templateId','theme','layout','widgets','bindings'], 'view'); text(v.id, 'view.id'); text(v.title, 'view.title');
+  object(v, ['id','title','templateId','theme','layout','widgets','bindings','links'], 'view'); text(v.id, 'view.id'); text(v.title, 'view.title');
   if (v.templateId !== undefined) text(v.templateId, 'templateId');
   if (!Array.isArray(v.widgets) || !v.widgets.length || v.widgets.length > 100) throw new PresentationError('INVALID_SPEC', 'View requires 1–100 widgets');
   if (!Array.isArray(v.bindings) || v.bindings.length > 100) throw new PresentationError('INVALID_SPEC', 'bindings must be an array');
@@ -62,12 +62,50 @@ export function validateViewSpec(value: unknown): asserts value is ViewSpec {
       for (const col of w.columns) { object(col, ['field','label','format'], 'column'); text(col.field, 'column.field'); text(col.label, 'column.label'); if (col.format !== undefined && !['text','currency','percent','date'].includes(col.format)) throw new PresentationError('INVALID_SPEC', 'Invalid column format'); }
     }
     if (w.options !== undefined) {
-      object(w.options, ['sort','pageSize','currency','xField','yField','statusField','description','color','showLegend'], 'widget.options');
+      const native = w.type === 'product_list' || w.type === 'sku_detail';
+      object(w.options, ['sort','pageSize','currency','xField','yField','statusField','description','color','showLegend',...(native?['columns','requiresSelection']:[]),...(native||w.type==='table'?['density','fieldMeta','rowsPath','example','materialId','displayColumns']:[])], 'widget.options');
+      if(w.options.materialId!==undefined&&w.options.materialId!=='data-table'&&!(w.type==='product_list'&&w.options.materialId==='product-procurement'))throw new PresentationError('INVALID_SPEC','Unknown material');
       if (w.options.sort !== undefined) { object(w.options.sort, ['field','direction'], 'sort'); text(w.options.sort.field, 'sort.field'); if (!['asc','desc'].includes(w.options.sort.direction)) throw new PresentationError('INVALID_SPEC', 'sort.direction must be asc or desc'); }
       if (w.options.pageSize !== undefined && (!Number.isInteger(w.options.pageSize) || w.options.pageSize < 1 || w.options.pageSize > 200)) throw new PresentationError('INVALID_SPEC', 'pageSize must be 1–200');
+      if (w.options.density !== undefined && !['comfortable','compact'].includes(w.options.density)) throw new PresentationError('INVALID_SPEC', 'Invalid material density');
+      for(const key of ['requiresSelection','example']) if(w.options[key]!==undefined&&typeof w.options[key]!=='boolean') throw new PresentationError('INVALID_SPEC', `${key} must be boolean`);
+      if(w.options.rowsPath!==undefined&&typeof w.options.rowsPath!=='string')throw new PresentationError('INVALID_SPEC','rowsPath must be a string');
+      if(w.options.columns!==undefined){
+        if(!Array.isArray(w.options.columns)||w.options.columns.length>30)throw new PresentationError('INVALID_SPEC','Material columns must be an array of at most 30 columns');
+        const names=new Set();
+        for(const col of w.options.columns){object(col,['field','label'],'material column');text(col.field,'material column.field');if(col.label!==undefined)text(col.label,'material column.label');if(names.has(col.field))throw new PresentationError('INVALID_SPEC','Duplicate material column');names.add(col.field);}
+      }
+      if(w.options.displayColumns!==undefined){
+        if(!Array.isArray(w.options.displayColumns)||w.options.displayColumns.length>30)throw new PresentationError('INVALID_SPEC','Display columns must be an array of at most 30 columns');
+        const names=new Set();
+        for(const col of w.options.displayColumns){object(col,['field','label','visible'],'display column');text(col.field,'display column.field');if(col.label!==undefined)text(col.label,'display column.label');if(typeof col.visible!=='boolean')throw new PresentationError('INVALID_SPEC','Display column visibility must be boolean');if(names.has(col.field))throw new PresentationError('INVALID_SPEC','Duplicate display column');names.add(col.field);}
+      }
+      if(w.options.fieldMeta!==undefined){
+        object(w.options.fieldMeta,Object.keys(w.options.fieldMeta??{}),'fieldMeta');
+        for(const meta of Object.values(w.options.fieldMeta) as any[]){
+          object(meta,['key','origin','label','description','format','unit','currency','currencyPath','percentScale','numericScale','confirmed','path','role'],'field metadata');
+          for(const key of ['key','label','description','unit','currency','currencyPath','path','role'])if(meta[key]!==undefined&&typeof meta[key]!=='string')throw new PresentationError('INVALID_SPEC',`field metadata ${key} must be a string`);
+          if(meta.origin!==undefined){object(meta.origin,['source','label'],'field origin');text(meta.origin.source,'field origin.source');text(meta.origin.label,'field origin.label');}
+          if(meta.format!==undefined&&!['text','currency','percent','integer','datetime','image'].includes(meta.format))throw new PresentationError('INVALID_SPEC','Invalid semantic format');
+          if(meta.percentScale!==undefined&&!['fraction','whole'].includes(meta.percentScale))throw new PresentationError('INVALID_SPEC','Invalid percentage scale');
+          if(meta.numericScale!==undefined&&(typeof meta.numericScale!=='number'||!Number.isFinite(meta.numericScale)||meta.numericScale<=0))throw new PresentationError('INVALID_SPEC','Invalid numeric scale');
+          if(meta.confirmed!==undefined&&typeof meta.confirmed!=='boolean')throw new PresentationError('INVALID_SPEC','confirmed must be boolean');
+        }
+      }
     }
     const profitFields = [...Object.values(w.fields ?? {}), ...(w.columns ?? []).map((c: any) => c.field)].join(' ');
     if (/profit|margin|利润/i.test(profitFields) && /实际结算|实际净利润|settled net profit/i.test(`${w.title ?? ''} ${(w.columns ?? []).map((c: any) => c.label).join(' ')}`)) throw new PresentationError('METRIC_BASIS_INVALID', 'Reference profits must not be labelled actual settled net profit');
+  }
+  if(v.links!==undefined){
+    if(!Array.isArray(v.links)||v.links.length>100)throw new PresentationError('INVALID_SPEC','links must be an array');
+    const targets=new Set();
+    for(const link of v.links){
+      object(link,['from','to'],'link');object(link.from,['widgetId','event','field'],'link.from');object(link.to,['bindingId','param'],'link.to');
+      if(!widgets.has(link.from.widgetId)||v.widgets.find((w:any)=>w.id===link.from.widgetId)?.type!=='product_list'||link.from.event!=='select'||link.from.field!=='product.id')throw new PresentationError('INVALID_SPEC','Link must select a product from a product list');
+      if(!bindings.has(link.to.bindingId))throw new PresentationError('INVALID_SPEC','Unknown linked binding');text(link.to.param,'linked parameter');
+      if(!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(link.to.param)||unsafe.has(link.to.param))throw new PresentationError('INVALID_SPEC','Invalid linked parameter');
+      const target=`${link.to.bindingId}:${link.to.param}`;if(targets.has(target))throw new PresentationError('INVALID_SPEC','Duplicate linked parameter');targets.add(target);
+    }
   }
   const used = new Set<string>();
   const visit = (node: any) => {

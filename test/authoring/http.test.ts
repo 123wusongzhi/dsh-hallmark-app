@@ -71,6 +71,22 @@ function project(workspace:string,title:string){
  writeFileSync(join(workspace,'package-lock.json'),'{}');writeFileSync(join(workspace,'input.html'),html);writeFileSync(join(workspace,'build.mjs'),"import{mkdirSync,copyFileSync}from'node:fs';mkdirSync('dist',{recursive:true});copyFileSync('input.html','dist/index.html');");
 }
 function openInput(publication:ViewPublication):StartMountInput{return {viewId:publication.viewId,publicationId:publication.publicationId,attemptId:publication.attemptId,attemptEpoch:publication.attemptEpoch,buildId:publication.candidateBuildId,expectedViewRevision:publication.expectedViewRevision};}
+test('HTTP opens reuse session workcopies and closure is durable and restorable without an authoring draft',async()=>{
+ const f=await setup();try{
+  const projectPath=join(f.directory,'original-project');mkdirSync(join(projectPath,'dist'),{recursive:true});writeFileSync(join(projectPath,'dist/index.html'),'<p>Saved</p>');
+  const view=f.presentation.openSource('original',projectPath,{title:'Saved'}),saved=f.presentation.saveComponent('original',view.viewId,'Save',{mode:'save_as'}),before=f.store.list('components');
+  const open=()=>f.call('/v1/views/open',{sessionId:'original',componentId:saved.componentId});
+  assert.equal((await open()).body.viewId,view.viewId);assert.equal((await open()).body.viewId,view.viewId);
+  const concurrent=await Promise.all(Array.from({length:8},()=>f.call('/v1/views/open',{sessionId:'parallel',componentId:saved.componentId})));assert.ok(concurrent.every(value=>value.status===200));assert.equal(new Set(concurrent.map(value=>value.body.viewId)).size,1);assert.equal((await f.call('/v1/views?sessionId=parallel')).body.views.length,1);
+  const copy=await f.call('/v1/views/open',{sessionId:'original',componentId:saved.componentId,newCopy:true});assert.equal(copy.status,200);assert.notEqual(copy.body.viewId,view.viewId);
+  const bad=await f.call('/v1/views/open',{sessionId:'original',componentId:saved.componentId,newCopy:'true'});assert.notEqual(bad.status,200);
+  const closed=await f.call('/v1/authoring/closeDraft',{sessionId:'original',params:{viewId:copy.body.viewId,action:'keep'}});assert.equal(closed.status,200);assert.equal(closed.body.panelState,'closed');
+  const views=await f.call('/v1/views?sessionId=original');assert.equal(views.body.views.find((value:any)=>value.viewId===copy.body.viewId).panelState,'closed');
+  const foreign=await f.call('/v1/authoring/restoreView',{sessionId:'other',params:{viewId:copy.body.viewId}});assert.notEqual(foreign.status,200);assert.equal(foreign.body.error.code,'VIEW_NOT_OWNED');
+  const restored=await f.call('/v1/authoring/restoreView',{sessionId:'original',params:{viewId:copy.body.viewId}});assert.equal(restored.status,200);assert.equal(restored.body.panelState,'open');assert.equal(restored.body.closedAt,undefined);
+  assert.deepEqual(f.store.list('components'),before);assert.equal((await f.call('/v1/views?sessionId=original')).body.views.length,2);
+ }finally{await f.cleanup();}
+});
 test('HTTP authoring validates real receipt schemas, authorizes candidate document, commits once and keeps fixed historical publications',{skip:!existsSync(browser),timeout:60000},async()=>{
  const f=await setup();try{
   const prepare=async(mode:'new'|'edit',viewId?:string,title='First')=>{

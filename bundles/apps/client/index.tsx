@@ -10,12 +10,13 @@ import {AppsToolView} from '../../../packages/plugin-apps/client/view.tsx';
 import {createAppsComponentHandlers} from '../../../packages/plugin-apps/client/component-handlers.ts';
 import {ownedWorkspaceIntent} from '../../../packages/dsh-plugin/client/workspace-intent.ts';
 import {chatEntryIntent} from '../../../packages/dsh-plugin/client/chat-entry.ts';
+import {prepareNativeDraft} from '../../../packages/dsh-plugin/client/native-draft.ts';
 import {registerNativeApps,NativeAppsInputObserver} from '../../../packages/plugin-apps/client/native-input.tsx';
 /** One registration owner for the Apps entry and the historical component/tool slots. */
 export default createClientPlugin({
   sidebarIcon: ApplicationsSidebarIcon,
   runtimeObserver: sidebarRight => () => <NativePublicationObserver sidebarRight={sidebarRight}/>,
-  main: (_layout,workspace,sidebar) => props => <AppsWorkspace {...props} onReturn={workspace ? sessionId => chatEntryIntent.enter(sessionId,() => workspace.openSession(sessionId),sidebar) : undefined}/>,
+  main: (_layout,workspace,sidebar) => props => <AppsWorkspace {...props} onReturn={workspace ? sessionId => chatEntryIntent.enter(sessionId,() => workspace.openSession(sessionId),sidebar) : undefined} onPrepareDataSource={workspace ? (sessionId,text)=>prepareNativeDraft(sessionId,text,target=>chatEntryIntent.enter(target,()=>workspace.openSession(target),sidebar)) : undefined}/>,
   toolview: HallmarkToolView,
   toolviewForSidebar: sidebarRight => props => <HallmarkToolView {...props} sidebarRight={sidebarRight}/>,
   toolKeys:['hallmark_render_view','hallmark_update_view','hallmark_open_component','hallmark_open_source_component','apps_invoke'],

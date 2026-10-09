@@ -15,6 +15,7 @@ export interface AdapterResponse {status:'ok'|'failed'|'unknown'|'unavailable';r
 export interface CoreClient {
  getStores():Promise<AdapterResponse>;getStoreProducts():Promise<AdapterResponse>;syncStoreProducts():Promise<AdapterResponse>;
  getTargetMargin():Promise<AdapterResponse>;searchCollectedItems(query?:string):Promise<AdapterResponse>;getCollectedItem(id:string):Promise<AdapterResponse>;getCollectedItemDetail?(id:string):Promise<AdapterResponse>;
+ getPricingSettings?():Promise<AdapterResponse>;
  platformCall(taskId:string,input:PlatformCallInput):Promise<AdapterResponse>;platformRead(taskId:string,input:PlatformCallInput):Promise<AdapterResponse>;
  getTask?(taskId:string):Promise<AdapterResponse>;verifyTask?(taskId:string):Promise<AdapterResponse>;
  submitOrdinaryCnyPrice?(input:SubmitOrdinaryCnyPriceInput):Promise<OrdinaryCnyOperationResult>;

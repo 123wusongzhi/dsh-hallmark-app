@@ -55,7 +55,7 @@ async function executePreview(input){
  const evaluate=async expression=>{const result=await command('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(result.exceptionDetails)throw new Error(result.exceptionDetails.exception?.description??result.exceptionDetails.text);return result.result?.value;};
  const viewportResults=[];
  let operationBlocked=false;
- const waitForOperations=async(timeoutMs=30000)=>{
+ const waitForOperations=async(timeoutMs=150000)=>{
   const deadline=Date.now()+timeoutMs;
   do{
    const busy=preview.pendingCalls||await evaluate('window.__APPS_PREVIEW?.inflight??0');

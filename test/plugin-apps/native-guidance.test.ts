@@ -11,6 +11,25 @@ test('Agent guidance describes automatic display and retry of the same preview a
   assert.equal(instructions.resultReader.request.runtime.keyFile,'key-file-reference');
 });
 
+test('default Host injects the shared user experience policy without tools or skill reads, within the prompt budget',async()=>{
+  const agent={id:'original-session'},root='C:/Users/wubil/.dsh/profiles/desktop/node_modules/dsh-plugin-apps-bundle',directory='E:/project/deepseek_h/dsh-hallmark-app/artifacts/apps-a2-bill-runtime-restored';
+  let summary!:(context:{agent?:{id:string};scope?:object})=>string;
+  const ctx={agents:{get:(id:string)=>id===agent.id?agent:undefined},tools:{register:()=>()=>{}},systemPrompt:{context(contribution:{text:typeof summary}){summary=contribution.text;return()=>{};}}} as unknown as AppsPluginContext;
+  const transport={identity:async()=>({transportMajor:1,catalogSchemaVersion:1}),listApps:async()=>[{appId:'hallmark',displayName:'Hallmark',providerState:'active'},{appId:'notes',displayName:'Notes',providerState:'active'}]} as unknown as AppsHostTransport;
+  const guidance:AppsAuthoringGuidance={cliPath:'C:/Users/wubil/AppData/Local/Programs/DeepSeek Harness/resources/runtime/cli/bin/dsh.cmd',nodeExecutable:'C:/Users/wubil/AppData/Local/Programs/DeepSeek Harness/DeepSeek Harness.exe',nodeArgs:['--expose-internals'],nodeEnvironment:{ELECTRON_RUN_AS_NODE:'1'},starterPath:root+'/source-starter/create-apps-source.mjs',sdkDirectory:root+'/sdk/component-runtime',buildRunnerPath:root+'/lib/apps-authoring-build.js',previewRunnerPath:root+'/lib/apps-authoring-preview.js',runtime:{url:'http://127.0.0.1:36994',keyFile:directory+'/service-key',archiveRoot:directory+'/source-components',evidenceRoot:directory+'/authoring-evidence'}};
+  const host=new AppsHost(ctx,transport,undefined,{authoringGuidance:guidance});
+  await host.start();
+  try{
+    assert.equal(host.nativeSessionAdapter,'disabled');
+    const text=summary({scope:agent}),payload=JSON.parse(text.split('\n')[1]),rules=payload.userPreferences.rules.join('\n');
+    assert.equal(payload.guidanceVersion,8);assert.equal(payload.userPreferences.policy,'component-experience-v1');assert.equal(payload.userPreferences.cacheTtlMs,15*60*1000);
+    assert.equal(payload.developerDocs.userPreferences,root+'/authoring-docs/user-preferences.md');
+    for(const pattern of [/蓝白/,/易懂中文/,/店铺选择/,/跨接口/,/添加信息/,/全量逻辑数据/,/后端组合/,/上次成功完整快照/,/手动刷新都在后台/,/临时失败保留旧快照和原时间/,/首次无快照/,/权限撤销/])assert.match(rules,pattern);
+    assert.ok(Buffer.byteLength(text)<8192,`guidance grew to ${Buffer.byteLength(text)} bytes`);
+    assert.equal(summary({agent:{id:agent.id}}),'');
+  }finally{await host.dispose();}
+});
+
 test('prepared authoring results produce a fixed original-chat card without claiming a committed view',async()=>{
   const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),tools=new Map<string,import('../../packages/plugin-apps/src/index.ts').NativeGatewayTool>();
   const ctx={agents:{get:()=>undefined},tools:{register(tool:import('../../packages/plugin-apps/src/index.ts').NativeGatewayTool){tools.set(tool.name,tool);return()=>tools.delete(tool.name);}}} as unknown as AppsPluginContext;

@@ -18,6 +18,7 @@ test('saved-component open refreshes the current workspace app summary only afte
       import {join} from 'node:path';
       import {AppsWorkspace} from './packages/plugin-apps/client/workspace.tsx';
       import {AppsLibrary} from './packages/plugin-apps/client/library.tsx';
+      import {WorkbenchBoard} from './packages/plugin-apps/client/workbench-board.tsx';
       import {RuntimeStore,AppsRuntime} from './packages/app-runtime/src/index.ts';
       import {NotesProvider} from './packages/app-notes/src/index.ts';
       import {AppsPresentationService} from './packages/app-presentation/src/index.ts';
@@ -58,31 +59,31 @@ test('saved-component open refreshes the current workspace app summary only afte
       const bindingsReads=sessionId=>requests.filter(row=>row.url.includes('resource=bindings&sessionId='+sessionId)).length;
       const opens=sessionId=>requests.filter(row=>row.body?.sessionId===sessionId&&row.body.capabilityId==='apps.presentation.open_component');
       const binding=sessionId=>runtime.sessionBindings(sessionId).find(row=>row.appId==='notes'&&row.connectionId==='saved');
-      const mount=async(sessionId)=>{await act(async()=>{if(tree)tree.update(<AppsWorkspace currentSessionId={sessionId}/>);else tree=create(<AppsWorkspace currentSessionId={sessionId}/>);});await until(()=>status()==='尚未在当前聊天启用'&&button('在当前会话打开'),'new chat '+sessionId+' initially has an unbound app summary');};
+      const mount=async(sessionId)=>{await act(async()=>{if(tree)tree.update(<AppsWorkspace currentSessionId={sessionId}/>);else tree=create(<AppsWorkspace currentSessionId={sessionId}/>);});await until(()=>status()==='尚未在当前聊天启用','new chat '+sessionId+' initially has an unbound app summary');await act(async()=>tree.root.findByType(WorkbenchBoard).props.onOpenSaved());await until(()=>!!button('打开组件'),'open the saved component library explicitly');};
       try{
-        await mount('A');const initialReads=bindingsReads('A');assert.equal(binding('A'),undefined);
-        await act(async()=>button('在当前会话打开').props.onClick());
+        await mount('A');const initialReads=bindingsReads('A'),onSavedView=tree.root.findByType(AppsLibrary).props.onOpenView;assert.equal(binding('A'),undefined);
+        await act(async()=>button('打开组件').props.onClick());
         await until(()=>binding('A')?.enabled,'saved component must activate its exact connection in the new chat');
         await until(()=>status()==='当前聊天已启用','successful saved-component receipt must refresh the app summary');
         assert.equal(bindingsReads('A'),initialReads+1);assert.equal(opens('A').length,1);assert.equal(opens('A')[0].body.input.componentId,component.componentId);
         const opened=store.list('views').find(view=>view.ownerSessionId==='A'&&view.sourceComponentId===component.componentId);assert.ok(opened);assert.equal(opened.source.buildId,seed.source.buildId);
-        const ownedReads=bindingsReads('A');await act(async()=>tree.root.findByType(AppsLibrary).props.onOpenView(seed));await act(async()=>{await wait();});
+        const ownedReads=bindingsReads('A');await act(async()=>onSavedView(seed));await act(async()=>{await wait();});
         assert.equal(bindingsReads('A'),ownedReads);assert.equal(status(),'当前聊天已启用');
 
         await mount('failure');const failureReads=bindingsReads('failure');
         await runtime.updateConnection({appId:'notes',connectionId:'saved',expectedConfigRevision:1,enabled:false});
-        await act(async()=>button('在当前会话打开').props.onClick());
+        await act(async()=>button('打开组件').props.onClick());
         await until(()=>JSON.stringify(tree.toJSON()).includes('已停用'),'failed open must display its confirmed failure');
         assert.equal(binding('failure'),undefined);assert.equal(bindingsReads('failure'),failureReads);assert.equal(status(),'尚未在当前聊天启用');assert.equal(opens('failure').length,1);
         await runtime.updateConnection({appId:'notes',connectionId:'saved',expectedConfigRevision:2,enabled:true});
 
-        await mount('late');await act(async()=>button('在当前会话打开').props.onClick());await until(()=>heldResponse,'fixture must hold the successful receipt');
+        await mount('late');await act(async()=>button('打开组件').props.onClick());await until(()=>heldResponse,'fixture must hold the successful receipt');
         assert.equal(binding('late')?.enabled,true);await mount('B');const nextReads=bindingsReads('B');
         await act(async()=>{releaseResponse();await wait();});await act(async()=>{await wait();});
         assert.equal(status(),'尚未在当前聊天启用');assert.equal(binding('B'),undefined);assert.equal(bindingsReads('B'),nextReads);assert.equal(store.list('views').filter(view=>view.ownerSessionId==='B').length,0);
 
         await mount('recovery');const recoveryReads=bindingsReads('recovery');loseResponse=true;
-        await act(async()=>button('在当前会话打开').props.onClick());await until(()=>button('检查原调用'),'lost receipt must use original request recovery');
+        await act(async()=>button('打开组件').props.onClick());await until(()=>button('检查原调用'),'lost receipt must use original request recovery');
         assert.equal(binding('recovery')?.enabled,true);assert.equal(bindingsReads('recovery'),recoveryReads);assert.equal(status(),'尚未在当前聊天启用');
         await act(async()=>button('检查原调用').props.onClick());await until(()=>status()==='当前聊天已启用','confirmed original receipt must refresh the app summary');
         assert.equal(bindingsReads('recovery'),recoveryReads+1);assert.equal(opens('recovery').length,1);

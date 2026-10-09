@@ -20,9 +20,10 @@ interface DirectoryProps {
   onRefreshViews?:()=>void;
   summaryRefreshKey?:number;
   navigation?:React.ReactNode;
+  onAppChange?:(appId:string)=>void;
   children?:React.ReactNode;
 }
-export function AppsDirectory({useSessions,currentSessionId,onReturn,onOpenView,onCreate,creationDisabled,onRefreshViews,summaryRefreshKey=0,navigation,children}:DirectoryProps) {
+export function AppsDirectory({useSessions,currentSessionId,onReturn,onOpenView,onCreate,creationDisabled,onRefreshViews,summaryRefreshKey=0,navigation,onAppChange,children}:DirectoryProps) {
   const sessionId=useSessions?useSessions(observeCurrentSession):currentSessionId;
   const [apps,setApps]=useState<AppRow[]>([]),[connections,setConnections]=useState<ConnectionRow[]>([]),[bindings,setBindings]=useState<BindingRow[]>([]);
   const [selected,setSelected]=useState<string>(),[error,setError]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[refresh,setRefresh]=useState(0);
@@ -51,6 +52,7 @@ export function AppsDirectory({useSessions,currentSessionId,onReturn,onOpenView,
   };
   const businessApps=apps.filter(app=>app.appId!=='apps');
   const current=businessApps.find(app=>app.appId===selected)??businessApps.find(app=>app.appId==='hallmark')??businessApps[0];
+  useEffect(()=>{if(current)onAppChange?.(current.appId);},[current?.appId,onAppChange]);
   const matches=businessApps.filter(app=>`${app.appId} ${app.displayName} ${description(app)}`.normalize('NFKC').toLocaleLowerCase().includes(query.normalize('NFKC').toLocaleLowerCase()));
   const visible=connections.filter(connection=>connection.appId===current?.appId);
   const enabled=(connection:ConnectionRow)=>bindings.some(binding=>binding.sessionId===sessionId&&binding.appId===connection.appId&&binding.connectionId===connection.connectionId&&binding.enabled);

@@ -151,7 +151,7 @@ test('all 26 legacy aliases replay valid inputs through schemas, HTTP, Runtime a
         case 'hallmark_render_view': state.viewId = data.viewId; assert.equal(data.spec.widgets[0].text, 'Source fields'); break;
         case 'hallmark_update_view': assert.equal(data.spec.title, 'Patched replay'); break;
         case 'hallmark_save_component': state.componentId = data.component.id; state.componentEntryId = data.entry.id; assert.equal(data.entry.viewId, state.componentId); assert.notEqual(data.entry.id, state.componentId); assert.deepEqual(data.entry, { id: state.componentEntryId, appId: 'hallmark', kind: 'component', title: 'Patched replay', pinned: false, order: 0, viewId: state.componentId }); break;
-        case 'hallmark_open_component': assert.equal(data.sourceComponentId, state.componentId); assert.notEqual(data.viewId, state.viewId); break;
+        case 'hallmark_open_component': assert.equal(data.sourceComponentId, state.componentId); assert.equal(data.viewId, state.viewId); assert.equal(f.store.list('views').length, 1); break;
         case 'hallmark_open_source_component': assert.equal(data.spec.kind, 'source'); assert.ok(f.sources.manifest(data.spec.source.buildId)); break;
         case 'hallmark_save_entry': state.dataEntryId = data.id; assert.deepEqual(data, { id: state.dataEntryId, appId: 'hallmark', kind: 'data', title: 'Product entry', binding: args.binding, pinned: false, order: 1 }); break;
         case 'hallmark_save_template': state.templateId = data.id; assert.deepEqual(data, { id: state.templateId, name: 'Reusable replay', description: '', theme: {}, layout: { type: 'column', children: ['text'] }, widgetStyles: [{ id: 'text', type: 'text', text: 'Source fields' }], contentRules: { bindingIds: [] }, version: 1 }); break;

@@ -6,7 +6,9 @@ user-invocable: true
 
 # Hallmark 组件设计 · A.2
 
-先读取 [Hallmark 视觉规范](references/visual-direction.md)。当前用户偏好蓝白业务界面、有颜色和清晰信息层级，窄栏使用图文列表、宽页可以使用表格；这些是可修改的设计起点。只调整应用目录、工作台、组件库、聊天消息中的组件入口与右侧组件视图，保留 DSH 原侧栏、已有会话与原输入框。
+先读取 Host 的 `authoringInstructions.userPreferences` 与 `developerDocs.userPreferences` 指向的统一政策（随包 `authoring-docs/user-preferences.md`），再按需读取 [Hallmark 视觉规范](references/visual-direction.md)。政策只用于当前用户的 DSH / Hallmark：蓝白简洁、视觉层次、中文字段、共享数据源与店铺分离、跨接口组合和渐进操作。默认全量逻辑数据与本地分页搜索排序；每次先显示上次成功完整快照，15 分钟到期或手动刷新在后台更新，不清空旧内容。首次无快照轻量准备，跨店与授权隔离；接口不支持时明确范围并补后端，不能伪称全量。用户最新指令优先。
+
+窄栏使用图文列表、宽页可以使用表格，是可修改的设计起点。只调整应用目录、工作台、组件库、聊天消息中的组件入口与右侧组件视图，保留 DSH 原侧栏、已有会话与原输入框。
 
 用户在任意已有会话输入 `@` 选择应用，然后自己发送原聊天请求。同一个原 Agent 使用原文件、命令与 Apps 网关处理创建或编辑请求。不要建立独立聊天标签、额外 Agent 循环或替代 DSH 的聊天界面。引用 chip、会话应用/连接绑定与 Agent 手动发送是三个不同事实；不能把一次选中直接当作 Runtime 已授权绑定。
 
@@ -22,9 +24,9 @@ Host 提供的 `authoringGuidance` 是安装目录、source starter、SDK、构�
 
 - apps_describe 只传 capabilityId/version，不传 appId。
 - 商品列表在 input.fields 指定所需字段，建议 title、imageUrl、sku、status、currency、pricing、profit、stock；身份字段和 total/cursor 自动保留。详情需要 sources 等字段时再读取，省略 fields 保留完整响应。binding.projection 不负责裁剪响应。
-- `list_store_products` / `hallmark.products.list` 的可选 `status` 只与源数据顶层 `row.status` 精确相等，缺失状态不匹配，不翻译或推断状态。仅在售绑定设置 `input.status: "on_sale"`；`query` 只做全文搜索，与 `status` 取交集，`total` 为过滤后的总数。禁止 Agent 遍历全店或客户端拉取全量后筛选在售商品，保留现有分页、`fields` 和同步语义。
+- `list_store_products` / `hallmark.products.list` 的可选 `status` 只与源数据顶层 `row.status` 精确相等，缺失状态不匹配，不翻译或推断状态。仅在售绑定设置 `input.status: "on_sale"`；`query` 只做全文搜索，与 `status` 取交集，`total` 为过滤后的总数。接口探索只读少量样本；正式全量逻辑结果由 Provider 按已支持筛选后台收集，不让 Agent 或组件自行 HTTP 遍历和拼接，也不猜未知状态。
 - 大结果的 sample 是截断样本；需要完整内容时按 authoringGuidance.resultReader 写 request.json 并运行读取器，使用返回的 outputPath。不要重复查询、猜结果文件或查 SQLite。
-- 列表分页统一使用 useApps.readBindingPage(bindingId, cursor)，协商 bindingPagesV1 后由宿主同步更新当前页 payload/resources/revision。页大小固定取 binding.query.input.limit；附加到聊天暂未开放，不生成附加按钮或为附加设置勾选；分页不自动同步 Agent 上下文。invokeCapability 仅做独立查询，不用于这条分页链路。
+- 完整快照优先使用本地分页，不为翻页重调接口。只有服务端游标分页的能力使用 useApps.readBindingPage(bindingId, cursor) 降级并标明范围；协商 bindingPagesV1 后宿主同步更新当前页 payload/resources/revision，接口页大小取 binding.query.input.limit。附加到聊天暂未开放，不生成附加按钮或为附加设置勾选；分页不自动同步 Agent 上下文。invokeCapability 仅做独立查询，不用于这条分页链路。
 - 先执行标准 build 和 live_readonly preview，出现具体失败后再定位相关实现；不要预先遍历安装包源码、旧报告或数据库。
 - 复用未变源码的 build 回执和预览生成的两张截图。外网图片使用预览缓存/占位，图片慢不触发重建或额外等待截图。
 

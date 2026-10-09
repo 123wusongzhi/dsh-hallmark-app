@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
 import {build} from 'esbuild';
 import {mkdtempSync,rmSync} from 'node:fs';
-import {resolve,join} from 'node:path';
+import {resolve,join,sep} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {AppsRuntime} from '../../packages/app-runtime/src/index.ts';
 import {AppsPresentationService} from '../../packages/app-presentation/src/index.ts';
@@ -43,6 +43,23 @@ test('same-session watchers share polling and notify only changed session snapsh
  const stopOther=watchOwnedAppsViews('B',()=>{},()=>true,undefined,100);await wait();assert.equal(calls,5);assert.deepEqual(changes,[{sessionId:'A'}]);version++;events.dispatchEvent(new Event('visibilitychange'));await wait();assert.equal(calls,6);assert.deepEqual(changes,[{sessionId:'A'},{sessionId:'B'}]);stopOther();
  `},bundle:true,platform:'node',format:'esm',outfile:entry,external:['react']});const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:10000});assert.equal(result.status,0,result.stderr);
  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test('confirmed panel close and restore outlive older catalogue reads and closed publications never auto-open',async()=>{
+ const root=resolve('artifacts'),dir=mkdtempSync(join(root,'panel-poll-state-')),entry=join(dir,'test.mjs');
+ try{await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
+ import assert from 'node:assert/strict';import {watchOwnedAppsViews,updateOwnedAppsView,readOwnedPendingPublication} from './packages/plugin-apps/client/native-publication.tsx';
+ const events=new EventTarget();globalThis.document={hidden:false,addEventListener:events.addEventListener.bind(events),removeEventListener:events.removeEventListener.bind(events)};globalThis.window=new EventTarget();
+ const opened={ownerSessionId:'A',viewId:'v',title:'同名组件',pendingPublicationId:'P',panelState:'open'},closed={...opened,panelState:'closed',closedAt:'2026-10-09T00:00:00Z'};
+ let held,reads=0;globalThis.fetch=async()=>{reads++;if(reads===1)return Response.json({views:[opened]});return new Promise(resolve=>held=resolve);};
+ const wait=()=>new Promise(resolve=>setTimeout(resolve,10));let first,other,reentered;const stop=watchOwnedAppsViews('A',views=>first=views,()=>true,undefined,10000),stopOther=watchOwnedAppsViews('A',views=>other=views,()=>true,undefined,10000);await wait();
+ events.dispatchEvent(new Event('visibilitychange'));await wait();assert.equal(reads,2);updateOwnedAppsView(closed);assert.equal(first[0].panelState,'closed');assert.equal(other[0].panelState,'closed');held(Response.json({views:[opened]}));await wait();assert.equal(first[0].panelState,'closed','an in-flight old list cannot reopen a confirmed closed panel');
+ stop();const stopReentered=watchOwnedAppsViews('A',views=>reentered=views,()=>true,undefined,10000);await wait();assert.equal(reentered[0].panelState,'closed','a remount reuses the updated shared catalogue');
+ events.dispatchEvent(new Event('visibilitychange'));await wait();updateOwnedAppsView(opened);held(Response.json({views:[closed]}));await wait();assert.equal(reentered[0].panelState,'open','an old closed list cannot undo explicit restoration');
+ const before=reads;assert.equal(await readOwnedPendingPublication('A',closed,new AbortController().signal),undefined);assert.equal(reads,before,'closed pending publications must not be discovered or mounted');
+ stopOther();stopReentered();globalThis.fetch=async()=>Response.json(closed);assert.equal(await readOwnedPendingPublication('A',opened,new AbortController().signal),undefined,'a view closed during publication inspection stays closed');
+ `},bundle:true,platform:'node',format:'esm',outfile:entry,external:['react']});const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:10000});assert.equal(result.status,0,result.stderr);
+ }finally{assert.ok(resolve(dir).startsWith(root+sep+'panel-poll-state-'));rmSync(dir,{recursive:true,force:true,maxRetries:5,retryDelay:200});}
 });
 
 test('fixed historical revisions and mounted publications read their indexed snapshot without scanning provider records',async()=>{
