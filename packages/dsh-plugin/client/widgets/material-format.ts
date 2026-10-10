@@ -1,3 +1,4 @@
+import {formatMaterialCurrency,formatMaterialInteger,formatMaterialPercent} from './number-format.ts';
 import type {DataBinding,WidgetSpec} from '../../../presentation/src/types.ts';
 import {FIELD_ROLE_MAP} from '../../../app-presentation/src/field-roles.ts';
 import {payloadRows,valueAt} from '../model.ts';
@@ -41,10 +42,10 @@ export function materialDisplay(row:Row,role:string,widget:WidgetSpec,binding?:D
     if(meta.format==='currency'){
       const currency=meta.currency??(meta.currencyPath?valueAt(row,meta.currencyPath):undefined)??materialValue(row,'price.currency',widget,binding)??widget.options?.currency;
       if(typeof currency!=='string'||!/^[A-Z]{3}$/i.test(currency))return '暂无数据（币种未确认）';
-      try{return new Intl.NumberFormat('zh-CN',{style:'currency',currency:currency.toUpperCase(),currencyDisplay:'code',maximumFractionDigits:2}).format(scaled);}catch{return '暂无数据（币种未确认）';}
+      try{return formatMaterialCurrency(scaled,currency.toUpperCase());}catch{return '暂无数据（币种未确认）';}
     }
-    if(meta.format==='percent')return meta.percentScale?new Intl.NumberFormat('zh-CN',{style:'percent',maximumFractionDigits:2}).format(meta.percentScale==='whole'?scaled/100:scaled):'暂无数据（比例未确认）';
-    return new Intl.NumberFormat('zh-CN',{maximumFractionDigits:0}).format(scaled)+(meta.unit?` ${meta.unit}`:'');
+    if(meta.format==='percent')return meta.percentScale?formatMaterialPercent(meta.percentScale==='whole'?scaled/100:scaled):'暂无数据（比例未确认）';
+    return formatMaterialInteger(scaled)+(meta.unit?` ${meta.unit}`:'');
   }
   if(meta.format==='datetime'){
     if(typeof raw!=='string'||!/^\d{4}-\d\d-\d\d/.test(raw)||!Number.isFinite(Date.parse(raw)))return '暂无数据';

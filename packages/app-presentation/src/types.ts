@@ -11,6 +11,7 @@ export interface PresentationStore {
   /** Indexed exact matches supplied by RuntimeStore; simple fixture stores may omit it. */
   query?<T>(collection:string,filters:Record<string,string|number|boolean|null>):T[];
   collectionVersion?(collection:string):string;
+  providerRecordScopeCandidates?<T>(appId:string,connectionId:string,namespace:string):T[];
   delete(collection:string,id:string):boolean;
   transaction<T>(action:()=>T):T;
 }

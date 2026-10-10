@@ -1,9 +1,10 @@
 import {build as esbuild} from 'esbuild';
 import ts from 'typescript';
-import {mkdir, readFile, writeFile, cp, readdir, rm} from 'node:fs/promises';
+import {mkdir, readFile, writeFile, cp, readdir, rm, realpath} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {join, resolve} from 'node:path';
+import {isBuiltin} from 'node:module';
+import {join, resolve, relative, dirname, isAbsolute} from 'node:path';
 const sourceInputPaths=new Set(['scripts/build-apps-bundle.mjs','scripts/create-apps-source.mjs','scripts/apps-authoring-build.mjs','scripts/apps-authoring-preview.mjs','scripts/preview-images.mjs','scripts/preview-data.mjs','scripts/authoring-output.mjs','scripts/authoring-resume.mjs','scripts/apps-authoring-check.mjs','scripts/apps-authoring-check.ps1','scripts/apps-read-result.mjs','scripts/verify-apps-sdk.mjs','scripts/install-desktop-apps.ps1','scripts/install-design-skills.ps1','skills/hallmark-component-design/SKILL.md','skills/hallmark-component-design/references/visual-direction.md','bundles/apps/package.json','bundles/apps/versions.json','bundles/apps/cordis.patch.yml','pnpm-lock.yaml']);
 async function build(options){
   const result=await esbuild({...options,metafile:true});
@@ -23,7 +24,21 @@ const client = await build({entryPoints:[`${directory}/client/index.tsx`],bundle
 const javascript = client.outputFiles.find(file => file.path.endsWith('.js')) ?? client.outputFiles[0];
 await writeFile(`${directory}/client/client.js`,`window.__ModuleLoader__.load({id:${JSON.stringify(manifest.name)},factory:function(require){var module={exports:{}};var exports=module.exports;\n${javascript.text}\nreturn module.exports;}});\n`);
 // Only the explicit Runtime executable imports concrete Providers; it is packaged as one companion entry.
-await build({entryPoints:['packages/service/src/apps-main.ts'],outfile:`${directory}/lib/runtime.js`,bundle:true,platform:'node',format:'esm',target:'node22',sourcemap:true,packages:'external'});
+// Keep the frozen Zod ESM module graph intact, but make the extracted Runtime self-contained.
+const zodRoot=await realpath('node_modules/zod'),vendorRoot=`${directory}/lib/vendor/zod`;
+const zodGraph=await esbuild({entryPoints:['node_modules/zod/index.js'],bundle:true,write:false,platform:'node',format:'esm',metafile:true});
+await rm(vendorRoot,{recursive:true,force:true});
+for(const [input,details] of Object.entries(zodGraph.metafile.inputs)){
+  if(details.imports.some(item=>item.external&&!isBuiltin(item.path)))throw new Error('UNDECLARED_ZOD_DEPENDENCY');
+  const source=await realpath(input),path=relative(zodRoot,source).replaceAll('\\','/');
+  if(path.startsWith('../')||isAbsolute(path)||!path.endsWith('.js'))throw new Error('INVALID_ZOD_RUNTIME_INPUT');
+  const target=join(vendorRoot,path);await mkdir(dirname(target),{recursive:true});await cp(source,target);
+  sourceInputPaths.add(input.replaceAll('\\','/'));
+}
+for(const name of ['package.json','LICENSE']){const source=`node_modules/zod/${name}`;await cp(source,`${vendorRoot}/${name}`);sourceInputPaths.add(source);}
+const runtimeBuild=await build({entryPoints:['packages/service/src/apps-main.ts'],outfile:`${directory}/lib/runtime.js`,bundle:true,platform:'node',format:'esm',target:'node22',sourcemap:true,packages:'external',plugins:[{name:'vendored-zod',setup(context){context.onResolve({filter:/^zod$/},()=>({path:'./vendor/zod/index.js',external:true}));}}]});
+const runtimeExternals=[...new Set(Object.values(runtimeBuild.metafile.outputs).flatMap(output=>output.imports.filter(item=>item.external).map(item=>item.path)))];
+if(runtimeExternals.some(path=>!isBuiltin(path)&&path!=='./vendor/zod/index.js'))throw new Error('UNDECLARED_RUNTIME_EXTERNAL_DEPENDENCY');
 // Node-only CLI entries bundle all project TS dependencies and load outside the checkout.
 for(const name of ['apps-authoring-build','apps-authoring-preview','apps-authoring-check','apps-read-result'])await build({entryPoints:[`scripts/${name}.mjs`],outfile:`${directory}/lib/${name}.js`,bundle:true,platform:'node',format:'esm',target:'node22',sourcemap:true,banner:{js:'#!/usr/bin/env node'}});
 await cp('scripts/apps-authoring-check.ps1',`${directory}/lib/apps-authoring-check.ps1`);

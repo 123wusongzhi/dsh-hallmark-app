@@ -1,0 +1,434 @@
+{
+  "method": "Independent processes, five ABBA cycles per shape; median of process medians. Each measured sample is one complete direct Runtime.invoke plus one scheduler.tick -> presentation.refreshBinding -> second Runtime.invoke. Each process has2warmup+8measured turns.",
+  "results": [
+    {
+      "shape": "small",
+      "n": 1,
+      "legacyRows": 0,
+      "noiseRows": 0,
+      "baseline": {
+        "processes": 10,
+        "samplesPerProcess": 8,
+        "medianProcessMs": 9.114809250000008,
+        "minProcessMs": 8.284187499999973,
+        "maxProcessMs": 10.796527500000025,
+        "medianCpuMs": 86.3965,
+        "medianPeakRSSMiB": 107.162109375,
+        "processMedians": [
+          {
+            "file": "small-c1-s1-baseline.json",
+            "ms": 8.36184449999999
+          },
+          {
+            "file": "small-c1-s4-baseline.json",
+            "ms": 9.549645000000027
+          },
+          {
+            "file": "small-c2-s1-baseline.json",
+            "ms": 9.137653499999999
+          },
+          {
+            "file": "small-c2-s4-baseline.json",
+            "ms": 9.20849549999997
+          },
+          {
+            "file": "small-c3-s1-baseline.json",
+            "ms": 9.091965000000016
+          },
+          {
+            "file": "small-c3-s4-baseline.json",
+            "ms": 8.88335649999999
+          },
+          {
+            "file": "small-c4-s1-baseline.json",
+            "ms": 8.284187499999973
+          },
+          {
+            "file": "small-c4-s4-baseline.json",
+            "ms": 8.550598500000007
+          },
+          {
+            "file": "small-c5-s1-baseline.json",
+            "ms": 9.359426500000012
+          },
+          {
+            "file": "small-c5-s4-baseline.json",
+            "ms": 10.796527500000025
+          }
+        ]
+      },
+      "integration": {
+        "processes": 10,
+        "samplesPerProcess": 8,
+        "medianProcessMs": 8.05688499999998,
+        "minProcessMs": 7.138271000000032,
+        "maxProcessMs": 11.135796000000028,
+        "medianCpuMs": 83.55250000000001,
+        "medianPeakRSSMiB": 106.36328125,
+        "processMedians": [
+          {
+            "file": "small-c1-s2-integration.json",
+            "ms": 8.45660749999999
+          },
+          {
+            "file": "small-c1-s3-integration.json",
+            "ms": 8.654087500000003
+          },
+          {
+            "file": "small-c2-s2-integration.json",
+            "ms": 8.329676999999975
+          },
+          {
+            "file": "small-c2-s3-integration.json",
+            "ms": 7.51524950000001
+          },
+          {
+            "file": "small-c3-s2-integration.json",
+            "ms": 7.228156500000011
+          },
+          {
+            "file": "small-c3-s3-integration.json",
+            "ms": 7.154960999999986
+          },
+          {
+            "file": "small-c4-s2-integration.json",
+            "ms": 7.138271000000032
+          },
+          {
+            "file": "small-c4-s3-integration.json",
+            "ms": 7.784092999999984
+          },
+          {
+            "file": "small-c5-s2-integration.json",
+            "ms": 10.494094500000074
+          },
+          {
+            "file": "small-c5-s3-integration.json",
+            "ms": 11.135796000000028
+          }
+        ]
+      },
+      "medianReductionPercent": 11.606652657048492,
+      "cycles": [
+        {
+          "cycle": 1,
+          "baselineMs": 8.955744750000008,
+          "integrationMs": 8.555347499999996,
+          "reductionPercent": 4.47084258402978
+        },
+        {
+          "cycle": 2,
+          "baselineMs": 9.173074499999984,
+          "integrationMs": 7.922463249999993,
+          "reductionPercent": 13.633501504866159
+        },
+        {
+          "cycle": 3,
+          "baselineMs": 8.987660750000003,
+          "integrationMs": 7.191558749999999,
+          "reductionPercent": 19.98408762814066
+        },
+        {
+          "cycle": 4,
+          "baselineMs": 8.41739299999999,
+          "integrationMs": 7.461182000000008,
+          "reductionPercent": 11.3599424429866
+        },
+        {
+          "cycle": 5,
+          "baselineMs": 10.077977000000018,
+          "integrationMs": 10.81494525000005,
+          "reductionPercent": -7.312660566699359
+        }
+      ],
+      "parityContentDigest": "ff6705a5f92e52b855fe19acb8af0343c9ad2c4fc7da8ce4ff2bba04d111795c",
+      "allCyclesImproved": false
+    },
+    {
+      "shape": "product",
+      "n": 267,
+      "legacyRows": 1000,
+      "noiseRows": 100,
+      "baseline": {
+        "processes": 10,
+        "samplesPerProcess": 8,
+        "medianProcessMs": 224.07642525,
+        "minProcessMs": 214.4085419999999,
+        "maxProcessMs": 246.46354099999985,
+        "medianCpuMs": 1991.341,
+        "medianPeakRSSMiB": 267.716796875,
+        "processMedians": [
+          {
+            "file": "product-c1-s1-baseline.json",
+            "ms": 245.89914899999997
+          },
+          {
+            "file": "product-c1-s4-baseline.json",
+            "ms": 220.08496449999996
+          },
+          {
+            "file": "product-c2-s1-baseline.json",
+            "ms": 217.45151149999998
+          },
+          {
+            "file": "product-c2-s4-baseline.json",
+            "ms": 246.46354099999985
+          },
+          {
+            "file": "product-c3-s1-baseline.json",
+            "ms": 235.26477350000005
+          },
+          {
+            "file": "product-c3-s4-baseline.json",
+            "ms": 228.06788600000004
+          },
+          {
+            "file": "product-c4-s1-baseline.json",
+            "ms": 214.4085419999999
+          },
+          {
+            "file": "product-c4-s4-baseline.json",
+            "ms": 219.84066100000007
+          },
+          {
+            "file": "product-c5-s1-baseline.json",
+            "ms": 215.389027
+          },
+          {
+            "file": "product-c5-s4-baseline.json",
+            "ms": 232.63993400000015
+          }
+        ]
+      },
+      "integration": {
+        "processes": 10,
+        "samplesPerProcess": 8,
+        "medianProcessMs": 106.27200050000002,
+        "minProcessMs": 96.87443200000001,
+        "maxProcessMs": 127.40673199999998,
+        "medianCpuMs": 1023.27,
+        "medianPeakRSSMiB": 178.634765625,
+        "processMedians": [
+          {
+            "file": "product-c1-s2-integration.json",
+            "ms": 105.83529800000002
+          },
+          {
+            "file": "product-c1-s3-integration.json",
+            "ms": 96.87443200000001
+          },
+          {
+            "file": "product-c2-s2-integration.json",
+            "ms": 100.15300550000012
+          },
+          {
+            "file": "product-c2-s3-integration.json",
+            "ms": 106.70870300000001
+          },
+          {
+            "file": "product-c3-s2-integration.json",
+            "ms": 124.03293800000006
+          },
+          {
+            "file": "product-c3-s3-integration.json",
+            "ms": 108.00530200000003
+          },
+          {
+            "file": "product-c4-s2-integration.json",
+            "ms": 102.8973514999999
+          },
+          {
+            "file": "product-c4-s3-integration.json",
+            "ms": 102.76642450000003
+          },
+          {
+            "file": "product-c5-s2-integration.json",
+            "ms": 111.54753400000004
+          },
+          {
+            "file": "product-c5-s3-integration.json",
+            "ms": 127.40673199999998
+          }
+        ]
+      },
+      "medianReductionPercent": 52.573323864197974,
+      "cycles": [
+        {
+          "cycle": 1,
+          "baselineMs": 232.99205674999996,
+          "integrationMs": 101.35486500000002,
+          "reductionPercent": 56.498574924056925
+        },
+        {
+          "cycle": 2,
+          "baselineMs": 231.95752624999992,
+          "integrationMs": 103.43085425000007,
+          "reductionPercent": 55.40957177715198
+        },
+        {
+          "cycle": 3,
+          "baselineMs": 231.66632975000005,
+          "integrationMs": 116.01912000000004,
+          "reductionPercent": 49.91973148398359
+        },
+        {
+          "cycle": 4,
+          "baselineMs": 217.12460149999998,
+          "integrationMs": 102.83188799999996,
+          "reductionPercent": 52.639227756970705
+        },
+        {
+          "cycle": 5,
+          "baselineMs": 224.01448050000008,
+          "integrationMs": 119.47713300000001,
+          "reductionPercent": 46.665442013691624
+        }
+      ],
+      "parityContentDigest": "e49cec548832d588dcaccea0c4871c9daf91bc3715537dc80058fbba42579341",
+      "allCyclesImproved": true
+    },
+    {
+      "shape": "posting",
+      "n": 267,
+      "legacyRows": 1000,
+      "noiseRows": 100,
+      "baseline": {
+        "processes": 10,
+        "samplesPerProcess": 8,
+        "medianProcessMs": 228.99742249999997,
+        "minProcessMs": 216.94837199999995,
+        "maxProcessMs": 245.18793449999998,
+        "medianCpuMs": 2040.7585,
+        "medianPeakRSSMiB": 276.07421875,
+        "processMedians": [
+          {
+            "file": "posting-c1-s1-baseline.json",
+            "ms": 217.25408750000003
+          },
+          {
+            "file": "posting-c1-s4-baseline.json",
+            "ms": 237.02522750000003
+          },
+          {
+            "file": "posting-c2-s1-baseline.json",
+            "ms": 221.47397050000012
+          },
+          {
+            "file": "posting-c2-s4-baseline.json",
+            "ms": 216.94837199999995
+          },
+          {
+            "file": "posting-c3-s1-baseline.json",
+            "ms": 221.88999250000012
+          },
+          {
+            "file": "posting-c3-s4-baseline.json",
+            "ms": 227.4124549999999
+          },
+          {
+            "file": "posting-c4-s1-baseline.json",
+            "ms": 245.18793449999998
+          },
+          {
+            "file": "posting-c4-s4-baseline.json",
+            "ms": 233.74784249999993
+          },
+          {
+            "file": "posting-c5-s1-baseline.json",
+            "ms": 230.58239000000003
+          },
+          {
+            "file": "posting-c5-s4-baseline.json",
+            "ms": 232.0694464999999
+          }
+        ]
+      },
+      "integration": {
+        "processes": 10,
+        "samplesPerProcess": 8,
+        "medianProcessMs": 126.20652250000003,
+        "minProcessMs": 115.1174145,
+        "maxProcessMs": 133.20639549999999,
+        "medianCpuMs": 1212.2235,
+        "medianPeakRSSMiB": 182.662109375,
+        "processMedians": [
+          {
+            "file": "posting-c1-s2-integration.json",
+            "ms": 126.9878584999999
+          },
+          {
+            "file": "posting-c1-s3-integration.json",
+            "ms": 126.198104
+          },
+          {
+            "file": "posting-c2-s2-integration.json",
+            "ms": 122.7355295000001
+          },
+          {
+            "file": "posting-c2-s3-integration.json",
+            "ms": 126.21494100000007
+          },
+          {
+            "file": "posting-c3-s2-integration.json",
+            "ms": 115.1174145
+          },
+          {
+            "file": "posting-c3-s3-integration.json",
+            "ms": 125.79007150000007
+          },
+          {
+            "file": "posting-c4-s2-integration.json",
+            "ms": 126.44235000000009
+          },
+          {
+            "file": "posting-c4-s3-integration.json",
+            "ms": 126.11716200000001
+          },
+          {
+            "file": "posting-c5-s2-integration.json",
+            "ms": 133.20639549999999
+          },
+          {
+            "file": "posting-c5-s3-integration.json",
+            "ms": 127.99394450000005
+          }
+        ]
+      },
+      "medianReductionPercent": 44.88736112302746,
+      "cycles": [
+        {
+          "cycle": 1,
+          "baselineMs": 227.13965750000003,
+          "integrationMs": 126.59298124999995,
+          "reductionPercent": 44.26645586977697
+        },
+        {
+          "cycle": 2,
+          "baselineMs": 219.21117125000004,
+          "integrationMs": 124.47523525000008,
+          "reductionPercent": 43.21674641843781
+        },
+        {
+          "cycle": 3,
+          "baselineMs": 224.65122375,
+          "integrationMs": 120.45374300000003,
+          "reductionPercent": 46.381888783278875
+        },
+        {
+          "cycle": 4,
+          "baselineMs": 239.46788849999996,
+          "integrationMs": 126.27975600000005,
+          "reductionPercent": 47.26651794902344
+        },
+        {
+          "cycle": 5,
+          "baselineMs": 231.32591824999997,
+          "integrationMs": 130.60017000000002,
+          "reductionPercent": 43.54278543969423
+        }
+      ],
+      "parityContentDigest": "a9fc1c2ae30e0c45829e5d8c0ec99c71c26106a654e2ef99d1d1626b194a5db9",
+      "allCyclesImproved": true
+    }
+  ]
+}
