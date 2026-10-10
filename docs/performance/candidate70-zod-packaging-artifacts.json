@@ -1,0 +1,13 @@
+{
+  "changedArtifacts": [
+    "lib/licenses/zod-LICENSE.txt",
+    "lib/runtime.js",
+    "lib/runtime.js.map"
+  ],
+  "allOtherArtifactsByteIdentical": true,
+  "sourceInputsBefore": 257,
+  "sourceInputsAfter": 335,
+  "runtimeBytesBefore": 1344059,
+  "runtimeBytesAfter": 1865659,
+  "licenseExact": true
+}

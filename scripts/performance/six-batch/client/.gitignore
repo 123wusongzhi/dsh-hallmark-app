@@ -1,0 +1,14 @@
+/E-baseline.cjs
+/E-combined.cjs
+/O-baseline.mjs
+/O-combined.mjs
+/coupled-baseline.mjs
+/coupled-combined.mjs
+/*-parity.json
+/coupled-*.json
+/source-identity.json
+/review-summary.json
+/*.log
+/node_modules/
+
+/__pycache__/

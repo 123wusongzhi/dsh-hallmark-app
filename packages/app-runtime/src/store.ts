@@ -125,6 +125,10 @@ export class RuntimeStore {
     const clauses=entries.map(([field,value])=>value===null?`json_type(value_json,'$.${field}')='null'`:`json_extract(value_json,'$.${field}')=?`),values=entries.filter(([,value])=>value!==null).map(([,value])=>typeof value==='boolean'?Number(value):value as string|number);
     return this.db.prepare(`SELECT value_json FROM ${table} WHERE ${clauses.join(' AND ')} ORDER BY created_at,id`).all(...values).map(row=>JSON.parse(String(row.value_json)) as T);
   }
+  /** Keep error candidates; any matching duplicate key is a candidate, then the caller applies JS last-key-wins filtering. */
+  providerRecordScopeCandidates<T>(appId:string,connectionId:string,namespace:string):T[] {
+    return this.db.prepare(`SELECT value_json FROM ${this.table('provider_records')} WHERE CASE WHEN typeof(value_json)<>'text' OR NOT json_valid(value_json) THEN 1 WHEN json_type(value_json)='null' THEN 1 WHEN NOT EXISTS (SELECT 1 FROM json_each(value_json) WHERE key='appId' AND type='text' AND value=?) THEN 0 WHEN NOT EXISTS (SELECT 1 FROM json_each(value_json) WHERE key='connectionId' AND type='text' AND value=?) THEN 0 ELSE EXISTS (SELECT 1 FROM json_each(value_json) WHERE key='namespace' AND type='text' AND value=?) END ORDER BY created_at,id`).all(appId,connectionId,namespace).map(row=>JSON.parse(String(row.value_json)) as T);
+  }
   viewsForSession<T>(sessionId:string):T[] {
     return this.db.prepare(`SELECT value_json FROM ${this.table('views')} WHERE json_extract(value_json,'$.ownerSessionId')=? ORDER BY created_at,id`).all(sessionId).map(row=>JSON.parse(String(row.value_json)) as T);
   }
