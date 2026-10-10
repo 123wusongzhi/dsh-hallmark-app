@@ -15,9 +15,10 @@ import { TOOL_DEFINITIONS, validate } from '../../packages/contracts/src/index.t
 import { compileSchema, validateResult } from '../../packages/app-contracts/src/index.ts';
 import type { AppProvider, InvocationRequest } from '../../packages/app-contracts/src/index.ts';
 import type { InvocationRecord } from '../../packages/app-runtime/src/store.ts';
+import { OzonBusinessGateway } from '../../packages/ozon-business/src/index.ts';
 
 type Data = Record<string, any>;
-function sourceEvidence(result: Data, source: string, endpoint: string, storeId?: string, dataTime?: string): void {
+function sourceEvidence(result: Data, source: string, endpoint: string | undefined, storeId?: string, dataTime?: string): void {
   assert.equal(result.provenance.source, source); assert.equal(result.provenance.endpoint, endpoint); assert.equal(result.provenance.storeId, storeId); assert.equal(result.provenance.dataTime, dataTime); assert.ok(Number.isFinite(Date.parse(result.provenance.fetchedAt)));
 }
 const token = 'r'.repeat(64), sourceAt = '2026-10-04T00:00:00Z';
@@ -29,6 +30,10 @@ const originalProducts = [
 const rawItem = { id: 'item', content: '{"original":"raw source"}', truncated: false, originalSourceField: 'preserved' };
 const categoryRaw = { storeId: 's', partial: true, stale: true, fetchedAt: sourceAt, candidates: [{ descriptionCategoryId: '100', verified: false }], originalSourceField: { preserved: true } };
 const image = 'https://example.invalid/source.jpg';
+// This fixture owns only its synthetic image; all service and adapter HTTP remains real loopback I/O.
+const originalFetch = globalThis.fetch;
+globalThis.fetch = (input, init) => String(input) === image ? Promise.resolve(new Response(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/Qf8AAAAASUVORK5CYII=','base64'), {headers:{'content-type':'image/png'}})) : originalFetch(input, init);
+after(() => {globalThis.fetch = originalFetch;});
 const importItem = { _sourceSkuId: 'sku1', offer_id: 'new-offer', description_category_id: 100, type_id: 200, name: 'Source product', currency_code: 'RUB', price: '100', depth: 1, height: 1, width: 1, weight: 1, dimension_unit: 'mm', weight_unit: 'g', images: [image], attributes: [{ id: 1, values: [{ value: 'Specified source value' }] }] };
 const evidence: Data = { kind: 'loopback_business_http_fixture', executedAt: '', aliases: [], rejectionRules: [], baselineReferences: ['test/core/core.test.ts', 'test/core/category.test.ts', 'test/core/collected-snapshot.test.ts', 'test/core/session-views.test.ts', 'test/apps-components/legacy.test.ts'], realBusinessMutation: 'NOT_RUN' };
 after(() => {
@@ -47,13 +52,14 @@ async function close(server: ReturnType<typeof createServer>): Promise<void> { s
 
 async function fixture(options: { deferHallmarkRegistration?: boolean } = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'dsh-legacy-replay-')), httpCalls: Data[] = [], executions = new Map<string, number>();
-  let price = 100, stock = 2, unknownPrice = false;
-  const task = { id: 'task', kind: 'listing', storeId: 's', status: 'active', productId: 'item', salesVariants: [{ salesSkuId: 'sku1' }] };
+  let price = 100, stock = 2, unknownPrice = false, imported = false;
+  const task = { id: 'task', kind: 'listing', storeId: 's', status: 'active', productId: 'item' };
   const upstream = createServer(async (req, res) => {
     try {
       const url = new URL(req.url ?? '/', 'http://127.0.0.1'), chunks: Uint8Array[] = [];
       for await (const chunk of req) chunks.push(chunk); const text = Buffer.concat(chunks).toString(); const input: Data = text ? JSON.parse(text) : {};
-      httpCalls.push({ route: url.pathname, method: req.method, ...(text ? { input } : {}) });
+      const direct = /^\/v\d+\//.test(url.pathname);
+      httpCalls.push({ route: url.pathname, method: req.method, ...(text ? { input: direct ? { path: url.pathname, method: req.method, body: input } : input } : {}) });
       const send = (value: unknown, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(value)); };
       if (url.pathname === '/api/health') return send({ service: 'hallmark-control' });
       if (url.pathname === '/api/stores') return send([{ id: 's', shopName: 'Alpha', originalStoreField: 'preserved' }, { id: 'other', shopName: 'Alpine' }]);
@@ -61,21 +67,27 @@ async function fixture(options: { deferHallmarkRegistration?: boolean } = {}) {
       if (url.pathname === '/api/target-margin') return send({ targetMargin: 0.2 });
       if (url.pathname === '/api/items') return send([{ id: 'item', title: 'Existing Source item', skuCount: 1, originalSummaryField: 'preserved' }, { id: 'other-item', title: 'Another item', skuCount: 1 }]);
       if (url.pathname === '/api/items/item/raw') { assert.equal(url.searchParams.get('full'), '1'); return send(rawItem); }
-      if (url.pathname === '/api/items/item') return send({ id: 'item', skus: [{ sourceSkuId: 'sku1', image }], images: [image] });
+      if (url.pathname === '/api/items/item') return send({ id: 'item', currency:'CNY', skus: [{ sourceSkuId: 'sku1', price:10, image }], images: [image] });
       if (url.pathname === '/api/catalog/search') { assert.equal(url.searchParams.get('storeId'), 's'); assert.equal(url.searchParams.get('q'), 'lamp'); return send(categoryRaw); }
       if (url.pathname === '/api/tasks') return send([task]);
       if (url.pathname === '/api/tasks/task') return send(task);
-      if (url.pathname === '/api/tasks/task/platform') {
+      if (direct || url.pathname === '/api/tasks/task/platform' || url.pathname === '/api/stores/s/data/read') {
+        if(direct){assert.equal(req.headers['client-id'],'fixture-replay-client');assert.equal(req.headers['api-key'],'fixture-replay-key');}
+        const call = direct ? {path:url.pathname,method:req.method,body:input} : input;
         let payload: unknown;
-        if (input.path === '/v1/product/import/prices') { price = unknownPrice ? 50 : Number(input.body.prices[0].price); payload = { result: [{ updated: true }] }; }
-        else if (input.path === '/v2/products/stocks') { stock = Number(input.body.stocks[0].stock); payload = { result: [{ updated: true }] }; }
-        else if (input.path === '/v3/product/import') payload = { result: { task_id: 99 } };
-        else if (input.path === '/v5/product/info/prices') payload = { result: { items: [{ offer_id: 'A', product_id: 1, price: { price: String(price), currency_code: 'RUB' } }] } };
-        else if (input.path === '/v3/product/info/list') payload = { result: { items: [{ offer_id: 'A', id: 1, sku: 501 }] } };
-        else if (input.path === '/v2/product/info/stocks-by-warehouse/fbs') payload = { result: { items: [{ offer_id: 'A', sku: 501, warehouse_id: 1, present: stock }] } };
-        else if (input.path === '/v1/product/import/info') payload = { result: { items: [{ offer_id: 'new-offer', product_id: 22, status: 'imported', errors: [] }] } };
-        else if (input.path === '/v2/warehouse/list') payload = { result: [{ warehouse_id: 1, name: 'Fixture warehouse' }] };
+        if (call.path === '/v1/product/import/prices') { price = unknownPrice ? 50 : Number(call.body.prices[0].price); payload = { result: [{ updated: true }] }; if(direct&&unknownPrice){req.socket.destroy();return;} }
+        else if (call.path === '/v2/products/stocks') { stock = Number(call.body.stocks[0].stock); payload = { result: [{ updated: true }] }; }
+        else if (call.path === '/v3/product/import') {imported = true; payload = { result: { task_id: 99 } };}
+        else if (call.path === '/v5/product/info/prices') payload = { result: { items: [{ offer_id: 'A', product_id: 1, price: { price: String(price), currency_code: 'RUB' } }] } };
+        else if (call.path === '/v3/product/info/list') payload = { items: call.body.offer_id?.includes('new-offer') ? (imported ? [{offer_id:'new-offer',id:22,sku:522}] : []) : [{ offer_id: 'A', id: 1, sku: 501,price:{price:String(price),currency_code:'RUB'},stocks:{has_stock:stock>0},unknownSourceField:{foo:'preserved'} },...(call.body.product_id?.includes(2)?[{offer_id:'B',id:2,sku:502,price:{price:'200',currency_code:'RUB'}}]:[])] };
+        else if (call.path === '/v4/product/info/attributes') payload = { result: [] };
+        else if (call.path === '/v3/product/list') payload={result:{items:[{product_id:1},{product_id:2}],last_id:''}};
+        else if (call.path === '/v1/description-category/tree') payload={result:[{description_category_id:100,category_name:'Fixture category',children:[{type_id:200,type_name:'lamp'}]}]};
+        else if (call.path === '/v2/product/info/stocks-by-warehouse/fbs') payload = { result: { items: [{ offer_id: 'A', sku: 501, warehouse_id: 1, present: stock }] } };
+        else if (call.path === '/v1/product/import/info') payload = { result: { items: [{ offer_id: 'new-offer', product_id: 22, status: 'imported', errors: [] }] } };
+        else if (call.path === '/v2/warehouse/list') payload = { result: [{ warehouse_id: 1, name: 'Fixture warehouse' }] };
         else return send({ error: 'Unregistered fixture platform path' }, 500);
+        if(direct)return send(payload);
         const raw = { requestId: input.requestId, taskId: 'task', storeId: 's', path: input.path, method: input.method, body: input.body, agentId: input.agentId, ...(input.note ? { note: input.note } : {}), startedAt: sourceAt, outcome: unknownPrice && input.path === '/v1/product/import/prices' ? 'outcome_unknown' : 'response_received', httpStatus: 200, response: payload, originalBackendEvidence: { retained: true } };
         httpCalls.at(-1)!.rawResponse = raw; return send(raw);
       }
@@ -84,7 +96,10 @@ async function fixture(options: { deferHallmarkRegistration?: boolean } = {}) {
   });
   const backend = await listen(upstream), store = new RuntimeStore(join(directory, 'apps.db')), runtime = new AppsRuntime(store), port = new HallmarkStorePort(store, 'h');
   const client = new HallmarkClient({ baseUrl: backend, operatorToken: 'fixture-operator', spillDirectory: join(directory, 'spill') });
-  const provider = new HallmarkProvider({ store: port, client, broker: new TaskBroker(client, port) });
+  const gateway = new OzonBusinessGateway(join(directory,'business'),{fetchImpl:async(url,init)=>{const parsed=new URL(String(url));assert.equal(parsed.origin,'https://api-seller.ozon.ru');return originalFetch(new URL(parsed.pathname,backend),init);}});
+  for(const [id,name] of [['s','Alpha'],['other','Alpine']])gateway.saveStore({id,name,expectedRevision:0,legacyStoreId:id,sourceConnectionId:'h',credentials:{clientId:'fixture-replay-client',apiKey:'fixture-replay-key'}});
+  const request=gateway.request.bind(gateway);gateway.request=async(...args)=>{const before=httpCalls.length,result=await request(...args),sent=httpCalls.slice(before).find(row=>row.route===args[1].path);if(sent)sent.rawResponse=structuredClone(result.raw);return result;};
+  const provider = new HallmarkProvider({ store: port, client, broker: new TaskBroker(client, port), businessGateway:gateway, inspectOperation:(id,signal)=>runtime.inspect(id,signal), reviewer:{review:async input=>({status:'passed',questions:input.questions.map(q=>({id:q.id,version:q.version,status:'passed',reviewer:'decisions',confidence:1,reasonCode:'FIXTURE_MATCH'})),evidence:{versions:input.versions,thresholds:{pass:0.95,reject:0.2},requests:[]}})} });
   function counted(value: AppProvider): AppProvider { return { ...value, manifest: value.manifest, descriptors: value.descriptors, execute: context => { executions.set(context.request.capabilityId, (executions.get(context.request.capabilityId) ?? 0) + 1); return value.execute(context); }, ...(value.inspect ? { inspect: value.inspect.bind(value) } : {}), dispose: value.dispose.bind(value) }; }
   const registerHallmark = () => {
     runtime.register(counted(provider));
@@ -98,9 +113,9 @@ async function fixture(options: { deferHallmarkRegistration?: boolean } = {}) {
   const service = createAppsServer({ runtime, presentation, token }), address = await listen(service);
   const call = async (path: string, input: unknown): Promise<Data> => { const result = await fetch(new URL(path, address), { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(input) }); assert.equal(result.status, 200); return await result.json() as Data; };
   const legacy = (name: string, input: Data, invocationId: string, userRequest?: string, sessionId = 'session') => call('/v1/legacy-invocations', { name, arguments: input, sessionId, invocationId, traceId: `trace:${invocationId}`, deadlineAt: new Date(Date.now() + 10000).toISOString(), ...(userRequest === undefined ? {} : { userRequest }) });
-  const platform = () => httpCalls.filter(row => row.route === '/api/tasks/task/platform');
+  const platform = () => httpCalls.filter(row => /^\/v\d+\//.test(row.route) || row.route === '/api/tasks/task/platform' || row.route === '/api/stores/s/data/read');
   const mutations = () => platform().filter(row => ['/v1/product/import/prices', '/v2/products/stocks', '/v3/product/import'].includes(row.input.path));
-  const cleanup = async () => { await close(service); await runtime.dispose(); store.close(); await close(upstream); const path = resolve(directory); assert.ok(path.startsWith(resolve(tmpdir()) + sep) && path.includes('dsh-legacy-replay-')); rmSync(path, { recursive: true, force: true }); };
+  const cleanup = async () => { try{assert.equal(httpCalls.some(row=>/^\/api\/tasks/.test(row.route)),false,'new business requests never use old task transport');}finally{await close(service); await runtime.dispose(); store.close(); await close(upstream); const path = resolve(directory); assert.ok(path.startsWith(resolve(tmpdir()) + sep) && path.includes('dsh-legacy-replay-')); rmSync(path, { recursive: true, force: true });} };
   return { directory, address, registerHallmark, store, runtime, provider, port, presentation, sources, client, executions, httpCalls, legacy, call, platform, mutations, setUnknownPrice: () => { unknownPrice = true; }, confirmPrice: () => { unknownPrice = false; price = 100; }, cleanup };
 }
 
@@ -131,38 +146,38 @@ test('all 26 legacy aliases replay valid inputs through schemas, HTTP, Runtime a
       const invocation = f.store.get<InvocationRecord>('invocations', attempt)!; assert.ok(invocation); assert.equal(invocation.request.capabilityId, mapping.capabilityId); assert.equal(invocation.request.capabilityVersion, mapping.version); assert.deepEqual(compileSchema(descriptor.inputSchema)(invocation.request.input), []); assert.deepEqual(validateResult(invocation.result!, descriptor), []);
       const data = result.data;
       switch (mapping.legacyName) {
-        case 'hallmark_app_info': assert.deepEqual(data.tools, TOOL_DEFINITIONS.map(({ name, kind }) => ({ name, kind }))); assert.deepEqual(data.sessionComponents, []); assert.equal(data.boundaries.localCapabilitiesAvailableOffline, true); assert.deepEqual(data.boundaries.notCovered, ['活动价/活动报名管理', '商品归档', '采购成本修改', '原四工具 WorkPlan/素材交付链路', '命名规则定义解析及自动数值应用']); assert.match(data.boundaries.valueSource, /ruleEvidence/); assert.equal(typeof data.boundaries.storeTask, 'string'); break;
-        case 'hallmark_list_stores': assert.equal(data[0].originalStoreField, 'preserved'); sourceEvidence(result, 'hallmark_snapshot', '/api/stores'); break;
+        case 'hallmark_app_info': assert.deepEqual(data.tools, TOOL_DEFINITIONS.map(({ name, kind }) => ({ name, kind }))); assert.deepEqual(data.sessionComponents, []); assert.equal(data.boundaries.localCapabilitiesAvailableOffline, true); assert.deepEqual(data.boundaries.notCovered, ['采购成本修改','自动解读任意命名规则并生成价格','主动全店巡检']); assert.match(data.boundaries.valueSource, /不要求/); assert.equal(typeof data.boundaries.storeTask, 'string'); break;
+        case 'hallmark_list_stores': assert.deepEqual(data.map((row:Data)=>({id:row.id,name:row.name})),[{id:'s',name:'Alpha'},{id:'other',name:'Alpine'}]);assert.equal(data[0].hasCredentials,true);assert.equal(JSON.stringify(data).includes('fixture-replay-key'),false);sourceEvidence(result, 'hallmark_snapshot', undefined); break;
         case 'hallmark_resolve_store': assert.equal(data.id, 's'); break;
-        case 'hallmark_list_store_products': assert.deepEqual(data.products, originalProducts.slice(0, 2)); sourceEvidence(result, 'hallmark_snapshot', '/api/store-products', 's', sourceAt); break;
-        case 'hallmark_get_platform_data': assert.equal(data.response.result[0].warehouse_id, 1); sourceEvidence(result, 'ozon_api', '/v2/warehouse/list', 's', sourceAt); break;
+        case 'hallmark_list_store_products': assert.deepEqual(data.products.map((row:Data)=>({offerId:row.offerId,productId:row.productId})),[{offerId:'A',productId:'1'},{offerId:'B',productId:'2'}]);assert.deepEqual(data.products[0].unknownSourceField,{foo:'preserved'});assert.deepEqual(data.products[0].platformProduct.unknownSourceField,{foo:'preserved'});assert.deepEqual(data.products[0].historicalProfit.actualMargin,0.1);assert.equal(data.products[0].profit.actualMargin,null);sourceEvidence(result, 'hallmark_snapshot', undefined, 's'); break;
+        case 'hallmark_get_platform_data': assert.equal(data.response.result[0].warehouse_id, 1);assert.equal(data.httpStatus,200);assert.equal(data.credentialRevision,1);assert.equal(data.outcome,'response_received');assert.equal(result.provenance,undefined,'direct response must not inherit an old platform timestamp');break;
         case 'hallmark_search_collected_items': assert.equal(data.items[0].id, 'item'); assert.equal(data.items[0].originalSummaryField, 'preserved'); assert.equal(data.total, 1); sourceEvidence(result, 'collected_item', '/api/items'); break;
         case 'hallmark_get_collected_item': assert.deepEqual(data, rawItem); sourceEvidence(result, 'collected_item', '/api/items/item/raw?full=1'); break;
-        case 'hallmark_get_category_data': assert.deepEqual(data.raw, categoryRaw); assert.equal(data.raw.candidates[0].verified, false); sourceEvidence(result, 'hallmark_snapshot', '/api/catalog/search?storeId=s&q=lamp&limit=10&requireAspects=false', 's', sourceAt); break;
+        case 'hallmark_get_category_data': assert.deepEqual(data.raw.items,[{type_id:200,type_name:'lamp',description_category_id:100,descriptionCategoryId:100,typeId:200,path:['Fixture category','lamp']}]);assert.equal(data.raw.total,1);sourceEvidence(result, 'hallmark_snapshot', undefined, 's',data.raw.fetchedAt);break;
         case 'hallmark_get_data_status': assert.equal(data.datasetKey, 'store_products:s'); assert.equal(data.state, 'ready'); assert.ok(data.lastSuccessAt); break;
-        case 'hallmark_compute_profit': assert.equal(data.products[0].referenceProfit.margin, 0.1); assert.equal(data.products[1].referenceProfit.costMissing, true); assert.match(invocation.result!.provenance![0].metricBasis!, /非实际结算/); assert.equal(result.metricBasis, invocation.result!.provenance![0].metricBasis); sourceEvidence(result, 'hallmark_compute', '/api/store-products', 's', sourceAt); break;
-        case 'hallmark_filter_products': assert.equal(data.payload.products.length, 1); assert.equal(data.payload.unable.length, 1); assert.equal(data.payload.unable[0].referenceProfit.margin, null); assert.ok(Date.parse(data.expiresAt) > Date.now() + 86300000); assert.equal(f.port.get<Data>('result_sets', data.resultSetId)!.expiresAt, data.expiresAt); assert.equal(result.metricBasis, invocation.result!.provenance![0].metricBasis); sourceEvidence(result, 'hallmark_compute', '/api/store-products', 's', sourceAt); break;
-        case 'hallmark_update_price': state.priceOperationId = data.operationId; assert.equal(data.items[0].state, 'succeeded'); assert.equal(data.items[0].observed, '100'); break;
-        case 'hallmark_update_stock': assert.equal(data.items[0].state, 'succeeded'); assert.equal(data.items[0].platformSku, 501); assert.equal(data.items[0].observed, 0); break;
-        case 'hallmark_list_product': assert.equal(data.acceptance, 'imported-not-sellable-verified'); assert.equal(data.items[0].state, 'succeeded'); assert.equal(f.mutations().at(-1)!.input.body.items[0]._sourceSkuId, undefined); assert.deepEqual(f.mutations().at(-1)!.input.mappings, [{ skuCode: 'sku1', offerId: 'new-offer' }]); break;
-        case 'hallmark_get_operation': assert.equal(data.operationId, state.priceOperationId); assert.equal(data.state, 'succeeded'); break;
-        case 'hallmark_list_operations': assert.ok(data.some((row: Data) => row.operationId === state.priceOperationId)); assert.equal(data.filter((row: Data) => ['update_price', 'update_stock', 'list_product'].includes(row.kind)).length, 3); break;
-        case 'hallmark_refresh_data': assert.equal(data.counts.products, 2); assert.equal(f.httpCalls.filter(row => row.route === '/api/store-products/sync').length, 1); break;
+        case 'hallmark_compute_profit': assert.equal(data.products[0].historicalProfit.actualMargin,0.1);assert.equal(data.products[0].referenceProfit.margin,null,'historical profit cannot pass as current rule calculation');assert.equal(data.products[0].referenceProfit.costMissing,true);assert.equal(data.products[1].referenceProfit.costMissing, true); assert.match(invocation.result!.provenance![0].metricBasis!, /非实际结算/); assert.equal(result.metricBasis, invocation.result!.provenance![0].metricBasis); sourceEvidence(result, 'hallmark_compute', undefined, 's'); break;
+        case 'hallmark_filter_products': assert.equal(data.payload.products.length, 0); assert.equal(data.payload.unable.length, 2); assert.equal(data.payload.unable[0].referenceProfit.margin, null); assert.ok(Date.parse(data.expiresAt) > Date.now() + 86300000); assert.equal(f.port.get<Data>('result_sets', data.resultSetId)!.expiresAt, data.expiresAt); assert.equal(result.metricBasis, invocation.result!.provenance![0].metricBasis); sourceEvidence(result, 'hallmark_compute', undefined, 's'); break;
+        case 'hallmark_update_price': state.priceOperationId = result.operation.operationId; assert.equal(data.rows[0].status, 'succeeded'); assert.equal(data.rows[0].receipt.observed.price, '100'); break;
+        case 'hallmark_update_stock': assert.equal(data.rows[0].status, 'succeeded'); assert.equal(data.rows[0].target.sku, '501'); assert.equal(data.rows[0].receipt.observed.stock, 0); break;
+        case 'hallmark_list_product': assert.match(data.rows[0].receipt.completion, /moderation and sellability are separate/); assert.equal(data.rows[0].status, 'succeeded'); assert.equal(data.rows[0].binding.amount, 10); assert.equal(f.mutations().at(-1)!.input.body.items[0]._sourceSkuId, undefined);assert.equal(f.mutations().at(-1)!.input.mappings,undefined);assert.deepEqual(f.port.list<Data>('business_procurement_bindings').find(row=>row.target.offerId==='new-offer')!.binding.components.map((part:Data)=>({itemId:part.itemId,sourceSkuId:part.sourceSkuId,quantity:part.quantity})),[{itemId:'item',sourceSkuId:'sku1',quantity:1}]);break;
+        case 'hallmark_get_operation': assert.equal(f.port.get<Data>('business_runtime_operations',state.priceOperationId)!.planId,data.planId); assert.equal(data.status, 'done'); break;
+        case 'hallmark_list_operations': assert.ok(data.some((row:Data)=>row.operationId===state.priceOperationId)); assert.equal(data.filter((row:Data)=>['update_price','update_stock','list_product'].includes(row.kind)).length,3); assert.equal(f.port.list('business_plans').length,3); break;
+        case 'hallmark_refresh_data': assert.equal(data.counts.products, 2); assert.equal(f.httpCalls.filter(row => row.route === '/api/store-products/sync').length, 0);assert.ok(f.httpCalls.slice(httpBefore).some(row=>row.route==='/v3/product/list')); break;
         case 'hallmark_render_view': state.viewId = data.viewId; assert.equal(data.spec.widgets[0].text, 'Source fields'); break;
         case 'hallmark_update_view': assert.equal(data.spec.title, 'Patched replay'); break;
         case 'hallmark_save_component': state.componentId = data.component.id; state.componentEntryId = data.entry.id; assert.equal(data.entry.viewId, state.componentId); assert.notEqual(data.entry.id, state.componentId); assert.deepEqual(data.entry, { id: state.componentEntryId, appId: 'hallmark', kind: 'component', title: 'Patched replay', pinned: false, order: 0, viewId: state.componentId }); break;
-        case 'hallmark_open_component': assert.equal(data.sourceComponentId, state.componentId); assert.notEqual(data.viewId, state.viewId); break;
+        case 'hallmark_open_component': assert.equal(data.sourceComponentId, state.componentId); assert.equal(data.viewId, state.viewId); assert.equal(f.store.list('views').length, 1); break;
         case 'hallmark_open_source_component': assert.equal(data.spec.kind, 'source'); assert.ok(f.sources.manifest(data.spec.source.buildId)); break;
         case 'hallmark_save_entry': state.dataEntryId = data.id; assert.deepEqual(data, { id: state.dataEntryId, appId: 'hallmark', kind: 'data', title: 'Product entry', binding: args.binding, pinned: false, order: 1 }); break;
         case 'hallmark_save_template': state.templateId = data.id; assert.deepEqual(data, { id: state.templateId, name: 'Reusable replay', description: '', theme: {}, layout: { type: 'column', children: ['text'] }, widgetStyles: [{ id: 'text', type: 'text', text: 'Source fields' }], contentRules: { bindingIds: [] }, version: 1 }); break;
         case 'hallmark_list_saved': assert.equal(data.components.length, 1); assert.equal(data.entries.length, 2); assert.equal(data.templates.length, 1); assert.deepEqual(data.entries.map((entry: Data) => entry.id), [state.componentEntryId, state.dataEntryId]); assert.deepEqual(data.entries.map((entry: Data) => entry.order), [0, 1]); assert.deepEqual(data.entries[1].binding, inputs.hallmark_save_entry().binding); assert.equal(data.templates[0].id, state.templateId); break;
         case 'hallmark_manage_saved': assert.equal(data.id, state.componentId); assert.equal(data.title, 'Renamed replay'); assert.equal(data.spec.title, 'Renamed replay'); assert.equal(data.revision, 2); assert.equal(data.spec.widgets[0].text, 'Source fields'); assert.equal(f.store.get<Data>('saved_assets', `entry:${state.componentEntryId}`)!.title, 'Renamed replay'); break;
       }
-      if (descriptor.effect === 'mutation' && mapping.owner !== 'presentation') { assert.equal(result.operation.operationId, data.operationId); assert.equal(f.store.get<Data>('operations', data.operationId)!.operationId, f.port.get<Data>('operations', data.operationId)!.operationId); }
+      if (descriptor.effect === 'mutation' && mapping.owner !== 'presentation') { assert.equal(f.port.get<Data>('business_runtime_operations',result.operation.operationId)!.planId,data.planId); assert.equal(f.store.get<Data>('operations',result.operation.operationId)!.state,'succeeded'); }
       const invalid = await f.legacy(mapping.legacyName, { ...args, unknownPublicField: true }, `invalid:${mapping.legacyName}`); assert.equal(invalid.status, 'failed'); assert.equal(invalid.error.code, 'INVALID_PARAMS'); assert.equal(invalid.error.retryable, false); assert.equal(f.executions.get(mapping.capabilityId), before + 1); assert.equal(f.store.get('invocations', `invalid:${mapping.legacyName}`), undefined);
       evidence.aliases.push({ legacyName: mapping.legacyName, capabilityId: mapping.capabilityId, owner: mapping.owner, validStatus: result.status, invalidStatus: invalid.status, providerExecutions: 1, requestSchemaValidated: true, resultSchemaValidated: true, invocationId: attempt, backendFixtureRequests: f.httpCalls.slice(httpBefore).map(row => ({ method: row.method, route: row.route, ...(row.input?.path ? { platformPath: row.input.path } : {}) })), ...(result.operation ? { operationId: result.operation.operationId } : {}), ...(result.provenance ? { originalProvenance: result.provenance } : {}), ...(result.metricBasis ? { metricBasisPreserved: true } : {}) });
     }
-    assert.equal(evidence.aliases.length, 26); assert.equal(f.store.list('invocations').length, 26); assert.equal(f.mutations().length, 3);
+    assert.equal(evidence.aliases.length, 26); assert.equal(f.store.list<InvocationRecord>('invocations').filter(row=>row.request.invocationId.startsWith('valid:')).length,26); assert.equal(f.store.list('invocations').length,27,'operation get adds one read-only runtime inspection'); assert.equal(f.mutations().length, 3);
     assert.deepEqual(f.mutations().map(row => row.input.path), ['/v1/product/import/prices', '/v2/products/stocks', '/v3/product/import']); evidence.businessFixtureMutations = 3;
   } finally { await f.cleanup(); }
 });
@@ -204,7 +219,7 @@ test('unknown raw POST and wrong read method are rejected before platform dispat
     }
     const request: InvocationRequest = { protocolVersion: '1.0', appId: 'hallmark', connectionId: 'h', invocationId: 'unknown-api', traceId: 'unknown-api', capabilityId: 'hallmark.api.invented', capabilityVersion: '1.0.0', input: {}, source: { kind: 'agent', sessionId: 'session', nativeCallId: 'api' }, deadlineAt: new Date(Date.now() + 10000).toISOString() };
     const unknown = await f.call('/v1/invocations', request); assert.equal(unknown.status, 'failed'); assert.equal(unknown.error.code, 'CAPABILITY_NOT_FOUND'); assert.equal(f.platform().length, 0);
-    const registered = await f.call('/v1/invocations', { ...request, invocationId: 'registered-query', capabilityId: 'hallmark.api.warehouses.list', input: { storeId: 's', body: {} } }); assert.equal(registered.status, 'ok'); assert.equal(f.platform().length, 1); assert.equal(f.mutations().length, 0);
+    const registered = await f.call('/v1/invocations', { ...request, invocationId: 'registered-query', capabilityId: 'hallmark.api.warehouses.list', input: { storeId: 's', body: {} } }); assert.equal(registered.status, 'ok',JSON.stringify(registered)); assert.equal(f.platform().length, 1); assert.equal(f.mutations().length, 0);
     const effects = HALLMARK_API_OPERATIONS.map(row => f.runtime.describe(row.capabilityId)!.effect); assert.equal(effects.filter(effect => effect === 'query').length, 15); assert.equal(effects.filter(effect => effect === 'mutation').length, 1);
     evidence.rawApiCoverage = { unknownPostRejected: true, exactReadMethodEnforced: true, unknownCapabilityRejected: true, registeredReadDispatched: true, registeredCount: HALLMARK_API_OPERATIONS.length, registeredEffects: { query: 15, mutation: 1 } };
   } finally { await f.cleanup(); }
@@ -223,43 +238,44 @@ test('explicit API price mutation uses the real SDK and one Runtime identity; de
     f.registerHallmark();
     assert.deepEqual(await transport.describe(capabilityId, descriptor.version), descriptor);
     assert.equal(descriptor.apiOperationId, 'hallmarkPriceUpdate'); assert.equal(descriptor.effect, 'mutation'); assert.deepEqual(descriptor.aliases, []);
-    assert.equal(descriptor.execution.idempotency, 'runtime_dedup'); assert.equal(descriptor.execution.completionEvidence, 'readback');
-    const artifacts = generateArtifacts(HALLMARK_DESCRIPTORS); assert.ok(artifacts.tools.some(row => row.name === capabilityId)); assert.match(artifacts.source, /hallmark\.api\.products\.update_price/); assert.match(artifacts.documentation, /TASK_CONTEXT_REQUIRED/);
+    assert.equal(descriptor.execution.idempotency, 'upstream_supported'); assert.equal(descriptor.execution.completionEvidence, 'readback');
+    const artifacts = generateArtifacts(HALLMARK_DESCRIPTORS); assert.ok(artifacts.tools.some(row => row.name === capabilityId)); assert.match(artifacts.source, /hallmark\.api\.products\.update_price/); assert.match(artifacts.documentation, /不依赖旧平台任务/);assert.match(artifacts.documentation,/pending\/unknown 只 inspect 原操作/);
     const invalid = await sdk.invoke(ref, descriptor, { ...input, path: '/unregistered/direct/write', body: {} }, { idempotencyKey: 'invalid-api-wire', invocationId: 'api-invalid-wire' });
     assert.equal(invalid.status, 'failed'); assert.ok('error' in invalid); assert.equal(invalid.error.code, 'INPUT_SCHEMA_INVALID'); assert.equal(f.httpCalls.length, 0); assert.equal(f.store.list('operations').length, 0);
-    const noKey = await sdk.invoke(ref, descriptor, input, { invocationId: 'api-no-intent-key' }); assert.equal(noKey.status, 'failed'); assert.ok('error' in noKey); assert.equal(noKey.error.code, 'IDEMPOTENCY_KEY_REQUIRED'); assert.equal(f.httpCalls.length, 0);
     const first = await sdk.invoke(ref, descriptor, input, { idempotencyKey: 'registered-price', invocationId: 'api-price-first' });
     assert.equal(first.status, 'ok', JSON.stringify(first)); assert.ok('data' in first); const firstData = first.data as Data, firstId = first.operation!.operationId;
-    assert.equal(firstData.operationId, firstId); assert.equal(firstData.kind, 'update_price'); assert.equal(firstData.state, 'succeeded'); assert.equal(firstData.input.userRequest, input.userRequest); assert.equal(firstData.sessionId, 'session');
-    assert.equal(f.store.get<Data>('operations', firstId)!.capabilityId, capabilityId); assert.equal(f.port.get<Data>('operations', firstId)!.operationId, firstId); assert.equal(f.store.list('operations').length, 1); assert.equal(f.mutations().length, 1); assert.equal(f.executions.get(capabilityId), 1);
-    const originalWrite = structuredClone(f.mutations()[0]), firstStored = f.port.get<Data>('operations', firstId)!;
-    assert.equal(originalWrite.route, '/api/tasks/task/platform'); assert.equal(originalWrite.method, 'POST'); assert.equal(originalWrite.input.path, '/v1/product/import/prices'); assert.equal(originalWrite.input.requestId, firstStored.hallmarkRefs[0].requestId);
-    assert.deepEqual(originalWrite.input.body, { prices: [{ offer_id: 'A', price: '100', currency_code: 'RUB' }] }); assert.deepEqual(firstData.items[0].write.raw, originalWrite.rawResponse); assert.deepEqual(firstStored.items[0].write.raw, originalWrite.rawResponse);
-    assert.deepEqual(firstData.items[0].readback.raw, f.platform().find(row => row.input.path === '/v5/product/info/prices')!.rawResponse); assert.deepEqual(validateResult(first, descriptor.outputSchema), []);
+    assert.equal(firstData.status, 'done'); assert.equal(firstData.rows[0].action,'price'); assert.equal(firstData.rows[0].status,'succeeded'); assert.equal(firstData.title,input.userRequest);
+    assert.equal(f.store.get<Data>('operations', firstId)!.capabilityId, capabilityId); assert.equal(f.port.get<Data>('business_runtime_operations',firstId)!.planId,firstData.planId); assert.equal(f.store.list('operations').length, 1); assert.equal(f.mutations().length, 1); assert.equal(f.executions.get(capabilityId), 1);
+    const originalWrite = structuredClone(f.mutations()[0]), firstStored = f.port.get<Data>('business_transport_receipts', firstData.rows[0].executionId)!;
+    assert.equal(originalWrite.route, '/v1/product/import/prices'); assert.equal(originalWrite.method, 'POST'); assert.equal(originalWrite.input.path, '/v1/product/import/prices'); assert.equal(firstStored.requestId,firstStored.executionId);assert.equal(firstStored.transport,'ozon-direct');assert.equal(firstStored.credentialRevision,1);assert.equal(firstStored.taskId,undefined);
+    assert.deepEqual(originalWrite.input.body, { prices: [{ offer_id: 'A', price: '100', currency_code: 'RUB' }] }); assert.deepEqual(firstStored.response.raw, originalWrite.rawResponse);
+    assert.deepEqual(firstData.rows[0].receipt.observed,{price:'100',currency_code:'RUB'}); assert.deepEqual(validateResult(first, descriptor.outputSchema), []);
     const duplicate = await sdk.invoke(ref, descriptor, input, { idempotencyKey: 'registered-price', invocationId: 'api-price-duplicate' }); assert.equal(duplicate.status, 'ok'); assert.equal(duplicate.operation?.operationId, firstId);
     const conflict = await sdk.invoke(ref, descriptor, { ...input, price: 90 }, { idempotencyKey: 'registered-price', invocationId: 'api-price-conflict' }); assert.equal(conflict.status, 'failed'); assert.ok('error' in conflict); assert.equal(conflict.error.code, 'IDEMPOTENCY_CONFLICT'); assert.equal(conflict.operation?.operationId, firstId);
     assert.equal(f.mutations().length, 1); assert.equal(f.executions.get(capabilityId), 1); assert.equal(f.store.list('operations').length, 1);
     f.setUnknownPrice();
     const unknown = await sdk.invoke(ref, descriptor, input, { idempotencyKey: 'registered-unknown-price', invocationId: 'api-price-unknown' });
     assert.equal(unknown.status, 'unknown', JSON.stringify(unknown)); assert.ok('error' in unknown); assert.equal(unknown.error.retryPolicy, 'inspect_only'); const unknownId = unknown.operation!.operationId;
-    const unknownStored = f.port.get<Data>('operations', unknownId)!, originalUnknownWrite = structuredClone(f.mutations()[1]);
-    assert.equal(unknownStored.operationId, unknownId); assert.equal(unknownStored.items[0].state, 'unknown'); assert.equal(unknownStored.items[0].write.raw.outcome, 'outcome_unknown'); assert.deepEqual(unknownStored.items[0].write.raw, originalUnknownWrite.rawResponse); assert.equal(f.store.get<Data>('operations', unknownId)!.capabilityId, capabilityId); assert.equal(f.store.list('operations').length, 2);
+    const unknownLink=f.port.get<Data>('business_runtime_operations',unknownId)!, unknownPlan=f.port.get<Data>('business_plans',unknownLink.planId)!, unknownStored=f.port.get<Data>('business_transport_receipts',unknownPlan.rows[0].executionId)!, originalUnknownWrite = structuredClone(f.mutations()[1]);
+    assert.equal(unknownPlan.rows[0].status, 'unknown'); assert.equal(unknownStored.response.raw.outcome, 'outcome_unknown'); assert.deepEqual(unknownStored.response.raw, originalUnknownWrite.rawResponse); assert.equal(f.store.get<Data>('operations', unknownId)!.capabilityId, capabilityId); assert.equal(f.store.list('operations').length, 2);
     const unknownRepeat = await sdk.invoke(ref, descriptor, input, { idempotencyKey: 'registered-unknown-price', invocationId: 'api-price-unknown-repeat' }); assert.equal(unknownRepeat.status, 'unknown'); assert.equal(unknownRepeat.operation?.operationId, unknownId);
     const unknownConflict = await sdk.invoke(ref, descriptor, { ...input, price: 90 }, { idempotencyKey: 'registered-unknown-price', invocationId: 'api-price-unknown-conflict' }); assert.equal(unknownConflict.status, 'failed'); assert.ok('error' in unknownConflict); assert.equal(unknownConflict.error.code, 'IDEMPOTENCY_CONFLICT');
     const readsBefore = f.platform().filter(row => row.input.path === '/v5/product/info/prices').length, writesBefore = f.mutations().length, executeBefore = f.executions.get(capabilityId);
     const unresolved = await transport.inspect(unknownId); assert.equal(unresolved.status, 'unknown'); assert.equal(unresolved.operation?.operationId, unknownId);
     f.confirmPrice(); const inspected = await transport.inspect(unknownId); assert.equal(inspected.status, 'ok', JSON.stringify(inspected)); assert.ok('data' in inspected); const inspectedData = inspected.data as Data;
-    assert.equal(inspectedData.operationId, unknownId); assert.equal(inspectedData.state, 'succeeded'); assert.equal(inspected.operation?.operationId, unknownId); assert.deepEqual(inspectedData.items[0].write.raw, originalUnknownWrite.rawResponse); assert.deepEqual(f.port.get<Data>('operations', unknownId)!.items[0].write.raw, originalUnknownWrite.rawResponse);
+    assert.equal(inspectedData.planId,unknownPlan.planId); assert.equal(inspectedData.rows[0].status,'succeeded'); assert.equal(inspected.operation?.operationId,unknownId); assert.deepEqual(f.port.get<Data>('business_transport_receipts',unknownPlan.rows[0].executionId)!.response.raw,originalUnknownWrite.rawResponse);
     assert.equal(f.mutations().length, writesBefore); assert.equal(f.executions.get(capabilityId), executeBefore); assert.equal(f.platform().filter(row => row.input.path === '/v5/product/info/prices').length, readsBefore + 2); assert.equal(f.store.list('operations').length, 2); assert.deepEqual(validateResult(inspected, descriptor.outputSchema), []);
+    const noKey = await sdk.invoke(ref, descriptor, input, {invocationId:'api-no-intent-key'}); assert.equal(noKey.status,'ok',JSON.stringify(noKey)); assert.equal(f.store.get<Data>('operations',noKey.operation!.operationId)!.idempotencyKey,'provider-intent:api-no-intent-key'); assert.equal(f.mutations().length,writesBefore+1);
     evidence.registeredApiMutation = {
       apiOperationId: descriptor.apiOperationId, capabilityId, version: descriptor.version, effect: descriptor.effect, execution: descriptor.execution, aliases: descriptor.aliases, fixedPath: null,
       unregistered: { exactCapability: capabilityId, errorCode: unregistered.error.code, businessHttpRequests: 0, operationCount: 0 }, registration: 'same Runtime instance, then Hallmark Provider register + explicit session connection binding',
-      schemaRejections: { extraWireFields: invalid.error.code, missingIntentKey: noKey.error.code, businessHttpRequests: 0 }, generatedSdkCatalogIncludesOperation: true,
-      succeeded: { operationId: firstId, providerOperationId: firstStored.operationId, duplicateOperationId: duplicate.operation!.operationId, conflictError: conflict.error.code, businessMutationPosts: 1, providerExecutions: 1, originalRequest: originalWrite.input, completeRawResponse: firstData.items[0].write.raw, completeRawReadback: firstData.items[0].readback.raw },
-      unknown: { operationId: unknownId, providerOperationId: unknownStored.operationId, repeatOperationId: unknownRepeat.operation!.operationId, conflictError: unknownConflict.error.code, retryPolicy: unknown.error.retryPolicy, completeOriginalRequest: originalUnknownWrite.input, completeOriginalRawResponse: originalUnknownWrite.rawResponse, unresolvedStatus: unresolved.status, inspectedStatus: inspected.status, finalState: inspected.operation!.state, readOnlyInspectionCalls: 2, additionalBusinessMutationPosts: 0, additionalProviderExecuteCalls: 0, originalRawResponsePreserved: true, completeRawReadback: inspectedData.items[0].readback.raw },
-      totals: { runtimeOperationCount: 2, providerMutationExecuteCalls: executeBefore, businessMutationPosts: writesBefore, registeredQueryCount: 15, registeredMutationCount: 1 },
+      schemaRejections: { extraWireFields: invalid.error.code, automaticIntentKey: true, businessHttpRequests: 0 }, generatedSdkCatalogIncludesOperation: true,
+      succeeded: { operationId: firstId, providerExecutionId: firstStored.executionId, duplicateOperationId: duplicate.operation!.operationId, conflictError: conflict.error.code, businessMutationPosts: 1, providerExecutions: 1, originalRequest: originalWrite.input, completeRawResponse: firstStored.response.raw, completeRawReadback: firstData.rows[0].receipt.observed },
+      unknown: { operationId: unknownId, providerExecutionId: unknownStored.executionId, repeatOperationId: unknownRepeat.operation!.operationId, conflictError: unknownConflict.error.code, retryPolicy: unknown.error.retryPolicy, completeOriginalRequest: originalUnknownWrite.input, completeOriginalRawResponse: originalUnknownWrite.rawResponse, unresolvedStatus: unresolved.status, inspectedStatus: inspected.status, finalState: inspected.operation!.state, readOnlyInspectionCalls: 2, additionalBusinessMutationPosts: 0, additionalProviderExecuteCalls: 0, originalRawResponsePreserved: true, completeRawReadback: inspectedData.rows[0].receipt.observed },
+      automaticKey:{status:noKey.status,operationId:noKey.operation!.operationId,additionalBusinessMutationPosts:1},
+      totals: { runtimeOperationCount: f.store.list('operations').length, providerMutationExecuteCalls: f.executions.get(capabilityId), businessMutationPosts: f.mutations().length, registeredQueryCount: 15, registeredMutationCount: 1 },
       actualBusinessRoutes: f.httpCalls.map(row => ({ method: row.method, route: row.route, ...(row.input?.path ? { platformPath: row.input.path } : {}) })),
-      scope: 'local actual SDK/HTTP/adapter/domain/SQLite fixture; no real business writes; existing CNY fallback remains inherited and separately covered by original ordinary-cny tests',
+      scope: 'local actual SDK/HTTP/independent Ozon gateway/domain/SQLite fixture; synthetic encrypted credentials only, no real business writes; all new mutations avoid legacy task transport',
     };
   } finally { await f.cleanup(); }
 });
@@ -267,13 +283,14 @@ test('explicit API price mutation uses the real SDK and one Runtime identity; de
 test('legacy unknown price retains the original operation and only readback can resolve it without another business POST', async () => {
   const f = await fixture();
   try {
-    f.setUnknownPrice(); const input = { storeId: 's', offerIds: ['A'], price: 100, currency: 'RUB', valueSource: 'user', clientOperationKey: 'unknown-price', userRequest: '把 A 的价格设为 100 RUB' };
-    const first = await f.legacy('hallmark_update_price', input, 'unknown-first'); assert.equal(first.status, 'unknown'); assert.equal(first.error?.retryable ?? false, false); assert.equal(f.mutations().length, 1); assert.equal(first.data.operationId, first.operation.operationId); assert.equal(first.data.items[0].state, 'unknown'); assert.equal(first.data.items[0].write.raw.outcome, 'outcome_unknown');
-    const again = await f.legacy('hallmark_update_price', input, 'unknown-repeat'); assert.equal(again.operation.operationId, first.operation.operationId); assert.equal(again.data.operationId, first.operation.operationId); assert.equal(f.mutations().length, 1); assert.equal(f.executions.get('hallmark.products.update_price'), 1);
-    const unresolved = await f.legacy('hallmark_get_operation', { operationId: first.operation.operationId }, 'unknown-unresolved-read'); assert.equal(unresolved.status, 'unknown'); assert.equal(unresolved.data.operationId, first.operation.operationId); assert.equal(unresolved.data.items[0].state, 'unknown'); assert.equal(f.mutations().length, 1);
-    f.confirmPrice(); const inspected = await f.legacy('hallmark_get_operation', { operationId: first.operation.operationId }, 'unknown-readback'); assert.equal(inspected.status, 'ok'); assert.equal(inspected.data.state, 'succeeded'); assert.equal(inspected.operation.operationId, first.operation.operationId); assert.equal(f.mutations().length, 1);
-    evidence.unknownRecovery = { originalOperationId: first.operation.operationId, mutationPosts: 1, providerMutationExecutions: 1, duplicatePreservedOperationId: true, readbackResolved: true, resubmitted: false };
-  } finally { await f.cleanup(); }
+    f.setUnknownPrice(); const input = { storeId:'s',offerIds:['A'],price:100,clientOperationKey:'unknown-price' };
+    const first=await f.legacy('hallmark_update_price',input,'unknown-first'); assert.equal(first.status,'unknown',JSON.stringify(first)); assert.equal(first.error.retryable,false); assert.equal(f.store.get<InvocationRecord>('invocations','unknown-first')!.result!.status,'unknown'); assert.equal(f.mutations().length,1);
+    const operationId=first.operation.operationId,link=f.port.get<Data>('business_runtime_operations',operationId)!,plan=f.port.get<Data>('business_plans',link.planId)!,receipt=f.port.get<Data>('business_transport_receipts',plan.rows[0].executionId)!;assert.equal(plan.rows[0].status,'unknown');assert.equal(receipt.response.raw.outcome,'outcome_unknown');
+    const again=await f.legacy('hallmark_update_price',input,'unknown-repeat');assert.equal(again.operation.operationId,operationId);assert.equal(f.mutations().length,1);assert.equal(f.executions.get('hallmark.products.update_price'),1);
+    const unresolved=await f.legacy('hallmark_get_operation',{operationId},'unknown-unresolved-read');assert.equal(unresolved.status,'unknown');assert.equal(unresolved.operation.operationId,operationId);assert.equal(f.mutations().length,1);
+    f.confirmPrice();const inspected=await f.legacy('hallmark_get_operation',{operationId},'unknown-readback');assert.equal(inspected.status,'ok',JSON.stringify(inspected));assert.equal(inspected.data.rows[0].status,'succeeded');assert.equal(inspected.operation.operationId,operationId);assert.equal(f.mutations().length,1);assert.equal(f.store.get<Data>('operations',operationId)!.state,'succeeded');assert.deepEqual(f.port.get<Data>('business_transport_receipts',plan.rows[0].executionId)!.response.raw,receipt.response.raw);
+    evidence.unknownRecovery={originalOperationId:operationId,mutationPosts:1,providerMutationExecutions:1,duplicatePreservedOperationId:true,readbackResolved:true,resubmitted:false};
+  } finally {await f.cleanup();}
 });
 
 test('legacy app_info lists only this session source drafts with exact viewId, title, directory and buildId', async () => {
@@ -288,19 +305,18 @@ test('legacy app_info lists only this session source drafts with exact viewId, t
   } finally { await f.cleanup(); }
 });
 
-test('legacy missing intent key, ambiguous stores, unconfirmed batch and unverified rule clarify without business writes', async () => {
-  const f = await fixture();
+test('legacy only clarifies missing business facts; declarations and mechanical keys are optional', async () => {
+  const f=await fixture();
   try {
-    const noKey = await f.legacy('hallmark_update_price', { storeId: 's', offerIds: ['A'], price: 100, currency: 'RUB', valueSource: 'user', userRequest: '把 A 的价格设为 100 RUB' }, 'missing-intent');
-    assert.equal(noKey.status, 'needs_clarification'); assert.ok(noKey.clarification.missing.includes('clientOperationKey')); assert.equal(f.mutations().length, 0); assert.equal(f.store.list('operations').length, 0); assert.equal(f.executions.get('hallmark.products.update_price'), undefined); assert.equal(f.store.get('invocations', 'missing-intent'), undefined);
-    const ambiguous = await f.legacy('hallmark_resolve_store', { query: 'Al' }, 'ambiguous-store'); assert.equal(ambiguous.status, 'needs_clarification'); assert.deepEqual(ambiguous.clarification.candidates.map((row: Data) => row.id), ['s', 'other']);
-    const batch = await f.legacy('hallmark_update_stock', { storeId: 's', offerIds: ['A', 'B'], stock: 0, valueSource: 'user', clientOperationKey: 'batch', userRequest: '库存设为 0' }, 'unconfirmed-batch'); assert.equal(batch.status, 'needs_clarification'); assert.ok(batch.clarification.missing.includes('warehouseId')); assert.ok(batch.clarification.missing.includes('scopeConfirmed'));
-    const rule = await f.legacy('hallmark_update_price', { storeId: 's', offerIds: ['A'], price: 100, currency: 'RUB', valueSource: 'rule:floor', clientOperationKey: 'rule', userRequest: '按 floor 规则修改价格' }, 'unverified-rule'); assert.equal(rule.status, 'needs_clarification'); assert.ok(rule.clarification.missing.includes('ruleEvidence'));
-    assert.equal(f.mutations().length, 0); assert.equal(f.platform().length, 0);
-    evidence.requiredWriteClarifications = { missingIntentKeyPreserved: true, ambiguousCandidatesPreserved: true, warehouseAndBatchConfirmationRequired: true, ruleEvidenceRequired: true, businessMutationPosts: 0 };
-    const originalRequest = '把 A 的价格设为 100 RUB，原话来自旧调用上下文', input = { storeId: 's', offerIds: ['A'], price: 100, currency: 'RUB', valueSource: 'user', clientOperationKey: 'top-level-context' }, before = f.executions.get('hallmark.products.update_price') ?? 0;
-    const authorized = await f.legacy('hallmark_update_price', input, 'context-first', originalRequest); assert.equal(authorized.status, 'ok', JSON.stringify(authorized)); assert.equal(authorized.data.input.userRequest, originalRequest); assert.equal(authorized.data.operationId, authorized.operation.operationId);
-    const repeated = await f.legacy('hallmark_update_price', input, 'context-repeat', originalRequest); assert.equal(repeated.status, 'ok'); assert.equal(repeated.data.operationId, authorized.data.operationId); assert.equal(f.mutations().length, 1); assert.equal(f.executions.get('hallmark.products.update_price'), before + 1); assert.equal(f.store.list<Data>('operations').filter(operation => operation.idempotencyKey === input.clientOperationKey).length, 1); assert.equal(f.port.get<Data>('operations', authorized.data.operationId)!.input.userRequest, originalRequest);
-    evidence.topLevelContext = { originalUserRequestPreserved: true, sameIntentOperationId: authorized.data.operationId, runtimeOperationsForIntent: 1, providerMutationExecutions: 1, businessMutationPosts: 1 };
-  } finally { await f.cleanup(); }
+    const missing=await f.legacy('hallmark_update_price',{storeId:'s',offerIds:['A']},'missing-price');assert.equal(missing.status,'needs_clarification');assert.deepEqual(missing.clarification.missing,['price']);assert.equal(f.mutations().length,0);
+    const ambiguous=await f.legacy('hallmark_resolve_store',{query:'Al'},'ambiguous-store');assert.equal(ambiguous.status,'needs_clarification');assert.deepEqual(ambiguous.clarification.candidates.map((row:Data)=>row.id),['s','other']);
+    const batch=await f.legacy('hallmark_update_stock',{storeId:'s',offerIds:['A','B'],stock:0},'missing-warehouse');assert.equal(batch.status,'needs_clarification');assert.deepEqual(batch.clarification.missing,['warehouseId']);assert.equal(f.mutations().length,0);
+    const noKey=await f.legacy('hallmark_update_price',{storeId:'s',offerIds:['A'],price:100},'automatic-intent');assert.equal(noKey.status,'ok',JSON.stringify(noKey));assert.equal(noKey.data.rows[0].status,'succeeded');assert.equal(f.store.get<Data>('operations',noKey.operation.operationId)!.idempotencyKey,'provider-intent:automatic-intent');assert.equal(f.mutations().length,1);
+    const rule=await f.legacy('hallmark_update_price',{storeId:'s',offerIds:['A'],price:100,valueSource:'rule:floor'},'known-value-no-statement');assert.equal(rule.status,'ok');assert.equal(rule.data.rows[0].status,'succeeded');assert.equal(f.mutations().length,2);
+    evidence.requiredWriteClarifications={businessFieldsRequired:true,ambiguousCandidatesPreserved:true,warehouseRequired:true,mechanicalKeyAutomatic:true,reviewDeclarationsRemoved:true,businessMutationPosts:2};
+    const originalRequest='把 A 的价格设为 100 RUB，旧调用上下文',input={storeId:'s',offerIds:['A'],price:100,clientOperationKey:'top-level-context'},before=f.executions.get('hallmark.products.update_price')??0;
+    const authorized=await f.legacy('hallmark_update_price',input,'context-first',originalRequest);assert.equal(authorized.status,'ok');assert.equal(authorized.data.title,originalRequest);
+    const repeated=await f.legacy('hallmark_update_price',input,'context-repeat',originalRequest);assert.equal(repeated.status,'ok');assert.equal(repeated.data.planId,authorized.data.planId);assert.equal(repeated.operation.operationId,authorized.operation.operationId);assert.equal(f.mutations().length,3);assert.equal(f.executions.get('hallmark.products.update_price'),before+1);assert.equal(f.store.list<Data>('operations').filter(operation=>operation.idempotencyKey===input.clientOperationKey).length,1);
+    evidence.topLevelContext={originalUserRequestPreserved:true,sameIntentOperationId:authorized.operation.operationId,runtimeOperationsForIntent:1,providerMutationExecutions:1,businessMutationPosts:1};
+  }finally{await f.cleanup();}
 });

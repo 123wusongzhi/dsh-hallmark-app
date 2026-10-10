@@ -116,9 +116,10 @@ export class AppCore {
     const source=await this.products(id);if(source.result)return source.result;
     const payload=source.payload!,rawProducts:RecordData[]=payload.products;
     if(kind==='list_store_products'){
-     const queried=args.query?rawProducts.filter(row=>JSON.stringify(row).toLowerCase().includes(args.query.toLowerCase())):rawProducts;
+     const queried=rawProducts.filter(row=>(args.status===undefined||row.status===args.status)&&(!args.query||JSON.stringify(row).toLowerCase().includes(args.query.toLowerCase())));
      const offset=args.cursor?Number(args.cursor):0;if(!Number.isSafeInteger(offset)||offset<0)return failed('INVALID_CURSOR','分页 cursor 须为非负偏移。');
-     const limit=args.limit??100;if(source.spill)return {status:'ok',data:{spill:source.spill,storeId:id,total:queried.length,cursor:String(offset),limit},provenance:source.provenance};return {status:'ok',data:{...payload,products:queried.slice(offset,offset+limit),total:queried.length,...(offset+limit<queried.length?{cursor:String(offset+limit)}:{})},provenance:source.provenance};
+     // An unfiltered spill is source evidence in the snapshot, never a status-filtered page.
+     const limit=args.limit??100;if(source.spill&&args.status===undefined)return {status:'ok',data:{spill:source.spill,storeId:id,total:queried.length,cursor:String(offset),limit},provenance:source.provenance};return {status:'ok',data:{...payload,products:queried.slice(offset,offset+limit),total:queried.length,...(offset+limit<queried.length?{cursor:String(offset+limit)}:{})},provenance:source.provenance};
     }
     const selected=rawProducts.filter(row=>(!args.offerIds&&!args.productIds)||args.offerIds?.includes(offerId(row))||args.productIds?.includes(productId(row)));
     const computed=profitRows(selected);

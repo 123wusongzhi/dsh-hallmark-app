@@ -1,15 +1,19 @@
 import type {BridgeHello, BridgeIdentity, BridgeRequest, CapabilityResult, ComponentContextUpdate, ComponentContextReceipt, ComponentAgentRequest, ComponentAgentReceipt, FailureInfo, JsonValue, SelectionEnvelope} from '../../app-contracts/src/index.ts';
 import type {AuthoringAssertion,UiSelectionEvidence} from '../../app-contracts/src/index.ts';
+import {createDataTransferReader} from './data-transfer-client.ts';
+import {appsInvocationTimeout,isBusinessSubmission} from '../../app-sdk/src/deadlines.ts';
 export interface AppsRenderReadyInput {publicationId:string;attemptId:string;attemptEpoch:number;checks:{rendered:boolean;bridgeReady:boolean;dataRead:boolean;unhandledErrors:string[];assertionResults:AuthoringAssertion[]}}
 export interface AppsUiStateExportInput {uiStateSchemaVersion:number;expectedStateRevision:number;value:JsonValue;selectionEvidence:UiSelectionEvidence[]}
+export interface AppsRefreshOptions {forceRefresh?:boolean}
 
 /** Project-owned component protocol. Historical builds continue to use hallmark.source.v1. */
 export const COMPONENT_CHANNEL = 'dsh.apps.component.v2';
+export type {BindingQuery} from '../../app-contracts/src/index.ts';
 export const COMPONENT_METHODS: BridgeRequest['method'][] = ['getData','getContext','refresh','attachSelection','resize','invokeCapability','updateContext','requestAgent'];
 export interface ComponentMessage extends BridgeIdentity {channel: typeof COMPONENT_CHANNEL; requestId: string}
 export interface ComponentResponse extends ComponentMessage {result?: JsonValue; error?: FailureInfo}
 export interface ComponentEvent extends BridgeIdentity {channel: typeof COMPONENT_CHANNEL; event: 'data'|'context'; data: JsonValue}
-export type ComponentFeature='renderReadyV1'|'uiStateV1';
+export type ComponentFeature='renderReadyV1'|'uiStateV1'|'bindingPagesV1'|'dataTransferV1';
 export interface ComponentHello extends BridgeHello {channel: typeof COMPONENT_CHANNEL; type: 'hello'; requestId?: string;features?:string[]}
 export type AgentReceipt = ComponentAgentReceipt;
 export interface AttachReceipt {status: 'attached'|'pending'; message: string}
@@ -28,8 +32,9 @@ export function isBridgeIdentity(value: unknown): value is BridgeIdentity {
 export interface AppsComponentClient {
   hello(): Promise<ComponentHello>;
   getData(): Promise<JsonValue>;
+  readBindingPage(bindingId:string,cursor?:string|null):Promise<JsonValue>;
   getContext(): Promise<JsonValue>;
-  refresh(bindingIds?: string[]): Promise<JsonValue>;
+  refresh(bindingIds?: string[],options?:AppsRefreshOptions): Promise<JsonValue>;
   attachSelection(selection: SelectionEnvelope): Promise<AttachReceipt>;
   resize(height: number): Promise<void>;
   invokeCapability(input: JsonValue): Promise<CapabilityResult>;
@@ -41,6 +46,8 @@ export interface AppsComponentClient {
   /** Diagnostic only: the parent owns display identity and persists this error. */
   reportFrameError(input:{phase:string;code:string;message:string}):void;
   subscribe(listener: (event: ComponentEvent)=>void): ()=>void;
+  isVisible():boolean;
+  subscribeVisibility(listener:(visible:boolean)=>void):()=>void;
   dispose(): void;
 }
 const failure=(code:string,message:string):FailureInfo=>({code,message,retryPolicy:'never'});
@@ -51,8 +58,9 @@ export function createAppsClient(options:{window?:Window;timeoutMs?:number;clien
   const clientNonce=globalThis.crypto?.randomUUID?.()??`${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const pending=new Map<string,{resolve:(value:unknown)=>void;reject:(error:Error,submissionUncertain?:boolean)=>void;timer:ReturnType<typeof setTimeout>}>();
   const listeners=new Set<(event:ComponentEvent)=>void>();
+  const visibilityListeners=new Set<(visible:boolean)=>void>();
   const helloRequestId=`hello-${documentNonce}-${Math.random().toString(36).slice(2)}`;
-  let identity:ComponentHello|undefined, disposed=false, sequence=0;
+  let identity:ComponentHello|undefined, disposed=false, sequence=0,visible=true;
   let resolveHello:(value:ComponentHello)=>void=()=>{}, rejectHello:(reason:Error)=>void=()=>{};
   const ready=new Promise<ComponentHello>((resolve,reject)=>{resolveHello=resolve;rejectHello=reject;});
   // A handler is attached immediately, so a never-used client cannot cause an unhandled rejection.
@@ -67,10 +75,11 @@ export function createAppsClient(options:{window?:Window;timeoutMs?:number;clien
       if(message.protocolVersion!=='2.0'){clearTimeout(helloTimer);rejectHello(new ComponentBridgeError(failure('UNSUPPORTED_PROTOCOL','Unsupported component protocol major.')));return;}
       if(!isBridgeIdentity(message as unknown)||!Array.isArray(message.supportedMethods)||message.supportedMethods.some((method:unknown)=>!COMPONENT_METHODS.includes(method as BridgeRequest['method']))||!Number.isSafeInteger(message.maxMessageBytes)||message.maxMessageBytes<1||!Number.isSafeInteger(message.contextRevision)||message.contextRevision<0)return;
       if(identity&&!sameBridgeIdentity(identity,message))return;
-      if(message.features!==undefined&&(!Array.isArray(message.features)||message.features.some((feature:unknown)=>!['renderReadyV1','uiStateV1'].includes(String(feature)))))return;
+      if(message.features!==undefined&&(!Array.isArray(message.features)||message.features.some((feature:unknown)=>!['renderReadyV1','uiStateV1','bindingPagesV1','dataTransferV1'].includes(String(feature)))))return;
       identity=message;clearTimeout(helloTimer);resolveHello(message);return;
     }
     if(!identity||!isBridgeIdentity(message as unknown)||!sameBridgeIdentity(identity,message))return;
+    if(message.type==='visibility'&&message.documentNonce===documentNonce&&typeof message.visible==='boolean'){visible=message.visible;for(const listener of visibilityListeners)listener(visible);return;}
     if(message.event==='data'||message.event==='context'){for(const listener of listeners)listener(message);return;}
     const request=pending.get(message.requestId);if(!request)return;
     pending.delete(message.requestId);clearTimeout(request.timer);
@@ -83,6 +92,7 @@ export function createAppsClient(options:{window?:Window;timeoutMs?:number;clien
     if(disposed)throw new ComponentBridgeError(failure('BRIDGE_CLOSED','Component is closed.'));
     await ready;
     if(disposed)throw new ComponentBridgeError(failure('BRIDGE_CLOSED','Component is closed.'));
+    if(!visible&&method!=='resize')throw new ComponentBridgeError(failure('BRIDGE_PAUSED','Component is hidden; resume it before requesting data or actions.'));
     if(!identity!.supportedMethods.includes(method))throw new ComponentBridgeError(failure('UNSUPPORTED_HOST_CAPABILITY',`Host does not support ${method}.`));
     const {protocolVersion,sessionId,viewId,buildId,frameInstanceId}=identity!;
     const request={channel:COMPONENT_CHANNEL,protocolVersion,sessionId,viewId,buildId,frameInstanceId,requestId:`${clientNonce}-${++sequence}`,method,params};
@@ -92,13 +102,15 @@ export function createAppsClient(options:{window?:Window;timeoutMs?:number;clien
         const source=error instanceof ComponentBridgeError?error.failure:failure('BRIDGE_SUBMISSION_UNKNOWN',error.message);
         if(method==='requestAgent')return new ComponentBridgeError({...source,retryPolicy:'inspect_only',details:{...((source.details&&typeof source.details==='object'&&!Array.isArray(source.details))?source.details:{}),sessionId,viewId,buildId,frameInstanceId,requestId:request.requestId}});
         if(method!=='invokeCapability'||!submissionUncertain)return error;
-        const input=params!==null&&typeof params==='object'&&!Array.isArray(params)?params:{},mutation=typeof input.idempotencyKey==='string'&&input.idempotencyKey.length>0;
+        const input=params!==null&&typeof params==='object'&&!Array.isArray(params)?params:{},mutation=typeof input.idempotencyKey==='string'&&input.idempotencyKey.length>0||isBusinessSubmission(input.appId,input.capabilityId);
         const details:Record<string,JsonValue>={sessionId,viewId,buildId,frameInstanceId,requestId:request.requestId};
         for(const key of ['appId','connectionId','capabilityId','capabilityVersion','idempotencyKey'])if(typeof input[key]==='string')details[key]=input[key];
         if(mutation)details.doNotResubmitMutation=true;
         return new ComponentBridgeError({...source,retryPolicy:mutation?'inspect_only':'read_retry',details});
       };
-      const timer=setTimeout(()=>{pending.delete(request.requestId);reject(withInspection(new ComponentBridgeError(failure('BRIDGE_TIMEOUT','Host response timed out.')),true));},options.timeoutMs??30000);
+      const invocation=params!==null&&typeof params==='object'&&!Array.isArray(params)?params:{};
+      const budget=method==='invokeCapability'?Math.min(options.timeoutMs??Infinity,appsInvocationTimeout(invocation)):options.timeoutMs??(method==='refresh'?150000:30000);
+      const timer=setTimeout(()=>{pending.delete(request.requestId);reject(withInspection(new ComponentBridgeError(failure('BRIDGE_TIMEOUT','Host response timed out.')),true));},budget);
       pending.set(request.requestId,{resolve:value=>resolve(value as T),reject:(error,submissionUncertain)=>reject(withInspection(error,submissionUncertain)),timer});
       try{current.parent.postMessage(request,origin);}catch(error){clearTimeout(timer);pending.delete(request.requestId);reject(withInspection(error instanceof Error?error:new Error(String(error))));}
     });
@@ -106,11 +118,14 @@ export function createAppsClient(options:{window?:Window;timeoutMs?:number;clien
   const extension=async(feature:ComponentFeature,action:string,params:JsonValue):Promise<JsonValue>=>{
     if(disposed)throw new ComponentBridgeError(failure('BRIDGE_CLOSED','Component is closed.'));await ready;
     if(disposed)throw new ComponentBridgeError(failure('BRIDGE_CLOSED','Component is closed.'));
+    if(!visible&&['bindingPagesV1','dataTransferV1'].includes(feature))throw new ComponentBridgeError(failure('BRIDGE_PAUSED','Component is hidden; resume it before reading data.'));
     if(!identity!.features?.includes(feature))throw new ComponentBridgeError(failure('UNSUPPORTED_HOST_CAPABILITY',`Host did not negotiate ${feature}.`));
     const {protocolVersion,sessionId,viewId,buildId,frameInstanceId}=identity!,request={channel:COMPONENT_CHANNEL,type:'extension',protocolVersion,sessionId,viewId,buildId,frameInstanceId,requestId:`${clientNonce}-${++sequence}`,feature,action,params};
     let bytes:number;try{bytes=new TextEncoder().encode(JSON.stringify(request)).length;}catch{throw new ComponentBridgeError(failure('INVALID_UI_STATE','Extension state must be serializable JSON.'));}
     if(bytes>Math.min(identity!.maxMessageBytes,feature==='uiStateV1'?65536:identity!.maxMessageBytes))throw new ComponentBridgeError(failure('BRIDGE_MESSAGE_TOO_LARGE','Extension exceeds the negotiated byte limit.'));
-    return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(request.requestId);reject(new ComponentBridgeError(failure('BRIDGE_TIMEOUT','Extension response timed out.')));},options.timeoutMs??30000);pending.set(request.requestId,{resolve:value=>resolve(value as JsonValue),reject,timer});try{current.parent.postMessage(request,origin);}catch(error){clearTimeout(timer);pending.delete(request.requestId);reject(error);}});
+    return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(request.requestId);reject(new ComponentBridgeError(failure('BRIDGE_TIMEOUT','Extension response timed out.')));},options.timeoutMs??(['bindingPagesV1','dataTransferV1'].includes(feature)?150000:30000));pending.set(request.requestId,{resolve:value=>resolve(value as JsonValue),reject,timer});try{current.parent.postMessage(request,origin);}catch(error){clearTimeout(timer);pending.delete(request.requestId);reject(error);}});
   };
-  return {hello:()=>ready,getData:()=>call('getData'),getContext:()=>call('getContext'),refresh:bindingIds=>call('refresh',bindingIds?{bindingIds}:null),attachSelection:selection=>call('attachSelection',selection as unknown as JsonValue),resize:height=>call('resize',{height}),invokeCapability:input=>call('invokeCapability',input),updateContext:context=>call('updateContext',context as unknown as JsonValue),requestAgent:input=>call('requestAgent',input as unknown as JsonValue),renderReady:input=>extension('renderReadyV1','ready',{...input,documentNonce} as unknown as JsonValue),readUiState:uiStateSchemaVersion=>extension('uiStateV1','read',{uiStateSchemaVersion,documentNonce}),writeUiState:input=>extension('uiStateV1','write',{...input,documentNonce} as unknown as JsonValue),reportFrameError:input=>{if(disposed||current.parent===current)return;try{current.parent.postMessage({channel:COMPONENT_CHANNEL,type:'display-error',...(identity?{protocolVersion:identity.protocolVersion,sessionId:identity.sessionId,viewId:identity.viewId,buildId:identity.buildId,frameInstanceId:identity.frameInstanceId}:{}),documentNonce,error:{phase:input.phase.slice(0,64),code:input.code.slice(0,128),message:input.message.slice(0,512)}},origin);}catch{}},subscribe:listener=>{listeners.add(listener);return()=>listeners.delete(listener);},dispose:()=>{if(disposed)return;disposed=true;clearTimeout(helloTimer);const error=new ComponentBridgeError(failure('BRIDGE_CLOSED','Component is closed.'));rejectHello(error);current.removeEventListener('message',receive);for(const request of pending.values()){clearTimeout(request.timer);request.reject(error,true);}pending.clear();listeners.clear();}};
+  const transferRead=createDataTransferReader((action,params)=>extension('dataTransferV1',action,{...(params as Record<string,JsonValue>),documentNonce}));
+  const readData=(params:Record<string,JsonValue>,fallback:()=>Promise<JsonValue>):Promise<JsonValue>=>identity?(identity.features?.includes('dataTransferV1')?transferRead(params):fallback()):ready.then(()=>identity!.features?.includes('dataTransferV1')?transferRead(params):fallback());
+  return {isVisible:()=>visible,subscribeVisibility:listener=>{visibilityListeners.add(listener);return()=>visibilityListeners.delete(listener);},readBindingPage:(bindingId,cursor)=>readData({method:'readBindingPage',bindingId,cursor:cursor??null},()=>extension('bindingPagesV1','read',{bindingId,cursor:cursor??null,documentNonce})),hello:()=>ready,getData:()=>readData({method:'getData'},()=>call('getData')),getContext:()=>call('getContext'),refresh:(bindingIds,refreshOptions)=>{const params={...(bindingIds?{bindingIds}:{}),forceRefresh:refreshOptions?.forceRefresh??true};return readData({method:'refresh',options:params},()=>call('refresh',params));},attachSelection:selection=>call('attachSelection',selection as unknown as JsonValue),resize:height=>call('resize',{height}),invokeCapability:input=>call('invokeCapability',input),updateContext:context=>call('updateContext',context as unknown as JsonValue),requestAgent:input=>call('requestAgent',input as unknown as JsonValue),renderReady:input=>extension('renderReadyV1','ready',{...input,documentNonce} as unknown as JsonValue),readUiState:uiStateSchemaVersion=>extension('uiStateV1','read',{uiStateSchemaVersion,documentNonce}),writeUiState:input=>extension('uiStateV1','write',{...input,documentNonce} as unknown as JsonValue),reportFrameError:input=>{if(disposed||current.parent===current)return;try{current.parent.postMessage({channel:COMPONENT_CHANNEL,type:'display-error',...(identity?{protocolVersion:identity.protocolVersion,sessionId:identity.sessionId,viewId:identity.viewId,buildId:identity.buildId,frameInstanceId:identity.frameInstanceId}:{}),documentNonce,error:{phase:input.phase.slice(0,64),code:input.code.slice(0,128),message:input.message.slice(0,512)}},origin);}catch{}},subscribe:listener=>{listeners.add(listener);return()=>listeners.delete(listener);},dispose:()=>{if(disposed)return;disposed=true;clearTimeout(helloTimer);const error=new ComponentBridgeError(failure('BRIDGE_CLOSED','Component is closed.'));rejectHello(error);current.removeEventListener('message',receive);for(const request of pending.values()){clearTimeout(request.timer);request.reject(error,true);}pending.clear();listeners.clear();visibilityListeners.clear();}};
 }

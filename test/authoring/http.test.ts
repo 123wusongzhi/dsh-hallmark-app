@@ -1,18 +1,63 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
-import {existsSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
+import {existsSync,mkdtempSync,mkdirSync,symlinkSync,readFileSync,readdirSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {canonicalJson} from '../../packages/app-contracts/src/index.ts';
 import {composeAppsRuntime} from '../../packages/service/src/apps-main.ts';
 import {createAppsServer} from '../../packages/service/src/apps-server.ts';
+import {createAppsClient,COMPONENT_CHANNEL} from '../../packages/component-runtime/src/apps-client.ts';
+import {ComponentHost} from '../../packages/component-runtime/src/host.ts';
+import {createAppsPresentationHandlers} from '../../packages/plugin-apps/client/component-handlers.ts';
 import type {AuthoringDraft,AuthoringAttempt,AuthoringView,BuildReceipt,PreviewReceipt,StartMountInput,ViewPublication} from '../../packages/app-presentation/src/authoring-types.ts';
 // @ts-expect-error Actual isolated browser runner is also exported by the standalone CLI.
 import {runAuthoringPreview} from '../../scripts/apps-authoring-preview.mjs';
 
 const browser=process.env.DSH_PREVIEW_BROWSER_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe';
+
+test('runners automatically register real build and preview receipts and persist diagnostics',{skip:!existsSync(browser),timeout:60000},async()=>{
+ const f=await setup();try{
+  const begin=await f.begin({mode:'new'});project(begin.draft.workspacePath,'Auto record');
+  const keyFile=join(f.directory,'key');writeFileSync(keyFile,f.token);
+  // @ts-expect-error Standalone build runner.
+  const {runAuthoringBuild}=await import('../../scripts/apps-authoring-build.mjs');
+  const input={sessionId:'original',viewId:begin.view.viewId,attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,sourceRevision:begin.draft.sourceRevision,workspacePath:begin.draft.workspacePath,command:[process.execPath,'build.mjs'],archiveRoot:join(f.directory,'source-components'),evidenceRoot:join(f.directory,'authoring-evidence'),runtime:{url:f.url,keyFile},autoRecord:true};
+  const built=await runAuthoringBuild(input);assert.equal(built.verdict,'PASS');assert.ok(built.buildReceiptId);assert.equal(f.store.list('build_receipts').length,1);assert.deepEqual(JSON.parse(readFileSync(built.previewRequestPath,'utf8')),built.previewRequest);
+  const tested=await runAuthoringPreview({...built.previewRequest,browserExecutable:browser,assertions:[{id:'select',action:'click',selector:'#toggle',checkSelector:'#result',check:'text',expected:'selected'}]});
+  assert.equal(tested.report.verdict,'PASS');assert.ok(tested.summary.previewReceiptId);assert.equal(f.store.list('preview_receipts').length,1);
+  const summary=JSON.parse(readFileSync(tested.summaryPath,'utf8'));assert.equal(summary.failures.length,0);assert.equal(summary.viewports.length,2);assert.ok(existsSync(summary.viewports[0].screenshot));
+  await assert.rejects(runAuthoringPreview({...built.previewRequest,buildReportRef:{path:'missing'}}));
+  assert.equal(JSON.parse(readFileSync(tested.summaryPath,'utf8')).verdict,'PASS');
+  const failed=JSON.parse(readFileSync(tested.summaryPath+'.error.json','utf8'));assert.equal(failed.verdict,'ERROR');assert.equal(failed.stage,'preview');assert.ok(failed.error.message);
+ }finally{await f.cleanup();}
+});
+
+test('live preview adapter reads real binding shape, invokes pages, validates selection and refreshes',async()=>{
+ const f=await setup();try{
+  f.runtime.addConnection({appId:'notes',connectionId:'preview-notes',displayName:'Preview notes',config:{},configRevision:1,enabled:true});f.runtime.bind({sessionId:'original',appId:'notes',connectionId:'preview-notes',enabled:true,boundAt:new Date().toISOString()});
+  const at=new Date().toISOString();for(const id of ['a','b'])f.store.put('provider_records',canonicalJson(['notes','preview-notes','notes',id]),{appId:'notes',connectionId:'preview-notes',namespace:'notes',recordId:id,value:{id,title:id,content:'Preview fixture',revision:'1',createdAt:at,updatedAt:at}});
+  const begin=await f.begin({mode:'new',bindings:[{bindingId:'notes',appId:'notes',connectionId:'preview-notes',capabilityId:'notes.notes.list',capabilityMajor:1,input:{limit:1},projection:[],refresh:{mode:'manual'}}]});
+  await f.presentation.refreshView('original',begin.view.viewId,{kind:'agent',sessionId:'original',nativeCallId:'preview-init'});
+  const keyFile=join(f.directory,'preview-key');writeFileSync(keyFile,f.token);
+  // @ts-expect-error Standalone runner adapter.
+  const {previewData}=await import('../../scripts/preview-data.mjs');
+  const adapter=await previewData({mode:'live_readonly',sessionId:'original',viewId:begin.view.viewId,runtime:{url:f.url,keyFile},data:{fake:true}});
+  assert.deepEqual(adapter.data,f.presentation.getData('original',begin.view.viewId));
+  const binding=adapter.data.bindings[0],{projection,...query}=binding.query;assert.equal(query.capabilityId,'notes.notes.list');
+  const page=await adapter.readOnlyCapability({...query,input:{...query.input,cursor:'1'}});assert.equal(page.status,'ok');assert.equal(page.data.items[0].note.id,'b');
+  assert.equal((await adapter.validateSelection({bindingId:binding.bindingId,datasetRevision:binding.revision,resources:binding.resources})).status,'validated');
+  await assert.rejects(adapter.validateSelection({bindingId:binding.bindingId,datasetRevision:binding.revision,resources:[page.data.items[0].resource]}),/not present/);
+  const boundPage=(await adapter.readBindingPage({bindingId:'notes',cursor:'1'})).bindings[0];
+  assert.equal(boundPage.resources[0].resourceId,'b');
+  assert.equal((await adapter.validateSelection({bindingId:'notes',datasetRevision:boundPage.revision,resources:boundPage.resources})).status,'validated');
+  await assert.rejects(adapter.validateSelection({bindingId:'notes',datasetRevision:binding.revision,resources:binding.resources}),/current ready dataset/);
+  assert.deepEqual(await adapter.refreshData({bindingIds:['notes']}),f.presentation.getData('original',begin.view.viewId));
+  await adapter.closeData();
+  await assert.rejects(adapter.readOnlyCapability({...query,capabilityId:'notes.notes.create',input:{title:'No write'}}),/PREVIEW_CAPABILITY_NOT_READ_ONLY/);
+ }finally{await f.cleanup();}
+});
 async function setup(){
  const directory=mkdtempSync(join(tmpdir(),'apps-authoring-http-')),instance=composeAppsRuntime(directory,{connections:[]}),token='a'.repeat(64),server=createAppsServer({...instance,token});
  await new Promise<void>(accept=>server.listen(0,'127.0.0.1',accept));const url=`http://127.0.0.1:${(server.address() as {port:number}).port}`;
@@ -26,6 +71,22 @@ function project(workspace:string,title:string){
  writeFileSync(join(workspace,'package-lock.json'),'{}');writeFileSync(join(workspace,'input.html'),html);writeFileSync(join(workspace,'build.mjs'),"import{mkdirSync,copyFileSync}from'node:fs';mkdirSync('dist',{recursive:true});copyFileSync('input.html','dist/index.html');");
 }
 function openInput(publication:ViewPublication):StartMountInput{return {viewId:publication.viewId,publicationId:publication.publicationId,attemptId:publication.attemptId,attemptEpoch:publication.attemptEpoch,buildId:publication.candidateBuildId,expectedViewRevision:publication.expectedViewRevision};}
+test('HTTP opens reuse session workcopies and closure is durable and restorable without an authoring draft',async()=>{
+ const f=await setup();try{
+  const projectPath=join(f.directory,'original-project');mkdirSync(join(projectPath,'dist'),{recursive:true});writeFileSync(join(projectPath,'dist/index.html'),'<p>Saved</p>');
+  const view=f.presentation.openSource('original',projectPath,{title:'Saved'}),saved=f.presentation.saveComponent('original',view.viewId,'Save',{mode:'save_as'}),before=f.store.list('components');
+  const open=()=>f.call('/v1/views/open',{sessionId:'original',componentId:saved.componentId});
+  assert.equal((await open()).body.viewId,view.viewId);assert.equal((await open()).body.viewId,view.viewId);
+  const concurrent=await Promise.all(Array.from({length:8},()=>f.call('/v1/views/open',{sessionId:'parallel',componentId:saved.componentId})));assert.ok(concurrent.every(value=>value.status===200));assert.equal(new Set(concurrent.map(value=>value.body.viewId)).size,1);assert.equal((await f.call('/v1/views?sessionId=parallel')).body.views.length,1);
+  const copy=await f.call('/v1/views/open',{sessionId:'original',componentId:saved.componentId,newCopy:true});assert.equal(copy.status,200);assert.notEqual(copy.body.viewId,view.viewId);
+  const bad=await f.call('/v1/views/open',{sessionId:'original',componentId:saved.componentId,newCopy:'true'});assert.notEqual(bad.status,200);
+  const closed=await f.call('/v1/authoring/closeDraft',{sessionId:'original',params:{viewId:copy.body.viewId,action:'keep'}});assert.equal(closed.status,200);assert.equal(closed.body.panelState,'closed');
+  const views=await f.call('/v1/views?sessionId=original');assert.equal(views.body.views.find((value:any)=>value.viewId===copy.body.viewId).panelState,'closed');
+  const foreign=await f.call('/v1/authoring/restoreView',{sessionId:'other',params:{viewId:copy.body.viewId}});assert.notEqual(foreign.status,200);assert.equal(foreign.body.error.code,'VIEW_NOT_OWNED');
+  const restored=await f.call('/v1/authoring/restoreView',{sessionId:'original',params:{viewId:copy.body.viewId}});assert.equal(restored.status,200);assert.equal(restored.body.panelState,'open');assert.equal(restored.body.closedAt,undefined);
+  assert.deepEqual(f.store.list('components'),before);assert.equal((await f.call('/v1/views?sessionId=original')).body.views.length,2);
+ }finally{await f.cleanup();}
+});
 test('HTTP authoring validates real receipt schemas, authorizes candidate document, commits once and keeps fixed historical publications',{skip:!existsSync(browser),timeout:60000},async()=>{
  const f=await setup();try{
   const prepare=async(mode:'new'|'edit',viewId?:string,title='First')=>{
@@ -76,25 +137,61 @@ test('HTTP authoring validates real receipt schemas, authorizes candidate docume
 test('HTTP display opens the previewed archive, rejects invalid grants atomically and reopens after an inspectable actual-load error',{skip:!existsSync(browser),timeout:60000},async()=>{
  const f=await setup();try{
   f.runtime.addConnection({appId:'notes',connectionId:'notes-display',displayName:'Isolated display notes',config:{},configRevision:1,enabled:true});f.runtime.bind({sessionId:'original',appId:'notes',connectionId:'notes-display',enabled:true,boundAt:new Date().toISOString()});
-  const at=new Date().toISOString(),recordId=canonicalJson(['notes','notes-display','notes','note-a']);f.store.put('provider_records',recordId,{appId:'notes',connectionId:'notes-display',namespace:'notes',recordId:'note-a',value:{id:'note-a',title:'Original data',content:'P1 fixture',revision:'1',createdAt:at,updatedAt:at}});
+  const at=new Date().toISOString();for(const id of ['note-a','note-b'])f.store.put('provider_records',canonicalJson(['notes','notes-display','notes',id]),{appId:'notes',connectionId:'notes-display',namespace:'notes',recordId:id,value:{id,title:'Original data '+id,content:'P1 fixture',revision:'1',createdAt:at,updatedAt:at}});
   const prepare=async(begin:Awaited<ReturnType<typeof f.begin>>,title:string)=>{
    project(begin.draft.workspacePath,title);const build=await f.evidenceRunner.build({attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,sourceRevision:begin.draft.sourceRevision,workspacePath:begin.draft.workspacePath,command:[process.execPath,'build.mjs'],sources:f.presentation.sources!});const built=await f.action('apps.authoring.record_build',{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,reportRef:build.reportRef});assert.equal(built.status,'ok');const receipt=built.data as BuildReceipt;
    const tested=await runAuthoringPreview({attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,buildReceiptId:receipt.receiptId,buildReportRef:build.reportRef,mode:'fixture',runner:f.evidenceRunner,sources:f.presentation.sources,browserExecutable:browser,data:f.presentation.getData('original',begin.view.viewId),assertions:[{id:'select',action:'click',selector:'#toggle',checkSelector:'#result',check:'text',expected:'selected'}]});assert.equal(tested.report.verdict,'PASS');const recorded=await f.action('apps.authoring.record_preview',{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,buildReceiptId:receipt.receiptId,reportRef:tested.reportRef});assert.equal(recorded.status,'ok');const preview=recorded.data as PreviewReceipt;
    const published=await f.action('apps.authoring.publish',{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,viewId:begin.view.viewId,expectedViewRevision:begin.attempt.expectedViewRevision,buildId:receipt.archiveBuildId,buildReceiptId:receipt.receiptId,previewReceiptId:preview.receiptId});assert.equal(published.status,'ok');return {publication:published.data as ViewPublication,preview,receipt};
   };
-  const begin=await f.begin({mode:'new',title:'Display P1',bindings:[{bindingId:'notes',appId:'notes',connectionId:'notes-display',capabilityId:'notes.notes.list',capabilityMajor:1,input:{},projection:[],refresh:{mode:'manual'}}]});await f.presentation.refreshView('original',begin.view.viewId,{kind:'agent',sessionId:'original',nativeCallId:'fixture-read'});const first=await prepare(begin,'P1'),target=openInput(first.publication),viewId=target.viewId;
+  const begin=await f.begin({mode:'new',title:'Display P1',bindings:[{bindingId:'notes',appId:'notes',connectionId:'notes-display',capabilityId:'notes.notes.list',capabilityMajor:1,input:{limit:1},projection:[],refresh:{mode:'manual'}}]});await f.presentation.refreshView('original',begin.view.viewId,{kind:'agent',sessionId:'original',nativeCallId:'fixture-read'});const first=await prepare(begin,'P1'),target=openInput(first.publication),viewId=target.viewId;
   const state=()=>canonicalJson({views:f.store.list('views'),publications:f.store.list('view_publications'),records:f.store.list('provider_records')});
   const callOpen=(publication:ViewPublication,displayId:string)=>f.call('/v1/authoring/openDisplay',{sessionId:'original',params:{...openInput(publication),displayId}});
   const opened=await callOpen(first.publication,'http-display-one');assert.equal(opened.status,200,JSON.stringify(opened));assert.equal(opened.body.publication.state,'prepared');assert.equal(opened.body.publication.readyDeadlineAt,null);assert.equal(opened.body.source.buildId,target.buildId);assert.equal(opened.body.data.bindings[0].resources[0].resourceId,'note-a');
-  const params={...target,displayId:opened.body.display.displayId,displayGeneration:opened.body.display.generation,frameInstanceId:randomUUID(),documentNonce:randomUUID(),clientFeatures:['renderReadyV1','uiStateV1']};const {expectedViewRevision:_unused,...frameParams}=params;
+  const params={...target,displayId:opened.body.display.displayId,displayGeneration:opened.body.display.generation,frameInstanceId:randomUUID(),documentNonce:randomUUID(),clientFeatures:['renderReadyV1','uiStateV1','bindingPagesV1']};const {expectedViewRevision:_unused,...frameParams}=params;
   for(const bad of [{...frameParams,viewId:'foreign-view'},{...frameParams,clientFeatures:[123]},{...frameParams,buildId:'f'.repeat(64)}]){const before=state(),result=await f.call('/v1/authoring/authorizeDisplayFrame',{sessionId:'original',params:bad});assert.equal(result.status,400);assert.equal(state(),before);}
   f.runtime.bind({sessionId:'original',appId:'notes',connectionId:'notes-display',enabled:false,boundAt:new Date().toISOString()});const beforeUnbound=state(),unbound=await f.call('/v1/authoring/authorizeDisplayFrame',{sessionId:'original',params:frameParams});assert.equal(unbound.body.error.code,'CONNECTION_NOT_BOUND');assert.equal(state(),beforeUnbound);f.runtime.bind({sessionId:'original',appId:'notes',connectionId:'notes-display',enabled:true,boundAt:new Date().toISOString()});
-  const authorized=await f.call('/v1/authoring/authorizeDisplayFrame',{sessionId:'original',params:frameParams});assert.equal(authorized.status,200);assert.deepEqual(authorized.body.features,['renderReadyV1','uiStateV1']);
+  const authorized=await f.call('/v1/authoring/authorizeDisplayFrame',{sessionId:'original',params:frameParams});assert.equal(authorized.status,200);assert.deepEqual(authorized.body.features,['renderReadyV1','uiStateV1','bindingPagesV1']);
   const identity={protocolVersion:'2.0',sessionId:'original',viewId,buildId:target.buildId,frameInstanceId:frameParams.frameInstanceId},extension={...identity,channel:'dsh.apps.component.v2',type:'extension',feature:'renderReadyV1',action:'ready',requestId:'display-ready',params:{documentNonce:frameParams.documentNonce,checks:{rendered:true,bridgeReady:true,dataRead:true,unhandledErrors:[],assertionResults:first.preview.assertionResults}}};
   const beforeNonce=state(),nonce=await f.call('/v1/component-extension',{...extension,params:{...extension.params,documentNonce:'foreign-nonce'}});assert.equal(nonce.status,400);assert.equal(nonce.body.error.code,'BRIDGE_IDENTITY_STALE');assert.equal(state(),beforeNonce);
   const failed=await f.call('/v1/authoring/reportDisplayError',{sessionId:'original',params:{viewId,publicationId:target.publicationId,buildId:target.buildId,displayId:params.displayId,displayGeneration:params.displayGeneration,error:{phase:'script',code:'COMPONENT_SCRIPT_ERROR',message:'Actual iframe script failure fixture'}}});assert.equal(failed.body.state,'failed');
   const inspected=await f.call('/v1/authoring/inspect',{sessionId:'original',params:{publicationId:target.publicationId}});assert.equal(inspected.body.latestDisplay.errors[0].code,'COMPONENT_SCRIPT_ERROR');assert.equal(inspected.body.attempt.state,'publish_ready');assert.equal(inspected.body.view.viewRevision,1);
-  const reopened=await callOpen(first.publication,'http-display-two');assert.equal(reopened.status,200);assert.equal(reopened.body.display.generation,2);const secondParams={...frameParams,displayId:reopened.body.display.displayId,displayGeneration:2,frameInstanceId:randomUUID(),documentNonce:randomUUID()};assert.equal((await f.call('/v1/authoring/authorizeDisplayFrame',{sessionId:'original',params:secondParams})).status,200);
+  const reopened=await callOpen(first.publication,'http-display-two');assert.equal(reopened.status,200);assert.equal(reopened.body.display.generation,2);const secondParams={...frameParams,displayId:reopened.body.display.displayId,displayGeneration:2,frameInstanceId:randomUUID(),documentNonce:randomUUID()};
+  // Use the real SDK and parent proxy against the HTTP grant boundary, including a
+  // legacy SDK packet that omits its nonce. Preview's direct binding calls skip it.
+  const nativeFetch=globalThis.fetch,originalWindow=globalThis.window,posts:any[]=[],listeners=new Set<(event:MessageEvent)=>void>(),displayIdentity={...identity,protocolVersion:'2.0' as const,frameInstanceId:secondParams.frameInstanceId};
+  let sdk:ReturnType<typeof createAppsClient>|undefined,bridge:ComponentHost|undefined;
+  try{
+   globalThis.window={dispatchEvent:()=>true} as unknown as typeof window;
+   globalThis.fetch=async(url,options)=>{
+    if(!String(url).startsWith('/api/dsh-apps'))return nativeFetch(url,options);
+    const resource=new URL(String(url),'http://display.test').searchParams.get('resource');
+    if(resource==='hostCapabilities')return Response.json({adapterReady:false});
+    if(resource==='componentFeatures')return Response.json({features:secondParams.clientFeatures});
+    const body=JSON.parse(String(options?.body)),path=body.action==='authoring'?'/v1/authoring/'+body.operation:body.action==='componentBridge'?'/v1/component-bridge':'/v1/component-extension';
+    const response=await f.call(path,body.action==='authoring'?{sessionId:body.sessionId,params:body.params}:body.request);return Response.json(response.body,{status:response.status});
+   };
+   const handlers=await createAppsPresentationHandlers(displayIdentity,new AbortController().signal,{publicationId:target.publicationId,attemptId:target.attemptId,attemptEpoch:target.attemptEpoch,displayId:secondParams.displayId,displayGeneration:secondParams.displayGeneration});
+   bridge=new ComponentHost(displayIdentity,handlers,{extensionHandlers:handlers.extensions});
+   const parent={postMessage:async(message:any)=>{
+    posts.push(message);
+    if(message.type==='hello'){secondParams.documentNonce=message.documentNonce;await handlers.authorizeFrame!(displayIdentity,message.documentNonce,message.clientFeatures);}
+    const response=await bridge!.handle(message);if(response)for(const listener of listeners)listener({source:parent,origin:'http://display.test',data:response} as unknown as MessageEvent);
+   }};
+   const child={parent,location:{origin:'http://display.test'},addEventListener:(_type:string,listener:(event:MessageEvent)=>void)=>listeners.add(listener),removeEventListener:(_type:string,listener:(event:MessageEvent)=>void)=>listeners.delete(listener)} as unknown as Window;
+   sdk=createAppsClient({window:child,timeoutMs:3000,clientFeatures:['renderReadyV1','uiStateV1','bindingPagesV1']});await sdk.hello();
+   assert.equal((await sdk.getData() as any).bindings[0].resources[0].resourceId,'note-a');
+   const ready=await sdk.renderReady({publicationId:target.publicationId,attemptId:target.attemptId,attemptEpoch:target.attemptEpoch,checks:extension.params.checks}) as any;assert.equal(ready.display.state,'ready');assert.equal(ready.view.viewRevision,2);
+   const beforeCalls=f.store.list('invocations').length;
+   assert.equal((await sdk.readBindingPage('notes','1') as any).bindings[0].resources[0].resourceId,'note-b');
+   assert.equal(posts.at(-1).params.documentNonce,secondParams.documentNonce,'the SDK itself must send the authorized document nonce');
+   assert.equal((await sdk.refresh(['notes']) as any).bindings[0].resources[0].resourceId,'note-a');
+   const beforeInvoke=Date.now(),read=await sdk.invokeCapability({appId:'notes',connectionId:'notes-display',capabilityId:'notes.notes.get',capabilityVersion:'1.0.0',input:{id:'note-b'}});assert.equal(read.status,'ok',JSON.stringify(read));assert.equal((read as any).data.note.id,'note-b');assert.equal(Object.hasOwn(posts.at(-1).params,'deadlineAt'),false);
+   const calls=f.store.list<any>('invocations').slice(beforeCalls);assert.deepEqual(calls.map(row=>row.request.capabilityId),['notes.notes.list','notes.notes.list','notes.notes.get']);assert.ok(calls.every(row=>row.request.source.kind==='component'&&row.request.source.frameInstanceId===secondParams.frameInstanceId&&row.result.status==='ok'));assert.ok(Date.parse(calls.at(-1).request.deadlineAt)>beforeInvoke);
+   const legacyPage={...displayIdentity,channel:COMPONENT_CHANNEL,type:'extension' as const,feature:'bindingPagesV1' as const,action:'read',requestId:'old-sdk-page',params:{bindingId:'notes',cursor:'1'}};
+   assert.equal((await f.call('/v1/component-extension',legacyPage)).body.error.code,'BRIDGE_IDENTITY_STALE');
+   const legacyResult=await bridge.handle(legacyPage) as any;assert.equal(legacyResult.error,undefined);assert.equal(legacyResult.result.bindings[0].resources[0].resourceId,'note-b');
+   const beforeWrong=f.store.list('invocations').length,wrong=await bridge.handle({...legacyPage,requestId:'wrong-sdk-page',params:{...legacyPage.params,documentNonce:'explicitly-wrong-document'}}) as any;assert.equal(wrong.error.code,'BRIDGE_IDENTITY_STALE');assert.equal(f.store.list('invocations').length,beforeWrong);
+  }finally{sdk?.dispose();bridge?.dispose();globalThis.fetch=nativeFetch;globalThis.window=originalWindow;}
   assert.equal((await f.call('/v1/component-extension',extension)).body.error.code,'BRIDGE_IDENTITY_STALE');assert.equal((await f.call('/v1/component-bridge',{...identity,channel:'dsh.apps.component.v2',method:'getData',requestId:'old-frame',params:null})).body.error.code,'BRIDGE_IDENTITY_STALE');
   const ready2={...extension,frameInstanceId:secondParams.frameInstanceId,params:{...extension.params,documentNonce:secondParams.documentNonce}},ready=await f.call('/v1/component-extension',ready2);assert.equal(ready.body.result.display.state,'ready');assert.equal(ready.body.result.view.viewRevision,2);assert.equal((await f.call('/v1/component-extension',ready2)).body.result.view.viewRevision,2);
   const oldSdkUi={...ready2,feature:'uiStateV1',action:'write',params:{uiStateSchemaVersion:1,expectedStateRevision:0,value:{search:'SDK16-compatible'},selectionEvidence:[]}},uiBeforeMissingNonce=state(),missingUiNonce=await f.call('/v1/component-extension',oldSdkUi);assert.equal(missingUiNonce.body.error.code,'BRIDGE_IDENTITY_STALE');assert.equal(state(),uiBeforeMissingNonce);const writtenUi=await f.call('/v1/component-extension',{...oldSdkUi,params:{...oldSdkUi.params,documentNonce:secondParams.documentNonce}});assert.equal(writtenUi.status,200);assert.equal(writtenUi.body.result.stateRevision,1);const readUi=await f.call('/v1/component-extension',{...oldSdkUi,action:'read',params:{uiStateSchemaVersion:1,documentNonce:secondParams.documentNonce}});assert.deepEqual(readUi.body.result.snapshot.value,{search:'SDK16-compatible'});const uiBeforeNonce=state(),wrongUiNonce=await f.call('/v1/component-extension',{...oldSdkUi,params:{...oldSdkUi.params,documentNonce:'wrong-old-ui-document'}});assert.equal(wrongUiNonce.body.error.code,'BRIDGE_IDENTITY_STALE');assert.equal(state(),uiBeforeNonce);
@@ -142,4 +239,117 @@ test('active source reopens after another build has display history',async()=>{
   await f.call('/v1/authoring/retireFrame',{sessionId:'original',params:{viewId:view.viewId,buildId,frameInstanceId:identity.frameInstanceId,documentNonce}});
   assert.equal((await f.call('/v1/component-bridge',{...request,requestId:randomUUID()})).body.error.code,'BRIDGE_IDENTITY_STALE');
  }finally{await f.cleanup();}
+});
+
+
+test('check resumes lost registration responses without rebuilding or repeating preview and never publishes',{skip:!existsSync(browser),timeout:60000},async()=>{
+ const f=await setup(),originalFetch=globalThis.fetch;try{
+  f.runtime.addConnection({appId:'notes',connectionId:'resume-notes',displayName:'Resume notes',config:{},configRevision:1,enabled:true});f.runtime.bind({sessionId:'original',appId:'notes',connectionId:'resume-notes',enabled:true,boundAt:new Date().toISOString()});
+  const begin=await f.begin({mode:'new',bindings:[{bindingId:'notes',appId:'notes',connectionId:'resume-notes',capabilityId:'notes.notes.list',capabilityMajor:1,input:{limit:1},projection:[],refresh:{mode:'manual'}}]});project(begin.draft.workspacePath,'Resume check');const keyFile=join(f.directory,'key');writeFileSync(keyFile,f.token);
+  // @ts-expect-error Standalone combined runner.
+  const {runAuthoringCheck}=await import('../../scripts/apps-authoring-check.mjs');
+  const request={build:{sessionId:'original',viewId:begin.view.viewId,attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,sourceRevision:begin.draft.sourceRevision,workspacePath:begin.draft.workspacePath,command:[process.execPath,'build.mjs'],archiveRoot:join(f.directory,'source-components'),evidenceRoot:join(f.directory,'authoring-evidence'),runtime:{url:f.url,keyFile}},preview:{browserExecutable:browser,requiredMethods:['getData'],assertions:[{id:'select',action:'click',selector:'#toggle',checkSelector:'#result',check:'text',expected:'selected'}]}};
+  const drop=new Set(['apps.authoring.record_build','apps.authoring.record_preview']);
+  globalThis.fetch=async(url,options)=>{const response=await originalFetch(url,options);const capability=typeof options?.body==='string'?JSON.parse(options.body).capabilityId:undefined;if(drop.delete(capability))throw Error('Simulated lost receipt response');return response;};
+  await assert.rejects(runAuthoringCheck(request),/lost receipt/);
+  assert.equal(f.store.list('build_receipts').length,1);assert.equal(f.store.list('preview_receipts').length,0);
+  await assert.rejects(runAuthoringCheck(request),/lost receipt/);
+  assert.equal(f.store.list('preview_receipts').length,1);
+  const count=()=>readdirSync(request.build.evidenceRoot).filter(name=>/^(build|preview)-.*\.json$/.test(name)).length;
+  const before=count(),resumed=await runAuthoringCheck(request);
+  const oldData=f.presentation.getData('original',begin.view.viewId);
+  await f.presentation.refreshView('original',begin.view.viewId,{kind:'agent',sessionId:'original',nativeCallId:'refresh-after-success'});
+  assert.notDeepEqual(f.presentation.getData('original',begin.view.viewId),oldData);
+  const repeated=await runAuthoringCheck(request);
+  assert.equal(resumed.verdict,'PASS');assert.equal(resumed.reusedBuild,true);assert.equal(resumed.reusedPreview,true);assert.equal(repeated.buildId,resumed.buildId);assert.equal(repeated.verifiedAt,resumed.verifiedAt);assert.equal(count(),before);
+  assert.equal(f.store.list('view_publications').length,0);assert.equal(f.store.list('components').length,0);
+  await assert.rejects(runAuthoringCheck({...request,preview:{...request.preview,assertions:[{...request.preview.assertions[0],expected:'changed'}]}}),{code:'NEW_ATTEMPT_REQUIRED'});assert.equal(count(),before);
+  assert.equal(JSON.parse(readFileSync(resumed.summaryPath,'utf8')).verdict,'PASS');
+  assert.equal(JSON.parse(readFileSync(resumed.summaryPath+'.error.json','utf8')).error.code,'NEW_ATTEMPT_REQUIRED');
+  writeFileSync(join(begin.draft.workspacePath,'input.html'),'changed source');
+  await assert.rejects(runAuthoringCheck(request),{code:'NEW_ATTEMPT_REQUIRED'});assert.equal(count(),before);
+ }finally{globalThis.fetch=originalFetch;await f.cleanup();}
+});
+
+test('unregistered changed preview plan reruns only preview while build is reused',{skip:!existsSync(browser),timeout:60000},async()=>{
+ const f=await setup();try{
+  const begin=await f.begin({mode:'new'});project(begin.draft.workspacePath,'Preview change');const keyFile=join(f.directory,'key');writeFileSync(keyFile,f.token);
+  // @ts-expect-error Standalone build runner.
+  const {runAuthoringBuild}=await import('../../scripts/apps-authoring-build.mjs');
+  const input={sessionId:'original',viewId:begin.view.viewId,attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,sourceRevision:begin.draft.sourceRevision,workspacePath:begin.draft.workspacePath,command:[process.execPath,'build.mjs'],archiveRoot:join(f.directory,'source-components'),evidenceRoot:join(f.directory,'authoring-evidence'),runtime:{url:f.url,keyFile},autoRecord:true};
+  const built=await runAuthoringBuild(input),plan={...built.previewRequest,autoRecord:false,browserExecutable:browser,assertions:[{id:'select',action:'click',selector:'#toggle',checkSelector:'#result',check:'text',expected:'selected'}]};
+  const first=await runAuthoringPreview(plan),second=await runAuthoringPreview({...plan,assertions:[...plan.assertions,{id:'heading',selector:'h1',check:'text',expected:'Preview change'}]});
+  assert.equal(second.report.verdict,'PASS');assert.equal(second.summary.reusedPreview,false);assert.notEqual(first.reportRef.sha256,second.reportRef.sha256);
+  const reused=await runAuthoringBuild(input);assert.equal(reused.reusedBuild,true);assert.equal(reused.reportRef.sha256,built.reportRef.sha256);assert.equal(f.store.list('build_receipts').length,1);
+ }finally{await f.cleanup();}
+});
+
+
+test('packed check CLI completes four steps and repeats without new execution',{skip:!existsSync(browser)||!existsSync('bundles/apps/lib/apps-authoring-check.js'),timeout:60000},async()=>{
+ const f=await setup();try{
+  const begin=await f.begin({mode:'new'});project(begin.draft.workspacePath,'Packed check');const keyFile=join(f.directory,'key');writeFileSync(keyFile,f.token);
+  const request={build:{sessionId:'original',viewId:begin.view.viewId,attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,sourceRevision:begin.draft.sourceRevision,workspacePath:begin.draft.workspacePath,command:existsSync('C:/Users/wubil/AppData/Local/Programs/DeepSeek Harness/DeepSeek Harness.exe')?['C:/Users/wubil/AppData/Local/Programs/DeepSeek Harness/DeepSeek Harness.exe','--expose-internals','build.mjs']:[process.execPath,'build.mjs'],archiveRoot:join(f.directory,'source-components'),evidenceRoot:join(f.directory,'authoring-evidence'),runtime:{url:f.url,keyFile}},preview:{browserExecutable:browser,requiredMethods:['getData'],assertions:[{id:'select',action:'click',selector:'#toggle',checkSelector:'#result',check:'text',expected:'selected'}]}};
+  const path=join(f.directory,'check.json');writeFileSync(path,JSON.stringify(request));const entry=resolve('bundles/apps/lib/apps-authoring-check.js');
+  const run=()=>new Promise<any>((accept,reject)=>{const child=spawn(process.platform==='win32'?'pwsh':process.execPath,process.platform==='win32'?['-NoProfile','-File',resolve('bundles/apps/lib/apps-authoring-check.ps1'),path]:[entry,path],{cwd:f.directory,windowsHide:true,stdio:['ignore','pipe','pipe']});let out='',err='';child.stdout.on('data',data=>out+=data);child.stderr.on('data',data=>err+=data);child.on('error',reject);child.on('close',code=>{if(code!==0)return reject(new Error(err||out));try{const value=JSON.parse(out);if(process.platform==='win32'){assert.equal(value.exitCode,0);assert.ok(existsSync(value.stdoutPath));assert.ok(existsSync(value.stderrPath));accept(value.result);}else accept(value);}catch(error){reject(error);}});});
+  writeFileSync(path,JSON.stringify({...request,prepare:true,build:{...request.build,sourceRevision:999}}));
+  const prepared=await run();assert.equal(prepared.stage,'prepared');const ready=JSON.parse(readFileSync(prepared.requestPath,'utf8'));assert.equal(ready.build.sourceRevision,begin.attempt.sourceRevision);writeFileSync(path,JSON.stringify(ready));
+  const first=await run(),second=await run();assert.equal(first.verdict,'PASS');assert.equal(first.reusedBuild,false);assert.equal(second.reusedBuild,true);assert.equal(second.reusedPreview,true);assert.equal(first.buildReceiptId,second.buildReceiptId);assert.equal(first.previewReceiptId,second.previewReceiptId);assert.equal(f.store.list('view_publications').length,0);assert.equal(f.store.list('components').length,0);
+ }finally{await f.cleanup();}
+});
+
+
+test('prepared product template checks its single plan, pages without attachments and resumes after refresh',{skip:!existsSync(browser),timeout:60000},async()=>{
+ const f=await setup();try{
+  // Real presentation/HTTP/SDK/browser; only the external business provider is a fixture.
+  const invoke=f.runtime.invoke.bind(f.runtime);
+  f.runtime.invoke=async request=>{if(request.capabilityId!=='hallmark.products.list')return invoke(request);const input=request.input as {cursor?:string;limit:number},offset=Number(input.cursor??0);return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{total:5,cursor:offset+2<5?String(offset+2):null,products:Array.from({length:Math.min(2,5-offset)},(_,index)=>({storeId:'store',productId:String(offset+index),offerId:'offer-'+(offset+index),title:'Product '+(offset+index),sku:'sku-'+(offset+index),currency:'CNY',pricing:{sellerMinor:4497},profit:{purchaseMinor:2663,actualMargin:0.05}}))}};};
+  const begin=await f.begin({mode:'new',bindings:[{bindingId:'products',appId:'hallmark',connectionId:'fixture-products',capabilityId:'hallmark.products.list',capabilityMajor:1,input:{storeId:'store',limit:2},projection:[],refresh:{mode:'manual'}}]});
+  // @ts-expect-error Installable generator.
+  const {createAppsSource}=await import('../../scripts/create-apps-source.mjs');
+  await createAppsSource({directory:begin.draft.workspacePath,sdkDirectory:resolve('bundles/apps/sdk/component-runtime'),template:'product-list'});
+  const modules=join(begin.draft.workspacePath,'node_modules');mkdirSync(join(modules,'@dsh'),{recursive:true});
+  for(const name of ['react','react-dom','esbuild'])symlinkSync(resolve('node_modules',name),join(modules,name),'junction');
+  symlinkSync(resolve('bundles/apps/sdk/component-runtime'),join(modules,'@dsh/apps-component-runtime'),'junction');
+  writeFileSync(join(begin.draft.workspacePath,'package-lock.json'),'{}');const keyFile=join(f.directory,'key');writeFileSync(keyFile,f.token);
+  // @ts-expect-error Standalone runner.
+  const {runAuthoringCheck}=await import('../../scripts/apps-authoring-check.mjs');
+  const request={build:{sessionId:'original',viewId:begin.view.viewId,attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,sourceRevision:begin.draft.sourceRevision,workspacePath:begin.draft.workspacePath,command:[process.execPath,'build.mjs'],archiveRoot:join(f.directory,'source-components'),evidenceRoot:join(f.directory,'authoring-evidence'),runtime:{url:f.url,keyFile}},preview:{...JSON.parse(readFileSync(join(begin.draft.workspacePath,'.preview','plan.json'),'utf8')),browserExecutable:browser}};
+  const prepared=await runAuthoringCheck({prepare:true,build:{...request.build,epoch:undefined,sourceRevision:999,viewId:'wrong',workspacePath:'wrong'},preview:{browserExecutable:browser}});
+  assert.equal(prepared.stage,'prepared');assert.ok(prepared.requestPath.startsWith(request.build.evidenceRoot));
+  const preparedRequest=JSON.parse(readFileSync(prepared.requestPath,'utf8'));
+  assert.equal(preparedRequest.build.sourceRevision,begin.attempt.sourceRevision);assert.equal(preparedRequest.build.workspacePath,begin.draft.workspacePath);
+  assert.equal(preparedRequest.preview.assertions,undefined);
+  const first=await runAuthoringCheck(preparedRequest);assert.equal(first.verdict,'PASS',JSON.stringify(first));
+  const previewSummary=JSON.parse(readFileSync(first.previewSummaryPath,'utf8')),report=JSON.parse(readFileSync(previewSummary.reportRef.path,'utf8')).report;
+  for(const view of report.viewportResults)assert.ok(new Set(view.bindingSnapshots.map((binding:any)=>binding.revision)).size>1,'records the revisions read during refresh and paging');
+  const second=await runAuthoringCheck(preparedRequest);assert.equal(second.reusedBuild,true);assert.equal(second.reusedPreview,true);assert.equal(second.verifiedAt,first.verifiedAt);
+  const plan=JSON.parse(readFileSync(preparedRequest.preview.planPath,'utf8'));plan.assertions.push({id:'extra',selector:'h1',check:'visible',expected:true});writeFileSync(preparedRequest.preview.planPath,JSON.stringify(plan));
+  await assert.rejects(runAuthoringCheck(preparedRequest),(error:any)=>{assert.equal(error.code,'NEW_ATTEMPT_REQUIRED');assert.equal(JSON.parse(readFileSync(error.summaryPath,'utf8')).stage,'preview');return true;});
+  assert.equal(first.viewports.length,2);for(const view of first.viewports){assert.deepEqual(view.screenshots.map((shot:any)=>shot.afterCase),['initial','next']);assert.ok(existsSync(view.screenshots[1].path));}
+  assert.equal(f.store.list('view_publications').length,0);
+ }finally{await f.cleanup();}
+});
+
+
+test('failed build and incomplete preview are recorded and lost responses resume original reports',{skip:!existsSync(browser),timeout:60000},async()=>{
+ const f=await setup(),originalFetch=globalThis.fetch;
+ try{
+  const begin=await f.begin({mode:'new'});project(begin.draft.workspacePath,'Failure receipt');
+  writeFileSync(join(begin.draft.workspacePath,'build.mjs'),'process.exit(1)');
+  const keyFile=join(f.directory,'key');writeFileSync(keyFile,f.token);
+  // @ts-expect-error standalone CLI
+  const {runAuthoringCheck}=await import('../../scripts/apps-authoring-check.mjs');
+  const request={build:{sessionId:'original',attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,sourceRevision:begin.draft.sourceRevision,viewId:begin.view.viewId,workspacePath:begin.draft.workspacePath,command:[process.execPath,'build.mjs'],archiveRoot:join(f.directory,'source-components'),evidenceRoot:join(f.directory,'authoring-evidence'),runtime:{url:f.url,keyFile}},preview:{browserExecutable:browser,assertions:[{id:'click',action:'click',selector:'#toggle',checkSelector:'#result',check:'text',expected:'selected'}],requiredMethods:['readBindingPage']}};
+  const drop=new Set(['apps.authoring.record_build','apps.authoring.record_preview']);
+  globalThis.fetch=async(url,options)=>{const response=await originalFetch(url,options);const cap=typeof options?.body==='string'?JSON.parse(options.body).capabilityId:undefined;if(drop.delete(cap))throw Error('lost failure response');return response;};
+  await assert.rejects(runAuthoringCheck(request),/lost failure response/);
+  const failed=await runAuthoringCheck(request);assert.equal(failed.verdict,'FAIL');assert.equal(failed.build.reusedBuild,true);assert.ok(failed.build.buildReceiptId);
+  assert.equal(f.store.list<AuthoringAttempt>('authoring_attempts').find(a=>a.attemptId===begin.attempt.attemptId)?.state,'build_failed');
+  const next=await f.begin({mode:'edit',viewId:begin.view.viewId});project(next.draft.workspacePath,'Incomplete preview');
+  Object.assign(request.build,{attemptId:next.attempt.attemptId,epoch:next.attempt.epoch,sourceRevision:next.attempt.sourceRevision});
+  await assert.rejects(runAuthoringCheck(request),/lost failure response/);
+  const incomplete=await runAuthoringCheck(request);assert.equal(incomplete.verdict,'INCOMPLETE');assert.equal(incomplete.reusedBuild,true);assert.equal(incomplete.reusedPreview,true);assert.ok(incomplete.previewReceiptId);
+  assert.equal(f.store.list<AuthoringAttempt>('authoring_attempts').find(a=>a.attemptId===next.attempt.attemptId)?.state,'preview_failed');
+  assert.equal(f.store.list('build_receipts').length,2);assert.equal(f.store.list('preview_receipts').length,1);assert.equal(f.store.list('view_publications').length,0);
+ }finally{globalThis.fetch=originalFetch;await f.cleanup();}
 });

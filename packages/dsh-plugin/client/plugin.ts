@@ -8,6 +8,7 @@ import { selectionInputBridge } from './selection.ts';
 import { nativeAttachmentRuntime, nativeSessionDisabledReason } from './selection-native.ts';
 import type { NativeAttachmentRuntime, NativeInputActions, NativeInputState } from './selection-native.ts';
 import { chatEntryIntent } from './chat-entry.ts';
+import { nativeDraftBridge } from './native-draft.ts';
 import {configureComponentHandlers} from './component-handlers.ts';
 import type {ComponentHandlerFactory} from './component-handlers.ts';
 export interface ClientLayout {selectPanel:(id:string|null)=>void}
@@ -23,9 +24,9 @@ function observeNativeInputTarget(Component:ComponentType<any>,workspace:ClientU
   return function NativeInputTarget(props:{useSessions?:(selector:(state:SessionSnapshot)=>string|undefined)=>string|undefined;usePanelInfo?:(selector:(state:{activePanelId:string|null})=>string|null)=>string|null}){
     const panel=props.usePanelInfo?.(state=>state.activePanelId)??null;
     const current=props.useSessions?.(snapshot=>mainSessionSelection.observe(snapshot,panel));
-    useEffect(()=>{selectionInputBridge.observeSession(current);chatEntryIntent.observeSession(current);},[current]);
+    useEffect(()=>{selectionInputBridge.observeSession(current);chatEntryIntent.observeSession(current);nativeDraftBridge.observeSession(current);},[current]);
     useEffect(()=>{selectionInputBridge.attachmentRuntime(runtime);return()=>selectionInputBridge.attachmentRuntime(undefined);},[runtime]);
-    useEffect(()=>{selectionInputBridge.navigation(workspace?sessionId=>workspace.openSession(sessionId):undefined);return()=>{selectionInputBridge.navigation(undefined);selectionInputBridge.observeSession(undefined);chatEntryIntent.reset();};},[workspace]);
+    useEffect(()=>{selectionInputBridge.navigation(workspace?sessionId=>workspace.openSession(sessionId):undefined);return()=>{selectionInputBridge.navigation(undefined);selectionInputBridge.observeSession(undefined);chatEntryIntent.reset();nativeDraftBridge.reset();};},[workspace]);
     return React.createElement(React.Fragment,null,React.createElement(Component,props),Observer?React.createElement(Observer,props):null);
   };
 }
@@ -39,12 +40,15 @@ function bindNativeInput(Component:ComponentType<any>,sidebar:NativeSidebarRight
     const block=useSyncExternalStore(blockStore.subscribe,blockStore.getSnapshot,blockStore.getSnapshot);
     const live=useRef({input,sessionReason});live.current={input,sessionReason};
     useSyncExternalStore(selectionInputBridge.subscribe,selectionInputBridge.getSnapshot,selectionInputBridge.getSnapshot);
+    useSyncExternalStore(nativeDraftBridge.subscribe,nativeDraftBridge.getSnapshot,nativeDraftBridge.getSnapshot);
     const chatEntryRevision=useSyncExternalStore(chatEntryIntent.subscribe,chatEntryIntent.getSnapshot,chatEntryIntent.getSnapshot);
     useEffect(()=>props.sessionId?selectionInputBridge.bind(props.sessionId,props.inputActions?{actions:props.inputActions,readState:()=>live.current.input,disabledReason:()=>live.current.sessionReason??blockStore.getSnapshot()?.reason}:undefined):undefined,[props.sessionId,props.inputActions,input?.phase,sessionReason,block,blockStore]);
+    useEffect(()=>props.sessionId?nativeDraftBridge.bind(props.sessionId,props.inputActions?{actions:props.inputActions,readState:()=>live.current.input,disabledReason:()=>live.current.sessionReason??blockStore.getSnapshot()?.reason}:undefined):undefined,[props.sessionId,props.inputActions,input?.phase,sessionReason,block,blockStore]);
     useEffect(()=>chatEntryIntent.inputCommitted(props.sessionId,sidebar),[props.sessionId,sidebar,chatEntryRevision]);
     const notice=props.sessionId?selectionInputBridge.notice(props.sessionId):undefined;
     const entryNotice=props.sessionId?chatEntryIntent.notice(props.sessionId):undefined;
-    return React.createElement(React.Fragment,null,React.createElement(Component,props),Observer?React.createElement(Observer,{sessionId:props.sessionId,input,disabledReason:sessionReason??block?.reason}):null,entryNotice?React.createElement('span',{className:'hm-root hm-button-notice',role:'status'},entryNotice):null,notice?React.createElement('span',{className:'hm-root hm-button-notice',role:'status'},notice):null);
+    const draftNotice=props.sessionId?nativeDraftBridge.notice(props.sessionId):undefined;
+    return React.createElement(React.Fragment,null,React.createElement(Component,props),Observer?React.createElement(Observer,{sessionId:props.sessionId,input,disabledReason:sessionReason??block?.reason}):null,entryNotice?React.createElement('span',{className:'hm-root hm-button-notice',role:'status'},entryNotice):null,notice?React.createElement('span',{className:'hm-root hm-button-notice',role:'status'},notice):null,draftNotice?React.createElement('span',{className:'hm-root hm-button-notice',role:'status'},draftNotice):null);
   };
 }
 /** Every injection returns cleanup, including stage-one tab registry ownership. */

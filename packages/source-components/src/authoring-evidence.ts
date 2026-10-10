@@ -7,6 +7,8 @@ import type {SourceComponentStore} from './index.ts';
 import type {PreviewValidationEvidence} from '../../app-presentation/src/authoring-types.ts';
 import {previewTestPlan} from './authoring-preview-plan.ts';
 import type {PreviewTestPlan} from './authoring-preview-plan.ts';
+import {buildEnvironmentSignature} from './authoring-build-input.ts';
+import type {BuildEnvironmentInput,BuildEnvironmentSignature} from './authoring-build-input.ts';
 
 export interface EvidenceFile {path:string;sha256:string;bytes:number}
 export interface BuildExecutionReport {
@@ -15,7 +17,9 @@ export interface BuildExecutionReport {
   command:string[]; cwd:string; toolchain:Record<string,string>; exitCode:number; startedAt:string; finishedAt:string;
   logRef:EvidenceFile; distDigest:string|null; archiveBuildId:string|null; fileManifestRef:EvidenceFile|null;
   inputUnchanged:boolean; verdict:'PASS'|'FAIL'; executionId:string;
+  executionKind?:'executed'|'reuse';reusedFrom?:EvidenceFile;reuseVerifiedAt?:string;reuseInput?:BuildReuseSignature;
 }
+export interface BuildReuseSignature {version:1;key:string;environment:BuildEnvironmentSignature;sdkDigest:string|null}
 const sha=(bytes:Buffer|string)=>createHash('sha256').update(bytes).digest('hex');
 const ignored=new Set(['node_modules','.git','.preview','dist']);
 function files(root:string, current=root):string[] {
@@ -30,6 +34,12 @@ export function sourceInputDigest(directory:string):string {
   const root=realpathSync(directory), hash=createHash('sha256');
   for(const path of files(root)){const bytes=readFileSync(join(root,path));hash.update(`${Buffer.byteLength(path)}:${path}:${bytes.length}:`).update(bytes);}
   return hash.digest('hex');
+}
+/** Signed alongside process output, so edited resume JSON cannot authorize cross-attempt reuse. */
+export function buildReuseSignature(input:BuildEnvironmentInput&{sdkDirectory?:string},digest=sourceInputDigest(input.workspacePath),environment:NodeJS.ProcessEnv=process.env):BuildReuseSignature {
+  const env=buildEnvironmentSignature(input,environment),sdkDigest=input.sdkDirectory?sourceInputDigest(input.sdkDirectory):null;
+  const key=sha(canonicalJson({version:1,workspacePath:realpathSync(input.workspacePath),sourceInputDigest:digest,command:input.command,node:process.version,platform:process.platform,arch:process.arch,execPath:process.execPath,environment:env,sdkDigest}));
+  return {version:1,key,environment:env,sdkDigest};
 }
 export function distDigest(sources:SourceComponentStore, buildId:string):string {
   const manifest=sources.manifest(buildId);if(!manifest)throw new Error('SOURCE_BUILD_NOT_FOUND');
@@ -77,10 +87,10 @@ export class AuthoringEvidenceRunner {
     const path=this.cancelPath(attemptId,epoch);if(!existsSync(path))return false;
     const report=this.readReport<{attemptId:string;epoch:number}>(evidenceFile(path));if(report.attemptId!==attemptId||report.epoch!==epoch)throw new Error('CANCEL_IDENTITY_INVALID');return true;
   }
-  async build(input:{attemptId:string;epoch:number;sourceRevision:number;workspacePath:string;command:string[];sources:SourceComponentStore;signal?:AbortSignal;timeoutMs?:number;onStart?:()=>Promise<void>|void}):Promise<{report:BuildExecutionReport;reportRef:EvidenceFile}> {
+  async build(input:{attemptId:string;epoch:number;sourceRevision:number;workspacePath:string;command:string[];sources:SourceComponentStore;sdkDirectory?:string;environmentKeys?:string[];signal?:AbortSignal;timeoutMs?:number;onStart?:()=>Promise<void>|void}):Promise<{report:BuildExecutionReport;reportRef:EvidenceFile}> {
     if(!input.attemptId||!Number.isSafeInteger(input.epoch)||!Number.isSafeInteger(input.sourceRevision)||!Array.isArray(input.command)||!input.command.length||input.command.some(part=>typeof part!=='string'||!part))throw new Error('BUILD_INPUT_INVALID');
     const cwd=realpathSync(input.workspacePath);if(relative(this.root,cwd)===''||this.root.startsWith(cwd+sep))throw new Error('EVIDENCE_MUST_BE_OUTSIDE_WORKSPACE');
-    const before=sourceInputDigest(cwd),locks=['package-lock.json','pnpm-lock.yaml','yarn.lock','bun.lock'].filter(path=>existsSync(join(cwd,path)));
+    const before=sourceInputDigest(cwd),environment={...process.env},reuseInput=buildReuseSignature(input,before,environment),locks=['package-lock.json','pnpm-lock.yaml','yarn.lock','bun.lock'].filter(path=>existsSync(join(cwd,path)));
     if(locks.length!==1)throw new Error('EXACT_LOCKFILE_REQUIRED');
     const lockfileDigest=sha(readFileSync(join(cwd,locks[0]))),startedAt=new Date().toISOString(),executionId=randomUUID();
     const logs:Buffer[]=[];let exitCode=-1;
@@ -90,7 +100,7 @@ export class AuthoringEvidenceRunner {
     try {
       await input.onStart?.();signal.throwIfAborted();
       exitCode=await new Promise<number>((accept,reject)=>{
-        const child=spawn(input.command[0],input.command.slice(1),{cwd,shell:false,windowsHide:true,stdio:['ignore','pipe','pipe']});
+        const child=spawn(input.command[0],input.command.slice(1),{cwd,env:environment,shell:false,windowsHide:true,stdio:['ignore','pipe','pipe']});
         let stopping=false;
         const abort=()=>{if(stopping||!child.pid||child.exitCode!==null)return;stopping=true;logs.push(Buffer.from('\nRunner cancelled this owned build process.\n'));
           // Only the process just spawned by this runner is stopped, including its build-tool children.
@@ -112,11 +122,33 @@ export class AuthoringEvidenceRunner {
     }
     const finishedAt=new Date().toISOString();writeFileSync(logPath,Buffer.concat(logs),{flag:'wx'});
     const report:BuildExecutionReport={schemaVersion:1,runnerVersion:'dsh-authoring-build/1',attemptId:input.attemptId,epoch:input.epoch,sourceRevision:input.sourceRevision,workspacePath:cwd,sourceInputDigest:before,sourceInputDigestAfter:after,lockfileDigest,command:[...input.command],cwd,toolchain:{node:process.version,platform:process.platform,architecture:process.arch},exitCode,startedAt,finishedAt,logRef:evidenceFile(logPath),distDigest:dist,archiveBuildId,fileManifestRef,inputUnchanged,verdict:exitCode===0&&inputUnchanged&&archiveBuildId?'PASS':'FAIL',executionId};
+    report.executionKind='executed';report.reuseInput=reuseInput;
+    return {report,reportRef:this.writeReport('build',report)};
+  }
+  reuseBuild(reference:EvidenceFile,input:{attemptId:string;epoch:number;sourceRevision:number;workspacePath:string;command:string[];sdkDirectory?:string;environmentKeys?:string[];sources:SourceComponentStore}):{report:BuildExecutionReport;reportRef:EvidenceFile} {
+    if(!input.attemptId||!Number.isSafeInteger(input.epoch)||input.epoch<1||!Number.isSafeInteger(input.sourceRevision)||input.sourceRevision<1)throw new Error('BUILD_INPUT_INVALID');
+    const original=this.verifyBuild(reference,input.sources),signature=buildReuseSignature(input);
+    if(!original.reuseInput||original.reuseInput.version!==1||original.reuseInput.key!==signature.key)throw new Error('BUILD_REUSE_INPUT_CHANGED');
+    const report:BuildExecutionReport={...original,attemptId:input.attemptId,epoch:input.epoch,sourceRevision:input.sourceRevision,executionKind:'reuse',reusedFrom:reference,reuseVerifiedAt:new Date().toISOString(),reuseInput:signature};
     return {report,reportRef:this.writeReport('build',report)};
   }
   verifyBuild(reference:EvidenceFile, sources:SourceComponentStore, options:{allowFailure?:boolean}={}):BuildExecutionReport {
     const report=this.readReport<BuildExecutionReport>(reference);
     if(report.runnerVersion!=='dsh-authoring-build/1'||report.schemaVersion!==1)throw new Error('BUILD_EVIDENCE_INVALID');
+    if(report.executionKind!==undefined&&!['executed','reuse'].includes(report.executionKind))throw new Error('BUILD_REUSE_EVIDENCE_INVALID');
+    if(report.executionKind==='reuse'){
+      if(!report.reusedFrom||!report.reuseInput||!Number.isFinite(Date.parse(report.reuseVerifiedAt??''))||Date.parse(report.reuseVerifiedAt!)<Date.parse(report.finishedAt))throw new Error('BUILD_REUSE_EVIDENCE_INVALID');
+      // Resolve a bounded lineage iteratively; cycles/forged adopted fields cannot inherit a PASS.
+      const seen=new Set([reference.sha256]);let parent=report,depth=0;
+      while(parent.executionKind==='reuse'){
+        if(!parent.reusedFrom||seen.has(parent.reusedFrom.sha256)||++depth>32)throw new Error('BUILD_REUSE_EVIDENCE_INVALID');
+        seen.add(parent.reusedFrom.sha256);const prior=this.readReport<BuildExecutionReport>(parent.reusedFrom);
+        const fields=['schemaVersion','runnerVersion','workspacePath','sourceInputDigest','sourceInputDigestAfter','lockfileDigest','command','cwd','toolchain','exitCode','startedAt','finishedAt','logRef','distDigest','archiveBuildId','fileManifestRef','inputUnchanged','verdict','executionId','reuseInput'] as const;
+        if(prior.verdict!=='PASS'||!prior.reuseInput||fields.some(key=>canonicalJson(parent[key]??null)!==canonicalJson(prior[key]??null)))throw new Error('BUILD_REUSE_EVIDENCE_INVALID');
+        parent=prior;
+      }
+      if(parent.executionKind!=='executed')throw new Error('BUILD_REUSE_EVIDENCE_INVALID');
+    }else if(report.reusedFrom||report.reuseVerifiedAt)throw new Error('BUILD_REUSE_EVIDENCE_INVALID');
     this.verifyFile(report.logRef);
     if(options.allowFailure&&report.verdict==='FAIL')return report;
     if(report.verdict!=='PASS'||report.exitCode!==0||!report.inputUnchanged||report.sourceInputDigest!==report.sourceInputDigestAfter||!report.archiveBuildId||!report.fileManifestRef||!sources.verify(report.archiveBuildId).valid)throw new Error('BUILD_EVIDENCE_INVALID');
@@ -125,16 +157,22 @@ export class AuthoringEvidenceRunner {
     const manifest=JSON.parse(this.verifyFile(report.fileManifestRef).toString('utf8'));
     if(canonicalJson(manifest)!==canonicalJson(sources.manifest(report.archiveBuildId)))throw new Error('BUILD_MANIFEST_MISMATCH');return report;
   }
-  verifyPreview(reference:EvidenceFile,sources:SourceComponentStore):PreviewValidationEvidence {
-    const report=this.readReport<Omit<PreviewValidationEvidence,'viewportResults'>&{testPlan?:PreviewTestPlan;viewportResults:(PreviewValidationEvidence['viewportResults'][number]&{interactionCaseIds?:string[];interactiveControlCount?:number})[]}>(reference);
+  verifyPreview(reference:EvidenceFile,sources:SourceComponentStore,options:{allowDraft?:boolean}={}):PreviewValidationEvidence {
+    const report=this.readReport<Omit<PreviewValidationEvidence,'viewportResults'>&{validationProfile?:'draft';draftViewport?:number;testPlan?:PreviewTestPlan;viewportResults:(PreviewValidationEvidence['viewportResults'][number]&{interactionCaseIds?:string[];interactiveControlCount?:number})[]}>(reference);
+    if(report.validationProfile!==undefined&&report.validationProfile!=='draft')throw new Error('PREVIEW_PROFILE_INVALID');
     if(report.runnerVersion!=='dsh-authoring-preview/1'||report.schemaVersion!==1||report.protocol!=='dsh.apps.component.v2'||!['fixture','live_readonly'].includes(report.mode)||!sources.verify(report.buildId).valid)throw new Error('PREVIEW_BUILD_MISMATCH');
     if(!Array.isArray(report.viewportResults)||!Array.isArray(report.assertionResults))throw new Error('PREVIEW_INCOMPLETE');
     for(const view of report.viewportResults){this.verifyFile(view.screenshot);if(!Array.isArray(view.assertionIds)||view.assertionIds.some(id=>!report.assertionResults.some(assertion=>assertion.id===id)))throw new Error('PREVIEW_INCOMPLETE');}
     for(const assertion of report.assertionResults)for(const file of assertion.evidenceRefs)this.verifyFile(file);
+    if(report.validationProfile==='draft'){
+      if(!options.allowDraft)throw new Error('PREVIEW_DRAFT_ONLY');
+      if(report.verdict!=='INCOMPLETE'||report.viewportResults.length!==1||report.viewportResults[0].contentWidthCssPx!==report.draftViewport)throw new Error('PREVIEW_DRAFT_INVALID');
+      return report;
+    }
     if(report.verdict==='PASS'){
       const plan=report.testPlan,validated=previewTestPlan({assertions:plan?.cases,...(plan?.mode==='noninteractive'?{noninteractiveReason:plan.reason}:{})});
       if(!plan||plan.version!==1||plan.errors.length||validated.errors.length||canonicalJson(plan)!==canonicalJson(validated))throw new Error('PREVIEW_INCOMPLETE');
-      if(![420,1040].every(width=>report.viewportResults.some(view=>view.contentWidthCssPx===width&&view.deviceScaleFactor===1&&view.bridgeReady&&!view.pageErrors.length&&!view.unhandledRejections.length&&!view.failedRequests.length&&Number.isSafeInteger(view.interactiveControlCount)&&Number(view.interactiveControlCount)>=0&&(plan.mode!=='noninteractive'||view.interactiveControlCount===0)&&plan.cases.every(item=>report.assertionResults.some(assertion=>assertion.id===`${view.id}:${item.id}`&&assertion.required===(item.required!==false)&&(item.required===false||assertion.status==='PASS'))&&(!item.action||view.interactionCaseIds?.includes(item.id)))))||report.assertionResults.some(assertion=>assertion.required&&assertion.status!=='PASS'))throw new Error('PREVIEW_EVIDENCE_INVALID');
+      if(![420,1040].every(width=>report.viewportResults.some(view=>view.contentWidthCssPx===width&&view.deviceScaleFactor===1&&view.bridgeReady&&!view.pageErrors.length&&!view.unhandledRejections.length&&!view.failedRequests.length&&Number.isSafeInteger(view.interactiveControlCount)&&Number(view.interactiveControlCount)>=0&&(plan.mode!=='noninteractive'||view.interactiveControlCount===0)&&plan.cases.filter(item=>!item.viewports||item.viewports.includes(width)).every(item=>report.assertionResults.some(assertion=>assertion.id===`${view.id}:${item.id}`&&assertion.required===(item.required!==false)&&(item.required===false||assertion.status==='PASS'))&&(!item.action||view.interactionCaseIds?.includes(item.id)))))||report.assertionResults.some(assertion=>assertion.required&&assertion.status!=='PASS'))throw new Error('PREVIEW_EVIDENCE_INVALID');
     }
     return report;
   }

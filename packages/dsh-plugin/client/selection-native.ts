@@ -4,7 +4,12 @@
  * deliberately absent from the narrower IConversation face. Feature-detect them;
  * never reach into the private draft registry, editor or DOM. See docs/selection-attachments.md.
  */
-export interface NativeInputActions {addAttachments:(ids:readonly string[])=>boolean}
+export interface NativeInsertionSpan {start:number;end:number;draftRev:number}
+export interface NativeInputActions {
+  addAttachments:(ids:readonly string[])=>boolean;
+  captureInsertion?:()=>NativeInsertionSpan;
+  insertText?:(text:string,span:NativeInsertionSpan)=>boolean;
+}
 export interface NativeInputState {phase:string;attachmentIds:readonly string[]}
 export interface NativeInputBinding {
   actions:NativeInputActions;

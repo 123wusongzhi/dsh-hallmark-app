@@ -12,7 +12,7 @@ export interface ComponentHostHandlers {
   updateContext?: (request: BridgeRequest)=>Promise<JsonValue>|JsonValue;
   requestAgent?: (request: BridgeRequest)=>Promise<JsonValue>|JsonValue;
 }
-export interface ComponentExtensionRequest extends BridgeIdentity {channel:string;type:'extension';feature:'renderReadyV1'|'uiStateV1';action:string;requestId:string;params:JsonValue}
+export interface ComponentExtensionRequest extends BridgeIdentity {channel:string;type:'extension';feature:'renderReadyV1'|'uiStateV1'|'bindingPagesV1'|'dataTransferV1';action:string;requestId:string;params:JsonValue}
 export type ComponentExtensionHandlers=Partial<Record<ComponentExtensionRequest['feature'],(request:ComponentExtensionRequest)=>Promise<JsonValue>|JsonValue>>;
 const unsupported=(method:string):FailureInfo=>({code:'UNSUPPORTED_HOST_CAPABILITY',message:`Host has no verified ${method} path. Attach a selection to the input and send it manually.`,retryPolicy:'never'});
 function messageBytes(value:unknown):number {
@@ -85,6 +85,10 @@ export class ComponentHost {
     const request=message as BridgeRequest;
     if(!COMPONENT_METHODS.includes(request.method))return response({code:'UNKNOWN_BRIDGE_METHOD',message:'Unknown component method.',retryPolicy:'never'});
     if(!this.supportedMethods.includes(request.method))return response(unsupported(request.method));
+    if(request.method==='refresh'&&request.params!==null){
+      const params=request.params as Record<string,unknown>;
+      if(typeof params!=='object'||Array.isArray(params)||Object.keys(params).some(key=>!['bindingIds','forceRefresh'].includes(key))||params.bindingIds!==undefined&&(!Array.isArray(params.bindingIds)||params.bindingIds.some(id=>typeof id!=='string'||!id))||params.forceRefresh!==undefined&&typeof params.forceRefresh!=='boolean')return response({code:'INVALID_BRIDGE_MESSAGE',message:'Refresh accepts bindingIds and a boolean forceRefresh.',retryPolicy:'never'});
+    }
     try{
       const handler=this.handlers[request.method as keyof ComponentHostHandlers]!;
       const result=await handler(request);

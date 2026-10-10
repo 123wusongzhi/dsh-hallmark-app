@@ -1,7 +1,7 @@
 import type {BridgeIdentity,DatasetBinding,JsonValue,ResourceRef,SelectionEnvelope} from '../../app-contracts/src/index.ts';
 import type {SourceArtifact} from '../../presentation/src/types.ts';
 import type {SourceComponentStore} from '../../source-components/src/index.ts';
-import type {AppsComponent,AppsView,PresentationStore,SaveAppsComponentOptions} from './types.ts';
+import type {AppsComponent,AppsView,PresentationStore,SaveAppsComponentOptions,WorkbenchContext,WorkbenchDataSourceRef} from './types.ts';
 
 export type AuthoringState='editing'|'building'|'build_failed'|'previewing'|'preview_failed'|'publish_ready'|'mounting'|'mounted'|'failed_mount'|'cancelled'|'superseded'|'interrupted';
 export interface FileEvidenceRef {path:string;sha256:string;bytes:number}
@@ -19,6 +19,7 @@ export interface BuildReceipt {
   schemaVersion:1;receiptId:string;attemptId:string;sourceRevision:number;sourceInputDigest:string;lockfileDigest:string;command:string[];cwd:string;
   toolchain:Record<string,string>;exitCode:number;startedAt:string;finishedAt:string;logRef:FileEvidenceRef;distDigest:string|null;
   archiveBuildId:string|null;fileManifestRef:FileEvidenceRef|null;inputUnchanged:boolean;verdict:'PASS'|'FAIL';
+  executionKind?:'executed'|'reuse';executionId?:string;reusedFrom?:FileEvidenceRef;reuseVerifiedAt?:string;
 }
 export interface AuthoringAssertion {id:string;required:boolean;expected:string;actual:string|null;status:'PASS'|'FAIL'|'NOT_RUN'|'BLOCKED';evidenceRefs:FileEvidenceRef[]}
 export interface PreviewViewportResult {
@@ -37,6 +38,7 @@ export interface BuildExecutionEvidence extends Omit<BuildReceipt,'receiptId'> {
 /** The runner freezes/validates archive bytes; viewport screenshots are actual browser captures. */
 export interface PreviewValidationEvidence extends Omit<PreviewReceipt,'receiptId'> {
   epoch:number;
+  validationProfile?:'draft'|'formal';
 }
 export interface ViewPublication {
   publicationId:string;viewId:string;ownerSessionId:string;attemptId:string;attemptEpoch:number;expectedViewRevision:number;
@@ -55,8 +57,8 @@ export interface UiStateSnapshot {
   capturedAt:string;selectionEvidence:UiSelectionEvidence[];
 }
 export interface BeginAuthoringInput {
-  mode:'new'|'edit'|'open_saved';viewId?:string;componentId?:string;revision?:number;workspacePath?:string;
-  title?:string;bindings?:DatasetBinding[];invocationId?:string;attemptId?:string;
+  mode:'new'|'edit'|'open_saved';viewId?:string;componentId?:string;revision?:number;workspacePath?:string;newCopy?:boolean;
+  title?:string;bindings?:DatasetBinding[];sourceRefs?:Record<string,WorkbenchDataSourceRef>;context?:WorkbenchContext;invocationId?:string;attemptId?:string;
 }
 export interface AuthoringAttemptInput {attemptId:string;epoch:number}
 export interface RecordBuildInput extends AuthoringAttemptInput {reportRef:FileEvidenceRef}
@@ -88,8 +90,9 @@ export interface UiStateRestoreInput {viewId:string;targetBuildId:string;uiState
 export interface ManageAuthoringComponentInput {componentId:string;expectedRevision:number;action:'rename'|'delete';title?:string}
 export interface AuthoringPresentationPort {
   ownedView(sessionId:string,viewId:string):AppsView;
-  createView(sessionId:string,input:{title:string;design?:JsonValue;bindings?:DatasetBinding[];viewId?:string}):AppsView;
-  openComponent(sessionId:string,componentId:string,options?:{revision?:number;directory?:string}):AppsView;
+  createView(sessionId:string,input:{title:string;design?:JsonValue;bindings?:DatasetBinding[];sourceRefs?:Record<string,WorkbenchDataSourceRef>;context?:WorkbenchContext;viewId?:string}):AppsView;
+  openComponent(sessionId:string,componentId:string,options?:{revision?:number;directory?:string;context?:WorkbenchContext;newCopy?:boolean}):AppsView;
+  canReuseSavedView?(view:AppsView):boolean;
   saveComponent(sessionId:string,viewId:string,userRequest:string,options:SaveAppsComponentOptions):AppsComponent;
   manageSaved?(input:Record<string,JsonValue>):JsonValue;
   validateSelection?(sessionId:string,viewId:string,selection:SelectionEnvelope):SelectionEnvelope;

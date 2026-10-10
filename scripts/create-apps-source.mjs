@@ -3,13 +3,15 @@ import {resolve,dirname,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 /** Initializes an explicitly named absent or empty workspace without overwriting files. */
-export async function createAppsSource({directory,sdkDirectory}) {
+export async function createAppsSource({directory,sdkDirectory,template}) {
   if(!directory||!sdkDirectory)throw new Error('Usage: node create-apps-source.mjs --directory <new-project> --sdk <sdk/component-runtime>');
+  if(template!==undefined&&!['product-list','composed-table'].includes(template))throw new Error('UNKNOWN_SOURCE_TEMPLATE');
   const target=resolve(directory),sdk=resolve(sdkDirectory),sdkManifest=JSON.parse(await readFile(join(sdk,'package.json'),'utf8'));
   if(sdkManifest.name!=='@dsh/apps-component-runtime')throw new Error('INVALID_COMPONENT_SDK');
   try{const current=await lstat(target);if(!current.isDirectory()||current.isSymbolicLink()||(await readdir(target)).length)throw new Error('SOURCE_WORKSPACE_NOT_EMPTY');}catch(error){if(error.code!=='ENOENT')throw error;await mkdir(target);}
   await mkdir(join(target,'src'));
   const files={
+    'src/bindingRequest.ts':`import type {BindingQuery} from '@dsh/apps-component-runtime/apps';\n/** Use binding.query from getData, never a capability guessed from payload. */\nexport function bindingRequest(query:BindingQuery,overrides:Record<string,string|number|boolean>={}) {\n const {appId,connectionId,capabilityId,capabilityVersion,input}=query;\n return {appId,connectionId,capabilityId,capabilityVersion,deadlineAt:new Date(Date.now()+30000).toISOString(),input:{...(input as Record<string,BindingQuery['input']>),...overrides}};\n}\n// For list pages: await apps.readBindingPage(binding.bindingId,nextCursor);\n// useApps.data then contains the current page payload/resources/revision. Paging is scoped to this component, not Agent context.\n// bindingRequest is for independent capability queries, not list paging.\n`,
     'package.json':JSON.stringify({name:'apps-source-component',version:'0.1.0',private:true,type:'module',scripts:{build:'node build.mjs'},dependencies:{'@dsh/apps-component-runtime':`file:${sdk.replaceAll('\\','/')}`,react:'18.3.1','react-dom':'18.3.1'},devDependencies:{esbuild:'0.25.0'}},null,2)+'\n',
     'build.mjs':`import {build} from 'esbuild';\nimport {mkdir,copyFile} from 'node:fs/promises';\nimport {createRequire} from 'node:module';\nimport {dirname} from 'node:path';\nconst require=createRequire(import.meta.url);\n// Linked SDKs must share the component's React dispatcher, including JSX/runtime subpaths.\nconst react=dirname(require.resolve('react/package.json')),reactDom=dirname(require.resolve('react-dom/package.json'));\nawait mkdir('dist',{recursive:true});\nawait build({entryPoints:['src/main.tsx'],outfile:'dist/app.js',bundle:true,platform:'browser',format:'esm',jsx:'automatic',target:'es2022',alias:{react,'react-dom':reactDom},define:{'process.env.NODE_ENV':'"production"'}});\nawait copyFile('index.html','dist/index.html');\n`,
     'index.html':'<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Apps source component</title><link rel="stylesheet" href="./app.css"></head><body><div id="root"></div><script type="module" src="./app.js"></script></body></html>\n',
@@ -27,12 +29,17 @@ function ImageContent({src,alt,width,height}:{src?:string;alt:string;width:numbe
     'src/style.css':'body{margin:0;background:#f8fafc;color:#172033;font:16px system-ui,sans-serif}main{padding:24px;max-width:960px;margin:auto}header{display:flex;align-items:center;justify-content:space-between;gap:16px}small{color:#51627d}h1{font-size:24px}label{display:block;margin:18px 0}input{display:block;box-sizing:border-box;width:100%;margin-top:8px;padding:10px;border:1px solid #c4cbd8;border-radius:6px}button{padding:10px 16px;border:1px solid #b8c6db;border-radius:6px;background:white;color:inherit;cursor:pointer}button:disabled{opacity:.5}ul{padding:0;list-style:none}li{padding:16px;margin:12px 0;background:white;border:1px solid #dbe2eb;border-radius:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere}\n',
     'README.md':'# Apps 源码组件\n\n在项目目录执行 `npm install`，保留生成的 `package-lock.json`，然后执行 `npm run build`。项目是普通 React/TSX/CSS，构建输出为 `dist/index.html`、`app.js` 与 `app.css`。将整个项目（包括源码、依赖锁和 dist，排除 node_modules）交给既有 Source Component 构建/预览入口。\n\nSDK 仅通过宿主 bridge 取数据与刷新；过滤和计数保留在组件本地状态。独立打开网页会明确报告宿主未连接。`requestAgent`/正式持久上下文需要经验证的 DSH adapter，本候选版本保持 unsupported。\n\n生成器可初始化不存在或已由 authoring.begin 创建的空工作目录；非空目录拒绝覆盖。不执行安装、不复制业务数据，也不伪造依赖锁。\n'
   };
-  for(const [path,content]of Object.entries(files))await writeFile(join(target,path),content);
+  if(template==='product-list'||template==='composed-table'){
+    const here=dirname(fileURLToPath(import.meta.url)),examples=resolve(here,here.endsWith('source-starter')?`../authoring-docs/examples/${template}`:`../docs/component-authoring/examples/${template}`);
+    for(const [target,source]of [['src/main.tsx','main.tsx'],['src/style.css','style.css'],['.preview/plan.json','preview.json'],['README.md','README.md']])files[target]=await readFile(join(examples,source),'utf8');
+  }
+  if(template==='composed-table'){const here=dirname(fileURLToPath(import.meta.url)),examples=resolve(here,here.endsWith('source-starter')?'../authoring-docs/examples/composed-table':'../docs/component-authoring/examples/composed-table');files['src/data.ts']=await readFile(join(examples,'data.ts'),'utf8');}
+  for(const [path,content]of Object.entries(files)){await mkdir(dirname(join(target,path)),{recursive:true});await writeFile(join(target,path),content);}
   return {directory:target,sdkDirectory:sdk,files:Object.keys(files),installed:false,built:false};
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  const options={};for(let index=2;index<process.argv.length;index+=2){const flag=process.argv[index],value=process.argv[index+1];if(!['--directory','--sdk'].includes(flag)||!value)throw new Error('Expected --directory <new-project> and optional --sdk <sdk/component-runtime>');options[flag.slice(2)]=value;}
+  const options={};for(let index=2;index<process.argv.length;index+=2){const flag=process.argv[index],value=process.argv[index+1];if(!['--directory','--sdk','--template'].includes(flag)||!value)throw new Error('Expected --directory <new-project> and optional --sdk <sdk/component-runtime>');options[flag.slice(2)]=value;}
   const scriptDirectory=dirname(fileURLToPath(import.meta.url));
   const sdkDirectory=options.sdk??resolve(scriptDirectory,scriptDirectory.endsWith('source-starter')?'../sdk/component-runtime':'../bundles/apps/sdk/component-runtime');
-  console.log(JSON.stringify(await createAppsSource({directory:options.directory,sdkDirectory})));
+  console.log(JSON.stringify(await createAppsSource({directory:options.directory,sdkDirectory,template:options.template})));
 }

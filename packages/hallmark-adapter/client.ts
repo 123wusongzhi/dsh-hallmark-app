@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import type { AdapterResult, ArchiveProductsRaw, ArchiveProductsResult, AssignmentInput, AssignmentResult, CategoryDataInput, CategoryDataRaw, CollectedItemRaw, CollectedItemSummary, HallmarkClientOptions, HallmarkStore, HallmarkTask, OrdinaryCnyOperationRaw, OrdinaryCnyOperationResult, OrdinaryCnyPriceProduct, PlatformCallInput, PlatformCallRecord, Provenance, StoreProductSnapshot, SubmitArchiveProductsInput, SubmitOrdinaryCnyPriceInput } from './types.ts';
+import type { AdapterResult, ArchiveProductsRaw, ArchiveProductsResult, AssignmentInput, AssignmentResult, CategoryDataInput, CategoryDataRaw, CollectedItemRaw, CollectedItemSummary, HallmarkClientOptions, HallmarkStore, HallmarkTask, OrdinaryCnyOperationRaw, OrdinaryCnyOperationResult, OrdinaryCnyPriceProduct, PlatformCallInput, PlatformCallRecord, Provenance, StoreProductSnapshot, SubmitArchiveProductsInput, SubmitOrdinaryCnyPriceInput, RegisterTaskSalesVariantsInput, RegisterTaskSalesVariantsResult } from './types.ts';
+import {OZON_STORE_READ_ENDPOINTS} from './ozon-read-routes.ts';
 import { ordinaryResult, ordinarySelection, validateOrdinaryIdentity } from './manual-price.ts';
 import { categoryRequest } from './category.ts';
 import { archiveInput, archiveResult } from './archive.ts';
@@ -43,6 +44,7 @@ function dataTime(raw: unknown): string | undefined {
 
 export class HallmarkClient {
   readonly baseUrl: string;
+  readonly ozonDataBaseUrl: string;
   private readonly options: HallmarkClientOptions;
   private readonly fetchImpl: typeof fetch;
   private healthEntry?: { until: number; result: AdapterResult<Record<string, unknown>> };
@@ -54,6 +56,7 @@ export class HallmarkClient {
   constructor(options: HallmarkClientOptions = {}) {
     this.options = options;
     this.baseUrl = validateLoopbackUrl(options.baseUrl ?? process.env.HALLMARK_CONTROL_URL ?? 'http://127.0.0.1:4173');
+    this.ozonDataBaseUrl = options.ozonDataBaseUrl === undefined ? this.baseUrl : validateLoopbackUrl(options.ozonDataBaseUrl);
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
   private now(): Date { return this.options.now?.() ?? new Date(); }
@@ -69,7 +72,7 @@ export class HallmarkClient {
     }).finally(() => { this.healthFlight = undefined; });
     return this.healthFlight;
   }
-  private async request<T>(endpoint: string, method: 'GET' | 'POST', body?: unknown, config: { source?: Provenance['source']; platform?: boolean; writeRisk?: boolean; platformWork?: boolean; readOnly?: boolean; auth?: boolean; health?: boolean; storeId?: string; onDispatch?: () => void; onResponse?: (status: number) => void } = {}): Promise<AdapterResult<T>> {
+  private async request<T>(endpoint: string, method: 'GET' | 'POST', body?: unknown, config: { source?: Provenance['source']; platform?: boolean; writeRisk?: boolean; platformWork?: boolean; readOnly?: boolean; auth?: boolean; health?: boolean; storeId?: string; ozonData?: boolean; onDispatch?: () => void; onResponse?: (status: number) => void } = {}): Promise<AdapterResult<T>> {
     if (!config.health) {
       const health = await this.health();
       if (health.status !== 'ok') return adapterFailure(health.error?.code ?? 'HALLMARK_UNAVAILABLE', health.error?.message ?? 'Hallmark 健康检查未通过', health.status === 'failed' ? 'failed' : 'unavailable', health.error?.retryable ?? true, health.error?.retryAfterMs);
@@ -91,7 +94,7 @@ export class HallmarkClient {
       let raw: unknown; let response: Response;
       try {
         config.onDispatch?.();
-        response = await this.fetchImpl(`${this.baseUrl}${endpoint}`, {
+        response = await this.fetchImpl(`${config.ozonData ? this.ozonDataBaseUrl : this.baseUrl}${endpoint}`, {
           method, redirect: 'error', signal: controller.signal,
           headers: { 'Accept': 'application/json', ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}), ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
           ...(method === 'POST' ? { body: JSON.stringify(body ?? {}) } : {}),
@@ -166,6 +169,8 @@ export class HallmarkClient {
   }
   getStores(): Promise<AdapterResult<HallmarkStore[]>> { return this.request('/api/stores', 'GET', undefined, { readOnly: true }); }
   getStoreProducts(): Promise<AdapterResult<StoreProductSnapshot>> { return this.request('/api/store-products', 'GET', undefined, { readOnly: true }); }
+  /** Read the current reference fee scheme; this never changes global pricing settings. */
+  getPricingSettings(): Promise<AdapterResult<Record<string, unknown>>> { return this.request('/api/dynamic-pricing/settings', 'GET', undefined, { readOnly: true }); }
   /** Hallmark synchronizes ALL Ozon stores. Do not imply single-store side effects. */
   syncStoreProducts(): Promise<AdapterResult<StoreProductSnapshot>> { return this.request('/api/store-products/sync', 'POST', {}, { readOnly: true }); }
   /** Traffic metrics, not a profit calculation endpoint. */
@@ -182,9 +187,21 @@ export class HallmarkClient {
   getCollectedItemDetail(id: string): Promise<AdapterResult<Record<string, unknown>>> { return this.request(`/api/items/${encodeURIComponent(id)}`, 'GET', undefined, { readOnly: true, source: 'collected_item' }); }
   getTasks(): Promise<AdapterResult<HallmarkTask[]>> { return this.request('/api/tasks', 'GET', undefined, { readOnly: true }); }
   getTask(id: string): Promise<AdapterResult<HallmarkTask>> { return this.request(`/api/tasks/${encodeURIComponent(id)}`, 'GET', undefined, { readOnly: true }); }
+  /** Freezes actual sale compositions on the existing task. This is metadata, not an Ozon write. */
+  registerTaskSalesVariants(id: string, input: RegisterTaskSalesVariantsInput): Promise<AdapterResult<RegisterTaskSalesVariantsResult>> {
+    if (!id?.trim()) return Promise.resolve(adapterFailure('TASK_ID_REQUIRED', '需要明确的上品任务编号'));
+    return this.request(`/api/tasks/${encodeURIComponent(id)}/sales-variants`, 'POST', input, { writeRisk: true });
+  }
   getTaskContext(id: string): Promise<AdapterResult<Record<string, unknown> | null>> { return this.request(`/api/tasks/${encodeURIComponent(id)}/context`, 'GET', undefined, { readOnly: true }); }
   verifyTask(id: string): Promise<AdapterResult<Record<string, unknown>>> { return this.request(`/api/tasks/${encodeURIComponent(id)}/verify`, 'POST', {}, { readOnly: true }); }
-  createAssignment(input: AssignmentInput): Promise<AdapterResult<AssignmentResult>> { return this.request('/api/assignments', 'POST', input, { auth: true }); }
+  async createAssignment(input: AssignmentInput): Promise<AdapterResult<AssignmentResult>> {
+    const health = await this.health();
+    if (health.status !== 'ok') return {status:health.status,error:health.error,provenance:health.provenance};
+    // Board and Control expose the same dispatch service at different public routes.
+    // Choose before dispatch; never retry a possibly-created assignment on another route.
+    const route = health.raw?.service === 'hallmark-board' ? '/api/tasks' : '/api/assignments';
+    return this.request(route, 'POST', input, { auth: true, writeRisk: true });
+  }
   /** Six Source catalog read/cache routes. Source capability/partial/stale/search candidates are never promoted. */
   async getCategoryData(input: CategoryDataInput): Promise<AdapterResult<CategoryDataRaw>> {
     const route = categoryRequest(input);
@@ -290,6 +307,15 @@ export class HallmarkClient {
     return normalized.status === 'unavailable' ? { ...normalized, stage: 'outcome_unknown' } : normalized;
   }
   platformCall(id: string, input: PlatformCallInput): Promise<AdapterResult<PlatformCallRecord>> { return this.request(`/api/tasks/${encodeURIComponent(id)}/platform`, 'POST', input, { platform: true, source: 'ozon_api' }); }
+  /** Store authorization belongs to Hallmark; this gateway never depends on a listing task. */
+  storeDataRead(storeId:string,input:PlatformCallInput):Promise<AdapterResult<Record<string,unknown>>>{
+    const method=input.method??'POST';
+    if(!storeId||(OZON_STORE_READ_ENDPOINTS[input.path]??PLATFORM_READ_ENDPOINTS[input.path])!==method||method==='GET'&&(!object(input.body)||Object.keys(input.body as object).length))return Promise.resolve(adapterFailure('ENDPOINT_NOT_ALLOWED','仅允许已登记的店铺只读路径和精确方法。'));
+    return this.request(`/api/stores/${encodeURIComponent(storeId)}/data/read`,'POST',input,{platform:true,readOnly:true,source:'ozon_api',storeId,ozonData:true});
+  }
+  readOrderWeights(storeId:string,input:Record<string,unknown>):Promise<AdapterResult<Record<string,unknown>>>{
+    return this.request(`/api/stores/${encodeURIComponent(storeId)}/data/order-weights`,'POST',input,{platformWork:true,readOnly:true,source:'ozon_api',storeId,ozonData:true});
+  }
   platformRead(id: string, input: PlatformCallInput): Promise<AdapterResult<PlatformCallRecord>> {
     const method = input.method ?? 'POST';
     if (PLATFORM_READ_ENDPOINTS[input.path] !== method || method === 'GET' && (!object(input.body) || Object.keys(input.body as object).length)) {

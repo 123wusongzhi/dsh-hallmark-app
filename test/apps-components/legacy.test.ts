@@ -29,12 +29,28 @@ async function setup(t:{after:(action:()=>unknown)=>void}) {
 }
 const spec=():ViewSpec=>({id:'legacy-input-id',title:'Product table',layout:{type:'column',children:['table']},widgets:[{id:'table',type:'table',bindingId:'products',columns:[{field:'title',label:'Title'}]}],bindings:[{id:'products',query:{tool:'hallmark_search_collected_items',params:{}},fieldMap:{title:'名称',id:'商品标识'}}]});
 
+test('legacy session panels omit persistently closed copies while saved assets and recoverable views remain',async t=>{
+ const f=await setup(t),original=f.presentation.createView('s',{title:'Saved',design:{},bindings:[]});
+ const component=f.presentation.saveComponent('s',original.viewId,'Save fixture',{mode:'save_as'});
+ const extra=f.presentation.createView('s',{title:'Unused draft',design:{kind:'source'},bindings:[]});
+ f.presentation.createView('other',{title:'Other chat',design:{},bindings:[]});
+ f.store.put('views',extra.viewId,{...extra,panelState:'closed',closedAt:new Date().toISOString()});
+ const list=await f.adapter.handle('/sessions/s/views','GET') as {views:{viewId:string}[]};
+ assert.deepEqual(list.views.map(view=>view.viewId),[original.viewId]);
+ assert.equal(f.presentation.getView(extra.viewId)?.panelState,'closed');
+ assert.deepEqual(f.store.get('components',component.componentId),component);
+ const reopened=await f.tool('hallmark_open_component',{componentId:component.componentId});
+ assert.equal(reopened.status,'ok');assert.equal(reopened.data.viewId,original.viewId,'ordinary open locates the existing work copy');
+ const freshAdapter=createLegacyPresentationAdapter(f.presentation,f.runtime);
+ assert.deepEqual((await freshAdapter.handle('/sessions/s/views','GET') as typeof list).views,list.views);
+});
+
 test('all nine old presentation aliases normalize into the shared Runtime with JSON Patch, asset entries and histories',async t=>{
   const f=await setup(t),rendered=await f.tool('hallmark_render_view',{spec:spec()});assert.equal(rendered.status,'ok',rendered.error?.message);const id=rendered.data.viewId;assert.equal(rendered.data.spec.widgets[0].columns[0].label,'Title');
   const updated=await f.tool('hallmark_update_view',{viewId:id,patch:[{op:'replace',path:'/title',value:'Patched table'},{op:'add',path:'/widgets/0/columns/-',value:{field:'id',label:'ID'}}]});assert.equal(updated.status,'ok',updated.error?.message);assert.equal(updated.data.spec.widgets[0].columns.length,2);
   const failed=await f.tool('hallmark_update_view',{viewId:id,patch:[{op:'replace',path:'/title',value:'Should not persist'},{op:'test',path:'/title',value:'Other'}]});assert.equal(failed.status,'failed');assert.equal(f.presentation.getView(id)?.title,'Patched table');
   const saved=await f.tool('hallmark_save_component',{viewId:id,title:'Saved title',userRequest:'Save this design'});assert.equal(saved.status,'ok',saved.error?.message);const componentId=saved.data.component.id;assert.equal(componentId,id);assert.equal(saved.data.entry.viewId,componentId);assert.equal(saved.data.entry.appId,'hallmark');assert.notEqual(saved.data.entry.id,componentId);
-  const opened=await f.tool('hallmark_open_component',{componentId});assert.equal(opened.status,'ok');assert.equal(opened.data.sourceComponentId,componentId);assert.equal(opened.data.baseRevision,1);assert.notEqual(opened.data.viewId,id);
+  const opened=await f.tool('hallmark_open_component',{componentId,newCopy:true});assert.equal(opened.status,'ok');assert.equal(opened.data.sourceComponentId,componentId);assert.equal(opened.data.baseRevision,1);assert.notEqual(opened.data.viewId,id);
   const savedAgain=await f.tool('hallmark_save_component',{viewId:opened.data.viewId,mode:'update',componentId,expectedRevision:1,userRequest:'Update this design'});assert.equal(savedAgain.status,'ok',savedAgain.error?.message);
   const entry=await f.tool('hallmark_save_entry',{title:'Data entry',binding:spec().bindings[0],userRequest:'Save query'});assert.equal(entry.status,'ok',entry.error?.message);assert.equal(entry.data.kind,'data');assert.equal(entry.data.appId,'hallmark');assert.deepEqual(entry.data.binding,spec().bindings[0]);assert.equal(entry.data.order,1);
   const template=await f.tool('hallmark_save_template',{viewId:id,name:'Reusable design',description:'Exact columns',userRequest:'Save template'});assert.equal(template.status,'ok',template.error?.message);assert.equal(template.data.widgetStyles[0].columns.length,2);assert.equal(template.data.name,'Reusable design');

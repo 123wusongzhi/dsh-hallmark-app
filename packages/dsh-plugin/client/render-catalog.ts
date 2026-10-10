@@ -14,8 +14,9 @@ const layoutProps=z.object({gap:z.number().nonnegative(),columns:z.number().int(
 export const hallmarkCatalog=defineCatalog(schema,{components:{
   Grid:{props:layoutProps,description:'网格布局'},Row:{props:layoutProps,description:'横向布局'},Column:{props:layoutProps,description:'纵向布局'},Tabs:{props:layoutProps,description:'可切换且保留子组件状态的标签页'},
   MetricCard:{props:widgetProps,description:'绑定真实指标的统计卡'},ProductTable:{props:widgetProps,description:'已有数据表格，可信商品支持勾选并附加到原聊天'},BarChart:{props:widgetProps,description:'带数据来源和口径的柱图'},LineChart:{props:widgetProps,description:'带数据来源和口径的折线图'},ProductCard:{props:widgetProps,description:'商品卡'},StatusBadge:{props:widgetProps,description:'原始状态或权威操作回执'},Text:{props:widgetProps,description:'文本说明'},
+  ProductList:{props:widgetProps,description:'可配置中文字段的商品列表，支持作用范围明确的搜索、排序、分页与选中联动'},SkuDetail:{props:widgetProps,description:'只展示当前选中商品的 SKU 规格和价格，不提供选品评估'},
 }});
-export const widgetComponent:Record<WidgetType,string>={stat_card:'MetricCard',table:'ProductTable',bar_chart:'BarChart',line_chart:'LineChart',product_card:'ProductCard',status_badge:'StatusBadge',text:'Text'};
+export const widgetComponent:Record<WidgetType,string>={stat_card:'MetricCard',table:'ProductTable',bar_chart:'BarChart',line_chart:'LineChart',product_card:'ProductCard',product_list:'ProductList',sku_detail:'SkuDetail',status_badge:'StatusBadge',text:'Text'};
 const layoutComponent:Record<LayoutNode['type'],string>={grid:'Grid',row:'Row',column:'Column',tabs:'Tabs'};
 export type RenderSpec={root:string;elements:Record<string,{type:string;props:{widgetId?:string;gap?:number;columns?:number};children:string[]}>};
 

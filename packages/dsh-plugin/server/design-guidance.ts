@@ -1,5 +1,6 @@
 import type { ToolDescriptor } from '../../contracts/src/index.ts';
 import type { Patch, ViewSpec } from '../../presentation/src/types.ts';
+import { WIDGET_TYPES } from '../../presentation/src/validation.ts';
 
 /** Host guidance only: never change the service's exact tool catalog or persisted ViewSpec. */
 const LEGACY_DESIGN_INSTRUCTIONS = `以下仅用于旧 ViewSpec 组件的维护；不适用于源码组件。Hallmark 组件设计：用户要组件时，应主动完成信息设计并生成可用预览。先判断内容意图和真实字段，再安排主次阅读顺序、侧栏纵向或标签页布局、主题与视觉密度、勾选/附加/继续对话的操作闭环，最后检查字段、空值、来源和窄栏。旧组件直接查询真实数据并调用 render_view；已有临时组件用 update_view。不必每次先输出长设计方案；仅缺关键业务含义才询问。
@@ -66,7 +67,7 @@ export const DESIGN_CAPABILITIES = {
   },
   legacyScope:'以下 widgets/layouts/grammar/limits/recipes/editExample 只适用于旧 ViewSpec；新源码不经过这些限制。',
   workflow:'内容意图 → 真实字段 → 主次排序 → 侧栏/标签页布局 → 主题与密度 → 操作闭环 → 检查；默认直接查询并生成/修改临时预览。',
-  widgets:['stat_card','table','bar_chart','line_chart','product_card','status_badge','text'],
+  widgets:[...WIDGET_TYPES],
   layouts:['column','row','grid','tabs'],
   columnFormats:['text','currency','percent','date'],
   grammar:{

@@ -1,3 +1,4 @@
+import {APPS_BUSINESS_REQUEST_TIMEOUT_MS} from '../../../packages/app-sdk/src/index.ts';
 import {existsSync,readFileSync} from 'node:fs';
 import {dirname,isAbsolute, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -14,7 +15,7 @@ import {apply as attachNotes} from '../../../packages/plugin-notes/src/index.ts'
 import type {NativeSessionAdapterMode} from '../../../packages/dsh-compat/src/index.ts';
 import type {AppsAuthoringGuidance} from '../../../packages/plugin-apps/src/authoring-guidance.ts';
 export const name = 'dsh-plugin-apps-bundle';
-export const version = '1.0.0-candidate.22';
+export const version = '1.0.0-candidate.72';
 export const inject = ['tools', 'commands', 'systemPrompt', 'connection', 'agents', 'sessionQuery'];
 export const Config = Schema.object({
   serviceUrl: Schema.string().default('http://127.0.0.1:4181').description('显式Apps Runtime回环地址；候选包不启动或重启运行服务。'),
@@ -27,6 +28,7 @@ export const Config = Schema.object({
 /** Compatibility names keep their old Host implementation/renderer and dispatch into P2 exactly once. */
 export class RuntimeLegacyHallmarkPlugin extends HallmarkPlugin {
   readonly runtimeTransport: AppsHostTransport;
+  reviewHost?:AppsHost;
   constructor(ctx: PluginContext, config: PluginConfig, transport: AppsHostTransport) {
     super(ctx,config);this.runtimeTransport = transport;
     const request = this.client.request.bind(this.client);
@@ -35,7 +37,8 @@ export class RuntimeLegacyHallmarkPlugin extends HallmarkPlugin {
       const match = /^\/tools\/(hallmark_[a-z_]+)$/.exec(path);
       if (!match || body === undefined) return request(path,body,signal,timeoutMs);
       const input = body as {arguments: JsonValue;sessionId: string};
-      try {return await transport.legacyInvoke({name: match[1],arguments: input.arguments,sessionId: input.sessionId,invocationId: randomUUID(),traceId: randomUUID(),deadlineAt: new Date(Date.now()+Math.min(timeoutMs??90000,90000)).toISOString()},signal);}
+      const invocationId=randomUUID(),invoke=(requestSignal?:AbortSignal)=>transport.legacyInvoke({name:match[1],arguments:input.arguments,sessionId:input.sessionId,invocationId,traceId:randomUUID(),deadlineAt:new Date(Date.now()+Math.min(timeoutMs??(['hallmark_update_price','hallmark_update_stock','hallmark_list_product'].includes(match[1])?APPS_BUSINESS_REQUEST_TIMEOUT_MS:90000),['hallmark_update_price','hallmark_update_stock','hallmark_list_product'].includes(match[1])?APPS_BUSINESS_REQUEST_TIMEOUT_MS:90000)).toISOString()},requestSignal);
+      try {return await (this.reviewHost&&['hallmark_update_price','hallmark_update_stock','hallmark_list_product'].includes(match[1])?this.reviewHost.reviewPump({invocationId,sessionId:input.sessionId},invoke,signal):invoke(signal));}
       catch {signal?.throwIfAborted();throw new ServiceFailure('RUNTIME_RESPONSE_UNAVAILABLE',true);}
     };
   }
@@ -46,7 +49,7 @@ export async function createAppsBundle(ctx: PluginContext & AppsPluginContext, c
   let sessions:AppsPluginContext['sessions'];try{sessions=(typeof ctx.get==='function'?ctx.get('sessions'):ctx.sessions) as AppsPluginContext['sessions'];}catch{sessions=undefined;}
   const legacyContext: PluginContext = {
     agents: ctx.agents, sessions, sessionQuery: ctx.sessionQuery, commands: ctx.commands, connection: ctx.connection,
-    tools: {register: tool => options.legacyToolProjection ? ctx.tools.register(tool) : () => {}},
+    tools: {register: tool => options.legacyToolProjection ? ctx.tools.register({...tool,...(['hallmark_update_price','hallmark_update_stock','hallmark_list_product'].includes(tool.name)?{timeoutMs:APPS_BUSINESS_REQUEST_TIMEOUT_MS}:{})}) : () => {}},
     // An unregistered legacy tool must not be advertised as available in the model's instructions.
     systemPrompt: {context: contribution => options.legacyToolProjection ? ctx.systemPrompt.context(contribution) : () => {}},
     on: ctx.on.bind(ctx), ...(ctx.effect ? {effect: ctx.effect.bind(ctx)} : {}),
@@ -72,10 +75,19 @@ export async function createAppsBundle(ctx: PluginContext & AppsPluginContext, c
       await legacy.prepareSource({kind:'source',source:publication.source});
     }
   }});
+  legacy.reviewHost=host;
   const attachments: (() => void)[] = [];
   let disposed = false;
   const dispose = async () => {if (disposed) return;disposed = true;attachments.splice(0).reverse().forEach(remove => remove());await Promise.allSettled([legacy.dispose(),host.dispose()]);};
-  try {await host.start();attachments.push(host.attachApp('apps'),attachHallmark(host),attachNotes(host));await legacy.start();} catch (error) {await dispose();throw error;}
+  try {
+    await host.start();attachments.push(host.attachApp('apps'),attachHallmark(host),attachNotes(host));await legacy.start();
+    const listingSkill=fileURLToPath(new URL('../skills/ozon-listing/SKILL.md',import.meta.url));
+    attachments.push(ctx.systemPrompt.context({name:'hallmark-business-operations',order:515,text:context=>{
+      const agent=context.agent??context.scope as {id?:string}|undefined;
+      if(!agent||typeof agent.id!=='string'||ctx.agents.get(agent.id)!==agent||context.scope&&context.scope!==agent)return '';
+      return 'Ozon经营操作：先发现当前Hallmark连接和hallmark.plan.*能力版本，使用同一草稿/审核/执行入口。上品默认完整制作标题、属性、主图与详情；任务匹配时通过原生skill工具加载ozon-listing，组件创作继续使用hallmark-component-design。保存草稿不触发模型审核，提交确定版本时程序自动审核；无须额外facts、preflight或已审阅声明。程序绑定SKU与采购成本，unknown只核查原操作。'+(existsSync(listingSkill)?`若原生技能目录尚未更新，可读取随包同版本指引：${listingSkill}。`:'');
+    }}));
+  } catch (error) {await dispose();throw error;}
   ctx.effect?.(() => () => {void dispose();});
   return {host,legacy,dispose};
 }

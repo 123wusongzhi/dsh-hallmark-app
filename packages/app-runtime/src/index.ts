@@ -50,7 +50,7 @@ class ConnectionQueue {
 
 export class AppsRuntime {
   readonly store: RuntimeStore;
-  readonly runtimeVersion = '1.0.0-candidate.22';
+  readonly runtimeVersion = '1.0.0-candidate.72';
   readonly transportMajor = 1;
   readonly catalogSchemaVersion = 1;
   #providers = new Map<string, RegisteredProvider>();
@@ -59,6 +59,7 @@ export class AppsRuntime {
   #catalogDigest: string | undefined;
   #inflight = new Map<string, Promise<CapabilityResult>>();
   #executions = new Set<Promise<CapabilityResult>>();
+  #continuations = new Map<string, Promise<CapabilityResult>>();
   #queues = new Map<string, ConnectionQueue>();
   #connections = new Map<string,ConnectionLifecycle>();
   #connectionHooks = new Map<string,ConnectionLifecycleHooks>();
@@ -201,11 +202,26 @@ export class AppsRuntime {
     if(!connection?.enabled)return failure(request,'CONNECTION_NOT_FOUND','An explicit enabled connection is required.');
     try{this.lifecycle(request.appId,request.connectionId).assertReady();}catch{return failure(request,'CONNECTION_UPDATING','Connection configuration is draining.','unavailable','read_retry');}
     if('sessionId' in request.source&&!this.sessionBindings(request.source.sessionId).some(row=>row.appId===request.appId&&row.connectionId===request.connectionId&&row.enabled))return failure(request,'APP_NOT_ACTIVE','This connection is not enabled in the source session.');
+    if(request.source.kind==='workbench'){
+      if(entry.descriptor.effect==='mutation')return failure(request,'WORKBENCH_READ_ONLY','Workbench instances can only query or compute data.');
+      const source=request.source;
+      const board=this.store.get<{kind:string;workbenchId:string;context?:{storeId:string};instances:{instanceId:string;bindings?:{appId:string;connectionId:string;capabilityId:string;capabilityMajor:number;input?:JsonValue}[]}[]}>('saved_assets',source.workbenchId);
+      const instance=board?.kind==='workbench'&&board.workbenchId===source.workbenchId?board.instances.find(item=>item.instanceId===source.instanceId):undefined;
+      if(!instance?.bindings?.some(binding=>binding.appId===request.appId&&binding.connectionId===request.connectionId&&binding.capabilityId===request.capabilityId&&binding.capabilityMajor===Number(request.capabilityVersion.split('.')[0])))return failure(request,'WORKBENCH_BINDING_REQUIRED','The capability and connection must be explicitly bound to this workbench instance.');
+      const matched=instance.bindings.filter(binding=>binding.appId===request.appId&&binding.connectionId===request.connectionId&&binding.capabilityId===request.capabilityId&&binding.capabilityMajor===Number(request.capabilityVersion.split('.')[0]));
+      const storeScoped=matched.some(binding=>binding.input&&typeof binding.input==='object'&&!Array.isArray(binding.input)&&typeof binding.input.storeId==='string');
+      if(storeScoped&&board?.context&&(!request.input||typeof request.input!=='object'||Array.isArray(request.input)||request.input.storeId!==board.context.storeId))return failure(request,'WORKBENCH_STORE_MISMATCH','The query store must match the selected workbench store.');
+    }
     if(request.source.kind==='recovery')return failure(request,'INSPECT_REQUIRED','Recovery must inspect the original operation.');
     const errors=registered.inputs.get(request.capabilityId)!(request.input);
     if(errors.length)return failure(request,'INPUT_SCHEMA_INVALID',errors.join('; '),'failed','never',errors);
     const mutation=entry.descriptor.effect==='mutation';
+    if(mutation&&!request.idempotencyKey&&entry.descriptor.execution.idempotency==='upstream_supported')request={...request,idempotencyKey:`provider-intent:${request.invocationId}`};
     if(mutation&&!request.idempotencyKey)return failure(request,'IDEMPOTENCY_KEY_REQUIRED','Mutation calls require a stable intent key.');
+    let resourceScope:string[]|undefined;
+    if(mutation&&entry.descriptor.execution.lockScope==='resources'&&registered.provider.mutationScope){
+      try{const scope=registered.provider.mutationScope(request,connection.configRevision);if(scope?.length&&scope.every(id=>typeof id==='string'&&id.length>0))resourceScope=[...new Set(scope)].sort();}catch{return failure(request,'MUTATION_TARGETS_UNAVAILABLE','Cannot resolve the stored mutation targets.');}
+    }
     let operation: RuntimeOperation | undefined;
     if(mutation){
       const hash=digest({capabilityVersion:request.capabilityVersion,input:request.input,expectedResourceRevision:request.expectedResourceRevision??null});
@@ -213,7 +229,7 @@ export class AppsRuntime {
         const previous=this.store.operationByKey(request.appId,request.connectionId,request.capabilityId,request.idempotencyKey!);
         if(previous)return {previous};
         const at=new Date().toISOString();
-        const op:RuntimeOperation={operationId:randomUUID(),appId:request.appId,connectionId:request.connectionId,capabilityId:request.capabilityId,capabilityVersion:request.capabilityVersion,idempotencyKey:request.idempotencyKey!,requestHash:hash,request,state:'queued',createdAt:at,updatedAt:at,configRevision:connection.configRevision};
+        const op:RuntimeOperation={operationId:randomUUID(),appId:request.appId,connectionId:request.connectionId,capabilityId:request.capabilityId,capabilityVersion:request.capabilityVersion,idempotencyKey:request.idempotencyKey!,requestHash:hash,request,state:'queued',createdAt:at,updatedAt:at,configRevision:connection.configRevision,...(resourceScope?{resourceScope}:{})};
         this.store.put('operations',op.operationId,op);this.store.appendEvent(op.operationId,{event:'received',traceId:request.traceId,invocationId:request.invocationId,state:'queued'});return {created:op};
       });
       operation=reserved.previous??reserved.created!;
@@ -227,20 +243,24 @@ export class AppsRuntime {
     const timer=setTimeout(()=>controller.abort(new Error('DEADLINE_EXCEEDED')),Math.max(0,remaining));
     if(remaining<=0)controller.abort(new Error('DEADLINE_EXCEEDED'));
     const queueKey=key(request.appId,request.connectionId), queue=this.#queues.get(queueKey)??new ConnectionQueue();this.#queues.set(queueKey,queue);
+    const queuedAt=performance.now();
     let release: (()=>void) | undefined, releaseConnection:(()=>void)|undefined, providerWork: Promise<CapabilityResult> | undefined;
     try {
-      release=await queue.acquire(mutation||entry.descriptor.execution.concurrency==='exclusive',controller.signal);
+      // A provider may declare a local snapshot query safe during a long write/review.
+      // Admission and connection-generation lifetime checks below still apply.
+      const snapshotQuery=entry.descriptor.effect==='query'&&entry.descriptor.execution.concurrency==='declared_safe'&&entry.descriptor.execution.lockScope==='resources';
+      if(!snapshotQuery)release=await queue.acquire(mutation||entry.descriptor.execution.concurrency==='exclusive',controller.signal);
       if(controller.signal.aborted)throw new Error('ABORTED');
       this.assertAdmission();
       if(this.getConnection(request.appId,request.connectionId)?.configRevision!==connection.configRevision)throw new Error('CONNECTION_REVISION_CHANGED');
       releaseConnection=this.lifecycle(request.appId,request.connectionId).enter();
       if(mutation){
-        const unresolved=this.store.list<RuntimeOperation>('operations').find(row=>row.operationId!==operation!.operationId&&row.appId===request.appId&&row.connectionId===request.connectionId&&['unknown','pending','dispatching'].includes(row.state));
+        const unresolved=this.store.list<RuntimeOperation>('operations').find(row=>row.operationId!==operation!.operationId&&row.appId===request.appId&&row.connectionId===request.connectionId&&['unknown','pending','dispatching'].includes(row.state)&&(!resourceScope||!row.resourceScope?.length||resourceScope.some(id=>row.resourceScope!.includes(id))));
         if(unresolved){const result={...failure(request,'OPERATION_UNRESOLVED','Inspect the unresolved operation before another mutation.'),operation:{operationId:operation!.operationId,state:'failed' as const}};this.store.updateOperation(operation!.operationId,'failed',result,{blockedBy:unresolved.operationId});return result;}
         operation=this.store.updateOperation(operation!.operationId,'dispatching',undefined,{event:'dispatch_intent',traceId:request.traceId,invocationId:request.invocationId});
       }
       const record=this.store.get<InvocationRecord>('invocations',request.invocationId)!;this.store.put('invocations',request.invocationId,{...record,state:'dispatching'});
-      this.log(request,'dispatch_intent',{operationId:operation?.operationId??null});
+      this.log(request,'dispatch_intent',{operationId:operation?.operationId??null,queueMs:Math.round(performance.now()-queuedAt)});
       const context:ExecutionContext={request:structuredClone(request),signal:controller.signal,configRevision:connection.configRevision,...(operation?{operationId:operation.operationId}:{}),...('runId' in request.source?{parentRunId:request.source.runId}:{})};
       const execution=registered.provider.execute(context);
       providerWork=execution;
@@ -325,6 +345,58 @@ export class AppsRuntime {
       this.store.updateOperation(operationId,next,normalized,{event:'inspect_result'});return normalized;
     } catch {return this.unknown(request,operationId,'OUTCOME_UNKNOWN','Read-only inspection is unavailable.');}
     finally{if(providerWork)providerWork.finally(()=>releaseConnection?.()).catch(()=>{});else releaseConnection?.();clearTimeout(timer);signal?.removeEventListener('abort',abort);}
+  }
+  /** Service-only continuation path. Public inspect remains read-only; the provider retains row/version authorization. */
+  continueAuthorized(operationId:string,signal?:AbortSignal):Promise<CapabilityResult>{
+    const running=this.#continuations.get(operationId);if(running)return running;
+    const operation=this.store.get<RuntimeOperation>('operations',operationId);
+    const identity={invocationId:randomUUID(),traceId:operation?.request.traceId??randomUUID()};
+    if(!operation)return Promise.resolve(failure(identity,'OPERATION_NOT_FOUND','No such operation.'));
+    const request:InvocationRequest={...operation.request,...identity,source:{kind:'recovery',operationId},deadlineAt:new Date(Date.now()+90000).toISOString()};
+    const startedAt=new Date().toISOString();
+    this.store.put('invocations',request.invocationId,{invocationId:request.invocationId,requestHash:digest(request),request,state:'received',operationId,startedAt,...(operation.configRevision!==undefined?{configRevision:operation.configRevision}:{})} satisfies InvocationRecord);
+    this.store.put('invocation_operations',request.invocationId,{invocationId:request.invocationId,operationId});
+    const work=this.continueExisting(operation,request,signal).then(result=>{
+      const row=this.store.get<InvocationRecord>('invocations',request.invocationId)!;const durationMs=Date.now()-Date.parse(startedAt);
+      this.store.put('invocations',request.invocationId,{...row,state:'settled',result,durationMs});this.log(request,'continuation_settled',{operationId,status:result.status,durationMs});return result;
+    }).finally(()=>{this.#inflight.delete(request.invocationId);this.#continuations.delete(operationId);});
+    this.#inflight.set(request.invocationId,work);this.#continuations.set(operationId,work);return work;
+  }
+  private async continueExisting(operation:RuntimeOperation,request:InvocationRequest,signal?:AbortSignal):Promise<CapabilityResult>{
+    const operationId=operation.operationId,provider=this.#providers.get(operation.appId),descriptor=this.describe(operation.capabilityId,operation.capabilityVersion);
+    if(!['pending','unknown'].includes(operation.state))return operationResult(operation,request);
+    if(!provider?.provider.continueOperation||descriptor?.effect!=='mutation')return failure(request,'CONTINUATION_UNSUPPORTED','Provider has no authorized background continuation.');
+    if(provider.state!=='ready')return failure(request,'PROVIDER_STOPPING','Provider is not accepting background work.','unavailable','read_retry');
+    const controller=new AbortController(),abort=()=>controller.abort(signal?.reason);signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)abort();
+    const timer=setTimeout(()=>controller.abort(new Error('CONTINUATION_DEADLINE_EXCEEDED')),90000);
+    const queueKey=key(operation.appId,operation.connectionId),queue=this.#queues.get(queueKey)??new ConnectionQueue();this.#queues.set(queueKey,queue);
+    let release:(()=>void)|undefined,releaseConnection:(()=>void)|undefined,providerWork:Promise<CapabilityResult>|undefined;
+    try{
+      this.assertAdmission();release=await queue.acquire(true,controller.signal);controller.signal.throwIfAborted();this.assertAdmission();
+      const connection=this.getConnection(operation.appId,operation.connectionId);
+      if(!connection?.enabled||operation.configRevision===undefined||connection.configRevision!==operation.configRevision)return failure(request,'CONNECTION_REVISION_CHANGED','Continuation requires the original enabled backend configuration.');
+      if(provider.state!=='ready')return failure(request,'PROVIDER_STOPPING','Provider is not accepting background work.','unavailable','read_retry');
+      const latest=this.store.get<RuntimeOperation>('operations',operationId)!;if(!['pending','unknown'].includes(latest.state))return operationResult(latest,request);
+      const conflict=this.store.list<RuntimeOperation>('operations').find(row=>row.operationId!==operationId&&row.appId===operation.appId&&row.connectionId===operation.connectionId&&['unknown','pending','dispatching'].includes(row.state)&&(!operation.resourceScope?.length||!row.resourceScope?.length||operation.resourceScope.some(id=>row.resourceScope!.includes(id))));
+      if(conflict)return failure(request,'OPERATION_UNRESOLVED','Another unresolved operation overlaps this continuation.');
+      releaseConnection=this.lifecycle(operation.appId,operation.connectionId).enter();
+      this.store.appendEvent(operationId,{event:'continuation_intent',invocationId:request.invocationId,traceId:request.traceId,configRevision:operation.configRevision});this.log(request,'continuation_intent',{operationId});
+      const invocation=this.store.get<InvocationRecord>('invocations',request.invocationId)!;this.store.put('invocations',request.invocationId,{...invocation,state:'dispatching'});
+      providerWork=Promise.resolve().then(()=>provider.provider.continueOperation!(operationId,{request:structuredClone(request),signal:controller.signal,operationId,configRevision:operation.configRevision}));
+      this.#executions.add(providerWork);providerWork.finally(()=>this.#executions.delete(providerWork!)).catch(()=>{});
+      const result=await this.waitForResult(providerWork,controller.signal);
+      const errors=[...validateResult(result),...('data'in result?provider.outputs.get(operation.capabilityId)!(result.data):[])];
+      if(errors.length){const unknown=this.unknown(request,operationId,'OUTPUT_SCHEMA_INVALID',errors.join('; '));this.store.updateOperation(operationId,'unknown',unknown,{event:'continuation_invalid_result'});return unknown;}
+      const current=this.store.get<RuntimeOperation>('operations',operationId)!;if(['succeeded','failed','partial','cancelled'].includes(current.state))return operationResult(current,request);
+      const uncertain=result.status==='unknown'||result.status==='cancelled'||result.status==='unavailable'||('error'in result&&result.error.retryPolicy==='inspect_only');
+      const next:OperationState=uncertain?'unknown':result.status==='ok'?'succeeded':result.status==='partial'?'partial':result.status==='pending'?(current.state==='unknown'?'unknown':'pending'):'failed';
+      const normalized:CapabilityResult=next==='unknown'?this.unknown(request,operationId,'OUTCOME_UNKNOWN','Original requests remain inspect-only until their outcomes are established.'):{...result,invocationId:request.invocationId,traceId:request.traceId,operation:{operationId,state:next}};
+      this.store.updateOperation(operationId,next,normalized,{event:'continuation_result'});return normalized;
+    }catch(error){
+      if(!providerWork)return failure(request,controller.signal.aborted?'CONTINUATION_CANCELLED_BEFORE_DISPATCH':'CONTINUATION_UNAVAILABLE',error instanceof Error?error.message:'Continuation not dispatched.','unavailable','read_retry');
+      const latest=this.store.get<RuntimeOperation>('operations',operationId)!;if(['succeeded','failed','partial','cancelled'].includes(latest.state))return operationResult(latest,request);
+      const unknown=this.unknown(request,operationId,'OUTCOME_UNKNOWN','Background execution did not establish completion; inspect original requests.');this.store.updateOperation(operationId,'unknown',unknown,{event:'continuation_interrupted'});return unknown;
+    }finally{const idle=()=>{release?.();releaseConnection?.();};if(providerWork)providerWork.finally(idle).catch(()=>{});else idle();clearTimeout(timer);signal?.removeEventListener('abort',abort);}
   }
   async recover(): Promise<CapabilityResult[]> {
     const queued=this.store.list<RuntimeOperation>('operations').filter(op=>op.state==='queued');

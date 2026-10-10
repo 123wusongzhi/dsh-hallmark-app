@@ -1,20 +1,36 @@
-param([string]$DestinationDirectory = (Join-Path $env:USERPROFILE '.dsh/skills'), [switch]$LocalOnly)
+param(
+  [string]$DestinationDirectory = '',
+  [string]$SourceDirectory = '',
+  [string]$EvidenceDirectory = '',
+  [switch]$LocalOnly,
+  [switch]$ValidateOnly
+)
 # Upgrade the user-owned local skill after a verified backup; preserve unrelated/upstream skills.
 $ErrorActionPreference = 'Stop'
 $projectDirectory = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
+$dshStateRoot = if ($env:DSH_HOME) { $env:DSH_HOME } else { Join-Path $env:USERPROFILE '.dsh' }
+if (-not $DestinationDirectory) { $DestinationDirectory = Join-Path $dshStateRoot 'skills' }
+if (-not $SourceDirectory) { $SourceDirectory = Join-Path $projectDirectory 'skills' }
+$sourceRoot = [IO.Path]::GetFullPath($SourceDirectory)
 $stagingDirectory = Join-Path $projectDirectory 'artifacts/design-skills-staging'
 $destinationRoot = [IO.Path]::GetFullPath($DestinationDirectory)
-$skillNames = if ($LocalOnly) { @('hallmark-component-design') } else { @('impeccable', 'shadcn', 'json-render-core', 'json-render-shadcn', 'hallmark-component-design') }
+$localSkills = @('hallmark-component-design', 'ozon-listing')
+$skillNames = if ($LocalOnly) { $localSkills } else { @('impeccable', 'shadcn', 'json-render-core', 'json-render-shadcn') + $localSkills }
+$evidence = if ($EvidenceDirectory) { [IO.Path]::GetFullPath($EvidenceDirectory) } else { Join-Path (Split-Path -Parent $destinationRoot) 'state/apps-skill-installs' }
 $records = @()
-New-Item -ItemType Directory -Path $destinationRoot -Force | Out-Null
+if (-not $ValidateOnly) { New-Item -ItemType Directory -Path $destinationRoot -Force | Out-Null }
 foreach ($skillName in $skillNames) {
-  $sourceDirectory = if ($skillName -eq 'hallmark-component-design') { Join-Path $projectDirectory ('skills/' + $skillName) } else { Join-Path $stagingDirectory $skillName }
+  $sourceDirectory = if ($localSkills -contains $skillName) { Join-Path $sourceRoot $skillName } else { Join-Path $stagingDirectory $skillName }
   $sourceDirectory = [IO.Path]::GetFullPath($sourceDirectory)
   $skillText = [IO.File]::ReadAllText((Join-Path $sourceDirectory 'SKILL.md'))
   if (-not $skillText.StartsWith('---') -or $skillText -notmatch ('(?m)^name: ' + [regex]::Escape($skillName) + '\r?$') -or $skillText -notmatch '(?m)^description: \S') { throw ('Invalid skill frontmatter: ' + $skillName) }
   $targetDirectory = [IO.Path]::GetFullPath((Join-Path $destinationRoot $skillName))
   if (-not $targetDirectory.StartsWith($destinationRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or (Split-Path -Leaf $targetDirectory) -ne $skillName) { throw 'Invalid skill target directory.' }
   $sourceFiles = @(Get-ChildItem -LiteralPath $sourceDirectory -Recurse -File)
+  if ($ValidateOnly) {
+    $records += [ordered]@{ name = $skillName; source = $sourceDirectory; destination = $targetDirectory; files = @($sourceFiles | ForEach-Object { [ordered]@{ path = $_.FullName.Substring($sourceDirectory.Length).TrimStart('\','/').Replace('\','/'); sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() } }) }
+    continue
+  }
   $unchanged = Test-Path -LiteralPath $targetDirectory
   if ($unchanged -and @(Get-ChildItem -LiteralPath $targetDirectory -Recurse -File).Count -ne $sourceFiles.Count) { $unchanged = $false }
   foreach ($sourceFile in $sourceFiles) {
@@ -24,8 +40,8 @@ foreach ($skillName in $skillNames) {
   }
   $backupDirectory = $null
   if ((Test-Path -LiteralPath $targetDirectory) -and -not $unchanged) {
-    if ($skillName -ne 'hallmark-component-design') { throw ('Upstream skill differs; preserve existing installation: ' + $skillName) }
-    $backupDirectory = Join-Path $projectDirectory ('artifacts/design-skills-backups/' + [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ') + '-' + [Guid]::NewGuid().ToString('N') + '/' + $skillName)
+    if ($localSkills -notcontains $skillName) { throw ('Upstream skill differs; preserve existing installation: ' + $skillName) }
+    $backupDirectory = Join-Path $evidence ('backups/' + [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ') + '-' + [Guid]::NewGuid().ToString('N') + '/' + $skillName)
     New-Item -ItemType Directory -Path (Split-Path -Parent $backupDirectory) -Force | Out-Null
     Copy-Item -LiteralPath $targetDirectory -Destination $backupDirectory -Recurse
     $backupFiles = @()
@@ -51,13 +67,16 @@ foreach ($skillName in $skillNames) {
   }
   $records += [ordered]@{ name = $skillName; directory = $targetDirectory; files = $fileRecords; verified = $true; changed = -not $unchanged; backupDirectory = $backupDirectory }
 }
+if ($ValidateOnly) {
+  [ordered]@{ validated = $true; installed = $false; destination = $destinationRoot; source = $sourceRoot; skills = $records; discoveryProvider = 'official DSH filesystem'; nativeDiscoveryObserved = $false } | ConvertTo-Json -Depth 10
+  exit 0
+}
 $engineProbe = $null
 if (-not $LocalOnly) {
   $engineProbe = (& (Join-Path $destinationRoot 'impeccable/scripts/impeccable.cmd') engine-probe | Out-String).Trim()
   if ($LASTEXITCODE -ne 0 -or $engineProbe -ne 'impeccable-engine 0.1.11') { throw 'Installed official engine probe failed.' }
 }
-$report = [ordered]@{ installedAt = [DateTime]::UtcNow.ToString('o'); destination = $destinationRoot; releaseId = 'apps-a2-20261007'; localSkill = 'hallmark-component-design'; engineProbe = $engineProbe; skills = $records; nativeDiscoveryObserved = $false; actualAgentDesignQualityVerified = $false }
-$evidence = Join-Path $projectDirectory 'evidence/apps-a2-20261007/design-skills'
+$report = [ordered]@{ installedAt = [DateTime]::UtcNow.ToString('o'); destination = $destinationRoot; source = $sourceRoot; releaseId = 'apps-a2-20261007'; localSkills = $localSkills; engineProbe = $engineProbe; skills = $records; discoveryProvider = 'official DSH filesystem'; nativeDiscoveryObserved = $false; actualAgentDesignQualityVerified = $false }
 New-Item -ItemType Directory -Path $evidence -Force | Out-Null
 $reportPath = Join-Path $evidence ('installed-' + [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ') + '-' + [Guid]::NewGuid().ToString('N') + '.json')
 $report | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $reportPath -Encoding utf8

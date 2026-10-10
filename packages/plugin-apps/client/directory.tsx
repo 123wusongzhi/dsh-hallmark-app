@@ -18,10 +18,12 @@ interface DirectoryProps {
   onCreate?:()=>void;
   creationDisabled?:boolean;
   onRefreshViews?:()=>void;
+  summaryRefreshKey?:number;
   navigation?:React.ReactNode;
+  onAppChange?:(appId:string)=>void;
   children?:React.ReactNode;
 }
-export function AppsDirectory({useSessions,currentSessionId,onReturn,onOpenView,onCreate,creationDisabled,onRefreshViews,navigation,children}:DirectoryProps) {
+export function AppsDirectory({useSessions,currentSessionId,onReturn,onOpenView,onCreate,creationDisabled,onRefreshViews,summaryRefreshKey=0,navigation,onAppChange,children}:DirectoryProps) {
   const sessionId=useSessions?useSessions(observeCurrentSession):currentSessionId;
   const [apps,setApps]=useState<AppRow[]>([]),[connections,setConnections]=useState<ConnectionRow[]>([]),[bindings,setBindings]=useState<BindingRow[]>([]);
   const [selected,setSelected]=useState<string>(),[error,setError]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[refresh,setRefresh]=useState(0);
@@ -34,7 +36,7 @@ export function AppsDirectory({useSessions,currentSessionId,onReturn,onOpenView,
       setApps((directory as {apps:AppRow[]}).apps);setConnections(available as ConnectionRow[]);setBindings(active as BindingRow[]);
     }).catch(()=>{if(!controller.signal.aborted)setError('应用列表暂时无法读取，请刷新重试或查看连接设置。');}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});
     return()=>controller.abort();
-  },[sessionId,refresh]);
+  },[sessionId,refresh,summaryRefreshKey]);
   useEffect(()=>{setDiagnostics([]);setDiagnosticNotice('');if(!sessionId)return;const controller=new AbortController();
     api(`resource=diagnostics&sessionId=${encodeURIComponent(sessionId)}`,controller.signal).then(value=>{if(!controller.signal.aborted)setDiagnostics((value as {invocations?:DiagnosticRow[]}).invocations??[]);}).catch(()=>{if(!controller.signal.aborted)setDiagnosticNotice('此会话调用记录暂不可用。');});
     return()=>controller.abort();
@@ -50,6 +52,7 @@ export function AppsDirectory({useSessions,currentSessionId,onReturn,onOpenView,
   };
   const businessApps=apps.filter(app=>app.appId!=='apps');
   const current=businessApps.find(app=>app.appId===selected)??businessApps.find(app=>app.appId==='hallmark')??businessApps[0];
+  useEffect(()=>{if(current)onAppChange?.(current.appId);},[current?.appId,onAppChange]);
   const matches=businessApps.filter(app=>`${app.appId} ${app.displayName} ${description(app)}`.normalize('NFKC').toLocaleLowerCase().includes(query.normalize('NFKC').toLocaleLowerCase()));
   const visible=connections.filter(connection=>connection.appId===current?.appId);
   const enabled=(connection:ConnectionRow)=>bindings.some(binding=>binding.sessionId===sessionId&&binding.appId===connection.appId&&binding.connectionId===connection.connectionId&&binding.enabled);

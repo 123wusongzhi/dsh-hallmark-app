@@ -4,32 +4,39 @@ import type {ViewPublication} from '../../app-presentation/src/authoring-types.t
 import {openSessionComponents} from '../../dsh-plugin/client/sidebar-contract.ts';
 import type {NativeSidebarRight} from '../../dsh-plugin/client/sidebar-contract.ts';
 import {appsAuthoring,appsResource} from './api.ts';
+import {readViewsCollection} from './views-collection.ts';
 
-type ViewsListener={controller:AbortController;onViews:(views:AppsView[],signal:AbortSignal)=>void|Promise<void>;isCurrent:()=>boolean;onError?:(error:unknown)=>void;last?:string};
-const viewWatches=new Map<string,{listeners:Set<ViewsListener>;poll:()=>Promise<void>;stop:()=>void;views?:AppsView[]}>();
+type ViewsListener={controller:AbortController;delivery?:AbortController;onViews:(views:AppsView[],signal:AbortSignal)=>void|Promise<void>;isCurrent:()=>boolean;onError?:(error:unknown)=>void;last?:string};
+const viewWatches=new Map<string,{listeners:Set<ViewsListener>;poll:()=>Promise<void>;stop:()=>void;update:(view:AppsView)=>void;views?:AppsView[]}>();
+/** Publish a confirmed panel change immediately; an older catalogue read cannot undo it. */
+export function updateOwnedAppsView(view:AppsView):void {if(!view.ownerSessionId)return;viewWatches.get(view.ownerSessionId)?.update(view);if(typeof window!=='undefined')window.dispatchEvent(new CustomEvent('hallmark-view-updated',{detail:{sessionId:view.ownerSessionId}}));}
 /** One poll per session, with independent lifetimes for its consumers. */
 export function watchOwnedAppsViews(sessionId:string,onViews:ViewsListener['onViews'],isCurrent:()=>boolean,onError?:ViewsListener['onError'],pollMs=3000):()=>void {
   const listener:ViewsListener={controller:new AbortController(),onViews,isCurrent,onError};
   let watch=viewWatches.get(sessionId);
-  const deliver=async(item:ViewsListener,views:AppsView[])=>{if(item.controller.signal.aborted||!item.isCurrent())return;const snapshot=JSON.stringify(views);if(item.last===snapshot)return;try{await item.onViews(views,item.controller.signal);item.last=snapshot;}catch(error){if(!item.controller.signal.aborted)item.onError?.(error);}};
+  const deliver=async(item:ViewsListener,views:AppsView[],snapshot:string)=>{if(item.controller.signal.aborted||!item.isCurrent()||item.last===snapshot)return;item.delivery?.abort();const delivery=new AbortController();item.delivery=delivery;item.last=snapshot;try{await item.onViews(views,AbortSignal.any([item.controller.signal,delivery.signal]));}catch(error){if(!item.controller.signal.aborted&&!delivery.signal.aborted){item.last=undefined;item.onError?.(error);}}};
   if(!watch){
-    const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined,running=false;
-    const current={listeners:new Set<ViewsListener>(),views:undefined as AppsView[]|undefined,poll:async()=>{
+    const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined,running=false,revision=0,etag:string|undefined,snapshot='',readController:AbortController|undefined;
+    const current={listeners:new Set<ViewsListener>(),views:undefined as AppsView[]|undefined,update:(view:AppsView)=>{
+      if(controller.signal.aborted||view.ownerSessionId!==sessionId)return;
+      revision++;etag=undefined;const rows=current.views??[];current.views=rows.some(row=>row.viewId===view.viewId)?rows.map(row=>row.viewId===view.viewId?view:row):[...rows,view];snapshot=JSON.stringify(current.views);
+      for(const item of current.listeners)void deliver(item,current.views,snapshot);
+    },poll:async()=>{
       if(running||controller.signal.aborted)return;
       if(timer!==undefined)clearTimeout(timer);
       if(typeof document!=='undefined'&&document.hidden)return;
-      running=true;
-      try{const value=await appsResource<{views:AppsView[]}>('views',{sessionId},AbortSignal.any([controller.signal,AbortSignal.timeout(5000)]));
-        if(!controller.signal.aborted){current.views=(value.views??[]).filter(view=>view.ownerSessionId===sessionId);await Promise.all([...current.listeners].map(item=>deliver(item,current.views!)));}
-      }catch(error){if(!controller.signal.aborted)for(const item of current.listeners)if(item.isCurrent())item.onError?.(error);}
-      finally{running=false;if(!controller.signal.aborted&&!(typeof document!=='undefined'&&document.hidden))timer=setTimeout(()=>void current.poll(),pollMs);}
+      running=true;const requestedRevision=revision,read=new AbortController();readController=read;
+      try{const value=await readViewsCollection(sessionId,AbortSignal.any([controller.signal,read.signal,AbortSignal.timeout(5000)]),etag);
+        if(!controller.signal.aborted&&!read.signal.aborted&&requestedRevision===revision){etag=value.etag;if(!value.unchanged){const views=value.views,nextSnapshot=JSON.stringify(views),changed=current.views!==undefined&&snapshot!==nextSnapshot;current.views=views;snapshot=nextSnapshot;if(changed&&typeof window!=='undefined')window.dispatchEvent(new CustomEvent('hallmark-view-updated',{detail:{sessionId}}));}if(current.views)await Promise.all([...current.listeners].map(item=>deliver(item,current.views!,snapshot)));}
+      }catch(error){if(!controller.signal.aborted&&!read.signal.aborted)for(const item of current.listeners)if(item.isCurrent())item.onError?.(error);}
+      finally{running=false;if(readController===read)readController=undefined;if(!controller.signal.aborted&&!(typeof document!=='undefined'&&document.hidden))timer=setTimeout(()=>void current.poll(),pollMs);}
     },stop:()=>{controller.abort();if(timer!==undefined)clearTimeout(timer);if(typeof document!=='undefined')document.removeEventListener('visibilitychange',visibility);}};
-    const visibility=()=>{if(document.hidden){if(timer!==undefined)clearTimeout(timer);}else void current.poll();};
+    const visibility=()=>{if(document.hidden){if(timer!==undefined)clearTimeout(timer);readController?.abort();}else void current.poll();};
     if(typeof document!=='undefined')document.addEventListener('visibilitychange',visibility);
     watch=current;viewWatches.set(sessionId,current);
   }
   watch.listeners.add(listener);
-  if(watch.views)void deliver(listener,watch.views);else void watch.poll();
+  if(watch.views)void deliver(listener,watch.views,JSON.stringify(watch.views));else void watch.poll();
   return()=>{listener.controller.abort();watch!.listeners.delete(listener);if(!watch!.listeners.size){watch!.stop();viewWatches.delete(sessionId);}};
 }
 export function useOwnedAppsViews(sessionId:string|undefined,onViews:(views:AppsView[],signal:AbortSignal)=>void|Promise<void>,onError?:(error:unknown)=>void,refreshKey=0,enabled=true):void {
@@ -39,9 +46,10 @@ export function useOwnedAppsViews(sessionId:string|undefined,onViews:(views:Apps
 export function publicationKey(sessionId:string,viewId:string,publicationId:string):string {return JSON.stringify([sessionId,viewId,publicationId]);}
 /** Expired/terminal historical candidates are observed without remounting or changing their receipts. */
 export async function readOwnedPendingPublication(sessionId:string,view:AppsView,signal:AbortSignal):Promise<ViewPublication|undefined> {
-  if(view.ownerSessionId!==sessionId||!view.pendingPublicationId)return;
+  if(view.ownerSessionId!==sessionId||view.panelState==='closed'||!view.pendingPublicationId)return;
   const current=await appsResource<AppsView&{publication?:ViewPublication}>('view',{sessionId,viewId:view.viewId,publicationId:view.pendingPublicationId},AbortSignal.any([signal,AbortSignal.timeout(5000)]));
   const publication=current.publication;
+  if(current.panelState==='closed'||viewWatches.get(sessionId)?.views?.some(view=>view.viewId===current.viewId&&view.panelState==='closed'))return;
   if(current.ownerSessionId!==sessionId||current.viewId!==view.viewId||publication?.ownerSessionId!==sessionId||publication.viewId!==view.viewId||publication.publicationId!==view.pendingPublicationId)throw new Error('候选发布不属于当前屏幕会话。');
   if(publication.state==='prepared'||publication.state==='mounting'&&publication.readyDeadlineAt!==null&&Date.parse(publication.readyDeadlineAt)>Date.now())return publication;
 }
@@ -81,7 +89,7 @@ export function NativePublicationObserver({sidebarRight}:{sidebarRight?:NativeSi
   const sessionId=useSyncExternalStore(store.subscribe??absentMounted.subscribe,store.getSnapshot,store.getSnapshot);
   const consumed=useRef(new Set<string>());
   useOwnedAppsViews(sessionId,async(views,signal)=>{
-    for(const view of views.filter(view=>view.pendingPublicationId).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,1)){
+    for(const view of views.filter(view=>view.panelState!=='closed'&&view.pendingPublicationId).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,1)){
       if(!view.pendingPublicationId||sidebarRight?.mounted.getSnapshot()!==sessionId)continue;
       const key=publicationKey(sessionId!,view.viewId,view.pendingPublicationId);if(consumed.current.has(key))continue;
       const publication=await readOwnedPendingPublication(sessionId!,view,signal);

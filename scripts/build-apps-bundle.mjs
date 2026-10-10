@@ -1,10 +1,11 @@
 import {build as esbuild} from 'esbuild';
 import ts from 'typescript';
-import {mkdir, readFile, writeFile, cp, readdir, rm} from 'node:fs/promises';
+import {mkdir, readFile, writeFile, cp, readdir, rm, realpath} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {join, resolve} from 'node:path';
-const sourceInputPaths=new Set(['scripts/build-apps-bundle.mjs','scripts/create-apps-source.mjs','scripts/apps-authoring-build.mjs','scripts/apps-authoring-preview.mjs','scripts/preview-images.mjs','scripts/verify-apps-sdk.mjs','scripts/install-desktop-apps.ps1','scripts/install-design-skills.ps1','skills/hallmark-component-design/SKILL.md','bundles/apps/package.json','bundles/apps/versions.json','bundles/apps/cordis.patch.yml','pnpm-lock.yaml']);
+import {isBuiltin} from 'node:module';
+import {join, resolve, relative, dirname, isAbsolute} from 'node:path';
+const sourceInputPaths=new Set(['scripts/build-apps-bundle.mjs','scripts/create-apps-source.mjs','scripts/apps-authoring-build.mjs','scripts/apps-authoring-preview.mjs','scripts/preview-images.mjs','scripts/preview-data.mjs','scripts/authoring-output.mjs','scripts/authoring-resume.mjs','scripts/apps-authoring-check.mjs','scripts/apps-authoring-check.ps1','scripts/apps-read-result.mjs','scripts/verify-apps-sdk.mjs','scripts/install-desktop-apps.ps1','scripts/install-design-skills.ps1','skills/hallmark-component-design/SKILL.md','skills/hallmark-component-design/references/visual-direction.md','bundles/apps/package.json','bundles/apps/versions.json','bundles/apps/cordis.patch.yml','pnpm-lock.yaml']);
 async function build(options){
   const result=await esbuild({...options,metafile:true});
   for(const path of Object.keys(result.metafile.inputs))if(/^(packages|bundles)\//.test(path.replaceAll('\\','/')))sourceInputPaths.add(path.replaceAll('\\','/'));
@@ -23,9 +24,36 @@ const client = await build({entryPoints:[`${directory}/client/index.tsx`],bundle
 const javascript = client.outputFiles.find(file => file.path.endsWith('.js')) ?? client.outputFiles[0];
 await writeFile(`${directory}/client/client.js`,`window.__ModuleLoader__.load({id:${JSON.stringify(manifest.name)},factory:function(require){var module={exports:{}};var exports=module.exports;\n${javascript.text}\nreturn module.exports;}});\n`);
 // Only the explicit Runtime executable imports concrete Providers; it is packaged as one companion entry.
-await build({entryPoints:['packages/service/src/apps-main.ts'],outfile:`${directory}/lib/runtime.js`,bundle:true,platform:'node',format:'esm',target:'node22',sourcemap:true,packages:'external'});
+// Keep the frozen Zod ESM module graph intact, but make the extracted Runtime self-contained.
+const zodRoot=await realpath('node_modules/zod'),vendorRoot=`${directory}/lib/vendor/zod`;
+const zodGraph=await esbuild({entryPoints:['node_modules/zod/index.js'],bundle:true,write:false,platform:'node',format:'esm',metafile:true});
+await rm(vendorRoot,{recursive:true,force:true});
+for(const [input,details] of Object.entries(zodGraph.metafile.inputs)){
+  if(details.imports.some(item=>item.external&&!isBuiltin(item.path)))throw new Error('UNDECLARED_ZOD_DEPENDENCY');
+  const source=await realpath(input),path=relative(zodRoot,source).replaceAll('\\','/');
+  if(path.startsWith('../')||isAbsolute(path)||!path.endsWith('.js'))throw new Error('INVALID_ZOD_RUNTIME_INPUT');
+  const target=join(vendorRoot,path);await mkdir(dirname(target),{recursive:true});await cp(source,target);
+  sourceInputPaths.add(input.replaceAll('\\','/'));
+}
+for(const name of ['package.json','LICENSE']){const source=`node_modules/zod/${name}`;await cp(source,`${vendorRoot}/${name}`);sourceInputPaths.add(source);}
+const runtimeBuild=await build({entryPoints:['packages/service/src/apps-main.ts'],outfile:`${directory}/lib/runtime.js`,bundle:true,platform:'node',format:'esm',target:'node22',sourcemap:true,packages:'external',plugins:[{name:'vendored-zod',setup(context){context.onResolve({filter:/^zod$/},()=>({path:'./vendor/zod/index.js',external:true}));}}]});
+const runtimeExternals=[...new Set(Object.values(runtimeBuild.metafile.outputs).flatMap(output=>output.imports.filter(item=>item.external).map(item=>item.path)))];
+if(runtimeExternals.some(path=>!isBuiltin(path)&&path!=='./vendor/zod/index.js'))throw new Error('UNDECLARED_RUNTIME_EXTERNAL_DEPENDENCY');
 // Node-only CLI entries bundle all project TS dependencies and load outside the checkout.
-for(const name of ['apps-authoring-build','apps-authoring-preview'])await build({entryPoints:[`scripts/${name}.mjs`],outfile:`${directory}/lib/${name}.js`,bundle:true,platform:'node',format:'esm',target:'node22',sourcemap:true,banner:{js:'#!/usr/bin/env node'}});
+for(const name of ['apps-authoring-build','apps-authoring-preview','apps-authoring-check','apps-read-result'])await build({entryPoints:[`scripts/${name}.mjs`],outfile:`${directory}/lib/${name}.js`,bundle:true,platform:'node',format:'esm',target:'node22',sourcemap:true,banner:{js:'#!/usr/bin/env node'}});
+await cp('scripts/apps-authoring-check.ps1',`${directory}/lib/apps-authoring-check.ps1`);
+await cp('docs/component-authoring',`${directory}/authoring-docs`,{recursive:true});
+for(const entry of await readdir('docs/component-authoring',{recursive:true,withFileTypes:true}))if(entry.isFile())sourceInputPaths.add(join(entry.parentPath,entry.name).replaceAll('\\','/'));
+// Ship the exact project skill bytes with the candidate; installing uses the official DSH filesystem provider root.
+const bundledSkills=['hallmark-component-design','ozon-listing'];
+for(const name of bundledSkills){
+  const target=resolve(directory,'skills',name),skillsRoot=resolve(directory,'skills');
+  if(target!==join(skillsRoot,name))throw new Error('INVALID_BUNDLED_SKILL_DIRECTORY');
+  await rm(target,{recursive:true,force:true});
+  await cp(`skills/${name}`,target,{recursive:true});
+  for(const entry of await readdir(`skills/${name}`,{recursive:true,withFileTypes:true}))if(entry.isFile())sourceInputPaths.add(join(entry.parentPath,entry.name).replaceAll('\\','/'));
+}
+await cp('scripts/install-design-skills.ps1',`${directory}/lib/install-skills.ps1`);
 // Installable development SDKs travel with the bundle; each component's normal React dependencies remain in its own lockfile.
 const generatedSdk=resolve(directory,'sdk'),bundleDirectory=resolve(directory);if(generatedSdk!==join(bundleDirectory,'sdk'))throw new Error('INVALID_GENERATED_SDK_DIRECTORY');
 await rm(generatedSdk,{recursive:true,force:true});
@@ -54,10 +82,10 @@ await mkdir(`${directory}/source-starter`,{recursive:true});
 await cp('scripts/create-apps-source.mjs',`${directory}/source-starter/create-apps-source.mjs`);
 const hashes = {};
 for (const file of ['package.json','cordis.patch.yml','versions.json','client/client.js']) hashes[file] = createHash('sha256').update(await readFile(`${directory}/${file}`)).digest('hex');
-for (const section of ['lib','sdk','source-starter'])for (const entry of await readdir(`${directory}/${section}`,{recursive:true,withFileTypes:true}))if(entry.isFile()){const absolute=resolve(entry.parentPath,entry.name);const path=absolute.substring(resolve(directory).length+1).replaceAll('\\','/');hashes[path]=createHash('sha256').update(await readFile(absolute)).digest('hex');}
+for (const section of ['lib','sdk','source-starter','authoring-docs','skills'])for (const entry of await readdir(`${directory}/${section}`,{recursive:true,withFileTypes:true}))if(entry.isFile()){const absolute=resolve(entry.parentPath,entry.name);const path=absolute.substring(resolve(directory).length+1).replaceAll('\\','/');hashes[path]=createHash('sha256').update(await readFile(absolute)).digest('hex');}
 const evidence = `evidence/${versions.releaseId}/candidates/${manifest.version}`;await mkdir(evidence,{recursive:true});
 const sourceInputs={};for(const path of [...sourceInputPaths].sort())sourceInputs[path]=createHash('sha256').update(await readFile(path)).digest('hex');
-await writeFile(`${evidence}/build-manifest.json`,JSON.stringify({releaseId:versions.releaseId,bundleVersion:manifest.version,versions,artifacts:hashes,sourceInputs,sourceBuild:true,installed:false,liveAcceptance:'NOT_RUN',runtimeEntry:'lib/runtime.js',authoringEntries:{build:'lib/apps-authoring-build.js',preview:'lib/apps-authoring-preview.js'},logicalPlugins:['plugin-apps','plugin-hallmark','plugin-notes'],publicEntries:1,runtimeProcesses:1},null,2)+'\n');
+await writeFile(`${evidence}/build-manifest.json`,JSON.stringify({releaseId:versions.releaseId,bundleVersion:manifest.version,versions,artifacts:hashes,sourceInputs,sourceBuild:true,installed:false,liveAcceptance:'NOT_RUN',runtimeEntry:'lib/runtime.js',authoringEntries:{check:'lib/apps-authoring-check.js',build:'lib/apps-authoring-build.js',preview:'lib/apps-authoring-preview.js'},skills:{names:bundledSkills,sourceDirectory:'skills',installer:'lib/install-skills.ps1',discovery:'official DSH filesystem provider: <DSH_HOME>/skills'},logicalPlugins:['plugin-apps','plugin-hallmark','plugin-notes'],publicEntries:1,runtimeProcesses:1},null,2)+'\n');
 // npm pack uses the ordinary manifest file allowlist and does not install anything.
 await mkdir('artifacts',{recursive:true});
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';

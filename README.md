@@ -1,5 +1,7 @@
 # Hallmark × DSH 应用接入
 
+**最新源码与桌面版本：`1.0.0-candidate.69`（2026-10-10）。** 本版包含独立经营请求、动态物流与利润规则、SKU 包装维护、精简采集资料、上品准备和组合 SKU、统一提交审核、采集箱在售／归档状态，以及原生图片决策审核。保留此前会话组件、收藏、工作台和性能优化。已安装正式 DSH Desktop，核对 256 个打包源码输入、65 个安装产物及实际 Host／Runtime；功能与验收边界见 [candidate69 发布说明](docs/candidate69-release-notes.md)。下文的旧候选版本记录保留各自的历史验收范围。
+
 本项目在原Hallmark插件上覆盖更新，只修改应用工作台、组件区及原聊天 `@` 所需扩展。**candidate.17已官方同名16→17覆盖安装**：812/812、类型/实际SDK与build/preview CLI/Runtime/诊断通过，145输入/33产物冻结；独立包32检查/17负例和官方ValidateOnly通过，独立20文件源码窄复核闭合。实际Runtime17/schema4、健康/Hallmark、Host监听及原2755行会话前缀核验通过；五份受控冷备regular files字节相同、内部junction按新根重定位且拓扑等价，原失败和旧16单文件漂移诊断保留。正式验收为**35 PASS/0 FAIL/45 NOT_RUN**，原35卡不迁移17；Native内存/原输入/侧栏点击重开、模型/业务/切库、四门禁和R未接受。详见[A.2执行记录](docs/apps-a2-execution.md)与[维护手册](docs/apps-migration-runbook.md)。16阶段614814已push apps-component-display-retry，旧main三次失败保留；17最终提交/推送以交付记录为准。
 
 用户最新确认：在任何原会话用 `@` 选择应用，Agent实际构建并预览后，在原聊天工具卡提供“打开组件”，由用户手动打开到原侧栏；等待点击不计挂载超时、不自动展开。candidate.17增量将成功预览构建与独立显示尝试分开，UI-only openDisplay/authorizeDisplayFrame/reportDisplayError加载同一归档；失败可明确重新打开，新display/frame/generation退役旧文档，Agent可inspect读取phase/code/message。旧startMount一次性协议保留历史兼容，在新侧栏路径中搁置。candidate.17候选包已冻结：812/812、145输入/33产物及旧16冻结材料守卫零差异，独立20文件源码窄复核闭合；归档SHA-256为 `e5cdbfefe9eab592f7cd733009deacdc215bab909a54cc09dd0128868bb3fa56`。candidate.17已官方同名16→17覆盖安装；独立包32检查/17负例及官方ValidateOnly通过，实际Runtime17/schema4/健康/Hallmark与2755行原历史前缀核验；Native内存/侧栏点击显示仍待验，不将局部源码检查算作正式卡或显示成功。契约见[ADR-010](docs/apps-architecture-decisions.md)和[创作流程](docs/source-component-authoring.md)。

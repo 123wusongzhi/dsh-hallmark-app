@@ -6,7 +6,7 @@ import { ErrorView, RenderBoundary, ViewRenderer } from './renderer.tsx';
 export interface DatasetSummary {datasetKey:string;dataTime?:string|null;lastSuccessAt?:string;state:string}
 export interface BuilderAPI {preview:(spec:ViewSpec)=>Promise<ViewSpec>;viewData:(viewId:string)=>Promise<{data?:{bindings:BindingData[]};error?:{message:string}}>;saveComponent:(viewId:string,title:string,signal?:AbortSignal,options?:SaveComponentOptions)=>Promise<unknown>;saveTemplate:(viewId:string,name:string)=>Promise<unknown>}
 const message=(error:unknown)=>error instanceof Error?error.message:'组件操作失败，请重试。';
-const widgetLabels:Record<WidgetType,string>={stat_card:'指标卡',table:'表格',bar_chart:'柱图',line_chart:'折线图',product_card:'商品卡',status_badge:'状态',text:'文本'};
+const widgetLabels:Record<WidgetType,string>={stat_card:'指标卡',table:'表格',bar_chart:'柱图',line_chart:'折线图',product_card:'商品卡',product_list:'商品列表',sku_detail:'SKU 明细',status_badge:'状态',text:'文本'};
 function FieldMapEditor({binding,onApply}:{binding:DataBinding;onApply:(map:Record<string,string>)=>void}){
   const [rows,setRows]=useState(()=>Object.entries(binding.fieldMap));const [error,setError]=useState('');
   const apply=()=>{const map:Record<string,string>={};for(const [alias,source] of rows){if(!alias.trim()||!source.trim()||['__proto__','constructor','prototype'].includes(alias.trim())){setError('每条映射需要安全且非空的别名与源字段。');return;}if(Object.hasOwn(map,alias.trim())){setError('映射别名不能重复。');return;}map[alias.trim()]=source.trim();}onApply(map);setError('');};
