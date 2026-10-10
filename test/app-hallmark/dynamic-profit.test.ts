@@ -71,9 +71,11 @@ test('cached catalogue from the previous price interpretation is read again befo
 
 
 test('native Russian statuses preserve moderation, stock and archive distinctions',()=>{
- assert.equal(businessProductStatus({statuses:{status:'price_sent',status_name:'Продается',moderate_status:'approved'},stocks:{has_stock:true}}),'on_sale');
- assert.equal(businessProductStatus({statuses:{status_name:'Не продается',moderate_status:'approved'},stocks:{has_stock:true}}),'not_sellable');
- assert.equal(businessProductStatus({statuses:{status_name:'Продается',moderate_status:'approved'},stocks:{has_stock:false}}),'not_sellable');
+ assert.equal(businessProductStatus({statuses:{is_created:true,status:'price_sent',status_name:'Продается',moderate_status:'approved'},stocks:{has_stock:true}}),'on_sale');
+ assert.equal(businessProductStatus({statuses:{is_created:true,status_name:'Не продается',moderate_status:'approved'},stocks:{has_stock:true}}),'not_sellable');
+ assert.equal(businessProductStatus({statuses:{is_created:true,status_name:'Продается',moderate_status:'approved'},stocks:{has_stock:false}}),'not_sellable');
+ assert.equal(businessProductStatus({statuses:{status_name:'Продается',moderate_status:'approved'},stocks:{has_stock:true}}),'unknown','selling text alone does not prove the card has been created');
+ assert.equal(businessProductStatus({statuses:{is_created:false,status_name:'Продается',moderate_status:'approved'},stocks:{has_stock:true}}),'pending','an unfinished card cannot become on-sale from translated text');
  assert.equal(businessProductStatus({statuses:{status_name:'Отклонен'}}),'rejected');
  assert.equal(businessProductStatus({statuses:{status_name:'На модерации'}}),'pending');
  assert.equal(businessProductStatus({is_autoarchived:true,statuses:{status_name:'Продается'},stocks:{has_stock:true}}),'archived');

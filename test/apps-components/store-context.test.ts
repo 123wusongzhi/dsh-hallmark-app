@@ -19,8 +19,10 @@ function fixture(t:{after:(fn:()=>void)=>void}){
  const presentation=new AppsPresentationService({store,runtime}),sources=new DataSourceLibrary({store,runtime}),board=new WorkbenchLibrary({store,runtime,dataSources:sources,refreshBinding:(...args)=>presentation.refreshBinding(...args)});
  sources.installCatalog([definition]);return {store,calls,sources,board,setExecute:(fn:typeof execute)=>{execute=fn;}};
 }
-test('ten Ozon catalog definitions are reusable without shops or frozen dates',()=>{
- const sources=hallmarkOzonSources('connection');assert.equal(sources.length,10);assert.equal(new Set(sources.map(item=>item.id)).size,10);
+test('Ozon catalog including content ratings is reusable without shops or frozen dates',()=>{
+ const sources=hallmarkOzonSources('connection');
+ const expected=['products','ratings','prices','warehouses','stocks','analytics','orders','weights','finance','promotions','returns'].map(kind=>`hallmark.ozon.${kind}`);
+ assert.deepEqual(sources.map(source=>source.capabilityId).sort(),expected.sort());assert.equal(new Set(sources.map(item=>item.id)).size,expected.length);
  for(const source of sources){assert.equal(source.storeScoped,true);assert.equal(source.input.storeId,undefined);assert.equal(source.parameters.find(p=>p.name==='storeId')?.default,undefined);assert.deepEqual(dataSourceDefinitionIssues(source,OZON_DESCRIPTORS.find(d=>d.capabilityId===source.capabilityId)),[]);}
 });
 test('store switch retains columns and dates, drops local identities, and separates cached datasets',async t=>{

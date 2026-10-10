@@ -4,6 +4,7 @@ import {createServer} from 'node:http';
 import {AppsRuntime,RuntimeStore} from '../../packages/app-runtime/src/index.ts';
 import {HALLMARK_DESCRIPTORS,HALLMARK_MANIFEST} from '../../packages/app-hallmark/src/index.ts';
 import {hallmarkProductSources} from '../../packages/app-hallmark/src/field-mappings.ts';
+import {OZON_KINDS} from '../../packages/app-hallmark/src/ozon-data.ts';
 import {AppsPresentationService} from '../../packages/app-presentation/src/index.ts';
 import {createMaterialView} from '../../packages/app-presentation/src/materials/catalog.ts';
 import type {DataSourceDefinition,DataSourceDraft,WorkbenchInstance} from '../../packages/app-presentation/src/types.ts';
@@ -60,7 +61,9 @@ test('initialize migrates mixed-case shop sources into shared definitions withou
     assert.deepEqual(initialized.context,{storeId:'bill-shop'});
     assert.deepEqual(initialized.stores.map(item=>item.name),['bill','helen']);
     const current=presentation.listDataSources('hallmark'),after=presentation.getWorkbench('hallmark');
-    assert.equal(current.filter(source=>source.capabilityId.startsWith('hallmark.ozon.')&&source.capabilityId!=='hallmark.ozon.compose').length,10,'all ten source definitions exist once per platform connection');
+    const ozonSources=current.filter(source=>source.capabilityId.startsWith('hallmark.ozon.')&&source.capabilityId!=='hallmark.ozon.compose');
+    assert.deepEqual(ozonSources.map(source=>source.capabilityId).sort(),OZON_KINDS.map(kind=>`hallmark.ozon.${kind}`).sort(),'every current Ozon source, including content ratings, exists exactly once');
+    assert.equal(new Set(ozonSources.map(source=>source.id)).size,ozonSources.length,'source IDs stay unique after migration');
     assert.equal(current.filter(source=>source.capabilityId==='hallmark.ozon.compose').length,1,'the shared cross-interface preset is installed independently');
     assert.equal(current.filter(source=>source.capabilityId==='hallmark.products.list').length,1);
     assert.equal(current.filter(source=>source.capabilityId==='hallmark.api.actions.list').length,2,'two legacy shop activity definitions collapse to one, while the distinct shared custom definition remains');
