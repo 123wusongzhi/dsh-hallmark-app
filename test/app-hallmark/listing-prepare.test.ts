@@ -29,6 +29,29 @@ test('prepare provides content facts, package and cost once, then draft uses the
   assert.equal(JSON.stringify(ready).includes('我已检查'),false);assert.equal(JSON.stringify(ready).includes('preflight'),false);
  }finally{f.database.close();}
 });
+test('listing accepts draft packaging when collection rules are empty and prices that same package',async()=>{
+ const f=fixture();try{
+  delete (f.details.get('p1') as any).package;
+  f.client.storeDataRead=async()=>({status:'ok',raw:{items:[]}});
+  const adapter=new HallmarkBusinessAdapter({...f.options,broker:{getStoreTask:async()=>{throw Error('no task');},getListingTask:async()=>{throw Error('no task');},requestId:()=>''}});
+  const row={rowId:'r1',action:'listing' as const,target:{offerId:'new-cup'},procurement:[{itemId:'p1',sourceSkuId:'sku-0',quantity:2}],pricing:{mode:'automatic' as const},payload:{offer_id:'new-cup',name:'Кружка',description_category_id:1,type_id:2,attributes:[],weight:0.25,weight_unit:'kg',depth:10,width:8,height:3,dimension_unit:'cm'}};
+  for(const fresh of [false,true]){
+   const draft=await adapter.load({storeId:'bill',fresh,row});
+   assert.equal(draft.normalizedPayload?.weight,250);
+   assert.equal(draft.normalizedPayload?.depth,100);
+   assert.equal(draft.normalizedPayload?.dimension_unit,'mm');
+   assert.deepEqual((draft.source as any).packaging.origin,{weight:'draft',dimensions:'draft'});
+   assert.equal(JSON.stringify(draft).includes('PACKAGING_VALUE_MISSING'),false);
+   assert.equal(draft.pricingQuote?.status,'ready');
+   assert.equal(draft.pricingQuote?.breakdown.logisticsMinor,983);
+  }
+  assert.deepEqual(f.packaging.list(),[]);
+  const missing=await adapter.load({storeId:'bill',fresh:false,row:{...row,payload:{...row.payload,height:0}}});
+  assert.equal((missing.source as any).packaging.missing.length,1);
+  assert.ok(JSON.stringify(missing).includes('无需先保存包装设置'));
+ }finally{f.database.close();}
+});
+
 test('large preparations page the entire response without duplicate sales or rereading sources and preserve a fixed preparation',async()=>{
  const f=fixture(60,2);try{
   let result=await prepareListing({storeId:'bill',selections:[{id:'p1'},{id:'p2'}],maxBytes:18000,salesLimit:12},f.options);const revision=result.preparationRevision,sales:any[]=[],materials:any[]=[],pages:any[]=[];

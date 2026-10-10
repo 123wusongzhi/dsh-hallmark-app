@@ -22,8 +22,10 @@ export interface PackagingResolveInput {
   combinationId?: string;
   /** An existing package for this exact combination, not a member package. */
   existingPackage?: PackagingValues;
+  /** Per-listing package for the whole sale, used only where automatic rules have no value. Never persisted as an override. */
+  draftPackage?: PackagingValues;
 }
-export type PackagingOrigin = 'user' | 'sku-source' | 'product-common' | 'quantity-sum' | 'existing-combination' | 'member-dimensions' | 'missing';
+export type PackagingOrigin = 'user' | 'sku-source' | 'product-common' | 'quantity-sum' | 'existing-combination' | 'member-dimensions' | 'draft' | 'missing';
 export interface PackagingMissing {
   field: 'weightKg' | 'dimensionsCm';
   message: string;

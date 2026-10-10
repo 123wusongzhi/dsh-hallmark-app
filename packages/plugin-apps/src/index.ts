@@ -224,7 +224,17 @@ export class AppsHost {
     let submitted:InvocationRequest|undefined,descriptor:CapabilityDescriptor|undefined;
     try {
       await this.handshake(signal);
-      if (name === 'apps_list') return {status: 'ok', ...(await this.directory(signal,true)), capabilities: await this.transport.discover(input as {appId?: string;query?: string;cursor?: string;limit?: number}, signal)};
+      if (name === 'apps_list') {
+        const directory=await this.directory(signal,true),options=input as {appId?:string;query?:string;cursor?:string;limit?:number};
+        let limit=options.limit??50;
+        for (;;) {
+          const capabilities=await this.transport.discover({...options,limit},signal);
+          const result={status:'ok',...directory,capabilities};
+          if(Buffer.byteLength(canonicalJson(result))<=16384||capabilities.items.length<=1)return result;
+          // Keep Runtime-owned cursors and complete entries; fitting a page is Host work.
+          limit=Math.max(1,Math.floor(capabilities.items.length/2));
+        }
+      }
       if (name === 'apps_describe') {const descriptor = await this.describe(String(input.capabilityId), typeof input.version === 'string' ? input.version : undefined);return descriptor ? {status: 'ok', descriptor,...(descriptor.capabilityId==='apps.authoring.begin'&&this.authoringGuidance?{authoringGuidance:authoringInstructions(this.authoringGuidance,sessionId)}:{})} : fail('CAPABILITY_NOT_FOUND', '精确能力未登记。');}
       if (name === 'apps_inspect') {
         if(typeof input.resultRef==='string') {

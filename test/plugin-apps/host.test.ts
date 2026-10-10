@@ -160,6 +160,25 @@ test('actual AssembleContext scope supplies the Apps summary only for the identi
   } finally {await host.dispose();assert.equal(f.prompts.size,0);await runtime.dispose();store.close();}
 });
 
+test('capability discovery automatically fits complete pages without making the Agent retry its limit',async()=>{
+ const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),calls:ExecutionContext[]=[],app=provider('hallmark',calls,66);
+ for(const descriptor of app.descriptors)descriptor.description='采购与上品能力说明。'.repeat(40);
+ runtime.register(app);const f=context(),transport=inProcessTransport(runtime),host=new AppsHost(f.ctx,transport);await host.start();host.attachApp('hallmark');
+ try{
+  const tool=f.tools.get('apps_list') as NativeGatewayTool,ids:string[]=[];let cursor:string|undefined;
+  do{
+   const args={appId:'hallmark',limit:100,...(cursor?{cursor}:{})};
+   const result=await tool.execute(args,{agent:f.A,signal:new AbortController().signal});
+   const text=tool.output.render(args,result)[0].text;assert.ok(Buffer.byteLength(text)<=16384);
+   const value=JSON.parse(text);assert.equal(value.status,'ok');assert.equal(value.capabilities.total,66);
+   assert.ok(value.capabilities.items.length>0&&value.capabilities.items.length<66);
+   for(const item of value.capabilities.items){assert.equal(item.description,app.descriptors[0].description);ids.push(item.capabilityId);}
+   cursor=value.capabilities.nextCursor??undefined;
+  }while(cursor);
+  assert.equal(ids.length,66);assert.equal(new Set(ids).size,66);assert.equal(calls.length,0);
+ }finally{await host.dispose();await runtime.dispose();store.close();}
+});
+
 test('native gateway rendering uses a Runtime spill projection and fails closed when projection fails',async()=>{
   const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),calls:ExecutionContext[]=[];runtime.register(provider('hallmark',calls,1,true));connection(runtime,'hallmark','H1','A');const f=context(),transport=inProcessTransport(runtime),host=new AppsHost(f.ctx,transport);await host.start();host.attachApp('hallmark');
   try {const tool=f.tools.get('apps_invoke') as NativeGatewayTool,args={appId:'hallmark',connectionId:'H1',capabilityId:'hallmark.read0',capabilityVersion:'1.0.0',input:{}};

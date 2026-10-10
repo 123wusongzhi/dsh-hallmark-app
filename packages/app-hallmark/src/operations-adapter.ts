@@ -223,12 +223,18 @@ export class HallmarkBusinessAdapter implements BusinessSourcePort,BusinessTrans
     const source:RecordData={items:sourceDetails,existingProduct:prior?{title:prior.title,sources:prior.sources,declaredWeight:prior.declaredWeight}:null};
     if(row.action==='listing'&&selections.length&&this.packaging&&this.collection){
       const prepared=this.gateway?await applyExistingPackaging(collectionProducts,this.store,({storeId,path,body})=>this.gateway!.request(storeId,{path,body},signal),{storeIds:this.gateway.listStores().map(s=>s.id)}):collectionProducts;
-      const resolved=this.packaging.resolve({members:packagingMembers(prepared,selections)});
+      const weightFactor=normalized.weight_unit==='g'?0.001:normalized.weight_unit==='kg'?1:null;
+      const dimensionFactor=normalized.dimension_unit==='mm'?0.1:normalized.dimension_unit==='cm'?1:null;
+      const draftWeight=decimal(normalized.weight),draftDimensions=[normalized.depth,normalized.width,normalized.height].map(decimal);
+      const resolved=this.packaging.resolve({members:packagingMembers(prepared,selections),draftPackage:{
+        weightKg:weightFactor!==null&&draftWeight!==null?draftWeight*weightFactor:null,
+        dimensionsCm:dimensionFactor!==null&&draftDimensions.every(value=>value!==null&&value>0)?{length:draftDimensions[0]!*dimensionFactor,width:draftDimensions[1]!*dimensionFactor,height:draftDimensions[2]!*dimensionFactor}:null,
+      }});
       source.packaging=resolved;
-      if(resolved.weightGrams!==null){normalized.weight=resolved.weightGrams;normalized.weight_unit='g';corrections.push('已按 SKU 包装规则填入发货重量');}
-      if(resolved.dimensionsMm!==null){normalized.depth=resolved.dimensionsMm.length;normalized.width=resolved.dimensionsMm.width;normalized.height=resolved.dimensionsMm.height;normalized.dimension_unit='mm';corrections.push('已按 SKU 包装规则复用发货尺寸');}
+      if(resolved.weightGrams!==null){normalized.weight=resolved.weightGrams;normalized.weight_unit='g';corrections.push(resolved.origin.weight==='draft'?'已采用本次草稿填写的发货重量，未保存为长期包装规则':'已按 SKU 包装规则填入发货重量');}
+      if(resolved.dimensionsMm!==null){normalized.depth=resolved.dimensionsMm.length;normalized.width=resolved.dimensionsMm.width;normalized.height=resolved.dimensionsMm.height;normalized.dimension_unit='mm';corrections.push(resolved.origin.dimensions==='draft'?'已采用本次草稿填写的发货尺寸，未保存为长期包装规则':'已按 SKU 包装规则复用发货尺寸');}
       // Missing package values are ordinary missing fields, never a separate model review.
-      for(const field of resolved.missing)issues.push(issue('PACKAGING_VALUE_MISSING',`包装规则没有结果：${typeof field==='string'?field:JSON.stringify(field)}`,'packaging'));
+      for(const field of resolved.missing)issues.push(issue('PACKAGING_VALUE_MISSING',field.field==='weightKg'?'缺少发货包装重量；可直接在本行 payload 填写 weight 和 weight_unit，无需先保存包装设置。':'缺少完整发货包装尺寸；可直接在本行 payload 填写 depth、width、height 和 dimension_unit，无需先保存包装设置。','packaging'));
     }
     // Existing platform declarations are evidence only for a uniquely linked, identical sale composition.
     if(row.action==='listing'&&!this.packaging&&selections.length===1&&selections[0].quantity===1){

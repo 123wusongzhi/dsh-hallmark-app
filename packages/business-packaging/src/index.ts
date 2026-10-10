@@ -172,6 +172,9 @@ export class BusinessPackagingRepository {
       dimensionsCm = override?.values.dimensionsCm ?? existing.dimensionsCm ?? available?.dimensionsCm ?? null;
       dimensionsOrigin = override?.values.dimensionsCm !== undefined ? 'user' : existing.dimensionsCm !== null ? 'existing-combination' : available ? 'member-dimensions' : 'missing';
     }
+    const draft = sourceValues(input.draftPackage);
+    if (weightKg === null && draft.weightKg !== null) { weightKg = draft.weightKg!; weightOrigin = 'draft'; }
+    if (dimensionsCm === null && draft.dimensionsCm !== null) { dimensionsCm = draft.dimensionsCm!; dimensionsOrigin = 'draft'; }
     if (weightKg !== null && (!Number.isFinite(weightKg) || weightKg <= 0 || weightKg > Number.MAX_SAFE_INTEGER / 1_000_000))
       throw new BusinessPackagingError('PACKAGING_OVERFLOW', '组合包装重量超过支持范围');
     const missing: ResolvedPackaging['missing'] = [];

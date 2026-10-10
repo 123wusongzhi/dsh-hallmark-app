@@ -13,6 +13,28 @@ function memory(): PackagingStore {
   };
 }
 const dimensions = { length: 25, width: 10, height: 10 };
+
+test('draft fills only missing package fields for the whole sale without persisting rules', () => {
+  const packaging = repo();
+  const members = [{ itemId: 'nib', sourceSkuId: 'white', quantity: 20 }];
+  const draftPackage = { weightKg: 0.25, dimensionsCm: { length: 10, width: 8, height: 3 } };
+  const result = packaging.resolve({ members, draftPackage });
+  assert.equal(result.weightGrams, 250);
+  assert.deepEqual(result.dimensionsMm, { length: 100, width: 80, height: 30 });
+  assert.deepEqual(result.origin, { weight: 'draft', dimensions: 'draft' });
+  assert.deepEqual(result.missing, []);
+  assert.deepEqual(packaging.list(), []);
+  assert.equal(packaging.resolve({ members }).weightGrams, null);
+  assert.notEqual(result.version, packaging.resolve({ members, draftPackage: { ...draftPackage, weightKg: 0.3 } }).version);
+  const partial = packaging.resolve({ members, draftPackage: { weightKg: 0.25, dimensionsCm: { length: 10, width: 8 } as any } });
+  assert.deepEqual(partial.missing.map(field => field.field), ['dimensionsCm']);
+  const invalid = packaging.resolve({ members, draftPackage: { weightKg: 0, dimensionsCm: { length: 10, width: 8, height: -1 } } });
+  assert.equal(invalid.missing.length, 2);
+  const known = packaging.resolve({ members: [{ ...members[0], commonPackage: { weightKg: 0.01 } }], draftPackage });
+  assert.equal(known.weightGrams, 200);
+  assert.equal(known.origin.weight, 'quantity-sum');
+  assert.equal(known.origin.dimensions, 'draft');
+});
 const single: PackagingMember = { itemId: 'cup', sourceSkuId: 'red', quantity: 1, commonPackage: { weightKg: 0.33, dimensionsCm: dimensions }, sourceRevision: 'source-1' };
 const singleTarget: PackagingTarget = { kind: 'sku', itemId: 'cup', sourceSkuId: 'red' };
 const repo = () => new BusinessPackagingRepository(memory(), 'source-a', () => '2026-10-10T12:00:00.000Z');
