@@ -4,8 +4,9 @@ import type {ViewPublication} from '../../app-presentation/src/authoring-types.t
 import {openSessionComponents} from '../../dsh-plugin/client/sidebar-contract.ts';
 import type {NativeSidebarRight} from '../../dsh-plugin/client/sidebar-contract.ts';
 import {appsAuthoring,appsResource} from './api.ts';
+import {readViewsCollection} from './views-collection.ts';
 
-type ViewsListener={controller:AbortController;onViews:(views:AppsView[],signal:AbortSignal)=>void|Promise<void>;isCurrent:()=>boolean;onError?:(error:unknown)=>void;last?:string};
+type ViewsListener={controller:AbortController;delivery?:AbortController;onViews:(views:AppsView[],signal:AbortSignal)=>void|Promise<void>;isCurrent:()=>boolean;onError?:(error:unknown)=>void;last?:string};
 const viewWatches=new Map<string,{listeners:Set<ViewsListener>;poll:()=>Promise<void>;stop:()=>void;update:(view:AppsView)=>void;views?:AppsView[]}>();
 /** Publish a confirmed panel change immediately; an older catalogue read cannot undo it. */
 export function updateOwnedAppsView(view:AppsView):void {if(!view.ownerSessionId)return;viewWatches.get(view.ownerSessionId)?.update(view);if(typeof window!=='undefined')window.dispatchEvent(new CustomEvent('hallmark-view-updated',{detail:{sessionId:view.ownerSessionId}}));}
@@ -13,29 +14,29 @@ export function updateOwnedAppsView(view:AppsView):void {if(!view.ownerSessionId
 export function watchOwnedAppsViews(sessionId:string,onViews:ViewsListener['onViews'],isCurrent:()=>boolean,onError?:ViewsListener['onError'],pollMs=3000):()=>void {
   const listener:ViewsListener={controller:new AbortController(),onViews,isCurrent,onError};
   let watch=viewWatches.get(sessionId);
-  const deliver=async(item:ViewsListener,views:AppsView[])=>{if(item.controller.signal.aborted||!item.isCurrent())return;const snapshot=JSON.stringify(views);if(item.last===snapshot)return;try{await item.onViews(views,item.controller.signal);item.last=snapshot;}catch(error){if(!item.controller.signal.aborted)item.onError?.(error);}};
+  const deliver=async(item:ViewsListener,views:AppsView[],snapshot:string)=>{if(item.controller.signal.aborted||!item.isCurrent()||item.last===snapshot)return;item.delivery?.abort();const delivery=new AbortController();item.delivery=delivery;item.last=snapshot;try{await item.onViews(views,AbortSignal.any([item.controller.signal,delivery.signal]));}catch(error){if(!item.controller.signal.aborted&&!delivery.signal.aborted){item.last=undefined;item.onError?.(error);}}};
   if(!watch){
-    const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined,running=false,revision=0;
+    const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined,running=false,revision=0,etag:string|undefined,snapshot='',readController:AbortController|undefined;
     const current={listeners:new Set<ViewsListener>(),views:undefined as AppsView[]|undefined,update:(view:AppsView)=>{
       if(controller.signal.aborted||view.ownerSessionId!==sessionId)return;
-      revision++;const rows=current.views??[];current.views=rows.some(row=>row.viewId===view.viewId)?rows.map(row=>row.viewId===view.viewId?view:row):[...rows,view];
-      for(const item of current.listeners)void deliver(item,current.views);
+      revision++;etag=undefined;const rows=current.views??[];current.views=rows.some(row=>row.viewId===view.viewId)?rows.map(row=>row.viewId===view.viewId?view:row):[...rows,view];snapshot=JSON.stringify(current.views);
+      for(const item of current.listeners)void deliver(item,current.views,snapshot);
     },poll:async()=>{
       if(running||controller.signal.aborted)return;
       if(timer!==undefined)clearTimeout(timer);
       if(typeof document!=='undefined'&&document.hidden)return;
-      running=true;const requestedRevision=revision;
-      try{const value=await appsResource<{views:AppsView[]}>('views',{sessionId},AbortSignal.any([controller.signal,AbortSignal.timeout(5000)]));
-        if(!controller.signal.aborted&&requestedRevision===revision){const views=(value.views??[]).filter(view=>view.ownerSessionId===sessionId),changed=current.views!==undefined&&JSON.stringify(current.views)!==JSON.stringify(views);current.views=views;if(changed&&typeof window!=='undefined')window.dispatchEvent(new CustomEvent('hallmark-view-updated',{detail:{sessionId}}));await Promise.all([...current.listeners].map(item=>deliver(item,views)));}
-      }catch(error){if(!controller.signal.aborted)for(const item of current.listeners)if(item.isCurrent())item.onError?.(error);}
-      finally{running=false;if(!controller.signal.aborted&&!(typeof document!=='undefined'&&document.hidden))timer=setTimeout(()=>void current.poll(),pollMs);}
+      running=true;const requestedRevision=revision,read=new AbortController();readController=read;
+      try{const value=await readViewsCollection(sessionId,AbortSignal.any([controller.signal,read.signal,AbortSignal.timeout(5000)]),etag);
+        if(!controller.signal.aborted&&!read.signal.aborted&&requestedRevision===revision){etag=value.etag;if(!value.unchanged){const views=value.views,nextSnapshot=JSON.stringify(views),changed=current.views!==undefined&&snapshot!==nextSnapshot;current.views=views;snapshot=nextSnapshot;if(changed&&typeof window!=='undefined')window.dispatchEvent(new CustomEvent('hallmark-view-updated',{detail:{sessionId}}));}if(current.views)await Promise.all([...current.listeners].map(item=>deliver(item,current.views!,snapshot)));}
+      }catch(error){if(!controller.signal.aborted&&!read.signal.aborted)for(const item of current.listeners)if(item.isCurrent())item.onError?.(error);}
+      finally{running=false;if(readController===read)readController=undefined;if(!controller.signal.aborted&&!(typeof document!=='undefined'&&document.hidden))timer=setTimeout(()=>void current.poll(),pollMs);}
     },stop:()=>{controller.abort();if(timer!==undefined)clearTimeout(timer);if(typeof document!=='undefined')document.removeEventListener('visibilitychange',visibility);}};
-    const visibility=()=>{if(document.hidden){if(timer!==undefined)clearTimeout(timer);}else void current.poll();};
+    const visibility=()=>{if(document.hidden){if(timer!==undefined)clearTimeout(timer);readController?.abort();}else void current.poll();};
     if(typeof document!=='undefined')document.addEventListener('visibilitychange',visibility);
     watch=current;viewWatches.set(sessionId,current);
   }
   watch.listeners.add(listener);
-  if(watch.views)void deliver(listener,watch.views);else void watch.poll();
+  if(watch.views)void deliver(listener,watch.views,JSON.stringify(watch.views));else void watch.poll();
   return()=>{listener.controller.abort();watch!.listeners.delete(listener);if(!watch!.listeners.size){watch!.stop();viewWatches.delete(sessionId);}};
 }
 export function useOwnedAppsViews(sessionId:string|undefined,onViews:(views:AppsView[],signal:AbortSignal)=>void|Promise<void>,onError?:(error:unknown)=>void,refreshKey=0,enabled=true):void {

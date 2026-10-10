@@ -3297,6 +3297,43 @@
             },
             "verdict": {
               "const": "PASS"
+            },
+            "executionKind": {
+              "enum": [
+                "executed",
+                "reuse"
+              ]
+            },
+            "executionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reusedFrom": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "path",
+                "sha256",
+                "bytes"
+              ],
+              "additionalProperties": false
+            },
+            "reuseVerifiedAt": {
+              "type": "string",
+              "format": "date-time"
             }
           },
           "required": [
@@ -3457,6 +3494,43 @@
             },
             "verdict": {
               "const": "FAIL"
+            },
+            "executionKind": {
+              "enum": [
+                "executed",
+                "reuse"
+              ]
+            },
+            "executionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reusedFrom": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "path",
+                "sha256",
+                "bytes"
+              ],
+              "additionalProperties": false
+            },
+            "reuseVerifiedAt": {
+              "type": "string",
+              "format": "date-time"
             }
           },
           "required": [
@@ -10933,7 +11007,7 @@
   },
   {
     "name": "hallmark.api.products.update_price",
-    "description": "已登记的 Hallmark 普通调价适配操作，委托既有 WriteOperations 的输入核实、操作账本和只读 inspect；不是固定 URL 的直接调用。有已核实店铺任务时使用 task platform 调价并按同一商品、币种和金额回读；仅 TASK_CONTEXT_REQUIRED、CNY、无 actionId/oldPrice 且适配器具备普通 CNY 提交/读取/核实接口时，沿既有严格两位小数 CNY fallback。该 fallback 核实历史 price-state，不宣称实时平台回读。结果保留原请求编号、原始响应和 readback；unknown 仅查询原操作，不重发。",
+    "description": "普通调价通过统一经营变更引擎，程序精确读取商品身份及当前价格、审核确定规则、记录逐行结果。无需审阅声明或手填幂等键；返回经营变更单。写入直接使用经营应用保存的店铺连接，不依赖旧平台任务；持久化原请求后只发送一次，保留凭据版本供只读核查。actionId 不会转换为普通调价，应使用 promotion.update 并明确活动配额。pending/unknown 只 inspect 原操作，不重新提交。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -10973,19 +11047,19 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "user 或 rule:规则名，不允许猜测数值"
+          "description": "可选旧记录字段；程序不要求值来源声明"
         },
         "clientOperationKey": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "同一逻辑修改必须复用；未知结果先查询操作"
+          "description": "可选旧调用幂等键；未提供时程序自动管理，未知结果只查询原操作"
         },
         "userRequest": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "本轮用户明确修改指令原话"
+          "description": "可选经营说明；无需重复记录授权原话"
         },
         "scopeConfirmed": {
           "type": "boolean"
@@ -11007,61 +11081,14 @@
           "minimum": 1
         }
       },
-      "required": [],
+      "required": [
+        "storeId",
+        "price"
+      ],
       "additionalProperties": false
     },
     "outputSchema": {
       "type": "object",
-      "properties": {
-        "operationId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "kind": {
-          "type": "string",
-          "minLength": 1
-        },
-        "storeId": {
-          "type": "string"
-        },
-        "state": {
-          "enum": [
-            "pending",
-            "running",
-            "succeeded",
-            "failed",
-            "partial",
-            "unknown"
-          ]
-        },
-        "targets": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "input": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        }
-      },
-      "required": [
-        "operationId",
-        "kind",
-        "storeId",
-        "state",
-        "targets",
-        "input",
-        "items"
-      ],
       "additionalProperties": true
     },
     "version": "1.0.0"
@@ -11741,6 +11768,268 @@
     "version": "1.0.0"
   },
   {
+    "name": "hallmark.collection.read",
+    "description": "默认返回可用于上品的精简事实：公共属性、真实包装、采购价含义、SKU差异表和主图。SKU每页最多40行，描述首1500字，批量受响应预算限制；未知与可继续读取分开。无需先搜索已知商品ID。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "skuIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "selections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "skuIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              },
+              "cursor": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 40
+        },
+        "maxBytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65536
+        },
+        "refresh": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.collection.resource.read",
+    "description": "按短素材编号下载图片并返回当前执行环境可查看的文件，或展开SKU/详情图片、描述、原始资料指定路径。太大时给目录或续页，不截断JSON。完整原始资料仅用于具体追查。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "raw",
+            "description",
+            "images",
+            "image"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "assetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "main",
+            "sku",
+            "detail"
+          ]
+        },
+        "skuIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "maxBytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65536
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.collection.search",
+    "description": "搜索采集商品事实，默认每页30张精简卡片；关键词不匹配旧任务文本。价格明确采购价或来源展示售价。store.status筛历史成功铺货覆盖度，store.saleState筛当前在售/无库存/归档等，store.association筛采购关联，条件在分页统计前组合。店铺saleStates按去重销售商品offer计数，不是来源SKU数；过期或缺失观察为unknown。返回全量匹配统计与续页。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1
+        },
+        "price": {
+          "type": "object",
+          "properties": {
+            "meaning": {
+              "enum": [
+                "purchase_cost",
+                "source_display_price"
+              ]
+            },
+            "currency": {
+              "type": "string",
+              "minLength": 1
+            },
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "meaning",
+            "currency"
+          ],
+          "additionalProperties": false
+        },
+        "store": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "status": {
+              "enum": [
+                "listed",
+                "partial",
+                "not_listed",
+                "unknown"
+              ]
+            },
+            "saleState": {
+              "enum": [
+                "on_sale",
+                "out_of_stock",
+                "pending",
+                "archived",
+                "failed",
+                "not_sellable",
+                "unknown"
+              ]
+            },
+            "association": {
+              "enum": [
+                "linked",
+                "none",
+                "unknown"
+              ]
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "refresh": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
     "name": "hallmark.datasets.refresh",
     "description": "只读同步并更新快照，不上品/调价/改库存或触发扩展采集",
     "parameters": {
@@ -11852,6 +12141,634 @@
     "version": "1.0.0"
   },
   {
+    "name": "hallmark.listing.assets.publish",
+    "description": "将明确选中的本机 PNG、JPEG 或 WebP 成品图片交付为平台可读公网地址。程序自动导入、缓存和核对实际图片；同一内容重复调用可复用。返回逐文件地址、内容版本及 SKU 关联，失败不影响其他已成功图片。用于草稿素材，不提交 Ozon 商品。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "skuIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.listing.draft.create",
+    "description": "保存一张经营操作表，不触发模型或平台提交。程序读取原商品与采购SKU、绑定组成并补齐确定性数据。payload填写一次：价格 price/currency_code；库存 stock/warehouse_id；归档 archived；活动 action_id/price/stock（活动配额）；listing为原生Ozon item。上品procurement引用完整来源itemId/sourceSkuId及quantity。多主体参考图可在行级referenceSubjects填写真实sourceImageUrl和主体位置，例如“左侧银色贴片”；单一明确主体可省略。它只指定比较对象，不手填采购价或审核声明。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rowId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "enum": [
+                  "price",
+                  "stock",
+                  "archive",
+                  "promotion.enroll",
+                  "promotion.update",
+                  "promotion.exit",
+                  "listing"
+                ]
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "offerId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "productId": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                },
+                "required": [
+                  "offerId"
+                ],
+                "additionalProperties": false
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "procurement": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sourceSkuId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "quantity": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "itemId",
+                    "sourceSkuId",
+                    "quantity"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "referenceSubjects": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sourceImageUrl": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "subject": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "sourceImageUrl",
+                    "subject"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "pricing": {
+                "type": "object",
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "mode": {
+                    "enum": [
+                      "automatic",
+                      "manual"
+                    ]
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              },
+              "dependsOn": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "action",
+              "target",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "storeId",
+        "rows"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.listing.draft.get",
+    "description": "读取一张经营变更单，或凭原runtime operationId找到它。默认精简表格；includeEvidence可读取完整来源和审核证据，不执行平台写入。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "includeEvidence": {
+          "type": "boolean"
+        },
+        "rowIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "cursor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "required": [],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "planId"
+          ],
+          "not": {
+            "required": [
+              "operationId"
+            ]
+          }
+        },
+        {
+          "required": [
+            "operationId"
+          ],
+          "not": {
+            "required": [
+              "planId"
+            ]
+          }
+        }
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.listing.draft.revise",
+    "description": "按稳定rowId修改尚未执行的行，程序更新版本和受影响的审核依赖。rows每项提供完整目标行；成功或未决行不可改写。草稿保存不调用模型。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rowId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "enum": [
+                  "price",
+                  "stock",
+                  "archive",
+                  "promotion.enroll",
+                  "promotion.update",
+                  "promotion.exit",
+                  "listing"
+                ]
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "offerId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "productId": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                },
+                "required": [
+                  "offerId"
+                ],
+                "additionalProperties": false
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "procurement": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sourceSkuId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "quantity": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "itemId",
+                    "sourceSkuId",
+                    "quantity"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "referenceSubjects": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sourceImageUrl": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "subject": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "sourceImageUrl",
+                    "subject"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "pricing": {
+                "type": "object",
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "mode": {
+                    "enum": [
+                      "automatic",
+                      "manual"
+                    ]
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              },
+              "dependsOn": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "action",
+              "target",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "planId",
+        "expectedRevision",
+        "rows"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.listing.draft.submit",
+    "description": "明确提交当前草稿版本。规则可确定的直接执行；图文/语义由独立模型审核，必要时Host启动独立子代理。通过行自动执行。缺事实只返回具体字段问题；无需userRequest/valueSource/scopeConfirmed或已审阅声明。程序负责行级幂等；pending/unknown仅inspect，勿另建同目标重复操作。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "planId",
+        "expectedRevision"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.listing.prepare",
+    "description": "给目标店铺与已选商品/SKU，程序一次组合精简采集资料、采购组成、包装结果、经营规则、已有商品关联和类目候选/模板。支持多SKU组合销售；已有资料版本可复用。整个响应受字节预算限制，续页仅传 continuation.input，无需重读已返回资料；类目默认给必填约束，其余字段可按需展开。只准备数据，不审核、不生成检查声明；Agent接着制作标题、属性和图片，再保存草稿。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "skuIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              },
+              "cursor": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 30
+        },
+        "compositions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sourceSkuId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "quantity": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "required": [
+                    "itemId",
+                    "sourceSkuId",
+                    "quantity"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 100
+              }
+            },
+            "required": [
+              "id",
+              "members"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "knownRevisions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "categoryQuery": {
+          "type": "string",
+          "minLength": 1
+        },
+        "categories": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "descriptionCategoryId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "typeId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "descriptionCategoryId",
+              "typeId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "maxBytes": {
+          "type": "integer",
+          "minimum": 2048,
+          "maximum": 65536
+        },
+        "salesLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "refresh": {
+          "type": "boolean"
+        },
+        "includeOptionalAttributes": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "storeId"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "selections"
+          ]
+        },
+        {
+          "required": [
+            "cursor"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
     "name": "hallmark.operations.get",
     "description": "读取写入/刷新状态；unknown 时必须先查询，禁止自动重写",
     "parameters": {
@@ -11869,58 +12786,98 @@
       "additionalProperties": false
     },
     "outputSchema": {
-      "type": "object",
-      "properties": {
-        "operationId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "kind": {
-          "type": "string",
-          "minLength": 1
-        },
-        "storeId": {
-          "type": "string"
-        },
-        "state": {
-          "enum": [
-            "pending",
-            "running",
-            "succeeded",
-            "failed",
-            "partial",
-            "unknown"
-          ]
-        },
-        "targets": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "input": {
+      "anyOf": [
+        {
           "type": "object",
+          "properties": {
+            "operationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1
+            },
+            "storeId": {
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "pending",
+                "running",
+                "succeeded",
+                "failed",
+                "partial",
+                "unknown"
+              ]
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "input": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "required": [
+            "operationId",
+            "kind",
+            "storeId",
+            "state",
+            "targets",
+            "input",
+            "items"
+          ],
           "additionalProperties": true
         },
-        "items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": true
-          }
+        {
+          "type": "object",
+          "properties": {
+            "planId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "status": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "required": [
+            "planId",
+            "storeId",
+            "status",
+            "revision",
+            "rows"
+          ],
+          "additionalProperties": true
         }
-      },
-      "required": [
-        "operationId",
-        "kind",
-        "storeId",
-        "state",
-        "targets",
-        "input",
-        "items"
-      ],
-      "additionalProperties": true
+      ]
     },
     "version": "1.0.0"
   },
@@ -14419,6 +15376,198 @@
     "version": "1.0.0"
   },
   {
+    "name": "hallmark.ozon.ratings",
+    "description": "按 Ozon SKU 读取内容评级（0–100 分）并附商品状态；未返回评级保持未知。支持单 SKU 或全店分页，只读且不修改商品。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "loadAll": {
+          "type": "boolean"
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        },
+        "sku": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        }
+      },
+      "required": [
+        "storeId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 商品编号；不同于平台 SKU。"
+              },
+              "offerId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "卖家设置的商品货号。"
+              },
+              "sku": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 为商品分配的 SKU。"
+              },
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的商品名称。"
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "明确认识的状态以中文展示；其他状态标注未映射并保留原文。"
+              },
+              "statusCode": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的状态代码。"
+              },
+              "statusRaw": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的原始状态文字，供核对。"
+              },
+              "rating": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Ozon 按 SKU 返回的商品内容评级，范围 0–100；无分数时保持未知。"
+              }
+            },
+            "required": [
+              "productId",
+              "offerId",
+              "sku",
+              "title",
+              "status",
+              "statusCode",
+              "statusRaw",
+              "rating"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataTime": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "dateFrom": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dateTo": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "dateFrom",
+            "dateTo"
+          ],
+          "additionalProperties": false
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttlMs": {
+              "const": 900000
+            },
+            "fetchedAt": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "string"
+            },
+            "nextRefreshAt": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "refreshing": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ttlMs",
+            "fetchedAt",
+            "expiresAt",
+            "nextRefreshAt",
+            "stale"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "items",
+        "dataTime",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "version": "1.0.0"
+  },
+  {
     "name": "hallmark.ozon.returns",
     "description": "读取 rFBS 售后申请；传入售后单编号可读详情原因。不执行退款或售后处理。",
     "parameters": {
@@ -15253,6 +16402,496 @@
     "version": "1.0.0"
   },
   {
+    "name": "hallmark.plan.create",
+    "description": "保存一张经营操作表，不触发模型或平台提交。程序读取原商品与采购SKU、绑定组成并补齐确定性数据。payload填写一次：价格 price/currency_code；库存 stock/warehouse_id；归档 archived；活动 action_id/price/stock（活动配额）；listing为原生Ozon item。上品procurement引用完整来源itemId/sourceSkuId及quantity。多主体参考图可在行级referenceSubjects填写真实sourceImageUrl和主体位置，例如“左侧银色贴片”；单一明确主体可省略。它只指定比较对象，不手填采购价或审核声明。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rowId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "enum": [
+                  "price",
+                  "stock",
+                  "archive",
+                  "promotion.enroll",
+                  "promotion.update",
+                  "promotion.exit",
+                  "listing"
+                ]
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "offerId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "productId": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                },
+                "required": [
+                  "offerId"
+                ],
+                "additionalProperties": false
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "procurement": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sourceSkuId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "quantity": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "itemId",
+                    "sourceSkuId",
+                    "quantity"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "referenceSubjects": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sourceImageUrl": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "subject": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "sourceImageUrl",
+                    "subject"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "pricing": {
+                "type": "object",
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "mode": {
+                    "enum": [
+                      "automatic",
+                      "manual"
+                    ]
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              },
+              "dependsOn": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "action",
+              "target",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "storeId",
+        "rows"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.plan.get",
+    "description": "读取一张经营变更单，或凭原runtime operationId找到它。默认精简表格；includeEvidence可读取完整来源和审核证据，不执行平台写入。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "includeEvidence": {
+          "type": "boolean"
+        },
+        "rowIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "cursor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "required": [],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "planId"
+          ],
+          "not": {
+            "required": [
+              "operationId"
+            ]
+          }
+        },
+        {
+          "required": [
+            "operationId"
+          ],
+          "not": {
+            "required": [
+              "planId"
+            ]
+          }
+        }
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.plan.inspect",
+    "description": "只读核查原请求、异步导入及实际价格等结果，更新逐行状态；不重新发送未决平台请求。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "planId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.plan.list",
+    "description": "列出此连接（可筛选店铺）的经营操作记录，包含逐行价格、采购关联、审核问题和执行状态。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.plan.restore",
+    "description": "根据已成功变更生成反向单并通过同一审核入口执行。先比较当前值是否仍为原写入值，有冲突不覆盖。库存须单独确定新目标；新上品通过归档恢复。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rowIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "planId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.plan.revise",
+    "description": "按稳定rowId修改尚未执行的行，程序更新版本和受影响的审核依赖。rows每项提供完整目标行；成功或未决行不可改写。草稿保存不调用模型。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rowId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "enum": [
+                  "price",
+                  "stock",
+                  "archive",
+                  "promotion.enroll",
+                  "promotion.update",
+                  "promotion.exit",
+                  "listing"
+                ]
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "offerId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "productId": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                },
+                "required": [
+                  "offerId"
+                ],
+                "additionalProperties": false
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "procurement": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sourceSkuId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "quantity": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "itemId",
+                    "sourceSkuId",
+                    "quantity"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "referenceSubjects": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sourceImageUrl": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "subject": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "sourceImageUrl",
+                    "subject"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "pricing": {
+                "type": "object",
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "mode": {
+                    "enum": [
+                      "automatic",
+                      "manual"
+                    ]
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              },
+              "dependsOn": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "action",
+              "target",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "planId",
+        "expectedRevision",
+        "rows"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.plan.submit",
+    "description": "明确提交当前草稿版本。规则可确定的直接执行；图文/语义由独立模型审核，必要时Host启动独立子代理。通过行自动执行。缺事实只返回具体字段问题；无需userRequest/valueSource/scopeConfirmed或已审阅声明。程序负责行级幂等；pending/unknown仅inspect，勿另建同目标重复操作。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "planId",
+        "expectedRevision"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
     "name": "hallmark.platform.read",
     "description": "仅对白名单只读平台端点调用，自动关联内部任务",
     "parameters": {
@@ -15345,6 +16984,181 @@
           ]
         }
       ],
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.pricing.quote",
+    "description": "按经营行读取真实采购组成与成本、包装重量和店铺规则，返回建议售价、费用明细和阻塞字段。自动按本次售价和重量匹配物流方案，重叠取总费用最高；planId仅用于旧固定方案兼容模式。不会提交平台。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "row": {
+          "type": "object",
+          "properties": {
+            "rowId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "action": {
+              "enum": [
+                "price",
+                "stock",
+                "archive",
+                "promotion.enroll",
+                "promotion.update",
+                "promotion.exit",
+                "listing"
+              ]
+            },
+            "target": {
+              "type": "object",
+              "properties": {
+                "offerId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "productId": {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                },
+                "sku": {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                }
+              },
+              "required": [
+                "offerId"
+              ],
+              "additionalProperties": false
+            },
+            "payload": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "procurement": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "itemId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sourceSkuId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "quantity": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "itemId",
+                  "sourceSkuId",
+                  "quantity"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "referenceSubjects": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sourceImageUrl": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "subject": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "sourceImageUrl",
+                  "subject"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "pricing": {
+              "type": "object",
+              "properties": {
+                "planId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "mode": {
+                  "enum": [
+                    "automatic",
+                    "manual"
+                  ]
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "additionalProperties": false
+            },
+            "dependsOn": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "action",
+            "target",
+            "payload"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "storeId",
+        "row"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "version": "1.0.0"
+  },
+  {
+    "name": "hallmark.pricing.read",
+    "description": "读取经营应用保存的物流渠道报价、默认方案、目标利润与实际硬底线。不会返回店铺凭据。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "storeId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
       "additionalProperties": true
     },
     "version": "1.0.0"
@@ -15616,7 +17430,7 @@
   },
   {
     "name": "hallmark.products.list_product",
-    "description": "仅上品用户指定的已有采集商品和 SKU 范围，不隐式全采集箱。仅在用户本轮明确要求修改时调用；缺信息必须澄清；unknown 禁止再次写入，先查询操作。",
+    "description": "提交已有采集商品及明确 SKU 范围的最终商品内容；每个 importItem 用 _sourceSkuId 关联采购规格，Ozon 字段填写一次。提交后由程序统一审核并执行；无需审阅声明或机械幂等键。pending/unknown 只查询原操作，不重复提交。 现由统一经营变更审核执行；不要求检查声明或用户值证明。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -15656,19 +17470,19 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "user 或 rule:规则名，不允许猜测数值"
+          "description": "可选旧记录字段；程序不要求值来源声明"
         },
         "clientOperationKey": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "同一逻辑修改必须复用；未知结果先查询操作"
+          "description": "可选旧调用幂等键；未提供时程序自动管理，未知结果只查询原操作"
         },
         "userRequest": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "本轮用户明确修改指令原话"
+          "description": "可选经营说明；无需重复记录授权原话"
         },
         "scopeConfirmed": {
           "type": "boolean"
@@ -15697,68 +17511,23 @@
           "maxItems": 100
         }
       },
-      "required": [],
+      "required": [
+        "storeId",
+        "collectedItemId",
+        "skuScope",
+        "importItems"
+      ],
       "additionalProperties": false
     },
     "outputSchema": {
       "type": "object",
-      "properties": {
-        "operationId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "kind": {
-          "type": "string",
-          "minLength": 1
-        },
-        "storeId": {
-          "type": "string"
-        },
-        "state": {
-          "enum": [
-            "pending",
-            "running",
-            "succeeded",
-            "failed",
-            "partial",
-            "unknown"
-          ]
-        },
-        "targets": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "input": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        }
-      },
-      "required": [
-        "operationId",
-        "kind",
-        "storeId",
-        "state",
-        "targets",
-        "input",
-        "items"
-      ],
       "additionalProperties": true
     },
     "version": "1.0.0"
   },
   {
     "name": "hallmark.products.procurement",
-    "description": "同一店铺在售商品与精确采购来源对照。支持全量快照读取或搜索后分页，读取真实物流渠道并按库存仓分批关联匹配；接口无报价时需补充明确渠道的费用才能试算，缺失不按零计算。",
+    "description": "同一店铺在售商品与精确采购来源对照。支持全量快照读取或搜索后分页，默认使用应用独立维护的经营规则，按实际卖家价与重量自动匹配物流费用并计算利润；重叠取总费用较高方案，缺失不按零计算。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -15783,6 +17552,7 @@
         },
         "planMode": {
           "enum": [
+            "application",
             "delivery",
             "platform",
             "custom"
@@ -15956,6 +17726,24 @@
                   },
                   "metricBasis": {
                     "type": "string"
+                  },
+                  "configRevision": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "planId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "selectionReason": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   }
                 },
                 "required": [
@@ -16052,6 +17840,7 @@
           "properties": {
             "mode": {
               "enum": [
+                "application",
                 "delivery",
                 "platform",
                 "custom"
@@ -16238,7 +18027,7 @@
   },
   {
     "name": "hallmark.products.update_price",
-    "description": "修改显式商品清单的价格并只读核实。仅在用户本轮明确要求修改时调用；缺信息必须澄清；unknown 禁止再次写入，先查询操作。",
+    "description": "修改明确商品清单的普通价格并只读核实；活动调价请使用经营草稿 promotion.update，并明确活动配额。省略 currency 时程序读取商品实际币种。提交后由程序统一审核并执行；无需审阅声明或机械幂等键。pending/unknown 只查询原操作，不重复提交。 现由统一经营变更审核执行；不要求检查声明或用户值证明。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -16278,19 +18067,19 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "user 或 rule:规则名，不允许猜测数值"
+          "description": "可选旧记录字段；程序不要求值来源声明"
         },
         "clientOperationKey": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "同一逻辑修改必须复用；未知结果先查询操作"
+          "description": "可选旧调用幂等键；未提供时程序自动管理，未知结果只查询原操作"
         },
         "userRequest": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "本轮用户明确修改指令原话"
+          "description": "可选经营说明；无需重复记录授权原话"
         },
         "scopeConfirmed": {
           "type": "boolean"
@@ -16312,68 +18101,21 @@
           "minimum": 1
         }
       },
-      "required": [],
+      "required": [
+        "storeId",
+        "price"
+      ],
       "additionalProperties": false
     },
     "outputSchema": {
       "type": "object",
-      "properties": {
-        "operationId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "kind": {
-          "type": "string",
-          "minLength": 1
-        },
-        "storeId": {
-          "type": "string"
-        },
-        "state": {
-          "enum": [
-            "pending",
-            "running",
-            "succeeded",
-            "failed",
-            "partial",
-            "unknown"
-          ]
-        },
-        "targets": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "input": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        }
-      },
-      "required": [
-        "operationId",
-        "kind",
-        "storeId",
-        "state",
-        "targets",
-        "input",
-        "items"
-      ],
       "additionalProperties": true
     },
     "version": "1.0.0"
   },
   {
     "name": "hallmark.products.update_stock",
-    "description": "修改显式商品清单在指定仓库的库存并只读核实。仅在用户本轮明确要求修改时调用；缺信息必须澄清；unknown 禁止再次写入，先查询操作。",
+    "description": "修改明确商品清单在指定仓库的库存并只读核实。提交后由程序统一审核并执行；无需审阅声明或机械幂等键。pending/unknown 只查询原操作，不重复提交。 现由统一经营变更审核执行；不要求检查声明或用户值证明。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -16413,19 +18155,19 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "user 或 rule:规则名，不允许猜测数值"
+          "description": "可选旧记录字段；程序不要求值来源声明"
         },
         "clientOperationKey": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "同一逻辑修改必须复用；未知结果先查询操作"
+          "description": "可选旧调用幂等键；未提供时程序自动管理，未知结果只查询原操作"
         },
         "userRequest": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "本轮用户明确修改指令原话"
+          "description": "可选经营说明；无需重复记录授权原话"
         },
         "scopeConfirmed": {
           "type": "boolean"
@@ -16440,61 +18182,15 @@
           "maxLength": 4000
         }
       },
-      "required": [],
+      "required": [
+        "storeId",
+        "stock",
+        "warehouseId"
+      ],
       "additionalProperties": false
     },
     "outputSchema": {
       "type": "object",
-      "properties": {
-        "operationId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "kind": {
-          "type": "string",
-          "minLength": 1
-        },
-        "storeId": {
-          "type": "string"
-        },
-        "state": {
-          "enum": [
-            "pending",
-            "running",
-            "succeeded",
-            "failed",
-            "partial",
-            "unknown"
-          ]
-        },
-        "targets": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "input": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        }
-      },
-      "required": [
-        "operationId",
-        "kind",
-        "storeId",
-        "state",
-        "targets",
-        "input",
-        "items"
-      ],
       "additionalProperties": true
     },
     "version": "1.0.0"

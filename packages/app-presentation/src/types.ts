@@ -1,12 +1,16 @@
 import type {BridgeIdentity,CapabilityDescriptor,CapabilityResult,DataProvenance,DatasetBinding,FailureInfo,Freshness,InvocationRequest,JsonValue,ResourceRef,SelectionEnvelope,SessionAppBinding} from '../../app-contracts/src/index.ts';
 import type {SourceArtifact} from '../../presentation/src/types.ts';
 import type {SourceComponentStore} from '../../source-components/src/index.ts';
+import type {AuthoringDraft} from './authoring-types.ts';
 
 /** The Runtime owns this port; neither a browser nor a Host plugin opens SQLite. */
 export interface PresentationStore {
   get<T>(collection:string,id:string):T|undefined;
   put<T>(collection:string,id:string,value:T):T;
   list<T>(collection:string):T[];
+  /** Indexed exact matches supplied by RuntimeStore; simple fixture stores may omit it. */
+  query?<T>(collection:string,filters:Record<string,string|number|boolean|null>):T[];
+  collectionVersion?(collection:string):string;
   delete(collection:string,id:string):boolean;
   transaction<T>(action:()=>T):T;
 }
@@ -14,7 +18,7 @@ export interface PresentationRuntime {
   invoke(request:InvocationRequest,signal?:AbortSignal):Promise<CapabilityResult>;
   describe(capabilityId:string,version?:string):CapabilityDescriptor|undefined;
   /** Saved content reuses existing connections in the explicit destination session. */
-  getConnection?(appId:string,connectionId:string):{enabled:boolean}|undefined;
+  getConnection?(appId:string,connectionId:string):{enabled:boolean;configRevision?:number}|undefined;
   bind?(binding:SessionAppBinding):SessionAppBinding;
   sessionBindings?(sessionId:string):SessionAppBinding[];
 }
@@ -44,6 +48,10 @@ export interface AppsView {
   previousGoodBuildId?:string|null;
   pendingPublicationId?:string|null;
   validationStatus?:'draft_unpublished'|'legacy_unverified'|'verified'|'failed';
+  /** Read-only directory projection of the current draft; not part of persisted view/build evidence. */
+  readonly authoringState?:AuthoringDraft['status'];
+  readonly authoringUpdatedAt?:string;
+  readonly authoringEpoch?:number;
 }
 export interface AppsComponent {
   componentId:string;

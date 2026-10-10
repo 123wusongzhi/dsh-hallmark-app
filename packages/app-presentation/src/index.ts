@@ -1,3 +1,4 @@
+import {appsInvocationTimeout} from '../../app-sdk/src/index.ts';
 import {randomUUID} from 'node:crypto';
 import {resolve} from 'node:path';
 import {canonicalBinding,canonicalJson,compileSchema,datasetId,requestHash} from '../../app-contracts/src/index.ts';
@@ -18,6 +19,7 @@ export * from './data-sources.ts';
 export * from './workbench.ts';
 import {DataSourceLibrary,resolveDataSourceInput} from './data-sources.ts';
 import {WorkbenchLibrary,validateWorkbenchContext} from './workbench.ts';
+import {DataTransfers,DATA_TRANSFER_MAX_BYTES} from './data-transfers.ts';
 import {MATERIAL_CATALOG} from './materials/catalog.ts';
 import {FIELD_ROLES,FIELD_ROLE_MAP} from './field-roles.ts';
 import {SOURCE_REFS_SCHEMA} from './source-binding-schema.ts';
@@ -66,18 +68,20 @@ export class AppsPresentationService {
   private options:AppsPresentationOptions;
   private refreshes=new Map<string,{work:Promise<DatasetSnapshot>;forceRefresh:boolean}>();
   private pages=new Map<string,Map<string,{token:string;data?:AppsBindingData}>>();
+  private dataTransfers=new DataTransfers();
   /** A page belongs to one iframe/preview, never to the shared saved binding. */
   clearBindingPages(scope:string):void {this.pages.delete(scope);}
+  clearDataTransfers(scope:string):void {this.dataTransfers.clearOwner(scope);}
   scopedData(view:AppsView,scope:string):AppsViewData {
     const data=this.dataForView(view),pages=this.pages.get(scope);
     return {...data,bindings:data.bindings.map(binding=>{const value=clone(pages?.get(binding.bindingId)?.data??binding);return cacheExpired(value.payload)?{...value,freshness:'stale' as const}:value;})};
   }
-  async readBindingPage(view:AppsView,scope:string,input:{bindingId:string;cursor?:string|null},source:InvocationSource,stillCurrent:()=>void=()=>{},signal?:AbortSignal):Promise<AppsViewData> {
+  async readBindingPage(view:AppsView,scope:string,input:{bindingId:string;cursor?:string|null},source:InvocationSource,stillCurrent:()=>void=()=>{},signal?:AbortSignal,maxBytes=250000):Promise<AppsViewData> {
     const binding=view.bindings.find(item=>item.bindingId===input.bindingId);
     if(!binding)fail('BINDING_NOT_FOUND','Requested binding is not part of this view.');
     const original=binding.input as Record<string,JsonValue>;
     const query={...original};if(input.cursor===null||input.cursor===undefined)delete query.cursor;else query.cursor=text(input.cursor,'cursor');
-    return this.readScopedBinding(view,scope,binding,query,source,stillCurrent,signal);
+    return this.readScopedBinding(view,scope,binding,query,source,stillCurrent,signal,maxBytes);
   }
   async readLinkedBinding(view:AppsView,scope:string,bindingId:string,params:Record<string,JsonValue>,source:InvocationSource,stillCurrent:()=>void=()=>{},signal?:AbortSignal):Promise<AppsViewData> {
     const binding=view.bindings.find(item=>item.bindingId===bindingId);if(!binding)fail('BINDING_NOT_FOUND','Requested binding is not part of this view.');
@@ -87,7 +91,7 @@ export class AppsPresentationService {
     const query={...binding.input as Record<string,JsonValue>,...params};
     return this.readScopedBinding(view,scope,binding,query,source,stillCurrent,signal);
   }
-  private async readScopedBinding(view:AppsView,scope:string,binding:DatasetBinding,query:Record<string,JsonValue>,source:InvocationSource,stillCurrent:()=>void,signal?:AbortSignal):Promise<AppsViewData> {
+  private async readScopedBinding(view:AppsView,scope:string,binding:DatasetBinding,query:Record<string,JsonValue>,source:InvocationSource,stillCurrent:()=>void,signal?:AbortSignal,maxBytes=250000):Promise<AppsViewData> {
     const descriptor=this.runtime.describe(binding.capabilityId);if(!descriptor)fail('CAPABILITY_UNAVAILABLE','Binding capability is unavailable.');
     const errors=compileSchema(descriptor.inputSchema)(query);if(errors.length)fail('INVALID_INPUT',errors.join('; '));
     let pages=this.pages.get(scope);if(!pages){pages=new Map();this.pages.set(scope,pages);}
@@ -103,7 +107,7 @@ export class AppsPresentationService {
     if(result.status==='partial')next.error=clone(result.errors[0]);else delete next.error;
     const data=this.scopedData(view,scope);data.bindings=data.bindings.map(item=>item.bindingId===binding.bindingId?next:item);
     // Do not advance selection state to a page that cannot reach the iframe.
-    if(Buffer.byteLength(JSON.stringify(data),'utf8')>250000)fail('BRIDGE_MESSAGE_TOO_LARGE','Page is too large; reduce binding limit or select fewer fields.');
+    if(Buffer.byteLength(JSON.stringify(data),'utf8')>maxBytes)fail('BRIDGE_MESSAGE_TOO_LARGE','Page is too large; reduce binding limit or select fewer fields.');
     entry.data=next;return clone(data);
   }
   constructor(options:AppsPresentationOptions){this.options=options;this.store=options.store;this.runtime=options.runtime;this.sources=options.sources;this.contexts=new ComponentContexts(this);this.dataSources=new DataSourceLibrary(options);this.workbenches=new WorkbenchLibrary({store:this.store,runtime:this.runtime,dataSources:this.dataSources,refreshBinding:(...args)=>this.refreshBinding(...args)});}
@@ -362,10 +366,10 @@ export class AppsPresentationService {
       // Never overwrite its source files/design, advance a stale CAS baseline, or
       // reuse a view whose actual data configuration differs from the request.
       if(sessionId!==null&&!options.newCopy){
-        const drafts=this.store.list<AuthoringDraft>('authoring_drafts').filter(draft=>draft.ownerSessionId===sessionId);
+        const drafts=this.store.query?.<AuthoringDraft>('authoring_drafts',{ownerSessionId:sessionId})??this.store.list<AuthoringDraft>('authoring_drafts').filter(draft=>draft.ownerSessionId===sessionId);
         const discarded=new Set(drafts.filter(draft=>draft.status==='discarded'&&!drafts.some(current=>current.viewId===draft.viewId&&current.status!=='discarded')).map(draft=>draft.viewId));
         const shop=(value:Pick<AppsView,'bindings'|'context'>)=>{const stores=[...new Set(value.bindings.map(binding=>recordInput(binding.input).storeId).filter(item=>typeof item==='string'))];return value.context?.storeId??(stores.length===1?stores[0]:null);};
-        const candidates=this.store.list<AppsView>('views').filter(view=>{
+        const candidates=(this.store.query?.<AppsView>('views',{ownerSessionId:sessionId,sourceComponentId:componentId})??this.store.list<AppsView>('views')).filter(view=>{
           const selectedRevision=view.viewId===latest.view.viewId&&view.baseRevision===latest.revision?latest.revision:view.selectedSourceRevision;
           return view.ownerSessionId===sessionId&&view.sourceComponentId===componentId&&!discarded.has(view.viewId)
             &&view.baseRevision===latest.revision&&selectedRevision===selected.revision
@@ -382,7 +386,7 @@ export class AppsPresentationService {
       return this.store.transaction(()=>{if(view.source)this.store.put('artifact_refs',`view:${view.viewId}:${view.source.buildId}`,{ownerKind:'view',ownerId:view.viewId,targetKind:'build',targetId:view.source.buildId});return clone(this.store.put('views',view.viewId,view));});
     });
   }
-  componentVersions(componentId:string):AppsComponent[]{return clone(this.store.list<AppsComponent>('component_versions').filter(item=>item.componentId===componentId).sort((a,b)=>a.revision-b.revision));}
+  componentVersions(componentId:string):AppsComponent[]{return clone((this.store.query?.<AppsComponent>('component_versions',{componentId})??this.store.list<AppsComponent>('component_versions').filter(item=>item.componentId===componentId)).sort((a,b)=>a.revision-b.revision));}
   saveTemplate(sessionId:string|null,viewId:string,name:string,userRequest:string,description=''):Record<string,JsonValue> {
     const view=this.ownedView(sessionId,viewId);text(userRequest,'userRequest');text(name,'name');
     const asset={assetId:randomUUID(),kind:'template',title:name,description,design:clone(view.design),bindings:view.bindings.map(storedBinding),...(view.sourceRefs?{sourceRefs:clone(view.sourceRefs)}:{}),...(view.context?{context:clone(view.context)}:{}),...(view.source?{source:this.sources?this.sources.withPreview(clone(view.source)):clone(view.source)}:{}),userRequest,savedAt:new Date().toISOString()};
@@ -416,6 +420,12 @@ export class AppsPresentationService {
     const contexts=new ComponentContexts({store:{...this.store,get:<T>(collection:string,key:string)=>this.store.get<T>(collection,collection==='component_contexts'?contextKey(key):key),put:<T>(collection:string,key:string,value:T)=>this.store.put(collection,collection==='component_contexts'?contextKey(key):key,value),list:<T>(collection:string)=>this.store.list<T>(collection),delete:(collection:string,key:string)=>this.store.delete(collection,collection==='component_contexts'?contextKey(key):key),transaction:<T>(action:()=>T)=>this.store.transaction(action)},ownedView:()=>current(),getData:data,validateSelection:(_session,_view,selection)=>validateDataSelection(data(),selection)});
     const contextInfo=()=>{const view=current();return {...contexts.get({...identity,buildId:view.source?.buildId??identity.buildId}),...identity};};
     const source:InvocationSource={kind:'component',sessionId:identity.sessionId,viewId:identity.viewId,frameInstanceId:identity.frameInstanceId};
+    const refreshData=async(params:{bindingIds?:string[];forceRefresh?:boolean}|null):Promise<JsonValue>=>{
+      this.clearBindingPages(pageScope);const view=current(),bindingIds=params?.bindingIds,refreshOptions={forceRefresh:params?.forceRefresh??true};
+      if(!displayIdentity)return this.refreshView(identity.sessionId,identity.viewId,source,bindingIds,options.signal,refreshOptions).then(json);
+      if(bindingIds?.some(id=>!view.bindings.some(binding=>binding.bindingId===id)))fail('BINDING_NOT_FOUND','Requested binding is not part of this fixed display.');
+      await Promise.all(view.bindings.filter(binding=>!bindingIds||bindingIds.includes(binding.bindingId)).map(binding=>this.refreshBinding(binding,source,options.signal,refreshOptions)));return json(this.dataForView(current()));
+    };
     return new ComponentHost(identity,{
       getData:()=>json(data()),
       getContext:()=>{current();const publication=options.candidate?this.store.get<ViewPublication>('view_publications',options.candidate.publicationId):undefined;return json({...contextInfo(),...(publication?{publication:{publicationId:publication.publicationId,attemptId:publication.attemptId,attemptEpoch:publication.attemptEpoch,buildId:publication.candidateBuildId,documentNonce:displayIdentity?.documentNonce??publication.documentNonce,...(displayIdentity?{displayId:displayIdentity.displayId,displayGeneration:displayIdentity.displayGeneration}:{})}}:{})});},
@@ -423,18 +433,34 @@ export class AppsPresentationService {
         updateContext:(request:import('../../app-contracts/src/index.ts').BridgeRequest)=>{current();return json(contexts.update(identity,request.requestId,request.params as never));},
         requestAgent:(request:import('../../app-contracts/src/index.ts').BridgeRequest)=>{current();return json(contexts.prepare(identity,request.requestId,request.params as never));},
       }:{}),
-      refresh:async request=>{this.clearBindingPages(pageScope);const view=current(),params=request.params as {bindingIds?:string[];forceRefresh?:boolean}|null,bindingIds=params?.bindingIds,refreshOptions={forceRefresh:params?.forceRefresh??true};if(!displayIdentity)return this.refreshView(identity.sessionId,identity.viewId,source,bindingIds,options.signal,refreshOptions).then(json);if(bindingIds?.some(id=>!view.bindings.some(binding=>binding.bindingId===id)))fail('BINDING_NOT_FOUND','Requested binding is not part of this fixed display.');await Promise.all(view.bindings.filter(binding=>!bindingIds||bindingIds.includes(binding.bindingId)).map(binding=>this.refreshBinding(binding,source,options.signal,refreshOptions)));return json(this.dataForView(current()));},
+      refresh:request=>refreshData(request.params as {bindingIds?:string[];forceRefresh?:boolean}|null),
       attachSelection:async request=>{const selection=validateDataSelection(data(),request.params as unknown as SelectionEnvelope),attach=options.attachSelection??this.options.attachSelection;if(!attach)fail('UNSUPPORTED_HOST_CAPABILITY','Native attachments are unavailable.');return attach(identity,selection);},
       invokeCapability:async request=>{
         const view=current();
         const input=request.params as unknown as Omit<InvocationRequest,'protocolVersion'|'invocationId'|'traceId'|'source'|'deadlineAt'>&{deadlineAt?:string};
         if(!input||typeof input!=='object')fail('INVALID_INPUT','Capability invocation requires explicit routing and input.');
         if(!view.bindings.some(binding=>binding.appId===input.appId&&binding.connectionId===input.connectionId))fail('CONNECTION_NOT_BOUND','Capability route is not bound to this component.');
-        const deadlineAt=input.deadlineAt===undefined?new Date(Date.now()+Math.min(90000,this.runtime.describe(input.capabilityId,input.capabilityVersion)?.execution.timeoutMs??30000)).toISOString():input.deadlineAt;
+        const deadlineAt=input.deadlineAt===undefined?new Date(Date.now()+Math.min(appsInvocationTimeout(input,90000),this.runtime.describe(input.capabilityId,input.capabilityVersion)?.execution.timeoutMs??30000)).toISOString():input.deadlineAt;
         const result=await this.runtime.invoke({protocolVersion:'1.0',appId:input.appId,connectionId:input.connectionId,capabilityId:input.capabilityId,capabilityVersion:input.capabilityVersion,input:input.input,deadlineAt,invocationId:randomUUID(),traceId:randomUUID(),source,...(input.idempotencyKey?{idempotencyKey:input.idempotencyKey}:{}),...(input.expectedResourceRevision?{expectedResourceRevision:input.expectedResourceRevision}:{})},options.signal);
         return json(result);
       },
-    },{contextRevision:()=>contextInfo().contextRevision,clientFeatures:options.clientFeatures,extensionHandlers:{bindingPagesV1:async request=>{if(request.action!=='read')fail('INVALID_INPUT','Unknown binding page action.');return json(await this.readBindingPage(current(),pageScope,request.params as unknown as {bindingId:string;cursor?:string|null},source,current,options.signal));},...(this.authoring?{
+    },{contextRevision:()=>contextInfo().contextRevision,clientFeatures:options.clientFeatures,extensionHandlers:{
+      dataTransferV1:async request=>{
+        const guard=()=>{const authorized=current(),bindings=this.runtime.sessionBindings?.(identity.sessionId);for(const binding of authorized.bindings){if(this.runtime.getConnection&&!this.runtime.getConnection(binding.appId,binding.connectionId)?.enabled||bindings&&!bindings.some(row=>row.appId===binding.appId&&row.connectionId===binding.connectionId&&row.enabled))fail('CONNECTION_NOT_BOUND','The data connection is no longer enabled for this iframe.');}return canonicalJson(authorized.bindings.map(binding=>[binding,this.runtime.getConnection?.(binding.appId,binding.connectionId)?.configRevision??null,this.runtime.describe(binding.capabilityId)?.version??null]));},initialGuard=guard();
+        const params=request.params as {method?:string;options?:{bindingIds?:string[];forceRefresh?:boolean};bindingId?:string;cursor?:string|null;knownRevision?:string;id?:string;index?:number};
+        if(!params||typeof params!=='object'||Array.isArray(params)||Object.keys(params).some(key=>!['method','options','bindingId','cursor','knownRevision','id','index','documentNonce'].includes(key)))fail('INVALID_INPUT','Invalid data transfer parameters.');
+        if(params.knownRevision!==undefined&&(typeof params.knownRevision!=='string'||!/^[a-f0-9]{64}$/.test(params.knownRevision)))fail('INVALID_INPUT','Invalid data revision.');
+        if(request.action==='read'){if(typeof params.id!=='string'||typeof params.index!=='number')fail('INVALID_INPUT','Chunk reads require id and index.');return this.dataTransfers.read(pageScope,params.id,params.index,initialGuard);}
+        if(request.action!=='prepare')fail('INVALID_INPUT','Unknown data transfer action.');
+        let value:JsonValue;
+        if(params.method==='getData')value=json(data());
+        else if(params.method==='refresh'){
+          if(params.options&&(typeof params.options!=='object'||Array.isArray(params.options)||Object.keys(params.options).some(key=>!['bindingIds','forceRefresh'].includes(key))||(params.options.forceRefresh!==undefined&&typeof params.options.forceRefresh!=='boolean')||params.options.bindingIds!==undefined&&(!Array.isArray(params.options.bindingIds)||params.options.bindingIds.some(id=>typeof id!=='string'||!id))))fail('INVALID_INPUT','Invalid refresh options.');
+          value=await refreshData(params.options??null);
+        }else if(params.method==='readBindingPage')value=json(await this.readBindingPage(current(),pageScope,{bindingId:String(params.bindingId),cursor:params.cursor},source,current,options.signal,DATA_TRANSFER_MAX_BYTES));
+        else fail('INVALID_INPUT','Only snapshot reads and refreshes use data transfers.');
+        current();if(guard()!==initialGuard)fail('BRIDGE_IDENTITY_STALE','The binding changed while preparing data. Read it again.');return this.dataTransfers.prepare(pageScope,value,params.knownRevision,initialGuard);
+      },bindingPagesV1:async request=>{if(request.action!=='read')fail('INVALID_INPUT','Unknown binding page action.');return json(await this.readBindingPage(current(),pageScope,request.params as unknown as {bindingId:string;cursor?:string|null},source,current,options.signal));},...(this.authoring?{
       renderReadyV1:request=>{if(request.action!=='ready'||!options.candidate)fail('FRAME_NOT_READY','No authorized candidate publication.');const params=request.params as unknown as {checks:Parameters<AppsAuthoringService['confirmReady']>[1]['checks']};return json(displayIdentity?this.authoring!.confirmDisplayReady(identity.sessionId,{...displayIdentity,...identity,checks:params.checks}):this.authoring!.confirmReady(identity.sessionId,{...options.candidate,...identity,checks:params.checks}));},
       uiStateV1:request=>{const params=request.params as unknown as {uiStateSchemaVersion:number;expectedStateRevision?:number;value?:JsonValue;state?:JsonValue;selectionEvidence?:Parameters<AppsAuthoringService['exportUiState']>[1]['selectionEvidence']};current();if(request.action==='read')return json(this.authoring!.restoreUiState(identity.sessionId,{viewId:identity.viewId,targetBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion},options.candidate));if(request.action==='write')return json(this.authoring!.exportUiState(identity.sessionId,{viewId:identity.viewId,sourceBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion,expectedStateRevision:params.expectedStateRevision??0,value:params.value??params.state??null,selectionEvidence:params.selectionEvidence??[]},displayIdentity));fail('INVALID_INPUT','Unknown UI state action.');},
     }:{})}});
@@ -452,7 +478,7 @@ export class AppsPresentationService {
       if(!sessionId)fail('SESSION_REQUIRED','Presentation actions require an explicit owning session.');
       const descriptor=[...APP_PRESENTATION_DESCRIPTORS,...APP_AUTHORING_DESCRIPTORS].find(item=>item.capabilityId===request.capabilityId);
       if(descriptor?.effect==='mutation'){
-        const validation=request.capabilityId==='apps.presentation.register_data_source'?await this.validateDataSource(params as unknown as RegisterDataSourceInput,request.source,context.signal):undefined;
+        const validation=request.capabilityId==='apps.presentation.register_data_source'?await this.dataSources.validateRegistration(params as unknown as RegisterDataSourceInput,request.source,context.signal):undefined;
         return this.executeMutation(context,sessionId,descriptor,validation);
       }
       if(request.capabilityId.startsWith('apps.authoring.')){

@@ -1,8 +1,9 @@
-import {randomUUID} from 'node:crypto';
-import {compileSchema} from '../../app-contracts/src/index.ts';
+import {createHash,randomUUID} from 'node:crypto';
+import {canonicalJson,compileSchema} from '../../app-contracts/src/index.ts';
 import type {CapabilityDescriptor,InvocationRequest,InvocationSource,JsonSchema,JsonValue} from '../../app-contracts/src/index.ts';
 import type {AppsPresentationOptions,DataSourceDefinition,DataSourceDraft,DataSourceValidation,RegisterDataSourceInput,WorkbenchContext} from './types.ts';
 import {FIELD_ROLE_MAP} from './field-roles.ts';
+import {queryRows} from './store-query.ts';
 
 const string:JsonSchema={type:'string',minLength:1};
 export const DATA_SOURCE_DRAFT_SCHEMA:JsonSchema={type:'object',properties:{
@@ -95,13 +96,20 @@ export function sampleValidation(definition:DataSourceDraft,payload:unknown,invo
 }
 
 export function presentationFailure(code:string,message:string):never {throw Object.assign(new Error(message),{code});}
+const fingerprint=(value:unknown)=>createHash('sha256').update(canonicalJson(value)).digest('hex');
+const registrationSourceFingerprint=(source:InvocationSource)=>fingerprint(source.kind==='agent'?{kind:source.kind,sessionId:source.sessionId}:source);
+function mappingFingerprint(definition:DataSourceDraft|DataSourceDefinition):string {
+  return fingerprint(Object.fromEntries(Object.entries(definition).filter(([key])=>!['title','description','kind','revision','validation'].includes(key))));
+}
+interface RegistrationProof {mapping:string;descriptor:string;validation:string;source:string;sampling:string}
 
 /** Stores only verified, declarative adapters to registered Runtime capabilities. */
 export class DataSourceLibrary {
   private options:Pick<AppsPresentationOptions,'store'|'runtime'|'dataSources'>;
+  private registrationProofs=new WeakMap<DataSourceValidation,RegistrationProof>();
   constructor(options:Pick<AppsPresentationOptions,'store'|'runtime'|'dataSources'>){this.options=options;}
   list(appId?:string):DataSourceDefinition[] {
-    return structuredClone(this.options.store.list<DataSourceDefinition>('saved_assets').filter(item=>item.kind==='data_source'&&(!appId||item.appId===appId)));
+    return structuredClone(queryRows<DataSourceDefinition>(this.options.store,'saved_assets',{kind:'data_source',...(appId?{appId}:{})}));
   }
   suggestions(appId?:string):DataSourceDraft[] {return structuredClone((this.options.dataSources?.()??[]).filter(item=>!appId||item.appId===appId));}
   get(id:string,revision?:number):DataSourceDefinition {
@@ -122,15 +130,29 @@ export class DataSourceLibrary {
     try {
       const result=await this.options.runtime.invoke(request,signal);
       if(result.status!=='ok')return {status:'failed',checkedAt:new Date().toISOString(),invocationId:request.invocationId,sampleCount:0,issues:[result.status==='partial'?'接口返回不完整，需确认后重新验证。':'error' in result?result.error.message:`数据能力返回 ${result.status}。`]};
-      return {...sampleValidation(definition,result.data,request.invocationId,descriptor),...(input.context?{storeId:input.context.storeId}:{})};
+      const validation={...sampleValidation(definition,result.data,request.invocationId,descriptor),...(input.context?{storeId:input.context.storeId}:{})};
+      if(validation.status==='verified')this.registrationProofs.set(validation,{mapping:mappingFingerprint(definition),descriptor:fingerprint(descriptor),validation:fingerprint(validation),source:registrationSourceFingerprint(source),sampling:fingerprint({params:input.params??{},context:input.context??null})});
+      return validation;
     }catch(error){return {status:'failed',checkedAt:new Date().toISOString(),invocationId:request.invocationId,sampleCount:0,issues:[error instanceof Error?error.message:String(error)]};}
+  }
+  /** Reuse mapping facts for a label-only edit; explicit validate() always performs the real read. */
+  async validateRegistration(input:RegisterDataSourceInput,source:InvocationSource,signal?:AbortSignal):Promise<DataSourceValidation> {
+    const definition=input.definition,descriptor=this.options.runtime.describe(definition?.capabilityId),issues=dataSourceDefinitionIssues(definition,descriptor);
+    if(!issues.length){
+      const previous=this.options.store.get<DataSourceDefinition>('saved_assets',`data_source:${definition.id}`),record=previous?this.options.store.get<{value:RegistrationProof}>('provider_records',`data-source-proof:${definition.id}:${previous.revision}`):undefined;
+      const proof=record?.value;
+      if(previous?.validation.status==='verified'&&previous.revision===input.expectedRevision&&proof&&mappingFingerprint(definition)===mappingFingerprint(previous)&&proof.mapping===mappingFingerprint(definition)&&proof.descriptor===fingerprint(descriptor)&&proof.validation===fingerprint(previous.validation)&&proof.source===registrationSourceFingerprint(source)&&proof.sampling===fingerprint({params:input.params??{},context:input.context??null})){
+        const validation=structuredClone(previous.validation);this.registrationProofs.set(validation,proof);return validation;
+      }
+    }
+    return this.validate(input,source,signal);
   }
   /** Only the trusted provider catalog calls this; Agent registration still validates a real read. */
   installCatalog(definitions:DataSourceDraft[]):DataSourceDefinition[] {
     return definitions.map(definition=>{
       const issues=dataSourceDefinitionIssues(definition,this.options.runtime.describe(definition.capabilityId));
       if(issues.length)presentationFailure('INVALID_DATA_SOURCE_CATALOG',`${definition.title}：${issues.join('；')}`);
-      const previous=this.list(definition.appId).find(item=>item.id===definition.id);
+      const previous=this.options.store.get<DataSourceDefinition>('saved_assets',`data_source:${definition.id}`);
       if(previous&&JSON.stringify(Object.fromEntries(Object.entries(previous).filter(([key])=>!['kind','revision','validation'].includes(key))))===JSON.stringify(definition))return previous;
       const value:DataSourceDefinition={...structuredClone(definition),kind:'data_source',revision:(previous?.revision??0)+1,validation:{status:'unverified',checkedAt:new Date().toISOString(),sampleCount:0,issues:['接口已封装，等待所选店铺的实际读取验证。']}};
       this.options.store.put('saved_assets',`data_source_revision:${value.id}:${value.revision}`,{...value,kind:'data_source_revision'});
@@ -149,20 +171,24 @@ export class DataSourceLibrary {
     return this.options.store.transaction(()=>{
       const previous=this.options.store.get<DataSourceDefinition>('saved_assets',`data_source:${input.definition.id}`);
       if((previous?.revision??0)!==(input.expectedRevision??0))presentationFailure('DATA_SOURCE_CONFLICT','数据源已修改，请重新读取后再保存。');
+      const proof=this.registrationProofs.get(validation),descriptor=this.options.runtime.describe(input.definition.capabilityId);
+      if(proof&&(!descriptor||proof.mapping!==mappingFingerprint(input.definition)||proof.validation!==fingerprint(validation)||proof.descriptor!==fingerprint(descriptor)))presentationFailure('DATA_SOURCE_VALIDATION_CHANGED','验证期间数据能力或字段定义发生变化，请重新验证。');
       const value:DataSourceDefinition={...structuredClone(input.definition),kind:'data_source',revision:(previous?.revision??0)+1,validation:structuredClone(validation)};
       // History keeps existing workbench references stable when a source is edited.
       this.options.store.put('saved_assets',`data_source_revision:${value.id}:${value.revision}`,{...value,kind:'data_source_revision'});
+      if(proof){const recordId=`data-source-proof:${value.id}:${value.revision}`;this.options.store.put('provider_records',recordId,{appId:'apps',connectionId:'presentation',namespace:'data_source_validation_proofs',recordId,value:proof});}
       return structuredClone(this.options.store.put('saved_assets',`data_source:${value.id}`,value));
     });
   }
   async register(input:RegisterDataSourceInput,source:InvocationSource,signal?:AbortSignal):Promise<DataSourceDefinition> {
-    const validation=await this.validate(input,source,signal);return this.commit(input,validation);
+    const validation=await this.validateRegistration(input,source,signal);return this.commit(input,validation);
   }
   async ensureBuiltIns(source:InvocationSource,appId?:string,signal?:AbortSignal):Promise<{sources:DataSourceDefinition[];issues:{id:string;message:string}[]}> {
     const issues:{id:string;message:string}[]=[];
+    const existing=new Set(this.list(appId).map(item=>item.id));
     for(const definition of this.suggestions(appId)){
-      if(this.list(appId).some(item=>item.id===definition.id))continue;
-      try{await this.register({definition},source,signal);}catch(error){issues.push({id:definition.id,message:error instanceof Error?error.message:String(error)});}
+      if(existing.has(definition.id))continue;
+      try{await this.register({definition},source,signal);existing.add(definition.id);}catch(error){issues.push({id:definition.id,message:error instanceof Error?error.message:String(error)});}
     }
     return {sources:this.list(appId),issues};
   }

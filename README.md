@@ -1,6 +1,6 @@
 # Hallmark × DSH 应用接入
 
-**最新源码与桌面版本：`1.0.0-candidate.55`（2026-10-09）。** 工作台采用缩略图＋标题卡片，点击打开独立标签页；Agent 组件可直接添加到工作台，工作副本支持复用、关闭和恢复。Ozon 共用数据源与跨接口组合采用完整快照、本地分页和 15 分钟后台更新。功能、验证及安装边界见 [candidate55 发布说明](docs/candidate55-release-notes.md)。下文的旧候选版本记录保留各自的历史验收范围。
+**最新源码与桌面版本：`1.0.0-candidate.69`（2026-10-10）。** 本版包含独立经营请求、动态物流与利润规则、SKU 包装维护、精简采集资料、上品准备和组合 SKU、统一提交审核、采集箱在售／归档状态，以及原生图片决策审核。保留此前会话组件、收藏、工作台和性能优化。已安装正式 DSH Desktop，核对 256 个打包源码输入、65 个安装产物及实际 Host／Runtime；功能与验收边界见 [candidate69 发布说明](docs/candidate69-release-notes.md)。下文的旧候选版本记录保留各自的历史验收范围。
 
 本项目在原Hallmark插件上覆盖更新，只修改应用工作台、组件区及原聊天 `@` 所需扩展。**candidate.17已官方同名16→17覆盖安装**：812/812、类型/实际SDK与build/preview CLI/Runtime/诊断通过，145输入/33产物冻结；独立包32检查/17负例和官方ValidateOnly通过，独立20文件源码窄复核闭合。实际Runtime17/schema4、健康/Hallmark、Host监听及原2755行会话前缀核验通过；五份受控冷备regular files字节相同、内部junction按新根重定位且拓扑等价，原失败和旧16单文件漂移诊断保留。正式验收为**35 PASS/0 FAIL/45 NOT_RUN**，原35卡不迁移17；Native内存/原输入/侧栏点击重开、模型/业务/切库、四门禁和R未接受。详见[A.2执行记录](docs/apps-a2-execution.md)与[维护手册](docs/apps-migration-runbook.md)。16阶段614814已push apps-component-display-retry，旧main三次失败保留；17最终提交/推送以交付记录为准。
 

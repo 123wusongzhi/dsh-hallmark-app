@@ -19,22 +19,27 @@ export async function runAuthoringPreview(input){
  input={...input,evidenceRoot:input.evidenceRoot??input.runner?.root};
  let stage='preview',summary;
  try{
+  if(input.retryStage!==undefined)throw Object.assign(new Error('Use the check runner with retryStage and retryId to obtain a new runtime attempt.'),{code:'RETRY_REQUIRES_CHECK_RUNNER'});
+  if(input.validationProfile!==undefined&&input.validationProfile!=='draft')throw new Error('PREVIEW_PROFILE_INVALID');
+  const draft=input.validationProfile==='draft';
+  if(draft&&input.autoRecord)throw Object.assign(new Error('Draft diagnostic preview cannot be registered. Run formal preview for release evidence.'),{code:'PREVIEW_DRAFT_ONLY'});
+  if(draft&&(!Number.isInteger(input.draftViewport??420)||(input.draftViewport??420)<320||(input.draftViewport??420)>4096))throw new Error('DRAFT_VIEWPORT_INVALID');
   const runner=input.runner??new AuthoringEvidenceRunner(input.evidenceRoot),sources=input.sources??new SourceComponentStore(input.archiveRoot);
   const build=runner.verifyBuild(input.buildReportRef,sources);if(build.attemptId!==input.attemptId||build.epoch!==input.epoch)throw new Error('PREVIEW_BUILD_MISMATCH');
-  const previous=checkpoint(input,'preview'),requestKey=previewFingerprint(input),state=input.autoRecord?await inspectAttempt(input):null;
+  const checkpointStage=draft?'preview-draft':'preview',previous=checkpoint(input,checkpointStage),requestKey=previewFingerprint(input),state=input.autoRecord?await inspectAttempt(input):null;
   let result,reused=false;
   if(previous?.requestKey===requestKey){
-   runner.verifyPreview(previous.result.reportRef,sources);result=previous.result;reused=true;
+   const verified=runner.verifyPreview(previous.result.reportRef,sources,{allowDraft:draft});result={...previous.result,report:verified};reused=true;
   }else{
    if(state?.attempt.previewReceiptId)throw newAttemptRequired();
-   result=await executePreview(input);checkpoint(input,'preview',{requestKey,pendingRegistration:!!input.autoRecord,result});
+   result=await executePreview(input);checkpoint(input,checkpointStage,{requestKey,pendingRegistration:!!input.autoRecord,result});
   }
   summary={...previewSummary(result),reusedPreview:reused};
   if(input.autoRecord){
    stage='record_preview';const receipt=await recordEvidence(input,'preview',result.reportRef);summary.previewReceiptId=receipt.receiptId;checkpoint(input,'preview',{requestKey,pendingRegistration:false,result});
   }
-  summary.stage='complete';summary.nextAction=result.report.verdict==='PASS'?'inspect_or_publish':'inspect_preview_report';
-  result.summary=summary;result.summaryPath=writeSummary(input,'preview',summary);return result;
+  summary.stage=draft?'draft':'complete';summary.nextAction=draft?'run_formal_preview':result.report.verdict==='PASS'?'inspect_or_publish':'inspect_preview_report';
+  result.summary=summary;result.summaryPath=writeSummary(input,checkpointStage,summary);return result;
  }catch(error){error.summaryPath=writeSummary(input,'preview',{...summary,verdict:'ERROR',stage,nextAction:stage==='record_preview'?'retry_same_request':error.code==='NEW_ATTEMPT_REQUIRED'?'begin_new_attempt':'inspect_evidence',error:{code:error.code??null,message:error.message}});throw error;}
 }
 async function executePreview(input){
@@ -71,7 +76,7 @@ async function executePreview(input){
   socket.addEventListener('message',event=>{const item=JSON.parse(event.data),request=pending.get(item.id);if(item.method==='Fetch.requestPaused'){const task=(async()=>{const p=item.params;if(new URL(p.request.url).origin===new URL(preview.url).origin){await command('Fetch.continueRequest',{requestId:p.requestId});return;}const image=images.response(p.request.url);await command('Fetch.fulfillRequest',{requestId:p.requestId,responseCode:200,responseHeaders:[{name:'Content-Type',value:image.contentType}],body:image.body});})();imageTasks.add(task);task.catch(error=>pageErrors.push(error.message)).finally(()=>imageTasks.delete(task));}else if(request){pending.delete(item.id);item.error?request.reject(new Error(item.error.message)):request.accept(item.result);}else if(item.method==='Runtime.exceptionThrown')pageErrors.push(item.params.exceptionDetails.exception?.description??item.params.exceptionDetails.text);else if(item.method==='Network.loadingFailed')failedRequests.push({requestId:item.params.requestId,error:item.params.errorText,url:responses.get(item.params.requestId)??null});else if(item.method==='Network.requestWillBeSent')responses.set(item.params.requestId,item.params.request.url);else if(item.method==='Network.responseReceived'&&item.params.response.status>=400)failedRequests.push({url:item.params.response.url,status:item.params.response.status});});
   await command('Page.enable');await command('Runtime.enable');await command('Network.enable');await command('Fetch.enable',{patterns:[{urlPattern:'http*',resourceType:'Image',requestStage:'Request'}]});timings.browserReadyMs=Math.round(performance.now()-timingStart);
   await command('Page.addScriptToEvaluateOnNewDocument',{source:"window.__authoringUnhandled=[];window.addEventListener('unhandledrejection',event=>window.__authoringUnhandled.push(String(event.reason)));"});
-  for(const width of [420,1040]){
+  for(const width of input.validationProfile==='draft'?[input.draftViewport??420]:[420,1040]){
    const viewportStart=performance.now(),eventStart=preview.events.length;
    pageErrors.length=0;failedRequests.length=0;
    await command('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:false});await command('Page.navigate',{url:preview.url});
@@ -128,7 +133,7 @@ async function executePreview(input){
    const interactionsAt=performance.now();
    const capture=await command('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});const path=join(runDirectory,`viewport-${width}.png`);writeFileSync(path,Buffer.from(capture.data,'base64'));const screenshot=evidenceFile(path);for(const item of assertions)if(!item.evidenceRefs.length)item.evidenceRefs=[screenshot];
    timings[width]={readyMs:Math.round(readyAt-viewportStart),interactionMs:Math.round(interactionsAt-readyAt),screenshotMs:Math.round(performance.now()-interactionsAt)};
-   const bindingSnapshots=await evaluate("window.__APPS_PREVIEW.events.flatMap(event=>(event.response?.result?.bindings??[]).map(binding=>({method:event.request.method??event.request.feature,bindingId:binding.bindingId,revision:binding.revision,sourceDataTime:binding.sourceDataTime,lastSuccessAt:binding.lastSuccessAt})))");
+   const bindingSnapshots=await evaluate("window.__APPS_PREVIEW.events.flatMap(event=>{if(event.response?.error)return [];const result=event.response?.result,transfer=result?.kind==='dsh.data-transfer.v1'&&event.request.feature==='dataTransferV1'&&event.request.action==='prepare';return (result?.bindings??(transfer?result.metadata?.bindings:[])??[]).map(binding=>({method:transfer?event.request.params.method:event.request.method??event.request.feature,bindingId:binding.bindingId,revision:binding.revision,sourceDataTime:binding.sourceDataTime,lastSuccessAt:binding.lastSuccessAt}));})");
    const missingMethods=(input.requiredMethods??[]).filter(method=>!preview.events.slice(eventStart).some(event=>event.method===method&&!event.error));
    for(const method of missingMethods)assertions.push({id:`bridge:${method}`,required:true,expected:'A successful bridge call in this viewport',actual:'Required feature was not exercised successfully',status:'NOT_RUN',evidenceRefs:[screenshot]});
    viewportResults.push({bridgeCalls:preview.events.slice(eventStart),id:`width-${width}`,contentWidthCssPx:width,heightCssPx:900,deviceScaleFactor:1,screenshot,screenshots,bindingSnapshots,pageErrors:[...pageErrors],unhandledRejections:rejections,failedRequests:failedRequests.map(item=>JSON.stringify(item)),bridgeReady:state?.bridgeReady===true,assertionIds:assertions.map(item=>item.id),interactionCaseIds,interactiveControlCount,assertions});
@@ -139,8 +144,8 @@ async function executePreview(input){
    const bridgeFailures=preview.events.filter(event=>event.error&&['readBindingPage','invokeCapability','refresh','attachSelection'].includes(event.method));
   for(const [index,event] of bridgeFailures.entries())assertionResults.push({id:`bridge:error:${index}`,required:true,expected:'Successful bridge operation',actual:`${event.method}: ${event.error}`,status:event.error==='PREVIEW_CAPABILITY_UNAVAILABLE'||event.error==='UNSUPPORTED_HOST_CAPABILITY'?'BLOCKED':'FAIL',evidenceRefs:[]});
   const incomplete=operationBlocked||testPlan.errors.length||assertionResults.some(item=>item.status==='NOT_RUN')||assertionResults.some(item=>item.status==='BLOCKED')||testPlan.mode==='noninteractive'&&viewportResults.some(view=>view.interactiveControlCount>0);
-  const verdict=incomplete?'INCOMPLETE':viewportResults.some(view=>view.pageErrors.length||view.unhandledRejections.length||view.failedRequests.length||!view.bridgeReady)||assertionResults.some(item=>item.required&&item.status!=='PASS')?'FAIL':'PASS';
-  const report={schemaVersion:1,attemptId:input.attemptId,epoch:input.epoch,buildReceiptId:input.buildReceiptId,buildId:build.archiveBuildId,protocol:'dsh.apps.component.v2',mode:input.mode,runnerVersion:'dsh-authoring-preview/1',startedAt,finishedAt:new Date().toISOString(),viewportResults,assertionResults,testPlan,verdict};
+  const verdict=input.validationProfile==='draft'||incomplete?'INCOMPLETE':viewportResults.some(view=>view.pageErrors.length||view.unhandledRejections.length||view.failedRequests.length||!view.bridgeReady)||assertionResults.some(item=>item.required&&item.status!=='PASS')?'FAIL':'PASS';
+  const report={schemaVersion:1,attemptId:input.attemptId,epoch:input.epoch,buildReceiptId:input.buildReceiptId,buildId:build.archiveBuildId,protocol:'dsh.apps.component.v2',mode:input.mode,runnerVersion:'dsh-authoring-preview/1',startedAt,finishedAt:new Date().toISOString(),viewportResults,assertionResults,testPlan,verdict,...(input.validationProfile==='draft'?{validationProfile:'draft',draftViewport:input.draftViewport??420}: {})};
   await images.finish();await Promise.all([...imageTasks]);timings.totalMs=Math.round(performance.now()-timingStart);
   const diagnostics={imageMode:'preview-cache-and-placeholder',note:'Screenshots do not measure live image loading. Sample downloads are bounded to six URLs and five seconds total.',timings,images:images.records};
   const diagnosticsPath=join(runDirectory,'diagnostics.json');writeFileSync(diagnosticsPath,JSON.stringify(diagnostics,null,2));

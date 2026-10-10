@@ -26,13 +26,30 @@ test('retryable platform HTTP failures stay distinct from authorization errors',
   const result=await readOzonData('prices',{storeId:'s'},f.store,f.client);assert.equal(result.status,status===403?'failed':'unavailable');assert.equal(result.error?.retryable,status!==403);if(status!==403)assert.equal(result.error?.retryAfterMs,3000);assert.equal(result.data,undefined);
  }
 });
-test('ten sources are store-neutral, all row schemas compile and accept a legitimate empty set',()=>{
- const sources=hallmarkOzonSources('connection');assert.equal(sources.length,10);
+test('eleven sources are store-neutral, all row schemas compile and accept a legitimate empty set',()=>{
+ const sources=hallmarkOzonSources('connection');assert.equal(sources.length,11);
  for(const source of sources){assert.equal(source.storeScoped,true);assert.equal(source.input.storeId,undefined);assert.equal(source.parameters.find(p=>p.name==='storeId')?.default,undefined);assert.equal(source.rowsPath,'items');assert.deepEqual(dataSourceDefinitionIssues(source,OZON_DESCRIPTORS.find(d=>d.capabilityId===source.capabilityId)),[],source.title);}
  for(const descriptor of OZON_DESCRIPTORS){assert.doesNotThrow(()=>compileCapability(descriptor));assert.deepEqual(validateResult({invocationId:'i',traceId:'t',status:'ok',data:{items:[],dataTime:null,warnings:[]}},descriptor.outputSchema),[]);}
  assert.deepEqual(hallmarkProductSources('c',{id:'bill',name:'Bill'},'sample'),hallmarkProductSources('c',{id:'helen',name:'Helen'},'other'));
  assert.deepEqual(hallmarkProductSources('c').map(s=>s.id),['hallmark:c:products','hallmark:c:sku','hallmark:c:procurement']);
  assert.equal(hallmarkProductSources('c')[1].parameters.find(p=>p.name==='productId')?.default,undefined);
+});
+test('content rating joins exact SKU and status, preserves missing rating as unknown across pages',async()=>{
+ const f=fixture((path,body)=>{
+  if(path==='/v3/product/list')return {result:{items:body.last_id?[{product_id:3}]:[{product_id:1},{product_id:2}],last_id:body.last_id?'':'next',total_items:3}};
+  if(path==='/v3/product/info/list')return {items:body.product_id?.includes('3')?[{id:3,sku:33,offer_id:'third',name:'Third',statuses:{status_name:'Продается'}}]:[{id:1,sku:11,offer_id:'one',name:'One',statuses:{status_name:'Продается'}},{id:2,sku:22,offer_id:'two',name:'Two',statuses:{status_name:'Не продается'}}]};
+  assert.equal(path,'/v1/product/rating-by-sku');return {products:body.skus.includes('33')?[{sku:33,rating:0}]:[{sku:11,rating:79.5,groups:[{key:'media'}]}]};
+ });
+ const args={storeId:'bill',limit:2},first=data(await readOzonData('ratings',args,f.store,f.client));
+ assert.equal(first.items[0].rating,79.5);assert.equal(first.items[0].status,'在售');assert.equal(first.items[1].rating,null);assert.equal(first.items[1].status,'暂不可售');assert.match(first.warnings[0],/未知/);
+ const second=data(await readOzonData('ratings',{...args,cursor:first.cursor},f.store,f.client));assert.equal(second.items[0].rating,0);assert.equal(second.cursor,undefined);
+ assert.deepEqual(f.calls.filter(call=>call.input.path==='/v1/product/rating-by-sku').map(call=>(call.input.body as RecordData).skus),[['11','22'],['33']]);
+});
+test('content rating rejects foreign SKU and invalid scores rather than claiming no low-rated products',async()=>{
+ for(const response of [{products:[{sku:22,rating:45}]},{products:[{sku:11,rating:101}]},{products:[{sku:11,rating:null}]}]){
+  const f=fixture(path=>path==='/v3/product/info/list'?{items:[{id:1,sku:11}]}:response);
+  assert.equal((await readOzonData('ratings',{storeId:'bill',sku:'11'},f.store,f.client)).error?.code,'OZON_RATING_RESPONSE_INVALID');
+ }
 });
 test('prices preserve seller price versus ordinary price, nulls and declared currency',async()=>{
  const f=fixture(()=>({items:[{product_id:10,offer_id:'offer',price:{price:'100',marketing_seller_price:'90',old_price:'120',currency_code:'CNY'}},{product_id:11,price:{price:'20'}}],total:2}));

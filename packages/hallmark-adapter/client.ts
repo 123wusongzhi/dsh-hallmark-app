@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import type { AdapterResult, ArchiveProductsRaw, ArchiveProductsResult, AssignmentInput, AssignmentResult, CategoryDataInput, CategoryDataRaw, CollectedItemRaw, CollectedItemSummary, HallmarkClientOptions, HallmarkStore, HallmarkTask, OrdinaryCnyOperationRaw, OrdinaryCnyOperationResult, OrdinaryCnyPriceProduct, PlatformCallInput, PlatformCallRecord, Provenance, StoreProductSnapshot, SubmitArchiveProductsInput, SubmitOrdinaryCnyPriceInput } from './types.ts';
+import type { AdapterResult, ArchiveProductsRaw, ArchiveProductsResult, AssignmentInput, AssignmentResult, CategoryDataInput, CategoryDataRaw, CollectedItemRaw, CollectedItemSummary, HallmarkClientOptions, HallmarkStore, HallmarkTask, OrdinaryCnyOperationRaw, OrdinaryCnyOperationResult, OrdinaryCnyPriceProduct, PlatformCallInput, PlatformCallRecord, Provenance, StoreProductSnapshot, SubmitArchiveProductsInput, SubmitOrdinaryCnyPriceInput, RegisterTaskSalesVariantsInput, RegisterTaskSalesVariantsResult } from './types.ts';
 import {OZON_STORE_READ_ENDPOINTS} from './ozon-read-routes.ts';
 import { ordinaryResult, ordinarySelection, validateOrdinaryIdentity } from './manual-price.ts';
 import { categoryRequest } from './category.ts';
@@ -187,9 +187,21 @@ export class HallmarkClient {
   getCollectedItemDetail(id: string): Promise<AdapterResult<Record<string, unknown>>> { return this.request(`/api/items/${encodeURIComponent(id)}`, 'GET', undefined, { readOnly: true, source: 'collected_item' }); }
   getTasks(): Promise<AdapterResult<HallmarkTask[]>> { return this.request('/api/tasks', 'GET', undefined, { readOnly: true }); }
   getTask(id: string): Promise<AdapterResult<HallmarkTask>> { return this.request(`/api/tasks/${encodeURIComponent(id)}`, 'GET', undefined, { readOnly: true }); }
+  /** Freezes actual sale compositions on the existing task. This is metadata, not an Ozon write. */
+  registerTaskSalesVariants(id: string, input: RegisterTaskSalesVariantsInput): Promise<AdapterResult<RegisterTaskSalesVariantsResult>> {
+    if (!id?.trim()) return Promise.resolve(adapterFailure('TASK_ID_REQUIRED', '需要明确的上品任务编号'));
+    return this.request(`/api/tasks/${encodeURIComponent(id)}/sales-variants`, 'POST', input, { writeRisk: true });
+  }
   getTaskContext(id: string): Promise<AdapterResult<Record<string, unknown> | null>> { return this.request(`/api/tasks/${encodeURIComponent(id)}/context`, 'GET', undefined, { readOnly: true }); }
   verifyTask(id: string): Promise<AdapterResult<Record<string, unknown>>> { return this.request(`/api/tasks/${encodeURIComponent(id)}/verify`, 'POST', {}, { readOnly: true }); }
-  createAssignment(input: AssignmentInput): Promise<AdapterResult<AssignmentResult>> { return this.request('/api/assignments', 'POST', input, { auth: true }); }
+  async createAssignment(input: AssignmentInput): Promise<AdapterResult<AssignmentResult>> {
+    const health = await this.health();
+    if (health.status !== 'ok') return {status:health.status,error:health.error,provenance:health.provenance};
+    // Board and Control expose the same dispatch service at different public routes.
+    // Choose before dispatch; never retry a possibly-created assignment on another route.
+    const route = health.raw?.service === 'hallmark-board' ? '/api/tasks' : '/api/assignments';
+    return this.request(route, 'POST', input, { auth: true, writeRisk: true });
+  }
   /** Six Source catalog read/cache routes. Source capability/partial/stale/search candidates are never promoted. */
   async getCategoryData(input: CategoryDataInput): Promise<AdapterResult<CategoryDataRaw>> {
     const route = categoryRequest(input);
@@ -298,7 +310,7 @@ export class HallmarkClient {
   /** Store authorization belongs to Hallmark; this gateway never depends on a listing task. */
   storeDataRead(storeId:string,input:PlatformCallInput):Promise<AdapterResult<Record<string,unknown>>>{
     const method=input.method??'POST';
-    if(!storeId||OZON_STORE_READ_ENDPOINTS[input.path]!==method||method==='GET'&&(!object(input.body)||Object.keys(input.body as object).length))return Promise.resolve(adapterFailure('ENDPOINT_NOT_ALLOWED','仅允许已登记的店铺只读路径和精确方法。'));
+    if(!storeId||(OZON_STORE_READ_ENDPOINTS[input.path]??PLATFORM_READ_ENDPOINTS[input.path])!==method||method==='GET'&&(!object(input.body)||Object.keys(input.body as object).length))return Promise.resolve(adapterFailure('ENDPOINT_NOT_ALLOWED','仅允许已登记的店铺只读路径和精确方法。'));
     return this.request(`/api/stores/${encodeURIComponent(storeId)}/data/read`,'POST',input,{platform:true,readOnly:true,source:'ozon_api',storeId,ozonData:true});
   }
   readOrderWeights(storeId:string,input:Record<string,unknown>):Promise<AdapterResult<Record<string,unknown>>>{

@@ -30,6 +30,7 @@
 | getData / payload / resources / revision / 商品金额单位 | [data.md](data.md) |
 | 快照优先、首次准备、刷新、分页降级、保存与历史 | [lifecycle.md](lifecycle.md) |
 | 检查请求、Windows 启动、续跑、截图、发布 | [check-and-publish.md](check-and-publish.md) |
+| 显式阶段重试、构建环境依赖、单视口草稿诊断 | [performance-cli.md](performance-cli.md) |
 | 可直接初始化的分页商品列表 | [示例说明](examples/product-list/README.md) |
 | Agent 组合源、锁定版本、模板切店与源码消费 | [跨接口复用](cross-source.md) |
 | 可直接初始化的跨接口数据表 | [组合表示例](examples/composed-table/README.md) |

@@ -23,7 +23,7 @@ export function SessionComponentsButton({sessionId,sidebarRight}:{sessionId?:str
   const [error,setError]=useState('');
   return <span className="hm-root hm-session-button hm-chat-trigger"><style>{STYLES}{CHAT_STYLES}</style><button type="button" aria-label="查看本会话组件" title="打开本会话的组件工作区" onClick={()=>{const result=openSessionComponents(sidebarRight,sessionId);setError(result.ok?'':result.message??'侧栏不可用。');}}><AppIcon name="layers" size={15}/>会话组件</button>{error?<span className="hm-button-notice" role="status">{error}</span>:null}</span>;
 }
-export function SessionComponentsTitle(){return <span className="hm-chat-tab-title"><style>{CHAT_STYLES}</style><AppIcon name="layers" size={15}/>本会话组件</span>;}
+export function SessionComponentsTitle(){return <span className="hm-chat-tab-title"><style>{CHAT_STYLES}</style><AppIcon name="layers" size={15}/>组件</span>;}
 export function SessionComponentsPane({sessionId,useTabInfo,onOpenWorkspace}:NativeSidebarProps&{onOpenWorkspace?:(view:{sessionId:string;viewId:string;title:string})=>void}){
   const info=useTabInfo?.();const navigation=readSidebarNavigation(info?.tab.navigation.params);const selectedId=navigation.valid?navigation.viewId:undefined;
   const bridge=useMemo(()=>new HallmarkBridge(sessionId??''),[sessionId]);

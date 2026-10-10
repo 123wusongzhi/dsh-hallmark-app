@@ -2,3 +2,5 @@
 docs/requirements/A2/** -text
 # Keep the frozen acceptance harness identical to the bytes executed by I/V.
 test/acceptance/state-owner-boundaries-a2.mjs -text
+# Preserve the historical SDK bytes used by the old/new performance comparison.
+test/performance/fixtures/* -text -diff

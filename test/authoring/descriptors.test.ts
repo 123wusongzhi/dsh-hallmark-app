@@ -22,14 +22,16 @@ test('publication contracts expose waiting state and nullable deadline while ret
   assert.equal(APP_AUTHORING_DESCRIPTORS.some(value=>value.capabilityId==='apps.authoring.startMount'),false);
 });
 
-test('receipt field/required sets match the approved A.2 templates rather than parallel formats',()=>{
+test('receipt required/base fields retain A.2 compatibility with only explicit optional execution provenance',()=>{
   const templateRoot=resolve('../audit-inputs/A2-30f8a9809dd4/dsh_apps_A2/templates');
   for(const [name,actual] of [['build-receipt.schema.json',AUTHORING_BUILD_RECEIPT_SCHEMA],['preview-receipt.schema.json',AUTHORING_PREVIEW_RECEIPT_SCHEMA]] as const){
     const template=JSON.parse(readFileSync(resolve(templateRoot,name),'utf8')) as JsonSchema;
-    for(const branch of actual.oneOf as JsonSchema[]){assert.deepEqual(Object.keys(branch.properties as object).sort(),Object.keys(template.properties as object).sort());assert.deepEqual([...branch.required as string[]].sort(),[...template.required as string[]].sort());assert.equal(branch.additionalProperties,false);}
+    const additions=name==='build-receipt.schema.json'?['executionKind','executionId','reusedFrom','reuseVerifiedAt']:[];
+    for(const branch of actual.oneOf as JsonSchema[]){const keys=Object.keys(branch.properties as object);assert.deepEqual(keys.filter(key=>!additions.includes(key)).sort(),Object.keys(template.properties as object).sort());assert.deepEqual(keys.filter(key=>additions.includes(key)).sort(),[...additions].sort());assert.deepEqual([...branch.required as string[]].sort(),[...template.required as string[]].sort());assert.equal(branch.additionalProperties,false);}
   }
   const file={path:'E:/managed/proof.json',sha256:'a'.repeat(64),bytes:1},at='2026-10-07T00:00:00.000Z',base={schemaVersion:1,receiptId:'r',attemptId:'a',sourceRevision:1,sourceInputDigest:'b'.repeat(64),lockfileDigest:'c'.repeat(64),command:['node','build.mjs'],cwd:'E:/workspace',toolchain:{node:'v24'},exitCode:0,startedAt:at,finishedAt:at,logRef:file,distDigest:'d'.repeat(64),archiveBuildId:'e'.repeat(64),fileManifestRef:file,inputUnchanged:true,verdict:'PASS'};
   const build=compileSchema(AUTHORING_BUILD_RECEIPT_SCHEMA);assert.deepEqual(build(base),[]);assert.ok(build({...base,command:'node build.mjs'}).length);assert.ok(build({...base,inputUnchanged:false}).length);assert.ok(build({...base,exitCode:1}).length);assert.ok(build({...base,receiptType:'BuildReceipt'}).length);
+  assert.deepEqual(build({...base,executionKind:'reuse',executionId:'original-execution',reusedFrom:file,reuseVerifiedAt:at}),[]);assert.ok(build({...base,executionKind:'fabricated'}).length);assert.ok(build({...base,reusedFrom:{path:'invalid'}}).length);
   const viewport={id:'narrow',contentWidthCssPx:420,heightCssPx:800,deviceScaleFactor:1,screenshot:file,pageErrors:[],unhandledRejections:[],failedRequests:[],bridgeReady:true,assertionIds:['filter']},assertion={id:'filter',required:true,expected:'3 rows',actual:'3 rows',status:'PASS',evidenceRefs:[file]},value={schemaVersion:1,receiptId:'pr',attemptId:'a',buildReceiptId:'r',buildId:'e'.repeat(64),protocol:'dsh.apps.component.v2',mode:'fixture',runnerVersion:'fixture',startedAt:at,finishedAt:at,viewportResults:[viewport,{...viewport,id:'wide',contentWidthCssPx:1040}],assertionResults:[assertion],verdict:'PASS'};
   const preview=compileSchema(AUTHORING_PREVIEW_RECEIPT_SCHEMA);assert.deepEqual(preview(value),[]);assert.ok(preview({...value,viewportResults:[viewport]}).length);assert.ok(preview({...value,assertionResults:[{...assertion,status:'NOT_RUN'}]}).length);assert.ok(preview({...value,viewportResults:[{...viewport,pageErrors:['white screen']},value.viewportResults[1]]}).length);
 });

@@ -12,6 +12,7 @@ import {ownedWorkspaceIntent} from '../../../packages/dsh-plugin/client/workspac
 import {chatEntryIntent} from '../../../packages/dsh-plugin/client/chat-entry.ts';
 import {prepareNativeDraft} from '../../../packages/dsh-plugin/client/native-draft.ts';
 import {registerNativeApps,NativeAppsInputObserver} from '../../../packages/plugin-apps/client/native-input.tsx';
+import {savedLibraryIntent} from '../../../packages/plugin-apps/client/library-intent.ts';
 /** One registration owner for the Apps entry and the historical component/tool slots. */
 export default createClientPlugin({
   sidebarIcon: ApplicationsSidebarIcon,
@@ -23,5 +24,5 @@ export default createClientPlugin({
   toolviewForKey:(key,sidebarRight)=>key==='apps_invoke'?props=><AppsToolView {...props} sidebarRight={sidebarRight}/>:props=><HallmarkToolView {...props} sidebarRight={sidebarRight}/>,
   componentHandlers:createAppsComponentHandlers,
   nativeInput:{register:registerNativeApps,observer:NativeAppsInputObserver},
-  sidebar: {title: SessionComponentsTitle, input: sidebarRight => props => <SessionComponentsButton {...props} sidebarRight={sidebarRight}/>, body: (layout,sidebarRight) => props => <AppsSidebarPane {...props} sidebarRight={sidebarRight} onOpenWorkspace={view => {if (!layout||sidebarRight?.mounted.getSnapshot() !== view.sessionId) throw new Error('请先切回组件所属会话。');ownedWorkspaceIntent.open(view);layout.selectPanel('hallmark-apps');}}/>},
+  sidebar: {title: SessionComponentsTitle, input: sidebarRight => props => <SessionComponentsButton {...props} sidebarRight={sidebarRight}/>, body: (layout,sidebarRight) => props => <AppsSidebarPane {...props} sidebarRight={sidebarRight} onOpenLibrary={()=>{savedLibraryIntent.open();layout?.selectPanel('hallmark-apps');}} onOpenWorkspace={view => {if (!layout||sidebarRight?.mounted.getSnapshot() !== view.sessionId) throw new Error('请先切回组件所属会话。');ownedWorkspaceIntent.open(view);layout.selectPanel('hallmark-apps');}}/>},
 });

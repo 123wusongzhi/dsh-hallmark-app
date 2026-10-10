@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type { SourceArtifact, SourcePreview } from '../../presentation/src/types.ts';
+import {regularFileIdentity} from './file-verification-cache.ts';
 
 export class SourceComponentError extends Error {
   code: string;
@@ -41,6 +42,8 @@ export function sourceMime(file:string):string {
 export class SourceComponentStore {
   directory:string;
   workspace:string;
+  private verifiedBuilds=new Map<string,{fingerprint:string;result:{valid:boolean;errors:string[]}}>();
+  private verifiedBuildBytes=0;
   constructor(directory:string,workspace=join(directory,'workspace')){this.directory=resolve(directory);this.workspace=resolve(workspace);}
   private buildDirectory(buildId:string):string {
     if(!/^[a-f0-9]{64}$/.test(buildId))throw new SourceComponentError('SOURCE_BUILD_NOT_FOUND','源码构建不存在。');
@@ -86,17 +89,36 @@ export class SourceComponentStore {
   }
   /** Verify immutable archived bytes; old manifests remain readable without being rewritten. */
   verify(buildId:string):{valid:boolean;errors:string[]} {
-    const manifest=this.manifest(buildId);if(!manifest)return {valid:false,errors:['SOURCE_BUILD_NOT_FOUND']};
+    const directory=this.buildDirectory(buildId),project=join(directory,'project'),manifestPath=join(directory,'manifest.json');
+    if(!existsSync(manifestPath))return {valid:false,errors:['SOURCE_BUILD_NOT_FOUND']};
+    let projectFiles:string[],fingerprint:string;
+    const inspect=()=>{const files=walk(project);return {files,fingerprint:JSON.stringify([regularFileIdentity(manifestPath),files.map(file=>[file,regularFileIdentity(filePath(project,file))])])};};
+    try{({files:projectFiles,fingerprint}=inspect());}catch{return {valid:false,errors:['SOURCE_BUILD_UNREADABLE']};}
+    const cached=this.verifiedBuilds.get(buildId);
+    if(cached?.fingerprint===fingerprint){this.verifiedBuilds.delete(buildId);this.verifiedBuilds.set(buildId,cached);return {valid:cached.result.valid,errors:[...cached.result.errors]};}
+    if(cached){this.verifiedBuilds.delete(buildId);this.verifiedBuildBytes-=cached.fingerprint.length*2;}
+    let manifest:SourceBuildManifest;try{manifest=this.manifest(buildId)!;}catch{return {valid:false,errors:['SOURCE_MANIFEST_MISMATCH']};}
     const errors:string[]=[];
-    if(manifest.fileManifest){
-      if(manifest.fileManifest.length!==manifest.projectFiles.length||manifest.fileManifest.some(file=>!manifest.projectFiles.includes(file.path)))errors.push('SOURCE_MANIFEST_MISMATCH');
-      for(const file of manifest.fileManifest){
-        try{const bytes=readFileSync(filePath(join(this.buildDirectory(buildId),'project'),file.path));if(bytes.length!==file.size||createHash('sha256').update(bytes).digest('hex')!==file.sha256)errors.push(`SOURCE_FILE_HASH_MISMATCH: ${file.path}`);}catch{errors.push(`SOURCE_FILE_NOT_FOUND: ${file.path}`);}
-      }
+    if(!manifest||typeof manifest!=='object')return {valid:false,errors:['SOURCE_MANIFEST_MISMATCH']};
+    if(!Array.isArray(manifest.projectFiles)||manifest.projectFiles.some(file=>typeof file!=='string')||manifest.buildId!==buildId||JSON.stringify([...manifest.projectFiles].sort())!==JSON.stringify(projectFiles)||manifest.entry!=='index.html'||!Array.isArray(manifest.files)||manifest.files.some(file=>typeof file!=='string')||JSON.stringify([...manifest.files].sort())!==JSON.stringify(projectFiles.filter(file=>file.startsWith('dist/')).map(file=>file.slice(5))))errors.push('SOURCE_MANIFEST_MISMATCH');
+    const fileManifest=manifest.fileManifest;
+    const validFileManifest=Array.isArray(fileManifest)&&fileManifest.every(file=>file&&typeof file.path==='string'&&Number.isSafeInteger(file.size)&&file.size>=0&&typeof file.sha256==='string'&&/^[a-f0-9]{64}$/.test(file.sha256));
+    if(fileManifest!==undefined&&(!validFileManifest||fileManifest!.length!==projectFiles.length||new Set(fileManifest!.map(file=>file.path)).size!==projectFiles.length||fileManifest!.some(file=>!projectFiles.includes(file.path))))errors.push('SOURCE_MANIFEST_MISMATCH');
+    const expected=new Map(validFileManifest?fileManifest!.map(file=>[file.path,file]):[]),hash=createHash('sha256');
+    // One read feeds both the per-file checksum and historical content-addressing checksum.
+    for(const file of projectFiles){
+      try{const bytes=readFileSync(filePath(project,file));hash.update(`${Buffer.byteLength(file)}:${file}:${bytes.length}:`).update(bytes);const reference=expected.get(file);if(reference&&(bytes.length!==reference.size||createHash('sha256').update(bytes).digest('hex')!==reference.sha256))errors.push(`SOURCE_FILE_HASH_MISMATCH: ${file}`);}catch{errors.push(`SOURCE_FILE_NOT_FOUND: ${file}`);}
     }
-    // Content addressing is also checked for historical manifests, whose file list predates per-file hashes.
-    try{if(projectSnapshot(join(this.buildDirectory(buildId),'project')).buildId!==buildId)errors.push('SOURCE_BUILD_HASH_MISMATCH');}catch{errors.push('SOURCE_BUILD_UNREADABLE');}
-    return {valid:errors.length===0,errors};
+    if(!projectFiles.includes('dist/index.html')||hash.digest('hex')!==buildId)errors.push('SOURCE_BUILD_HASH_MISMATCH');
+    // Recheck membership and file identity after hashing, so an editor write during verification is never cached.
+    try{if(inspect().fingerprint!==fingerprint)errors.push('SOURCE_BUILD_CHANGED');}catch{errors.push('SOURCE_BUILD_UNREADABLE');}
+    const result={valid:errors.length===0,errors};
+    const fingerprintBytes=fingerprint.length*2;
+    if(result.valid&&fingerprintBytes<=8*1024*1024){
+      while(this.verifiedBuilds.size>=64||this.verifiedBuildBytes+fingerprintBytes>8*1024*1024){const oldest=this.verifiedBuilds.keys().next().value!;this.verifiedBuildBytes-=this.verifiedBuilds.get(oldest)!.fingerprint.length*2;this.verifiedBuilds.delete(oldest);}
+      this.verifiedBuilds.set(buildId,{fingerprint,result});this.verifiedBuildBytes+=fingerprintBytes;
+    }
+    return {valid:result.valid,errors:[...result.errors]};
   }
   readFile(buildId:string,file:string):{bytes:Buffer;mime:string}|undefined {
     const manifest=this.manifest(buildId);if(!manifest?.files.includes(file))return undefined;

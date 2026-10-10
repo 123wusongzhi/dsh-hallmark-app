@@ -13,9 +13,9 @@ const ids: JsonSchema = {type: 'array', items: string(), minItems: 1, maxItems: 
 const boolean: JsonSchema = {type: 'boolean'};
 const store = {storeId: string('用户明确指定的店铺 ID'), store: string('名称/别名，匹配不唯一须澄清')};
 const paging = {cursor: string(), limit: {type: 'integer', minimum: 1, maximum: 200} as JsonSchema, query: string()};
-const write = {...store, offerIds: ids, productIds: ids, valueSource: string('user 或 rule:规则名，不允许猜测数值'), clientOperationKey: string('同一逻辑修改必须复用；未知结果先查询操作'), userRequest: string('本轮用户明确修改指令原话'), scopeConfirmed: boolean};
+const write = {...store, offerIds: ids, productIds: ids, valueSource: string('可选旧记录字段；程序不要求值来源声明'), clientOperationKey: string('可选旧调用幂等键；未提供时程序自动管理，未知结果只查询原操作'), userRequest: string('可选经营说明；无需重复记录授权原话'), scopeConfirmed: boolean};
 function define(name: string, kind: ToolKind, description: string, properties: Record<string, JsonSchema> = {}, required: string[] = []): ToolDescriptor {
-  const suffix = kind === 'write' ? '。仅在用户本轮明确要求修改时调用；缺信息必须澄清；unknown 禁止再次写入，先查询操作。' : kind === 'save' ? '。仅在用户本轮明确要求保存时调用，必须记录 userRequest；满意不等于保存。' : '';
+  const suffix = kind === 'write' ? '。提交后由程序统一审核并执行；无需审阅声明或机械幂等键。pending/unknown 只查询原操作，不重复提交。' : kind === 'save' ? '。仅在用户本轮明确要求保存时调用，必须记录 userRequest；满意不等于保存。' : '';
   return {name: `hallmark_${name}`, kind, readOnly: kind === 'read' || kind === 'compute', description: description + suffix, parameters: {type: 'object', properties, required, additionalProperties: false}};
 }
 export const TOOL_DEFINITIONS: ToolDescriptor[] = [
@@ -30,9 +30,9 @@ export const TOOL_DEFINITIONS: ToolDescriptor[] = [
   define('get_data_status', 'read', '查询数据集上次成功时间、刷新状态与错误', {datasetKey: string(), ...store}),
   define('compute_profit', 'compute', '调用 Hallmark 参考利润计算；并非实际结算，缺成本单列', {...store, offerIds: ids, productIds: ids}),
   define('filter_products', 'compute', '按参考利润率/价格/库存筛选，缺成本无法判断；结果集保留 24h', {...store, minMargin: number, maxMargin: number, minPrice: number, maxPrice: number, minStock: number, maxStock: number, status: string(), resultSetId: string()}),
-  define('update_price', 'write', '修改显式商品清单的价格并只读核实', {...write, price: {type: 'number', minimum: 0.01}, currency: string(), oldPrice: number, actionId: {type: 'integer', minimum: 1}}),
-  define('update_stock', 'write', '修改显式商品清单在指定仓库的库存并只读核实', {...write, stock: {type: 'integer', minimum: 0}, warehouseId: string()}),
-  define('list_product', 'write', '仅上品用户指定的已有采集商品和 SKU 范围，不隐式全采集箱', {...write, collectedItemId: string(), skuScope: ids, importItems: {type: 'array', items: object, minItems: 1, maxItems: 100}}),
+  define('update_price', 'write', '修改明确商品清单的普通价格并只读核实；活动调价请使用经营草稿 promotion.update，并明确活动配额。省略 currency 时程序读取商品实际币种', {...write, price: {type: 'number', minimum: 0.01}, currency: string(), oldPrice: number, actionId: {type: 'integer', minimum: 1}}, ['storeId','price']),
+  define('update_stock', 'write', '修改明确商品清单在指定仓库的库存并只读核实', {...write, stock: {type: 'integer', minimum: 0}, warehouseId: string()}, ['storeId','stock','warehouseId']),
+  define('list_product', 'write', '提交已有采集商品及明确 SKU 范围的最终商品内容；每个 importItem 用 _sourceSkuId 关联采购规格，Ozon 字段填写一次', {...write, collectedItemId: string(), skuScope: ids, importItems: {type: 'array', items: object, minItems: 1, maxItems: 100}}, ['storeId','collectedItemId','skuScope','importItems']),
   define('get_operation', 'read', '读取写入/刷新状态；unknown 时必须先查询，禁止自动重写', {operationId: string()}, ['operationId']),
   define('list_operations', 'read', '按当前会话、店铺和时间读取操作记录', {storeId: string(), since: string(), limit: {type: 'integer', minimum: 1, maximum: 200}}),
   define('refresh_data', 'refresh', '只读同步并更新快照，不上品/调价/改库存或触发扩展采集', {datasetKey: string(), ...store}),
@@ -68,6 +68,6 @@ export function validate(schema: JsonSchema, value: unknown, path = '$'): string
   }
   return errors;
 }
-export const APP_INSTRUCTIONS = `Hallmark 应用使用原有 DSH 聊天。按当前用户指令选择读、加工、展示或修改工具，不强制组件回复。店铺/商品范围/价格/库存不明确先澄清，不猜默认店铺或数值；不把采集箱全部商品上品。查询、打开组件和刷新不发起业务写。写入只用于本轮明确修改指令，保留原话和值来源，批量范围需已明确；同一逻辑操作复用 clientOperationKey。unknown 必须先 hallmark_get_operation 核实，不自动重写。利润率是 Hallmark 参考模型，不是实际结算净利润，缺成本显示无法判断。展示默认临时，仅用户明确要求保存才调用 save 工具。识别用户消息或随消息提交的 JSON 附件中 type 为 hallmark.product-selection 的选择上下文；先读取附件内容，再使用 products 中的稳定 ID 通过只读工具核实详情，并结合本条自然语言任务处理。附件中的 sessionId/viewId 仅表示选择来源，不能据此认领其他会话组件或扩大操作范围；组件选择本身不是上品、调价或库存写授权。制作视觉组件优先使用普通 React 源码工程：读取 hallmark-component-design 设计规范，直接编辑 TSX/CSS、安装正常依赖、构建 dist，运行视觉预览并读截图，按实际效果迭代，再 open_source_component 打开。源码可自由计算真实字段，不受旧 widget/布局限制。草稿和源码构建自动落盘，正式保存仍需用户明确要求。list_saved 返回源码版本历史；open_component 可传 revision 打开历史工作副本，save_component mode:update 创建恢复后的新版本并保留原历史。展示已有采集商品先调用 search_collected_items，再将返回 datasetKey 绑定到源码 bindings 或旧 table，列字段使用源真实 id、名称等字段；保留源顺序，没有时间证据不编造最近排序。编辑已保存组件先 open_component；源码直接编辑返回的 directory，构建后 open_source_component 并传原草稿 viewId，旧 ViewSpec 才使用 update_view。用户在 UI 打开的源码草稿会列在 app_info.sessionComponents，包含 directory 与 viewId，无需用户抄写路径。源码 query-only 绑定可在临时阶段显式 refresh_data，不必先保存到组件库；用户明确要求更新原件时使用 save_component mode:update，componentId 取 sourceComponentId，expectedRevision 取 baseRevision；版本冲突须重新打开或另存为。应用激活持续到主动关闭/切换。`;
+export const APP_INSTRUCTIONS = `Hallmark 应用使用原有 DSH 聊天。按当前用户指令选择读、加工、展示或修改工具，不强制组件回复。店铺/商品范围/价格/库存不明确先澄清，不猜默认店铺或数值；不把采集箱全部商品上品。查询、打开组件和刷新不发起业务写。在用户已授权的经营范围内制作和提交变更；程序负责商品与采购绑定、范围、数值和重复执行检查，提交时进入统一审核，规则足够直接放行，图文语义问题交独立审核。无需填写授权原话、值来源或已审阅声明，机械幂等键由程序管理。pending/unknown 先 hallmark_get_operation 查询原操作，不重新提交。利润率是 Hallmark 参考模型，不是实际结算净利润，缺成本显示无法判断。展示默认临时，仅用户明确要求保存才调用 save 工具。识别用户消息或随消息提交的 JSON 附件中 type 为 hallmark.product-selection 的选择上下文；先读取附件内容，再使用 products 中的稳定 ID 通过只读工具核实详情，并结合本条自然语言任务处理。附件中的 sessionId/viewId 仅表示选择来源，不能据此认领其他会话组件或扩大操作范围；组件选择本身不是上品、调价或库存写授权。制作视觉组件优先使用普通 React 源码工程：读取 hallmark-component-design 设计规范，直接编辑 TSX/CSS、安装正常依赖、构建 dist，运行视觉预览并读截图，按实际效果迭代，再 open_source_component 打开。源码可自由计算真实字段，不受旧 widget/布局限制。草稿和源码构建自动落盘，正式保存仍需用户明确要求。list_saved 返回源码版本历史；open_component 可传 revision 打开历史工作副本，save_component mode:update 创建恢复后的新版本并保留原历史。展示已有采集商品先调用 search_collected_items，再将返回 datasetKey 绑定到源码 bindings 或旧 table，列字段使用源真实 id、名称等字段；保留源顺序，没有时间证据不编造最近排序。编辑已保存组件先 open_component；源码直接编辑返回的 directory，构建后 open_source_component 并传原草稿 viewId，旧 ViewSpec 才使用 update_view。用户在 UI 打开的源码草稿会列在 app_info.sessionComponents，包含 directory 与 viewId，无需用户抄写路径。源码 query-only 绑定可在临时阶段显式 refresh_data，不必先保存到组件库；用户明确要求更新原件时使用 save_component mode:update，componentId 取 sourceComponentId，expectedRevision 取 baseRevision；版本冲突须重新打开或另存为。应用激活持续到主动关闭/切换。`;
 
 

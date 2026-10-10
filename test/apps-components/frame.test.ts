@@ -22,13 +22,14 @@ test('React iframe adapter reloads through a correlated hello and cannot resurre
       const emit=(data,source=child,eventOrigin=origin)=>Promise.all([...listeners].map(listener=>listener({data,source,origin:eventOrigin})));
       const hello=(nonce,requestId='hello-'+nonce,protocolVersion='2.0')=>({channel:COMPONENT_CHANNEL,type:'hello',documentNonce:nonce,requestId,protocolVersion});
       tree.root.findByType('iframe').props.onLoad();assert.equal(posts.length,0);
-      await emit(hello('document-a'));const a=posts.at(-1);assert.equal(a.requestId,'hello-document-a');assert.equal(a.type,'hello');
+      const assertVisibility=(nonce,identity)=>{const visibility=posts.filter(row=>row.type==='visibility').at(-1);assert.equal(visibility.documentNonce,nonce);assert.equal(visibility.channel,COMPONENT_CHANNEL);assert.equal(visibility.visible,true);for(const key of ['protocolVersion','sessionId','viewId','buildId','frameInstanceId'])assert.equal(visibility[key],identity[key]);};
+      await emit(hello('document-a'));const a=posts.filter(row=>row.type==='hello').at(-1);assert.equal(a.requestId,'hello-document-a');assert.equal(a.type,'hello');assertVisibility('document-a',a);
       const request=(identity,requestId,method='getData')=>({channel:COMPONENT_CHANNEL,protocolVersion:identity.protocolVersion,sessionId:identity.sessionId,viewId:identity.viewId,buildId:identity.buildId,frameInstanceId:identity.frameInstanceId,requestId,method,params:null});
       await emit(hello('invalid','hello-invalid','3.0'));assert.equal(posts.at(-1).error.code,'UNSUPPORTED_PROTOCOL');
       await emit(request(a,'still-a'));assert.equal(posts.at(-1).result.revision,'current');
       const pending=emit(request(a,'delayed-a','refresh'));
       const beforeLoad=posts.length;tree.root.findByType('iframe').props.onLoad();assert.equal(posts.length,beforeLoad);
-      await emit(hello('document-b'));const b=posts.at(-1);assert.notEqual(b.frameInstanceId,a.frameInstanceId);
+      await emit(hello('document-b'));const b=posts.filter(row=>row.type==='hello').at(-1);assert.equal(b.requestId,'hello-document-b');assert.notEqual(b.frameInstanceId,a.frameInstanceId);assertVisibility('document-b',b);
       const afterB=posts.length;finish({revision:'retired-a'});await pending;assert.equal(posts.length,afterB);
       await emit(hello('document-a'));assert.equal(posts.length,afterB);
       await emit(request(a,'old-request'));assert.equal(posts.length,afterB);

@@ -12,7 +12,7 @@ export interface AppsAuthoringGuidance {
 /** Paths are local references, never key contents; the original Agent uses ordinary file/command tools. */
 export function authoringInstructions(guidance:AppsAuthoringGuidance,sessionId:string){
   return {
-    kind:'dsh-apps-authoring-guidance',guidanceVersion:8,sessionId,...guidance,
+    kind:'dsh-apps-authoring-guidance',guidanceVersion:9,sessionId,...guidance,
     userPreferences:{policy:'component-experience-v1',cacheTtlMs:900000,rules:[
       '蓝白、简洁、视觉层次优先；少文字少堆字段，细节渐进展开。',
       '字段用易懂中文及单位/币种/口径；缺失不填0，参考利润不冒充结算。',
@@ -34,6 +34,7 @@ export function authoringInstructions(guidance:AppsAuthoringGuidance,sessionId:s
       "useApps读bindings[].payload；refresh/readBindingPage更新绑定，invokeCapability不更新分页/上下文。不自建HTTP或未开放按钮。",
       "维护.preview/plan.json和真实assertionResults。checkRunner.prepareRequest填attemptId→执行requestPath；Windows用windowsCommand。runner执行markBuilding→build→record_build→preview→record_preview；不伪造epoch/回执。",
       "live_readonly声明真实requiredMethods；screenshot:{}或{selector}，不另建Host/CDP。同输入恢复回执，条件改变新attempt；错误不覆盖成功摘要。",
+      "显式重试通过check请求retryStage=build或preview及非空retryId开启新attempt；同retryId恢复，新retryId再次运行。preview重试仅复用签名验证的未变构建，保留原执行身份。build.environmentKeys可声明实际环境依赖；自定义命令未声明时保守比较全部环境。draft预览仅供诊断，恒INCOMPLETE，不能正式登记或发布；正式双视口门槛不变，详见performance-cli.md。",
       "publish同attempt/epoch/build/两回执/expectedViewRevision；成功仅表示组件已准备好。自动在右侧加载展示，无需要求用户再点击打开；不自行调用 UI startMount、openDisplay。UI自动为同publication/build开启独立显示尝试，读取/React commit/断言通过才可称已展示，onLoad不算。",
       "展示失败读inspect.summary及latestDisplay/displays；requiresRebuild=null不能默认重建。可重新打开同一构建，旧frame不得恢复权限。明确保存才save_component；用成功回执view.sourceComponentId/baseRevision作更新基线。"
 ],

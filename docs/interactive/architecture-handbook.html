@@ -1,0 +1,1171 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="blueprint" data-mode="light" data-style="80">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="Answer me with HTML 0.4.8">
+<title>采集与上品 · 架构总览</title>
+<style>
+html[data-theme="blueprint"], html[data-theme="blueprint"][data-mode="light"] {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --radius: 0px;
+  --shadow: none;
+  --bw: 1.5px;
+  --head-font: var(--font-sans);
+  --bg: #f6f6f3;
+  --paper: #ffffff;
+  --ink: #16181d;
+  --ink-2: #4b5260;
+  --ink-3: #8b929e;
+  --line: #1d2026;
+  --line-2: #d6dae1;
+  --fill: #f3f5f8;
+  --accent: #1d5fbf;
+  --accent-bg: #e4ecf8;
+  --ok: #1d5fbf;
+  --ok-bg: #e4ecf8;
+  --err: #c62828;
+  --err-bg: #fbeaea;
+  --warn: #a8620a;
+  --warn-bg: #fdf3e2;
+  --head-bg: #16181d;
+  --head-fg: #ffffff;
+}
+html[data-theme="blueprint"][data-mode="dark"] {
+  --bg: #081322;
+  --paper: #0d1c31;
+  --ink: #e6edf7;
+  --ink-2: #a9b8cc;
+  --ink-3: #6b7f99;
+  --line: #c9d6e8;
+  --line-2: #23385a;
+  --fill: #12253f;
+  --accent: #6ea8ff;
+  --accent-bg: #16305a;
+  --ok: #6ea8ff;
+  --ok-bg: #16305a;
+  --err: #ff7070;
+  --err-bg: #3b1620;
+  --warn: #f0b14a;
+  --warn-bg: #3a2a10;
+  --head-bg: #e6edf7;
+  --head-fg: #081322;
+}
+@media (prefers-color-scheme: dark) {
+html[data-theme="blueprint"][data-mode="auto"] {
+  --bg: #081322;
+  --paper: #0d1c31;
+  --ink: #e6edf7;
+  --ink-2: #a9b8cc;
+  --ink-3: #6b7f99;
+  --line: #c9d6e8;
+  --line-2: #23385a;
+  --fill: #12253f;
+  --accent: #6ea8ff;
+  --accent-bg: #16305a;
+  --ok: #6ea8ff;
+  --ok-bg: #16305a;
+  --err: #ff7070;
+  --err-bg: #3b1620;
+  --warn: #f0b14a;
+  --warn-bg: #3a2a10;
+  --head-bg: #e6edf7;
+  --head-fg: #081322;
+}
+}
+
+html[data-theme="shadcn"], html[data-theme="shadcn"][data-mode="light"] {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --radius: 8px;
+  --shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+  --bw: 1px;
+  --head-font: var(--font-sans);
+  --bg: #fafafa;
+  --paper: #ffffff;
+  --ink: #09090b;
+  --ink-2: #71717a;
+  --ink-3: #a1a1aa;
+  --line: #e4e4e7;
+  --line-2: #f0f0f2;
+  --fill: #f4f4f5;
+  --accent: #2563eb;
+  --accent-bg: #eff6ff;
+  --ok: #16a34a;
+  --ok-bg: #f0fdf4;
+  --err: #dc2626;
+  --err-bg: #fef2f2;
+  --warn: #d97706;
+  --warn-bg: #fffbeb;
+  --head-bg: #18181b;
+  --head-fg: #fafafa;
+}
+html[data-theme="shadcn"][data-mode="dark"] {
+  --bg: #09090b;
+  --paper: #121215;
+  --ink: #fafafa;
+  --ink-2: #a1a1aa;
+  --ink-3: #71717a;
+  --line: #27272a;
+  --line-2: #1c1c1f;
+  --fill: #18181b;
+  --accent: #60a5fa;
+  --accent-bg: #172554;
+  --ok: #4ade80;
+  --ok-bg: #052e16;
+  --err: #f87171;
+  --err-bg: #450a0a;
+  --warn: #fbbf24;
+  --warn-bg: #451a03;
+  --head-bg: #fafafa;
+  --head-fg: #18181b;
+}
+@media (prefers-color-scheme: dark) {
+html[data-theme="shadcn"][data-mode="auto"] {
+  --bg: #09090b;
+  --paper: #121215;
+  --ink: #fafafa;
+  --ink-2: #a1a1aa;
+  --ink-3: #71717a;
+  --line: #27272a;
+  --line-2: #1c1c1f;
+  --fill: #18181b;
+  --accent: #60a5fa;
+  --accent-bg: #172554;
+  --ok: #4ade80;
+  --ok-bg: #052e16;
+  --err: #f87171;
+  --err-bg: #450a0a;
+  --warn: #fbbf24;
+  --warn-bg: #451a03;
+  --head-bg: #fafafa;
+  --head-fg: #18181b;
+}
+}
+
+html[lang="ja"][data-theme][data-mode] {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans CJK JP", "Noto Sans JP", "PingFang SC", "Microsoft YaHei", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+html[lang="ja"][data-theme="3b1b"][data-mode] {
+  --v-title-font: "CMU Serif", "Latin Modern Roman", "Iowan Old Style", "Palatino", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif CJK JP", "Noto Serif JP", "Songti SC", serif;
+}
+
+/* Answer me with HTML base — uses theme variables only, never hard-coded colors (theme tokens: themes/index.js). Exception: the var() fallbacks of diagrams (flow / sequence) equal the blueprint light tokens, guarded by a test. */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-sans); font-size: 14px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+code, pre, kbd { font-family: var(--font-mono); }
+
+/* ── Toolbar ─────────────────────────────── */
+.am-toolbar {
+  position: fixed; top: 12px; right: 12px; z-index: 10; display: flex; gap: 6px;
+}
+.am-btn {
+  font: 12px/1 var(--font-sans); color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line-2); border-radius: var(--radius); padding: 7px 10px; cursor: pointer;
+}
+.am-btn:hover { border-color: var(--ink-3); }
+.am-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Header ───────────────────────────────── */
+.am-head { margin: 0 0 20px; padding-right: 260px; }
+.am-head h1 { margin: 0; font-size: 24px; line-height: 1.25; letter-spacing: -0.01em; }
+.am-sub { margin: 4px 0 0; color: var(--ink-2); }
+.am-head-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 12px; color: var(--ink-2); }
+.am-head-meta b { font-family: var(--font-mono); font-weight: 400; color: var(--ink-3); margin-right: 6px; }
+.am-intro { margin-top: 12px; max-width: 80ch; }
+
+/* ── sheet template ────────────────────────── */
+.am-sheet { max-width: 1680px; margin: 0 auto; padding: 32px 28px 40px; }
+.am-frame { position: relative; }
+.am-grid {
+  display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: 20px; align-items: start;
+}
+.am-ruler { display: none; }
+html[data-theme="blueprint"] .am-frame { border: 1px solid var(--line); padding: 30px; }
+html[data-theme="blueprint"] .am-frame::before {
+  content: ""; position: absolute; inset: 18px; border: 1px solid var(--line); pointer-events: none;
+}
+html[data-theme="blueprint"] .am-ruler {
+  display: flex; position: absolute; font: 10px/1 var(--font-mono); color: var(--ink-3);
+}
+.am-ruler span { flex: 1; display: flex; align-items: center; justify-content: center; }
+.am-ruler--top, .am-ruler--bottom { left: 18px; right: 18px; height: 18px; }
+.am-ruler--top { top: 0; }
+.am-ruler--bottom { bottom: 0; }
+.am-ruler--left, .am-ruler--right { top: 18px; bottom: 18px; width: 18px; flex-direction: column; }
+.am-ruler--left { left: 0; }
+.am-ruler--right { right: 0; }
+.am-ruler--top span + span, .am-ruler--bottom span + span { border-left: 1px solid var(--line); }
+.am-ruler--left span + span, .am-ruler--right span + span { border-top: 1px solid var(--line); }
+
+/* ── Panels ───────────────────────────────── */
+.am-panel {
+  background: var(--paper); border: var(--bw) solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); min-width: 0; overflow: hidden;
+}
+.am-panel-head {
+  display: flex; align-items: stretch; gap: 0; border-bottom: var(--bw) solid var(--line); min-height: 34px;
+}
+.am-panel-id {
+  display: flex; align-items: center; justify-content: center; min-width: 34px; padding: 0 8px;
+  background: var(--head-bg); color: var(--head-fg); font-weight: 600; font-size: 14px;
+}
+html[data-theme="shadcn"] .am-panel-id { border-radius: 6px; min-width: 24px; height: 24px; margin: 9px 0 9px 14px; font-size: 12px; }
+html[data-theme="shadcn"] .am-panel-head { border-bottom-width: 1px; }
+.am-panel-head h2 { margin: 0; padding: 7px 12px; font-size: 15px; font-weight: 600; flex: 1; display: flex; align-items: center; }
+.am-panel-meta { align-self: center; padding: 0 12px; font: 11px/1.3 var(--font-mono); color: var(--ink-2); text-align: right; }
+.am-panel-body { padding: 14px 16px 16px; }
+.am-panel-body > * + * { margin-top: 12px; }
+
+/* ── Markdown body ───────────────────────── */
+.am-md > :first-child { margin-top: 0; }
+.am-md > :last-child { margin-bottom: 0; }
+.am-md p { margin: 0 0 8px; }
+.am-md ul, .am-md ol { margin: 0 0 8px; padding-left: 20px; }
+.am-md li + li { margin-top: 3px; }
+.am-md h3, .am-md h4 { margin: 14px 0 6px; font-size: 13px; }
+.am-md a { color: var(--accent); }
+.am-md blockquote { margin: 0 0 8px; padding: 2px 12px; border-left: 3px solid var(--line-2); color: var(--ink-2); }
+.am-md :not(pre) > code { font-size: 0.9em; background: var(--fill); padding: 1px 5px; border-radius: 4px; }
+.am-md hr { border: 0; border-top: 1px solid var(--line-2); margin: 12px 0; }
+.am-md table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.am-md th {
+  text-align: left; font: 11px/1.3 var(--font-mono); color: var(--ink-2); font-weight: 400;
+  padding: 6px 10px; border-bottom: 1px solid var(--line-2);
+}
+/* th { text-align: left } outranks the align attribute from Markdown alignment, so restore right and center columns explicitly. */
+.am-md th[align="right"] { text-align: right; }
+.am-md th[align="center"] { text-align: center; }
+.am-md td { padding: 7px 10px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+.am-md tbody tr:nth-child(even) td { background: var(--fill); }
+.am-table-wrap { overflow-x: auto; }
+.am-code {
+  margin: 0; padding: 12px 14px; background: var(--fill); border: 1px solid var(--line-2);
+  border-radius: var(--radius); overflow-x: auto; font-size: 12.5px; line-height: 1.5;
+}
+
+/* ── Status badges ok / no / warn ──────────────── */
+.am-status { white-space: nowrap; font-weight: 500; }
+.am-status--ok { color: var(--ok); }
+.am-status--no { color: var(--err); }
+.am-status--warn { color: var(--warn); }
+.am-status-icon { display: inline-block; width: 1.1em; font-weight: 700; }
+
+/* ── callout ─────────────────────────────── */
+.am-callout {
+  border: 1px solid var(--line-2); border-left: 3px solid var(--accent); background: var(--accent-bg);
+  padding: 10px 14px; border-radius: var(--radius);
+}
+.am-callout--ok { border-left-color: var(--ok); background: var(--ok-bg); }
+.am-callout--warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.am-callout--err { border-left-color: var(--err); background: var(--err-bg); }
+.am-callout-title { font-weight: 600; margin-bottom: 4px; }
+
+/* ── kv title block ─────────────────────────── */
+.am-kv {
+  display: grid; grid-template-columns: repeat(var(--kv-cols, 2), minmax(0, 1fr)); margin: 0;
+  border-top: var(--bw) solid var(--line); border-left: var(--bw) solid var(--line);
+}
+.am-kv-cell { border-right: var(--bw) solid var(--line); border-bottom: var(--bw) solid var(--line); padding: 6px 10px 8px; min-width: 0; }
+.am-kv-cell--wide { grid-column: 1 / -1; }
+.am-kv dt { font: 11px/1.4 var(--font-mono); color: var(--ink-2); }
+.am-kv dd { margin: 2px 0 0; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.am-kv-cell--wide dd { font-size: 17px; font-weight: 600; }
+html[data-theme="shadcn"] .am-kv { border-color: var(--line); border-radius: var(--radius); overflow: hidden; }
+
+/* ── timeline ────────────────────────────── */
+.am-timeline { list-style: none; margin: 0; padding: 0; }
+.am-timeline--h { display: grid; grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr)); padding-top: 4px; }
+.am-timeline--h li { position: relative; text-align: center; padding: 0 6px; }
+.am-timeline--h li::before {
+  content: ""; position: absolute; top: 31px; left: 0; right: 0; border-top: var(--bw) solid var(--line);
+}
+.am-timeline--h li:first-child::before { left: 50%; }
+.am-timeline--h li:last-child::before { right: 50%; }
+.am-tl-when { display: block; font-size: 15px; font-weight: 500; height: 24px; }
+.am-tl-dot {
+  position: relative; display: block; width: 11px; height: 11px; margin: 2px auto 8px;
+  border: var(--bw) solid var(--line); border-radius: 50%; background: var(--paper);
+}
+.am-tl-item--hi .am-tl-dot { background: var(--accent); border-color: var(--accent); }
+.am-tl-title { display: block; font-size: 12.5px; font-weight: 500; }
+.am-tl-text { display: block; font-size: 12px; color: var(--ink-2); line-height: 1.45; }
+.am-timeline--v li { position: relative; padding: 0 0 14px 22px; }
+.am-timeline--v li::before { content: ""; position: absolute; left: 5px; top: 6px; bottom: -6px; border-left: var(--bw) solid var(--line-2); }
+.am-timeline--v li:last-child::before { display: none; }
+.am-timeline--v .am-tl-dot { position: absolute; left: 0; top: 4px; margin: 0; }
+.am-timeline--v .am-tl-when { display: inline; height: auto; font: 12px var(--font-mono); color: var(--ink-2); margin-right: 8px; }
+.am-timeline--v .am-tl-title { display: inline; font-size: 14px; }
+.am-timeline--v .am-tl-text { margin-top: 2px; }
+
+/* ── annot sentence notes ──────────────────────── */
+.am-annot + .am-annot { border-top: 1px solid var(--line-2); padding-top: 12px; }
+.am-annot-head { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.am-annot-meta { font: 11px var(--font-mono); font-weight: 400; color: var(--ink-2); }
+.am-annot-scroll { overflow-x: auto; }
+.am-annot-line {
+  position: relative; display: inline-block; white-space: pre; font: 14px/1.6 var(--font-mono);
+  padding-bottom: calc(var(--rows, 0) * 17px + 14px);
+}
+.am-annot-line--wrap { display: block; white-space: normal; padding-bottom: 10px; }
+.am-annot-line--wrap .am-seg { white-space: nowrap; }
+.am-seg { position: relative; }
+.am-seg::after {
+  content: ""; position: absolute; left: 1px; right: 1px; top: calc(100% + 1px); height: 5px;
+  border: 1px solid var(--accent); border-top: 0;
+}
+.am-seg-n {
+  position: absolute; left: 0; top: calc(100% + 8px + var(--row, 0) * 17px);
+  font: 11px/16px var(--font-sans); color: var(--accent); white-space: nowrap;
+}
+.am-seg--err { color: var(--err); }
+.am-seg--err::after { border-color: var(--err); }
+.am-seg--err .am-seg-n { color: var(--err); }
+.am-annot-caption { font-size: 12px; color: var(--ink-2); }
+
+/* ── limits bars ───────────────────────── */
+.am-lim + .am-lim { margin-top: 14px; }
+.am-lim-head { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; margin-bottom: 4px; }
+.am-lim-val { font: 12px var(--font-mono); color: var(--accent); white-space: nowrap; }
+.am-lim-track { position: relative; height: 12px; border: 1px solid var(--line-2); background: var(--fill); border-radius: calc(var(--radius) / 2); }
+.am-lim-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent-bg); border-right: 1px solid var(--accent); }
+.am-lim-mark { position: absolute; top: -4px; bottom: -4px; border-left: 2px solid var(--accent); }
+.am-lim.is-over .am-lim-fill { background: var(--err-bg); border-right-color: var(--err); }
+.am-lim.is-over .am-lim-val { color: var(--err); }
+.am-lim-ticks { position: relative; height: 16px; font: 10px/16px var(--font-mono); color: var(--ink-3); }
+.am-lim-ticks span { position: absolute; transform: translateX(-50%); }
+.am-lim-ticks span:first-child { transform: none; }
+.am-lim-note { font-size: 11px; color: var(--ink-2); margin-left: 6px; }
+
+/* ── tree ─────────────────────────── */
+.am-tree { font-size: 13px; }
+.am-tree-root { display: flex; justify-content: center; position: relative; padding-bottom: 18px; }
+.am-tree-root::after { content: ""; position: absolute; bottom: 0; left: 50%; height: 18px; border-left: var(--bw) solid var(--line); }
+.am-tree-root--solo { padding-bottom: 12px; }
+.am-tree-root--solo::after { display: none; }
+.am-tree-box {
+  border: var(--bw) solid var(--line); background: var(--paper); padding: 6px 14px; text-align: center;
+  border-radius: var(--radius); font-weight: 600;
+}
+.am-tree-box small { display: block; font-weight: 400; color: var(--ink-2); font-size: 12px; }
+.am-tree-box--root { background: var(--accent-bg); font-size: 15px; padding: 8px 28px; }
+.am-tree-cols { display: grid; grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr)); }
+.am-tree-col { position: relative; padding: 18px 8px 0; min-width: 0; }
+.am-tree-col::before { content: ""; position: absolute; top: 0; left: 0; right: 0; border-top: var(--bw) solid var(--line); }
+.am-tree-col:first-child::before { left: 50%; }
+.am-tree-col:last-child::before { right: 50%; }
+.am-tree-col::after { content: ""; position: absolute; top: 0; left: 50%; height: 18px; border-left: var(--bw) solid var(--line); }
+.am-tree-list, .am-tree-list ul { list-style: none; margin: 0; padding: 0; }
+.am-tree-col > .am-tree-list { margin: 8px 0 0 14px; }
+.am-tree-list ul { margin-left: 16px; }
+.am-tree-list li { position: relative; padding: 3px 0 3px 18px; }
+.am-tree-list li::before { content: ""; position: absolute; left: 0; top: 0.95em; width: 12px; border-top: 1px solid var(--ink-3); }
+.am-tree-list li::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; border-left: 1px solid var(--ink-3); }
+.am-tree-list li:last-child::after { bottom: auto; height: 0.95em; }
+.am-tree-tag { font: 11px var(--font-mono); color: var(--ink-3); margin-right: 4px; }
+.am-tree code { font: 12px var(--font-mono); }
+.am-tree-sub { display: block; font-size: 11.5px; color: var(--ink-2); }
+.am-tree-hi > .am-tree-label { color: var(--accent); font-weight: 600; }
+
+/* ── Diagrams (flow / sequence) ───────────────── */
+.am-diagram { margin: 0; overflow-x: auto; text-align: center; }
+/* Embedded previews can lose html[data-theme]; the fallbacks keep diagrams readable, and defined theme variables still win. */
+.am-diagram svg { max-width: 100%; height: auto; font-family: var(--font-sans, sans-serif); }
+.am-diagram text { fill: var(--ink, #16181d); font-size: 13px; }
+.am-node-shape { fill: var(--paper, #ffffff); stroke: var(--line, #1d2026); stroke-width: var(--bw, 1.5px); }
+.am-node--hi .am-node-shape { fill: var(--accent-bg, #e4ecf8); stroke: var(--accent, #1d5fbf); }
+.am-node--hi text { fill: var(--accent, #1d5fbf); font-weight: 600; }
+.am-edge { fill: none; stroke: var(--ink-2, #4b5260); stroke-width: 1.3; }
+.am-edge--dashed { stroke-dasharray: 5 4; }
+.am-arrow { fill: var(--ink-2, #4b5260); }
+.am-edge-label rect { fill: var(--paper, #ffffff); }
+.am-diagram .am-edge-label text { fill: var(--accent, #1d5fbf); font-size: 11.5px; }
+.am-cluster { fill: var(--fill, #f3f5f8); stroke: var(--line-2, #d6dae1); stroke-width: 1; stroke-dasharray: 4 3; }
+.am-diagram .am-cluster-label { fill: var(--ink-2, #4b5260); font: 11px var(--font-mono, monospace); }
+.am-lifeline { stroke: var(--ink-3, #8b929e); stroke-width: 1; stroke-dasharray: 4 4; }
+.am-actor { fill: var(--paper, #ffffff); stroke: var(--line, #1d2026); stroke-width: var(--bw, 1.5px); }
+.am-note { fill: var(--warn-bg, #fdf3e2); stroke: var(--warn, #a8620a); stroke-width: 1; }
+.am-diagram .am-step { fill: var(--ink-3, #8b929e); font: 10px var(--font-mono, monospace); }
+
+/* ── doc template ────────────────────────── */
+.am-doc { max-width: 1120px; margin: 0 auto; padding: 40px 28px 64px; }
+.am-doc-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 32px; align-items: start; }
+.am-doc-layout--notoc { grid-template-columns: minmax(0, 1fr); max-width: 860px; }
+.am-toc { position: sticky; top: 24px; font-size: 13px; }
+.am-toc a { display: block; color: var(--ink-2); text-decoration: none; padding: 4px 0 4px 10px; border-left: 2px solid var(--line-2); }
+.am-toc a:hover { color: var(--ink); border-left-color: var(--accent); }
+.am-doc-body > .am-panel + .am-panel { margin-top: 20px; }
+
+/* ── Responsive and print ─────────────────────────── */
+@media (max-width: 1100px) {
+  .am-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .am-grid > .am-panel { grid-column: auto !important; }
+  .am-grid > .am-panel.am-span-wide { grid-column: 1 / -1 !important; }
+}
+@media (max-width: 760px) {
+  .am-sheet, .am-doc { padding: 56px 12px 24px; }
+  .am-head { padding-right: 0; }
+  .am-grid { grid-template-columns: minmax(0, 1fr); }
+  .am-grid > .am-panel.am-span-wide { grid-column: auto !important; }
+  html[data-theme="blueprint"] .am-frame { padding: 0; border: 0; }
+  html[data-theme="blueprint"] .am-frame::before, html[data-theme="blueprint"] .am-ruler { display: none; }
+  .am-doc-layout { grid-template-columns: minmax(0, 1fr); }
+  .am-toc { position: static; }
+  .am-timeline--h { grid-template-columns: minmax(0, 1fr); }
+  .am-tree-cols { grid-template-columns: minmax(0, 1fr); }
+  /* Tables and diagrams keep their size: the wrapper scrolls horizontally when they overflow. */
+  .am-md th, .am-md td { min-width: 6em; }
+  .am-diagram svg { max-width: none; }
+}
+.am-colophon { text-align: center; padding: 0 0 28px; font: 11px var(--font-mono); color: var(--ink-3); }
+
+@media print {
+  .am-toolbar { display: none; }
+  body { background: var(--paper); }
+  .am-panel { break-inside: avoid; box-shadow: none; }
+}
+.am-panel--bare { border: 0; background: transparent; box-shadow: none; }
+.am-panel--bare > .am-panel-body { padding: 0; }
+.am-panel--bare .am-kv { background: var(--paper); }
+
+</style>
+</head>
+<body>
+<div class="am-toolbar">
+<button class="am-btn" type="button" data-am="theme" data-labels="{&quot;blueprint&quot;:&quot;主题：图纸&quot;,&quot;shadcn&quot;:&quot;主题：卡片&quot;}">主题：图纸</button>
+<button class="am-btn" type="button" data-am="mode" data-labels="{&quot;auto&quot;:&quot;明暗：跟随系统&quot;,&quot;light&quot;:&quot;明暗：亮&quot;,&quot;dark&quot;:&quot;明暗：暗&quot;}">明暗：亮</button>
+<button class="am-btn" type="button" data-am="copy" data-done="已复制 ✓">复制源稿</button>
+</div>
+<main class="am-doc">
+<header class="am-head"><h1>采集与上品 · 架构总览</h1><p class="am-sub">从一条用户指令，到准确取数、制作商品和提交 Ozon</p><div class="am-head-meta"><span><b>version</b>2026-10-10 · 已对齐的设计</span></div><div class="am-intro am-md"><div class="am-md"><p>本轮不需要你再补充业务决定。剩余问题交给实现和验证解决。</p>
+<p>这是目标蓝图，不是上线报告。新采集能力、上品准备和包装维护表尚未实现。</p>
+</div></div></header>
+<div class="am-doc-layout">
+<nav class="am-toc" aria-label="目录"><a href="#panel-A">A · 先看结论</a><a href="#panel-B">B · 架构图：入口不变，采集来源可以替换</a><a href="#panel-C">C · 三个采集能力：少量工具，够用的资料</a><a href="#panel-D">D · 一句“这 10 个都上到 bill”如何执行</a><a href="#panel-E">E · SKU、包装与利润：程序直接处理</a><a href="#panel-F">F · 审核与异常：只在关键位置处理</a><a href="#panel-G">G · 哪些已经有，哪些这次做，哪些以后做</a><a href="#panel-H">H · 执行次序与验收：怎样算真正做完</a></nav><div class="am-doc-body">
+<section class="am-panel" id="panel-A">
+<header class="am-panel-head"><span class="am-panel-id">A</span><h2>先看结论</h2></header>
+<div class="am-panel-body"><div class="am-callout am-callout--ok" role="note"><div class="am-callout-title">已经对齐</div><div class="am-callout-body am-md"><p>DSH 承载两个应用：当前插件负责 Ozon 经营，未来采集箱负责来源资料。
+现在先用统一接口连接旧采集箱，以后换成新的采集应用。
+本次重点是工具流畅、数据准确；不另建“第六感”系统。</p>
+</div></div>
+<div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>决定</th>
+<th>已定方向</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>采集工具</td>
+<td>搜索、读资料、读依据和素材，共三个能力</td>
+</tr>
+<tr>
+<td>默认返回</td>
+<td>一个够用的资料形态，内容按需展开</td>
+</tr>
+<tr>
+<td>上品入口</td>
+<td>prepare 自动组合资料，不是审批</td>
+</tr>
+<tr>
+<td>商品规格</td>
+<td>支持多 SKU 同批、同 SKU 多件、跨 SKU 组合</td>
+</tr>
+<tr>
+<td>包装规则</td>
+<td>单组共用、重量叠加、尺寸复用；null 才问</td>
+</tr>
+<tr>
+<td>用户界面</td>
+<td>保留 ERP 表格、筛选、批量编辑与逐行状态</td>
+</tr>
+<tr>
+<td>写入审核</td>
+<td>所有经营写入走统一入口；规则能判断就直接处理</td>
+</tr>
+<tr>
+<td>Agent 职责</td>
+<td>用 skill 制作图文，查看成品，处理具体问题</td>
+</tr>
+</tbody></table></div>
+<p><a href="sku-packaging-lab.html">查看可操作的包装规则演示</a> · <a href="agent-listing-replay.html">查看逐步工具会话回放</a> · <a href="../collection-blueprint-v2.md">查看完整设计依据</a></p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-B">
+<header class="am-panel-head"><span class="am-panel-id">B</span><h2>架构图：入口不变，采集来源可以替换</h2></header>
+<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 376 756" width="376" height="756" role="img" aria-label="流程图：旧采集箱、旧平台适配器、未来采集应用、规范商品资料、Agent 精简输出、ERP 表格、当前插件、上品准备" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M119.9,49 L119.9,65 Q119.9,81 119.9,97 L119.9,113" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="103.4" y="72" width="33" height="18" rx="3"/><text x="119.9" y="81" text-anchor="middle" dominant-baseline="central">现在</text></g></g><g data-step="1"><path class="am-edge" d="M261.9,148 L261.9,164 Q261.9,180 241.1,196 L220.3,212" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="215.8" y="171" width="92.3" height="18" rx="3"/><text x="261.9" y="180" text-anchor="middle" dominant-baseline="central">以后 / 相同契约</text></g></g><g data-step="2"><path class="am-edge" d="M119.9,148 L119.9,164 Q119.9,180 145,196 L170.1,212" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="91.9" y="171" width="56" height="18" rx="3"/><text x="119.9" y="180" text-anchor="middle" dominant-baseline="central">字段映射</text></g></g><g data-step="3"><path class="am-edge" d="M234.7,247 L268.6,263 Q302.5,279 302.5,303.8 Q302.5,328.5 302.5,353.3 Q302.5,378 302.5,394 L302.5,410" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="268.8" y="319.5" width="67.5" height="18" rx="3"/><text x="302.5" y="328.5" text-anchor="middle" dominant-baseline="central">去重与分页</text></g></g><g data-step="4"><path class="am-edge" d="M197.6,247 L197.6,263 Q197.6,279 197.6,295 L197.6,311" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="163.8" y="270" width="67.5" height="18" rx="3"/><text x="197.6" y="279" text-anchor="middle" dominant-baseline="central">展示与编辑</text></g></g><g data-step="5"><path class="am-edge" d="M155.8,247 L117.5,263 Q79.3,279 79.3,295 L79.3,311" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="51.3" y="270" width="56" height="18" rx="3"/><text x="79.3" y="279" text-anchor="middle" dominant-baseline="central">商品事实</text></g></g><g data-step="6"><path class="am-edge" d="M79.3,346 L79.3,362 Q79.3,378 79.3,394 L79.3,410" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="15" y="369" width="128.7" height="18" rx="3"/><text x="79.3" y="378" text-anchor="middle" dominant-baseline="central">店铺关联 / 规则 / 类目</text></g></g><g data-step="7"><path class="am-edge" d="M302.5,445 L302.5,461 Q302.5,477 262.7,494.7 L222.9,512.3" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="263" y="468" width="79" height="18" rx="3"/><text x="302.5" y="477" text-anchor="middle" dominant-baseline="central">三个采集能力</text></g></g><g data-step="8"><path class="am-edge" d="M79.3,445 L79.3,461 Q79.3,477 119.1,494.7 L158.9,512.3" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="28.3" y="468" width="102" height="18" rx="3"/><text x="79.3" y="477" text-anchor="middle" dominant-baseline="central">一次准备必要资料</text></g></g><g data-step="9"><path class="am-edge" d="M190.9,544 L190.9,560 Q190.9,576 190.9,592 L190.9,608" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="157.2" y="567" width="67.5" height="18" rx="3"/><text x="190.9" y="576" text-anchor="middle" dominant-baseline="central">制作并提交</text></g></g><g data-step="10"><path class="am-edge" d="M190.9,643 L190.9,659 Q190.9,675 190.9,691 L190.9,707" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="145.7" y="666" width="90.5" height="18" rx="3"/><text x="190.9" y="675" text-anchor="middle" dominant-baseline="central">请求与结果跟踪</text></g></g></g><g><g class="am-node am-node--rect" data-key="旧采集箱" data-step="0"><rect class="am-node-shape" x="79.9" y="14" width="80" height="35" rx="3"/><text x="119.9" y="31.5" text-anchor="middle" dominant-baseline="central">旧采集箱</text></g><g class="am-node am-node--rect" data-key="旧平台适配器" data-step="0"><rect class="am-node-shape" x="66.9" y="113" width="106" height="35" rx="3"/><text x="119.9" y="130.5" text-anchor="middle" dominant-baseline="central">旧平台适配器</text></g><g class="am-node am-node--rect" data-key="未来采集应用" data-step="1"><rect class="am-node-shape" x="208.9" y="113" width="106" height="35" rx="3"/><text x="261.9" y="130.5" text-anchor="middle" dominant-baseline="central">未来采集应用</text></g><g class="am-node am-node--rect" data-key="规范商品资料" data-step="1"><rect class="am-node-shape" x="144.6" y="212" width="106" height="35" rx="3"/><text x="197.6" y="229.5" text-anchor="middle" dominant-baseline="central">规范商品资料</text></g><g class="am-node am-node--rect" data-key="Agent 精简输出" data-step="3"><rect class="am-node-shape" x="243.1" y="410" width="118.7" height="35" rx="3"/><text x="302.5" y="427.5" text-anchor="middle" dominant-baseline="central">Agent 精简输出</text></g><g class="am-node am-node--rect" data-key="ERP 表格" data-step="4"><rect class="am-node-shape" x="155.3" y="311" width="84.4" height="35" rx="3"/><text x="197.6" y="328.5" text-anchor="middle" dominant-baseline="central">ERP 表格</text></g><g class="am-node am-node--rect" data-key="当前插件" data-step="5"><rect class="am-node-shape" x="39.3" y="311" width="80" height="35" rx="3"/><text x="79.3" y="328.5" text-anchor="middle" dominant-baseline="central">当前插件</text></g><g class="am-node am-node--rect" data-key="上品准备" data-step="6"><rect class="am-node-shape" x="39.3" y="410" width="80" height="35" rx="3"/><text x="79.3" y="427.5" text-anchor="middle" dominant-baseline="central">上品准备</text></g><g class="am-node am-node--rect" data-key="Agent" data-step="7"><rect class="am-node-shape" x="158.9" y="509" width="64" height="35" rx="3"/><text x="190.9" y="526.5" text-anchor="middle" dominant-baseline="central">Agent</text></g><g class="am-node am-node--rect" data-key="统一审核执行" data-step="9"><rect class="am-node-shape" x="137.9" y="608" width="106" height="35" rx="3"/><text x="190.9" y="625.5" text-anchor="middle" dominant-baseline="central">统一审核执行</text></g><g class="am-node am-node--rect" data-key="Ozon" data-step="10"><rect class="am-node-shape" x="158.9" y="707" width="64" height="35" rx="3"/><text x="190.9" y="724.5" text-anchor="middle" dominant-baseline="central">Ozon</text></g></g></svg></figure>
+<div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>谁</th>
+<th>保存什么</th>
+<th>对外做什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>DSH</td>
+<td>会话与宿主运行上下文</td>
+<td>提供应用入口、工具和可用图片能力</td>
+</tr>
+<tr>
+<td>采集箱</td>
+<td>原文、来源商品、SKU、报价、属性、原图</td>
+<td>提供版本明确的规范资料</td>
+</tr>
+<tr>
+<td>当前插件</td>
+<td>采购关联、采用成本、包装覆盖、规则、草稿、回执</td>
+<td>定价、上品、调价、库存、下架与促销</td>
+</tr>
+<tr>
+<td>Agent + skill</td>
+<td>制作过程依托程序保存</td>
+<td>判断、写标题属性、制作图片、修改成品</td>
+</tr>
+</tbody></table></div>
+<p>这些是职责划分，不是要求新增多个服务进程。</p>
+<p>MySQL 属于未来采集应用内部。当前插件不直接读它的数据库表。</p>
+<p>图中的规范资料保留完整事实。Agent 和表格读取不同形态，但数据同源。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-C">
+<header class="am-panel-head"><span class="am-panel-id">C</span><h2>三个采集能力：少量工具，够用的资料</h2></header>
+<div class="am-panel-body"><div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>能力（拟新增）</th>
+<th>使用场景</th>
+<th>默认返回</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>collection.search</td>
+<td>找商品</td>
+<td>每页 30 张卡片、总数、来源与类目计数</td>
+</tr>
+<tr>
+<td>collection.read</td>
+<td>读取已知商品</td>
+<td>公共事实、SKU 表、主图、描述、未知与展开入口</td>
+</tr>
+<tr>
+<td>collection.resource.read</td>
+<td>看图或查依据</td>
+<td>可查看图片、指定原文、目录或下一段</td>
+</tr>
+</tbody></table></div>
+</div>
+<div class="am-tree"><div class="am-tree-root am-tree-root--solo"><div class="am-tree-box am-tree-box--root" data-key="默认商品资料" data-step="0">默认商品资料</div></div><ul class="am-tree-list"><li data-key="身份和版本" data-step="1"><span class="am-tree-label">身份和版本</span><span class="am-tree-sub">不靠标题、行号猜商品</span></li><li data-key="公共事实" data-step="2"><span class="am-tree-label">公共事实</span><span class="am-tree-sub">属性、包装、单位、起订量、海关编码</span></li><li data-key="SKU 表" data-step="3"><span class="am-tree-label">SKU 表</span><span class="am-tree-sub">列名一次，只写差异；默认最多 40 行</span></li><li data-key="图片" data-step="4"><span class="am-tree-label">图片</span><span class="am-tree-sub">主图地址与短编号；其他图片数量及入口</span></li><li data-key="来源描述" data-step="5"><span class="am-tree-label">来源描述</span><span class="am-tree-sub">前 1500 字和续读入口</span></li><li data-key="unknowns" data-step="6"><span class="am-tree-label">unknowns</span><span class="am-tree-sub">来源缺失、冲突等真正未知</span></li><li data-key="available" data-step="7"><span class="am-tree-label">available</span><span class="am-tree-sub">有资料，只是这次没有返回</span></li></ul></div>
+<div class="am-md"><p>关键词只匹配商品事实。“未上 bill”用店铺状态筛选，不匹配旧任务文字。</p>
+<p>“已在哪些店”来自当前插件的经营记录。部分规格上架、已发任务、已上架分别显示。</p>
+<p>包装数据只有一组时，按已定规则让所有 SKU 共用。</p>
+<p>图片由程序下载缓存。返回的资源必须在 Agent 所在环境可查看。</p>
+</div>
+<div class="am-callout am-callout--info" role="note"><div class="am-callout-title">为什么能少读很多</div><div class="am-callout-body am-md"><p>已知噪音不进默认返回：重复表单、可选值字典、多语言重复和旧任务明细。
+实际属性值与原始依据保留。Agent 可以追查，不依赖有损模型摘要。</p>
+</div></div>
+<div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>用户提供的原型测算</th>
+<th>旧返回</th>
+<th>精简返回</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>单商品处理后详情：中位数</td>
+<td>30 KB</td>
+<td>2.0 KB</td>
+</tr>
+<tr>
+<td>单商品处理后详情：最大</td>
+<td>137 KB</td>
+<td>9.6 KB</td>
+</tr>
+<tr>
+<td>搜索一页</td>
+<td>100 条约 129 KB</td>
+<td>30 条约 8 KB</td>
+</tr>
+</tbody></table></div>
+<p>这是原型字节统计，本轮未重跑。不是 token 测量，也不是上线承诺。
+搜索页条数不同，不能直接据此算同等任务节省比例。
+2 KB 不是上限；批量结果另有预算和继续读取入口。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-D">
+<header class="am-panel-head"><span class="am-panel-id">D</span><h2>一句“这 10 个都上到 bill”如何执行</h2></header>
+<div class="am-panel-body"><figure class="am-diagram am-seq"><svg viewBox="0 0 848 686" width="848" height="686" role="img" aria-label="时序图：你、Agent、当前插件、Ozon" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><line class="am-lifeline" x1="54" y1="42" x2="54" y2="682"/><g data-key="你"><rect class="am-actor" x="12" y="8" width="84" height="34" rx="2"/><text x="54" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">你</text></g><line class="am-lifeline" x1="280.1" y1="42" x2="280.1" y2="682"/><g data-key="Agent"><rect class="am-actor" x="238.1" y="8" width="84" height="34" rx="2"/><text x="280.1" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">Agent</text></g><line class="am-lifeline" x1="527" y1="42" x2="527" y2="682"/><g data-key="当前插件"><rect class="am-actor" x="485" y="8" width="84" height="34" rx="2"/><text x="527" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">当前插件</text></g><line class="am-lifeline" x1="793.1" y1="42" x2="793.1" y2="682"/><g data-key="Ozon"><rect class="am-actor" x="751.1" y="8" width="84" height="34" rx="2"/><text x="793.1" y="25" text-anchor="middle" dominant-baseline="central" font-weight="600">Ozon</text></g><g data-step="0"><text x="167.1" y="70" text-anchor="middle">10 个已选商品 / SKU + 上品指令</text><path class="am-edge" d="M54,80 L278.1,80" marker-end="url(#am2-arrow)"/><text class="am-step" x="60" y="74" text-anchor="start">1</text></g><g data-step="1"><text x="403.6" y="110" text-anchor="middle">listing.prepare（拟新增）</text><path class="am-edge" d="M280.1,120 L525,120" marker-end="url(#am2-arrow)"/><text class="am-step" x="286.1" y="114" text-anchor="start">2</text></g><g data-step="2"><text x="403.6" y="150" text-anchor="middle">资料、关联、规则、类目和包装结果</text><path class="am-edge am-edge--dashed" d="M527,160 L282.1,160" marker-end="url(#am2-arrow)"/><text class="am-step" x="521" y="154" text-anchor="end">3</text></g><g data-step="3"><text x="403.6" y="190" text-anchor="middle">resource.read（需要图片或原文时）</text><path class="am-edge" d="M280.1,200 L525,200" marker-end="url(#am2-arrow)"/><text class="am-step" x="286.1" y="194" text-anchor="start">4</text></g><g data-step="4"><text x="403.6" y="230" text-anchor="middle">可查看资源</text><path class="am-edge am-edge--dashed" d="M527,240 L282.1,240" marker-end="url(#am2-arrow)"/><text class="am-step" x="521" y="234" text-anchor="end">5</text></g><g data-step="5"><text x="320.1" y="268" dominant-baseline="central">按 skill 制作并查看实际成品</text><path class="am-edge" d="M280.1,264 H310.1 V284 H282.1" marker-end="url(#am2-arrow)"/><text class="am-step" x="286.1" y="274" text-anchor="start">6</text></g><g data-step="6"><text x="403.6" y="318" text-anchor="middle">plan.create / revise</text><path class="am-edge" d="M280.1,328 L525,328" marker-end="url(#am2-arrow)"/><text class="am-step" x="286.1" y="322" text-anchor="start">7</text></g><g data-step="7"><text x="403.6" y="358" text-anchor="middle">草稿、报价与具体缺项</text><path class="am-edge am-edge--dashed" d="M527,368 L282.1,368" marker-end="url(#am2-arrow)"/><text class="am-step" x="521" y="362" text-anchor="end">8</text></g><g data-step="8"><text x="403.6" y="398" text-anchor="middle">plan.submit</text><path class="am-edge" d="M280.1,408 L525,408" marker-end="url(#am2-arrow)"/><text class="am-step" x="286.1" y="402" text-anchor="start">9</text></g><g data-step="9"><text x="567" y="436" dominant-baseline="central">规则检查 / 必要的独立图文审核</text><path class="am-edge" d="M527,432 H557 V452 H529" marker-end="url(#am2-arrow)"/><text class="am-step" x="533" y="442" text-anchor="start">10</text></g><g data-step="10"><text x="660" y="486" text-anchor="middle">发送通过的行并跟踪回执</text><path class="am-edge" d="M527,496 L791.1,496" marker-end="url(#am2-arrow)"/><text class="am-step" x="533" y="490" text-anchor="start">11</text></g><g data-step="11"><text x="660" y="526" text-anchor="middle">处理中 / 字段错误 / 完成状态</text><path class="am-edge am-edge--dashed" d="M793.1,536 L529,536" marker-end="url(#am2-arrow)"/><text class="am-step" x="787.1" y="530" text-anchor="end">12</text></g><g data-step="12"><text x="403.6" y="566" text-anchor="middle">plan.get / inspect（按需）</text><path class="am-edge" d="M280.1,576 L525,576" marker-end="url(#am2-arrow)"/><text class="am-step" x="286.1" y="570" text-anchor="start">13</text></g><g data-step="13"><text x="403.6" y="606" text-anchor="middle">逐行结果，不重发成功商品</text><path class="am-edge am-edge--dashed" d="M527,616 L282.1,616" marker-end="url(#am2-arrow)"/><text class="am-step" x="521" y="610" text-anchor="end">14</text></g><g data-step="14"><text x="167.1" y="646" text-anchor="middle">完成情况和仍需决定的问题</text><path class="am-edge am-edge--dashed" d="M280.1,656 L56,656" marker-end="url(#am2-arrow)"/><text class="am-step" x="274.1" y="650" text-anchor="end">15</text></g></svg></figure>
+<div class="am-md"><p>有选择就不再搜索。prepare 组合资料，不增加审批或重复 facts。</p>
+<p>类目未定时返回候选，选定后再读该类目的必填字段。</p>
+<p>可一次处理十个，也可按资料量分批。批量大小不固定为三个。
+已读资料按版本复用，草稿和素材交程序保存。</p>
+<p>对话历史不会因为分批而自动消失。精简输出减少新增负担，不承诺清空模型记忆。</p>
+<div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>现有经营能力</th>
+<th>在流程中的用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>hallmark.pricing.read</td>
+<td>读取店铺规则</td>
+</tr>
+<tr>
+<td>hallmark.pricing.quote</td>
+<td>有需要才额外试算</td>
+</tr>
+<tr>
+<td>hallmark.plan.create / revise</td>
+<td>保存成品或修改对应行</td>
+</tr>
+<tr>
+<td>hallmark.plan.submit</td>
+<td>统一审核与提交</td>
+</tr>
+<tr>
+<td>hallmark.plan.get / inspect</td>
+<td>查看草稿或核查原请求</td>
+</tr>
+</tbody></table></div>
+<p><a href="agent-listing-replay.html">逐步回放工具参数与返回</a>。回放中明确区分已有能力和拟新增接口。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-E">
+<header class="am-panel-head"><span class="am-panel-id">E</span><h2>SKU、包装与利润：程序直接处理</h2></header>
+<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 572 276" width="572" height="276" role="img" aria-label="流程图：来源共用值、包装规则、SKU 专属值、用户维护表、销售组成与数量、草稿与定价、Agent 询问" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am3-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M120,244.5 L152.5,244.5 Q185,244.5 223.4,200 L261.9,155.5" marker-end="url(#am3-arrow)"/></g><g data-step="1"><path class="am-edge" d="M122.2,173.5 L153.6,173.5 Q185,173.5 211,163.5 L237,153.4" marker-end="url(#am3-arrow)"/></g><g data-step="2"><path class="am-edge" d="M120,102.5 L152.5,102.5 Q185,102.5 211,112.5 L237,122.6" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="157" y="93.5" width="56" height="18" rx="3"/><text x="185" y="102.5" text-anchor="middle" dominant-baseline="central">优先覆盖</text></g></g><g data-step="3"><path class="am-edge" d="M133,31.5 L159,31.5 Q185,31.5 223.4,76 L261.9,120.5" marker-end="url(#am3-arrow)"/></g><g data-step="4"><path class="am-edge" d="M317,150.5 L353.8,162 Q390.6,173.5 427.4,173.5 L464.2,173.5" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="356.9" y="164.5" width="67.5" height="18" rx="3"/><text x="390.6" y="173.5" text-anchor="middle" dominant-baseline="central">有值，继续</text></g></g><g data-step="5"><path class="am-edge" d="M317,125.5 L353.8,114 Q390.6,102.5 427.5,102.5 L464.4,102.5" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="341" y="93.5" width="99.2" height="18" rx="3"/><text x="390.6" y="102.5" text-anchor="middle" dominant-baseline="central">null，问具体缺项</text></g></g></g><g><g class="am-node am-node--rect" data-key="来源共用值" data-step="0"><rect class="am-node-shape" x="27" y="227" width="93" height="35" rx="3"/><text x="73.5" y="244.5" text-anchor="middle" dominant-baseline="central">来源共用值</text></g><g class="am-node am-node--rect" data-key="包装规则" data-step="0"><rect class="am-node-shape" x="237" y="120.5" width="80" height="35" rx="3"/><text x="277" y="138" text-anchor="middle" dominant-baseline="central">包装规则</text></g><g class="am-node am-node--rect" data-key="SKU 专属值" data-step="1"><rect class="am-node-shape" x="24.8" y="156" width="97.4" height="35" rx="3"/><text x="73.5" y="173.5" text-anchor="middle" dominant-baseline="central">SKU 专属值</text></g><g class="am-node am-node--rect" data-key="用户维护表" data-step="2"><rect class="am-node-shape" x="27" y="85" width="93" height="35" rx="3"/><text x="73.5" y="102.5" text-anchor="middle" dominant-baseline="central">用户维护表</text></g><g class="am-node am-node--rect" data-key="销售组成与数量" data-step="3"><rect class="am-node-shape" x="14" y="14" width="119" height="35" rx="3"/><text x="73.5" y="31.5" text-anchor="middle" dominant-baseline="central">销售组成与数量</text></g><g class="am-node am-node--rect" data-key="草稿与定价" data-step="4"><rect class="am-node-shape" x="464.2" y="156" width="93" height="35" rx="3"/><text x="510.7" y="173.5" text-anchor="middle" dominant-baseline="central">草稿与定价</text></g><g class="am-node am-node--rect" data-key="Agent 询问" data-step="5"><rect class="am-node-shape" x="464.4" y="85" width="92.7" height="35" rx="3"/><text x="510.7" y="102.5" text-anchor="middle" dominant-baseline="central">Agent 询问</text></g></g></svg></figure>
+<div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>规则</th>
+<th>程序如何做</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>商品只有一组包装</td>
+<td>默认全部 SKU 共用</td>
+</tr>
+<tr>
+<td>单 SKU</td>
+<td>用户维护 → SKU 来源 → 商品共用 → null</td>
+</tr>
+<tr>
+<td>多件或多 SKU</td>
+<td>成员重量 × 数量后相加</td>
+</tr>
+<tr>
+<td>组合尺寸</td>
+<td>用户维护或组合已有值优先，否则复用成员已有完整尺寸</td>
+</tr>
+<tr>
+<td>多组尺寸可选</td>
+<td>默认按保存的组成顺序取第一组，可在表格覆盖</td>
+</tr>
+<tr>
+<td>规则无结果</td>
+<td>按字段返回 null；不填零，不清空其他有效值</td>
+</tr>
+</tbody></table></div>
+<p>不要求重新测量，不新增包装审核，不让 Agent 再判断规则是否合理。</p>
+<p>用户维护表展示：商品/SKU、组成数量、长宽高、重量、取值方式和缺项。
+人工覆盖不被同步抹掉。清除覆盖后恢复自动规则。</p>
+<p>下方可以改数量、填写覆盖值或移除来源重量，查看规则如何返回结果。
+所有操作仅影响演示，不保存到真实应用。</p>
+</div>
+<iframe src="sku-packaging-lab.html" title="SKU 包装规则交互演示" style="width:100%;height:870px;border:0;border-radius:8px" loading="lazy"></iframe>
+<div class="am-md"><p><a href="sku-packaging-lab.html">单独打开包装演示</a>。若内嵌区域无法显示，可使用此入口。</p>
+<div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>动态物流规则</th>
+<th>已定值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>售价低于 135 元</td>
+<td>固定费 3.16 元</td>
+</tr>
+<tr>
+<td>售价达到 135 元</td>
+<td>固定费 18 元</td>
+</tr>
+<tr>
+<td>两方案共同部分</td>
+<td>39.3 元/kg，佣金 20%</td>
+</tr>
+<tr>
+<td>多方案条件重合</td>
+<td>取当前售价与重量下总费用最高的方案</td>
+</tr>
+<tr>
+<td>上品 / 日常调价目标</td>
+<td>60% / 5%，用于建议售价</td>
+</tr>
+<tr>
+<td>最低利润与售价限制</td>
+<td>独立可选设置，未设置就不额外加底线</td>
+</tr>
+</tbody></table></div>
+<p>上品定价和提交采用同一包装结果。135 元是切换点，不是售价上限。
+真实售价变化后重新匹配方案；动态计算会反映利润变化，并不保证任何折扣都不亏损。
+已有商品优先使用已取得的实际物流重量。历史记录不随新数据改写。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-F">
+<header class="am-panel-head"><span class="am-panel-id">F</span><h2>审核与异常：只在关键位置处理</h2></header>
+<div class="am-panel-body"><div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>事情</th>
+<th>谁负责</th>
+<th>Agent 要做什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>身份、采购组成、成本、公式、范围、重复请求</td>
+<td>程序</td>
+<td>使用结果，解决明确缺项</td>
+</tr>
+<tr>
+<td>包装共用、叠加、尺寸复用</td>
+<td>程序规则</td>
+<td>有值继续；null 才问</td>
+</tr>
+<tr>
+<td>标题、图片、件数和属性含义</td>
+<td>独立决策模型</td>
+<td>根据具体意见修改实际成品</td>
+</tr>
+<tr>
+<td>决策模型不可用</td>
+<td>Host 的独立模型子代理</td>
+<td>无需主 Agent 自己宣布通过</td>
+</tr>
+<tr>
+<td>Ozon 字段拒绝</td>
+<td>平台 + 错误翻译</td>
+<td>看哪个字段、原因、怎么改</td>
+</tr>
+<tr>
+<td>限流、处理中、未知写入结果</td>
+<td>后台执行程序</td>
+<td>按原请求查看，不换身份重发</td>
+</tr>
+<tr>
+<td>关键事实或经营意图无法确定</td>
+<td>用户</td>
+<td>Agent 只问具体问题</td>
+</tr>
+</tbody></table></div>
+<p>决策模型沿用 OpenRouter 的 openai/gpt-6-luna-decisions。
+服务端读取环境变量 openrouter；工具、页面和 Agent 上下文不返回密钥。</p>
+<p>机械检查能补全就自动补全；Ozon 自己校验的内容不在本地再建一套。
+没有“我看过了”的声明、双录 facts、强制重复回读或固定等待 60 秒。</p>
+<p>同一内容问题首次退回后，允许两次实际修改尝试，再决定是否升级。
+技术等待不消耗修改次数。修改共享内容时，程序识别受影响的销售行。</p>
+</div>
+<div class="am-callout am-callout--info" role="note"><div class="am-callout-title">三种状态要分开</div><div class="am-callout-body am-md"><p>已发送、已导入、已上架不是同一件事。
+程序和 Agent 只汇报已经取得依据的状态。</p>
+</div></div></div>
+</section>
+<section class="am-panel" id="panel-G">
+<header class="am-panel-head"><span class="am-panel-id">G</span><h2>哪些已经有，哪些这次做，哪些以后做</h2></header>
+<div class="am-panel-body"><div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>内容</th>
+<th>对旧平台的关系</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>已有基础</td>
+<td>独立店铺凭据、Ozon 请求、经营规则、动态利润、草稿及审核执行</td>
+<td>部分准备过程仍读旧采购详情</td>
+</tr>
+<tr>
+<td>本次目标</td>
+<td>三个采集能力、精简资料、资源访问、prepare、多 SKU 包装维护</td>
+<td>采集仍来自旧平台，但经营调用不再散落依赖旧接口</td>
+</tr>
+<tr>
+<td>本次迁出</td>
+<td>历史采购关联、旧费率参考、旧回执与经营启动依赖</td>
+<td>在当前插件保存，日常经营逐步独立</td>
+</tr>
+<tr>
+<td>以后完成</td>
+<td>DSH 独立采集应用、MySQL、采集管理界面与数据素材搬迁</td>
+<td>最终替换旧采集提供者</td>
+</tr>
+</tbody></table></div>
+<p>旧原始读取入口留作显式追查。新 Agent 默认用新能力。
+旧表格需要的结构由兼容层保留，结构变更同时升级契约和调用方。</p>
+<p>采集资料暂留旧平台期间，还不能宣称彻底关闭旧平台。
+同一数据源搬家保留商品、SKU、素材身份与历史关联。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-H">
+<header class="am-panel-head"><span class="am-panel-id">H</span><h2>执行次序与验收：怎样算真正做完</h2></header>
+<div class="am-panel-body"><ol class="am-timeline am-timeline--v"><li class="am-tl-item"><span class="am-tl-when">01</span><span class="am-tl-dot"></span><span class="am-tl-title">固定资料与接口</span><span class="am-tl-text">统一身份、字段含义、默认返回与继续读取方式</span></li><li class="am-tl-item"><span class="am-tl-when">02</span><span class="am-tl-dot"></span><span class="am-tl-title">接入旧采集箱</span><span class="am-tl-text">来源映射、搜索去噪、SKU 分页、图片直接查看</span></li><li class="am-tl-item"><span class="am-tl-when">03</span><span class="am-tl-dot"></span><span class="am-tl-title">接入经营准备</span><span class="am-tl-text">prepare 组合店铺、类目、包装和规则</span></li><li class="am-tl-item"><span class="am-tl-when">04</span><span class="am-tl-dot"></span><span class="am-tl-title">做维护表与多 SKU</span><span class="am-tl-text">单 SKU、组合 SKU、人工覆盖与 null 分支</span></li><li class="am-tl-item"><span class="am-tl-when">05</span><span class="am-tl-dot"></span><span class="am-tl-title">接通原经营流程</span><span class="am-tl-text">草稿、审核、执行、部分失败与旧调用迁移</span></li><li class="am-tl-item"><span class="am-tl-when">06</span><span class="am-tl-dot"></span><span class="am-tl-title">验证并安装</span><span class="am-tl-text">按真实调用检查资料、成品、回执与 DSH 使用</span></li></ol>
+<div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>验收情景</th>
+<th>应看到的结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>阿里来源字段多</td>
+<td>关键属性、包装、单位可读；编辑器噪音不默认返回</td>
+</tr>
+<tr>
+<td>淘宝有 335 个 SKU</td>
+<td>分页不漏行，SKU 与图片精确关联</td>
+</tr>
+<tr>
+<td>一组包装、多个颜色</td>
+<td>自动共用，不要求额外声明</td>
+</tr>
+<tr>
+<td>红杯两只或红蓝组合</td>
+<td>重量叠加、尺寸复用；人工覆盖生效</td>
+</tr>
+<tr>
+<td>规则算不出重量</td>
+<td>返回 null，只问该项，其余商品继续</td>
+</tr>
+<tr>
+<td>十个商品部分失败</td>
+<td>修失败行，成功行不重发</td>
+</tr>
+<tr>
+<td>切换采集提供者</td>
+<td>Agent 用法不变，历史商品关系不丢</td>
+</tr>
+</tbody></table></div>
+<p>阿里与淘宝先按样本验证；1688、拼多多样本不足，需补映射测试。
+DSH 资源路径、具体调用接线、缓存和返回预算由实现核实。
+这些是工程验证项，不要求你再选择一套业务方案。</p>
+<p>当前交付是蓝图总览和可操作演示。生产接口、维护表、数据迁移及部署仍待实施。</p>
+<p><a href="../collection-blueprint-v2.md">详细设计与源码依据</a> · <a href="agent-listing-replay.html">会话回放</a> · <a href="sku-packaging-lab.html">包装规则演示</a></p>
+</div></div>
+</section>
+</div>
+</div>
+</main>
+<footer class="am-colophon">Generated by Answer me with HTML 0.4.8 · 2026-10-10 14:51</footer>
+<textarea id="am-source" hidden readonly aria-hidden="true">---
+title: 采集与上品 · 架构总览
+subtitle: 从一条用户指令，到准确取数、制作商品和提交 Ozon
+template: doc
+theme: blueprint
+mode: light
+style: 80
+lang: zh
+version: 2026-10-10 · 已对齐的设计
+---
+
+本轮不需要你再补充业务决定。剩余问题交给实现和验证解决。
+
+这是目标蓝图，不是上线报告。新采集能力、上品准备和包装维护表尚未实现。
+
+## A 先看结论
+
+```callout ok 已经对齐
+DSH 承载两个应用：当前插件负责 Ozon 经营，未来采集箱负责来源资料。
+现在先用统一接口连接旧采集箱，以后换成新的采集应用。
+本次重点是工具流畅、数据准确；不另建“第六感”系统。
+```
+
+| 决定 | 已定方向 |
+| --- | --- |
+| 采集工具 | 搜索、读资料、读依据和素材，共三个能力 |
+| 默认返回 | 一个够用的资料形态，内容按需展开 |
+| 上品入口 | prepare 自动组合资料，不是审批 |
+| 商品规格 | 支持多 SKU 同批、同 SKU 多件、跨 SKU 组合 |
+| 包装规则 | 单组共用、重量叠加、尺寸复用；null 才问 |
+| 用户界面 | 保留 ERP 表格、筛选、批量编辑与逐行状态 |
+| 写入审核 | 所有经营写入走统一入口；规则能判断就直接处理 |
+| Agent 职责 | 用 skill 制作图文，查看成品，处理具体问题 |
+
+[查看可操作的包装规则演示](sku-packaging-lab.html) · [查看逐步工具会话回放](agent-listing-replay.html) · [查看完整设计依据](../collection-blueprint-v2.md)
+
+## B 架构图：入口不变，采集来源可以替换
+
+```flow
+旧采集箱 -&gt; 旧平台适配器: 现在
+未来采集应用 -&gt; 规范商品资料: 以后 / 相同契约
+旧平台适配器 -&gt; 规范商品资料: 字段映射
+规范商品资料 -&gt; Agent 精简输出: 去重与分页
+规范商品资料 -&gt; ERP 表格: 展示与编辑
+规范商品资料 -&gt; 当前插件: 商品事实
+当前插件 -&gt; 上品准备: 店铺关联 / 规则 / 类目
+Agent 精简输出 -&gt; Agent: 三个采集能力
+上品准备 -&gt; Agent: 一次准备必要资料
+Agent -&gt; 统一审核执行: 制作并提交
+统一审核执行 -&gt; Ozon: 请求与结果跟踪
+```
+
+| 谁 | 保存什么 | 对外做什么 |
+| --- | --- | --- |
+| DSH | 会话与宿主运行上下文 | 提供应用入口、工具和可用图片能力 |
+| 采集箱 | 原文、来源商品、SKU、报价、属性、原图 | 提供版本明确的规范资料 |
+| 当前插件 | 采购关联、采用成本、包装覆盖、规则、草稿、回执 | 定价、上品、调价、库存、下架与促销 |
+| Agent + skill | 制作过程依托程序保存 | 判断、写标题属性、制作图片、修改成品 |
+
+这些是职责划分，不是要求新增多个服务进程。
+
+MySQL 属于未来采集应用内部。当前插件不直接读它的数据库表。
+
+图中的规范资料保留完整事实。Agent 和表格读取不同形态，但数据同源。
+
+## C 三个采集能力：少量工具，够用的资料
+
+| 能力（拟新增） | 使用场景 | 默认返回 |
+| --- | --- | --- |
+| collection.search | 找商品 | 每页 30 张卡片、总数、来源与类目计数 |
+| collection.read | 读取已知商品 | 公共事实、SKU 表、主图、描述、未知与展开入口 |
+| collection.resource.read | 看图或查依据 | 可查看图片、指定原文、目录或下一段 |
+
+```tree
+默认商品资料
+  身份和版本 | 不靠标题、行号猜商品
+  公共事实 | 属性、包装、单位、起订量、海关编码
+  SKU 表 | 列名一次，只写差异；默认最多 40 行
+  图片 | 主图地址与短编号；其他图片数量及入口
+  来源描述 | 前 1500 字和续读入口
+  unknowns | 来源缺失、冲突等真正未知
+  available | 有资料，只是这次没有返回
+```
+
+关键词只匹配商品事实。“未上 bill”用店铺状态筛选，不匹配旧任务文字。
+
+“已在哪些店”来自当前插件的经营记录。部分规格上架、已发任务、已上架分别显示。
+
+包装数据只有一组时，按已定规则让所有 SKU 共用。
+
+图片由程序下载缓存。返回的资源必须在 Agent 所在环境可查看。
+
+```callout info 为什么能少读很多
+已知噪音不进默认返回：重复表单、可选值字典、多语言重复和旧任务明细。
+实际属性值与原始依据保留。Agent 可以追查，不依赖有损模型摘要。
+```
+
+| 用户提供的原型测算 | 旧返回 | 精简返回 |
+| --- | --- | --- |
+| 单商品处理后详情：中位数 | 30 KB | 2.0 KB |
+| 单商品处理后详情：最大 | 137 KB | 9.6 KB |
+| 搜索一页 | 100 条约 129 KB | 30 条约 8 KB |
+
+这是原型字节统计，本轮未重跑。不是 token 测量，也不是上线承诺。
+搜索页条数不同，不能直接据此算同等任务节省比例。
+2 KB 不是上限；批量结果另有预算和继续读取入口。
+
+## D 一句“这 10 个都上到 bill”如何执行
+
+```sequence num
+participants: 你, Agent, 当前插件, Ozon
+你 -&gt; Agent: 10 个已选商品 / SKU + 上品指令
+Agent -&gt; 当前插件: listing.prepare（拟新增）
+当前插件 --&gt; Agent: 资料、关联、规则、类目和包装结果
+Agent -&gt; 当前插件: resource.read（需要图片或原文时）
+当前插件 --&gt; Agent: 可查看资源
+Agent -&gt; Agent: 按 skill 制作并查看实际成品
+Agent -&gt; 当前插件: plan.create / revise
+当前插件 --&gt; Agent: 草稿、报价与具体缺项
+Agent -&gt; 当前插件: plan.submit
+当前插件 -&gt; 当前插件: 规则检查 / 必要的独立图文审核
+当前插件 -&gt; Ozon: 发送通过的行并跟踪回执
+Ozon --&gt; 当前插件: 处理中 / 字段错误 / 完成状态
+Agent -&gt; 当前插件: plan.get / inspect（按需）
+当前插件 --&gt; Agent: 逐行结果，不重发成功商品
+Agent --&gt; 你: 完成情况和仍需决定的问题
+```
+
+有选择就不再搜索。prepare 组合资料，不增加审批或重复 facts。
+
+类目未定时返回候选，选定后再读该类目的必填字段。
+
+可一次处理十个，也可按资料量分批。批量大小不固定为三个。
+已读资料按版本复用，草稿和素材交程序保存。
+
+对话历史不会因为分批而自动消失。精简输出减少新增负担，不承诺清空模型记忆。
+
+| 现有经营能力 | 在流程中的用途 |
+| --- | --- |
+| hallmark.pricing.read | 读取店铺规则 |
+| hallmark.pricing.quote | 有需要才额外试算 |
+| hallmark.plan.create / revise | 保存成品或修改对应行 |
+| hallmark.plan.submit | 统一审核与提交 |
+| hallmark.plan.get / inspect | 查看草稿或核查原请求 |
+
+[逐步回放工具参数与返回](agent-listing-replay.html)。回放中明确区分已有能力和拟新增接口。
+
+## E SKU、包装与利润：程序直接处理
+
+```flow LR
+来源共用值 -&gt; 包装规则
+SKU 专属值 -&gt; 包装规则
+用户维护表 -&gt; 包装规则: 优先覆盖
+销售组成与数量 -&gt; 包装规则
+包装规则 -&gt; 草稿与定价: 有值，继续
+包装规则 -&gt; Agent 询问: null，问具体缺项
+```
+
+| 规则 | 程序如何做 |
+| --- | --- |
+| 商品只有一组包装 | 默认全部 SKU 共用 |
+| 单 SKU | 用户维护 → SKU 来源 → 商品共用 → null |
+| 多件或多 SKU | 成员重量 × 数量后相加 |
+| 组合尺寸 | 用户维护或组合已有值优先，否则复用成员已有完整尺寸 |
+| 多组尺寸可选 | 默认按保存的组成顺序取第一组，可在表格覆盖 |
+| 规则无结果 | 按字段返回 null；不填零，不清空其他有效值 |
+
+不要求重新测量，不新增包装审核，不让 Agent 再判断规则是否合理。
+
+用户维护表展示：商品/SKU、组成数量、长宽高、重量、取值方式和缺项。
+人工覆盖不被同步抹掉。清除覆盖后恢复自动规则。
+
+下方可以改数量、填写覆盖值或移除来源重量，查看规则如何返回结果。
+所有操作仅影响演示，不保存到真实应用。
+
+```html
+&lt;iframe src=&quot;sku-packaging-lab.html&quot; title=&quot;SKU 包装规则交互演示&quot; style=&quot;width:100%;height:870px;border:0;border-radius:8px&quot; loading=&quot;lazy&quot;&gt;&lt;/iframe&gt;
+```
+
+[单独打开包装演示](sku-packaging-lab.html)。若内嵌区域无法显示，可使用此入口。
+
+| 动态物流规则 | 已定值 |
+| --- | --- |
+| 售价低于 135 元 | 固定费 3.16 元 |
+| 售价达到 135 元 | 固定费 18 元 |
+| 两方案共同部分 | 39.3 元/kg，佣金 20% |
+| 多方案条件重合 | 取当前售价与重量下总费用最高的方案 |
+| 上品 / 日常调价目标 | 60% / 5%，用于建议售价 |
+| 最低利润与售价限制 | 独立可选设置，未设置就不额外加底线 |
+
+上品定价和提交采用同一包装结果。135 元是切换点，不是售价上限。
+真实售价变化后重新匹配方案；动态计算会反映利润变化，并不保证任何折扣都不亏损。
+已有商品优先使用已取得的实际物流重量。历史记录不随新数据改写。
+
+## F 审核与异常：只在关键位置处理
+
+| 事情 | 谁负责 | Agent 要做什么 |
+| --- | --- | --- |
+| 身份、采购组成、成本、公式、范围、重复请求 | 程序 | 使用结果，解决明确缺项 |
+| 包装共用、叠加、尺寸复用 | 程序规则 | 有值继续；null 才问 |
+| 标题、图片、件数和属性含义 | 独立决策模型 | 根据具体意见修改实际成品 |
+| 决策模型不可用 | Host 的独立模型子代理 | 无需主 Agent 自己宣布通过 |
+| Ozon 字段拒绝 | 平台 + 错误翻译 | 看哪个字段、原因、怎么改 |
+| 限流、处理中、未知写入结果 | 后台执行程序 | 按原请求查看，不换身份重发 |
+| 关键事实或经营意图无法确定 | 用户 | Agent 只问具体问题 |
+
+决策模型沿用 OpenRouter 的 openai/gpt-6-luna-decisions。
+服务端读取环境变量 openrouter；工具、页面和 Agent 上下文不返回密钥。
+
+机械检查能补全就自动补全；Ozon 自己校验的内容不在本地再建一套。
+没有“我看过了”的声明、双录 facts、强制重复回读或固定等待 60 秒。
+
+同一内容问题首次退回后，允许两次实际修改尝试，再决定是否升级。
+技术等待不消耗修改次数。修改共享内容时，程序识别受影响的销售行。
+
+```callout info 三种状态要分开
+已发送、已导入、已上架不是同一件事。
+程序和 Agent 只汇报已经取得依据的状态。
+```
+
+## G 哪些已经有，哪些这次做，哪些以后做
+
+| 阶段 | 内容 | 对旧平台的关系 |
+| --- | --- | --- |
+| 已有基础 | 独立店铺凭据、Ozon 请求、经营规则、动态利润、草稿及审核执行 | 部分准备过程仍读旧采购详情 |
+| 本次目标 | 三个采集能力、精简资料、资源访问、prepare、多 SKU 包装维护 | 采集仍来自旧平台，但经营调用不再散落依赖旧接口 |
+| 本次迁出 | 历史采购关联、旧费率参考、旧回执与经营启动依赖 | 在当前插件保存，日常经营逐步独立 |
+| 以后完成 | DSH 独立采集应用、MySQL、采集管理界面与数据素材搬迁 | 最终替换旧采集提供者 |
+
+旧原始读取入口留作显式追查。新 Agent 默认用新能力。
+旧表格需要的结构由兼容层保留，结构变更同时升级契约和调用方。
+
+采集资料暂留旧平台期间，还不能宣称彻底关闭旧平台。
+同一数据源搬家保留商品、SKU、素材身份与历史关联。
+
+## H 执行次序与验收：怎样算真正做完
+
+```timeline v
+01 | 固定资料与接口 | 统一身份、字段含义、默认返回与继续读取方式
+02 | 接入旧采集箱 | 来源映射、搜索去噪、SKU 分页、图片直接查看
+03 | 接入经营准备 | prepare 组合店铺、类目、包装和规则
+04 | 做维护表与多 SKU | 单 SKU、组合 SKU、人工覆盖与 null 分支
+05 | 接通原经营流程 | 草稿、审核、执行、部分失败与旧调用迁移
+06 | 验证并安装 | 按真实调用检查资料、成品、回执与 DSH 使用
+```
+
+| 验收情景 | 应看到的结果 |
+| --- | --- |
+| 阿里来源字段多 | 关键属性、包装、单位可读；编辑器噪音不默认返回 |
+| 淘宝有 335 个 SKU | 分页不漏行，SKU 与图片精确关联 |
+| 一组包装、多个颜色 | 自动共用，不要求额外声明 |
+| 红杯两只或红蓝组合 | 重量叠加、尺寸复用；人工覆盖生效 |
+| 规则算不出重量 | 返回 null，只问该项，其余商品继续 |
+| 十个商品部分失败 | 修失败行，成功行不重发 |
+| 切换采集提供者 | Agent 用法不变，历史商品关系不丢 |
+
+阿里与淘宝先按样本验证；1688、拼多多样本不足，需补映射测试。
+DSH 资源路径、具体调用接线、缓存和返回预算由实现核实。
+这些是工程验证项，不要求你再选择一套业务方案。
+
+当前交付是蓝图总览和可操作演示。生产接口、维护表、数据迁移及部署仍待实施。
+
+[详细设计与源码依据](../collection-blueprint-v2.md) · [会话回放](agent-listing-replay.html) · [包装规则演示](sku-packaging-lab.html)
+</textarea>
+<script>
+(() => {
+  const root = document.documentElement;
+  const cycle = (list, cur) => list[(list.indexOf(cur) + 1) % list.length];
+  const label = (btn, value) => {
+    const map = JSON.parse(btn.dataset.labels || '{}');
+    btn.textContent = map[value] || value;
+  };
+  const bind = (name, attr, values) => {
+    const btn = document.querySelector(`[data-am="${name}"]`);
+    if (!btn) return;
+    label(btn, root.getAttribute(attr));
+    btn.addEventListener('click', () => {
+      const next = cycle(values, root.getAttribute(attr));
+      root.setAttribute(attr, next);
+      label(btn, next);
+    });
+  };
+  bind('theme', 'data-theme', ['blueprint', 'shadcn']);
+  bind('mode', 'data-mode', ['auto', 'light', 'dark']);
+
+  const copyBtn = document.querySelector('[data-am="copy"]');
+  copyBtn?.addEventListener('click', async () => {
+    const nodes = document.querySelectorAll('#am-source');
+    const text = nodes[nodes.length - 1]?.value ?? '';
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = Object.assign(document.createElement('textarea'), { value: text });
+      document.body.append(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    const original = copyBtn.textContent;
+    copyBtn.textContent = copyBtn.dataset.done;
+    setTimeout(() => { copyBtn.textContent = original; }, 1400);
+  });
+})();
+</script>
+</body>
+</html>

@@ -131,5 +131,5 @@ foreach ($artifact in $artifactProperties) {
 $record.installed = $true
 $record | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $resolvedBackup 'backup.json') -Encoding utf8
 Write-Output ('Updated the original desktop plugin to ' + $candidateVersion + '. Reopen and verify matching Host/Runtime/schema4; rollback: ' + (Join-Path $resolvedBackup 'rollback.ps1'))
-# Replace the old local authoring instructions together with the plugin update.
-& (Join-Path $PSScriptRoot 'install-design-skills.ps1') -LocalOnly -DestinationDirectory (Join-Path (Split-Path -Parent (Split-Path -Parent $profile)) 'skills')
+# Install exact verified candidate skills into the official filesystem provider's user root.
+& (Join-Path $installedDirectory 'lib/install-skills.ps1') -LocalOnly -SourceDirectory (Join-Path $installedDirectory 'skills') -DestinationDirectory (Join-Path $dshStateRoot 'skills')

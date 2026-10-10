@@ -17,12 +17,21 @@ export interface AdapterResult<T = unknown> {
 export interface HallmarkStore { id: string; shopName: string; platform?: string; status?: string; authStatus?: string; [key: string]: unknown }
 export interface HallmarkTask {
   id: string; kind: string; status: string; storeId?: string; productId?: string;
-  salesVariants?: Array<{ salesSkuId: string; sourceSkuId: string; [key: string]: unknown }>;
+  salesVariants?: TaskSalesVariant[];
   listingGroup?: { skuCodes?: string[]; [key: string]: unknown };
   autonomousSkuCodes?: string[];
   assignmentSnapshot?: { item?: { skuCodes?: string[]; [key: string]: unknown }; [key: string]: unknown };
   [key: string]: unknown;
 }
+export interface TaskSalesVariant {
+  salesSkuId: string;
+  sourceSkuId?: string;
+  components?: Array<{ sourceSkuId: string; quantity: number }>;
+  spec: string;
+  [key: string]: unknown;
+}
+export interface RegisterTaskSalesVariantsInput { variants: TaskSalesVariant[]; reason: string }
+export interface RegisterTaskSalesVariantsResult { taskId: string; created: boolean; salesVariants: TaskSalesVariant[]; directContext: unknown }
 export interface CollectedItemSummary { id: string; title: string; skuCount: number; source?: string; [key: string]: unknown }
 export interface CollectedItemRaw { id: string; content: string; truncated: boolean }
 export interface StoreProductSnapshot {

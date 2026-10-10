@@ -2,19 +2,20 @@ import {createHash,randomUUID} from 'node:crypto';
 import {canonicalJson} from '../../app-contracts/src/index.ts';
 import type {CapabilityDescriptor,JsonSchema} from '../../app-contracts/src/index.ts';
 import type {ToolResult} from '../../contracts/src/index.ts';
-import type {AdapterResponse,CoreClient,CoreStore,RecordData} from '../../core/src/types.ts';
+import type {AdapterResponse,CoreStore,RecordData} from '../../core/src/types.ts';
 import {clean} from '../../core/src/types.ts';
 import type {PlatformCallInput} from '../../hallmark-adapter/types.ts';
 import type {DataSourceDraft,DataSourceParameter} from '../../app-presentation/src/types.ts';
 import {OZON_FIELD_META} from './ozon-fields.ts';
 import {readCompleteSnapshot,SNAPSHOT_CACHE_SCHEMA,snapshotGeneration,snapshotAccessFailure,invalidateStoreSnapshots} from './snapshot-cache.ts';
 
-export const OZON_KINDS=['products','prices','warehouses','stocks','analytics','orders','weights','finance','promotions','returns'] as const;
+export const OZON_KINDS=['products','ratings','prices','warehouses','stocks','analytics','orders','weights','finance','promotions','returns'] as const;
 export type OzonKind=typeof OZON_KINDS[number];
 type Row=Record<string,string|number|null>;
 interface SourceSpec {title:string;description:string;fields:string[];parameters?:string[];required?:string[]}
 const specs:Record<OzonKind,SourceSpec>={
  products:{title:'商品资料与状态',description:'读取店铺商品资料、平台状态和异常说明。',fields:['productId','offerId','sku','title','image','status','statusCode','statusRaw','errorReason'],parameters:['productId','sku']},
+ ratings:{title:'商品内容评级',description:'按 Ozon SKU 读取内容评级（0–100 分）并附商品状态；未返回评级保持未知。支持单 SKU 或全店分页，只读且不修改商品。',fields:['productId','offerId','sku','title','status','statusCode','statusRaw','rating'],parameters:['sku']},
  prices:{title:'商品价格',description:'当前卖家价、普通售价与划线价；币种由平台返回。',fields:['productId','offerId','price','ordinaryPrice','oldPrice','currency'],parameters:['productId']},
  warehouses:{title:'仓库与配送渠道',description:'读取仓库履约方式和对应配送渠道；仓库名称不作为规则。',fields:['warehouseId','warehouseName','fulfillment','status','statusCode','statusRaw','deliveryMethods'],parameters:['warehouseId']},
  stocks:{title:'商品分仓库存',description:'按商品和仓库展示平台库存；缺失的可售或预留数量保持未知。',fields:['productId','sku','offerId','warehouseId','warehouseName','stockPresent','stockReserved','stockAvailable'],parameters:['sku','warehouseId']},
@@ -28,7 +29,7 @@ const specs:Record<OzonKind,SourceSpec>={
 const text:JsonSchema={type:'string',minLength:1};
 const paramSchemas:Record<string,JsonSchema>={storeId:text,cursor:text,loadAll:{type:'boolean'},forceRefresh:{type:'boolean'},limit:{type:'integer',minimum:1,maximum:100},dateFrom:{type:'string',pattern:'^\\d{4}-\\d{2}-\\d{2}$'},dateTo:{type:'string',pattern:'^\\d{4}-\\d{2}-\\d{2}$'},productId:{type:'string',pattern:'^[1-9][0-9]*$'},sku:{type:'string',pattern:'^[1-9][0-9]*$'},warehouseId:{type:'string',pattern:'^[1-9][0-9]*$'},actionId:{type:'string',pattern:'^[1-9][0-9]*$'},returnId:{type:'string',pattern:'^[1-9][0-9]*$'},postingNumber:text,status:text,participation:{enum:['joined','eligible']},groupBy:{enum:['day','sku']}};
 const paramLabels:Record<string,string>={storeId:'店铺',loadAll:'完整快照',cursor:'分页位置',limit:'每页条数',dateFrom:'开始日期',dateTo:'结束日期',productId:'商品编号',sku:'平台 SKU',warehouseId:'仓库编号',actionId:'活动编号',returnId:'售后单编号',postingNumber:'包裹编号',status:'平台状态',participation:'参加状态',groupBy:'统计方式'};
-const numberFields=new Set(['price','ordinaryPrice','oldPrice','orderPrice','stockPresent','stockReserved','stockAvailable','impressions','views','cartEvents','orderedUnits','visitors','quantity','actualWeight','declaredWeight','weightDifference','amount','commission','logisticsFee','actionPrice','maxActionPrice']);
+const numberFields=new Set(['rating','price','ordinaryPrice','oldPrice','orderPrice','stockPresent','stockReserved','stockAvailable','impressions','views','cartEvents','orderedUnits','visitors','quantity','actualWeight','declaredWeight','weightDifference','amount','commission','logisticsFee','actionPrice','maxActionPrice']);
 export const OZON_DESCRIPTORS:CapabilityDescriptor[]=OZON_KINDS.map(kind=>{
  const spec=specs[kind],parameters=['storeId','limit','cursor','loadAll','forceRefresh',...spec.parameters??[]];
  return {capabilityId:`hallmark.ozon.${kind}`,version:'1.0.0',title:`Ozon ${spec.title}`,description:spec.description,effect:'query',aliases:[],inputSchema:{type:'object',properties:Object.fromEntries(parameters.map(key=>[key,paramSchemas[key]])),required:['storeId',...spec.required??[]],additionalProperties:false},outputSchema:{type:'object',properties:{items:{type:'array',items:{type:'object',properties:Object.fromEntries(spec.fields.map(key=>[key,{type:[numberFields.has(key)?'number':'string','null'],description:OZON_FIELD_META[key].description}])),required:spec.fields,additionalProperties:false}},cursor:text,total:{type:'integer',minimum:0},dataTime:{type:['string','null']},period:{type:'object',properties:{dateFrom:text,dateTo:text},required:['dateFrom','dateTo'],additionalProperties:false},warnings:{type:'array',items:{type:'string'}},cache:SNAPSHOT_CACHE_SCHEMA},required:['items','dataTime','warnings'],additionalProperties:false},execution:{mode:'sync',timeoutMs:60000,concurrency:'declared_safe',lockScope:'connection',idempotency:'not_applicable',completionEvidence:'response'},discovery:{defaultVisible:true,keywords:['Ozon','数据源',spec.title]}};
@@ -38,7 +39,7 @@ export function hallmarkOzonSources(connectionId:string):DataSourceDraft[]{retur
  return {id:`hallmark:${connectionId}:ozon:${kind}`,title:`Ozon ${spec.title}`,description:spec.description,appId:'hallmark',connectionId,capabilityId:`hallmark.ozon.${kind}`,capabilityMajor:1,storeScoped:true,input:{loadAll:true},parameters,rowsPath:'items',fields:spec.fields.map(key=>({path:key,role:`ozon.${key}`,confirmed:true,label:OZON_FIELD_META[key].label,description:OZON_FIELD_META[key].description,...(OZON_FIELD_META[key].unit?{unit:OZON_FIELD_META[key].unit}:{}),...(OZON_FIELD_META[key].format==='currency'?{currencyPath:'currency'}:{})})),operations:{search:{scope:'loaded'},sort:{scope:'loaded'}}};
 });}
 
-interface OzonClient extends CoreClient {storeDataRead?:(storeId:string,input:PlatformCallInput)=>Promise<AdapterResponse>;readOrderWeights?:(storeId:string,input:RecordData)=>Promise<AdapterResponse>}
+interface OzonClient {storeDataRead?:(storeId:string,input:PlatformCallInput)=>Promise<AdapterResponse>;readOrderWeights?:(storeId:string,input:RecordData)=>Promise<AdapterResponse>}
 interface Page {items:Row[];next?:RecordData;total?:number;dataTime?:string|null;warnings?:string[]}
 interface SavedCursor extends Page {scope:string;expiresAt:number;buffer:Row[];continuation?:RecordData}
 const record=(v:unknown):RecordData=>v!==null&&typeof v==='object'&&!Array.isArray(v)?v as RecordData:{};
@@ -112,6 +113,24 @@ async function fetchPage(kind:OzonKind,args:RecordData,state:RecordData,client:O
   const raw=await read('/v3/product/info/list',args.sku?{sku:[args.sku]}:{product_id:ids}),rows=rowsAt(raw,'items','result.items');
   if(ids.length&&(rows.length!==ids.length||new Set(rows.map(row=>str(row.id))).size!==ids.length||rows.some(row=>!ids.includes(str(row.id)??''))))fail('OZON_PRODUCT_JOIN_INCOMPLETE','商品详情与清单编号不一致，请刷新后重试。');
   return {items:rows.map(r=>normalized(kind,{productId:r.id,offerId:r.offer_id,sku:r.sku,title:r.name,image:Array.isArray(r.primary_image)?r.primary_image[0]:r.primary_image??r.images?.[0],...statusFields(kind,r.statuses?.status,r.statuses?.status_name),errorReason:Array.isArray(r.errors)?r.errors.map((e:RecordData)=>e.message??e.description??e.code).filter(Boolean).join('；')||null:r.statuses?.status_description})),next,total};
+ }
+ if(kind==='ratings'){
+  const single=typeof args.sku==='string',listing=single?undefined:await read('/v3/product/list',{filter:{visibility:'ALL'},limit,last_id:state.after??''});
+  const listed=listing?rowsAt(listing,'result.items','items'):[],ids=listed.map(row=>str(row.product_id));
+  if(ids.some(id=>!id||!/^[1-9][0-9]*$/.test(id)))fail('OZON_RESPONSE_INVALID','商品清单缺少有效商品编号。');
+  const next=listing?nextToken(listing,state,listed,limit):undefined;
+  if(!single&&!listed.length)return {items:[],total:0};
+  const details=rowsAt(await read('/v3/product/info/list',single?{sku:[args.sku]}:{product_id:ids}),'items','result.items');
+  if(!single&&(details.length!==ids.length||new Set(details.map(row=>str(row.id))).size!==ids.length||details.some(row=>!ids.includes(str(row.id)??''))))fail('OZON_PRODUCT_JOIN_INCOMPLETE','内容评级商品详情与清单编号不一致。');
+  if(single&&(details.length!==1||str(details[0].sku)!==args.sku))fail('OZON_PRODUCT_JOIN_INCOMPLETE','指定 SKU 未返回对应商品详情。');
+  const skus=details.map(row=>str(row.sku)),valid=skus.filter((sku):sku is string=>!!sku&&/^[1-9][0-9]*$/.test(sku));
+  if(new Set(valid).size!==valid.length)fail('OZON_PRODUCT_JOIN_INCOMPLETE','商品详情返回重复平台 SKU，无法匹配评级。');
+  const scores=new Map<string,number>();
+  if(valid.length){
+   const ratings=rowsAt(await read('/v1/product/rating-by-sku',{skus:valid}),'products');
+   for(const row of ratings){const sku=str(row.sku),rating=num(row.rating);if(!sku||!valid.includes(sku??'')||scores.has(sku??'')||rating===null||rating<0||rating>100)fail('OZON_RATING_RESPONSE_INVALID','内容评级的 SKU 或分数无效，不能混入其他商品。');scores.set(sku!,rating!);}
+  }
+  return {items:details.map(row=>normalized(kind,{productId:row.id,offerId:row.offer_id,sku:row.sku,title:row.name,...statusFields('products',row.statuses?.status,row.statuses?.status_name),rating:scores.get(str(row.sku)??'')})),next,total:num(listing?.result?.total_items??listing?.total_items??listing?.result?.total??listing?.total)??undefined,...(details.length>scores.size?{warnings:[`${details.length-scores.size} 个商品未取得内容评级，分数保持未知。`]}:{})};
  }
  if(kind==='prices'){
   const raw=await read('/v5/product/info/prices',{filter:{visibility:'ALL',...(args.productId?{product_id:[args.productId]}:{})},limit,cursor:state.after??''}),rows=rowsAt(raw,'items','result.items');

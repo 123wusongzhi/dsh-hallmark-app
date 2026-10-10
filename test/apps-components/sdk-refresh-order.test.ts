@@ -8,12 +8,12 @@ import {build} from 'esbuild';
 test('actual useApps preserves visible data while refreshing and ignores stale refresh completions after a newer page request',async()=>{
  const root=resolve('test/apps-components/artifacts');mkdirSync(root,{recursive:true});
  const directory=mkdtempSync(join(root,'sdk-order-')),output=join(directory,'test.mjs');
- const source=readFileSync('packages/component-runtime/src/apps-react.tsx','utf8').replace("import {createAppsClient,ComponentBridgeError} from './apps-client.ts';",'const createAppsClient=()=>globalThis.fakeClient;class ComponentBridgeError extends Error {}');
+ const source=readFileSync('packages/component-runtime/src/apps-react.tsx','utf8').replace("import {createAppsClient,ComponentBridgeError} from './apps-client.ts';",'const createAppsClient=()=>globalThis.fakeClient;class ComponentBridgeError extends Error {}').replace("from './latest-state-saver.ts'","from './packages/component-runtime/src/latest-state-saver.ts'");
  const fixture=`
 import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
 globalThis.window={addEventListener(){},removeEventListener(){}};
 const requests=[];const pending=()=>new Promise((resolve,reject)=>requests.push({resolve,reject}));
-globalThis.fakeClient={hello:async()=>({features:[]}),getData:async()=> 'initial',getContext:async()=>({}),subscribe:()=>()=>{},dispose(){},refresh:pending,readBindingPage:pending};
+globalThis.fakeClient={hello:async()=>({features:[]}),isVisible:()=>true,subscribeVisibility:()=>()=>{},getData:async()=> 'initial',getContext:async()=>({}),subscribe:()=>()=>{},dispose(){},refresh:pending,readBindingPage:pending};
 let api,tree;function Component(){api=useApps();return null;}
 await act(async()=>{tree=create(React.createElement(Component));});assert.equal(api.loading,false);assert.equal(api.refreshing,false);
 let old,next;

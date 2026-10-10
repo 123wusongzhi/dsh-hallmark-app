@@ -19,6 +19,7 @@ export interface BuildReceipt {
   schemaVersion:1;receiptId:string;attemptId:string;sourceRevision:number;sourceInputDigest:string;lockfileDigest:string;command:string[];cwd:string;
   toolchain:Record<string,string>;exitCode:number;startedAt:string;finishedAt:string;logRef:FileEvidenceRef;distDigest:string|null;
   archiveBuildId:string|null;fileManifestRef:FileEvidenceRef|null;inputUnchanged:boolean;verdict:'PASS'|'FAIL';
+  executionKind?:'executed'|'reuse';executionId?:string;reusedFrom?:FileEvidenceRef;reuseVerifiedAt?:string;
 }
 export interface AuthoringAssertion {id:string;required:boolean;expected:string;actual:string|null;status:'PASS'|'FAIL'|'NOT_RUN'|'BLOCKED';evidenceRefs:FileEvidenceRef[]}
 export interface PreviewViewportResult {
@@ -37,6 +38,7 @@ export interface BuildExecutionEvidence extends Omit<BuildReceipt,'receiptId'> {
 /** The runner freezes/validates archive bytes; viewport screenshots are actual browser captures. */
 export interface PreviewValidationEvidence extends Omit<PreviewReceipt,'receiptId'> {
   epoch:number;
+  validationProfile?:'draft'|'formal';
 }
 export interface ViewPublication {
   publicationId:string;viewId:string;ownerSessionId:string;attemptId:string;attemptEpoch:number;expectedViewRevision:number;

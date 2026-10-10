@@ -75,8 +75,8 @@ test('oversized object results retain a labeled sample and exact original result
     assert.equal(summary.sample.total,338);assert.equal(summary.sample.cursor,'60');
     assert.equal(summary.sample.products.length,1);assert.equal(summary.sample.products[0].profit.actualMargin,0.2);
     assert.equal(summary.sampleTruncated,true);
-    assert.equal(summary.read.path,'/v1/results/result%3Aobject-result?cursor=0&limit=100');
-    assert.deepEqual(readResultPage(store,summary.read.resultRef).result,result);
+    assert.deepEqual(summary.read,{tool:'apps_inspect',arguments:{resultRef:'result:object-result',path:'',cursor:'0',limit:100}});
+    assert.deepEqual(readResultPage(store,summary.read.arguments.resultRef).result,result);
     assert.ok(Buffer.byteLength(projectModelResult(store,result,512).content)<=512);
   }finally{store.close();}
 });

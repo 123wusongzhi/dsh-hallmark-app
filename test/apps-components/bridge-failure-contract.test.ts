@@ -35,6 +35,13 @@ test('an unanswered submitted mutation bridge request retains the original inten
   }finally{f.close();}
 });
 
+test('a business submission without a caller key still permits only original request inspection',async()=>{
+  const f=bridge({invokeCapability:()=>new Promise(()=>{})});try{
+    await f.client.hello();const error=await rejected(f.client.invokeCapability({appId:'hallmark',connectionId:'C1',capabilityId:'hallmark.plan.submit',capabilityVersion:'1.0.0',input:{planId:'P1'}}));
+    assert.equal(error.failure.retryPolicy,'inspect_only');assert.equal((error.failure.details as any).doNotResubmitMutation,true);assert.equal(f.requests.length,1);
+  }finally{f.close();}
+});
+
 for(const retryPolicy of ['never','read_retry','inspect_only'] as const){
   test(`an explicit backend bridge ${retryPolicy} failure retains its code, policy and details`,async()=>{
     const failure:FailureInfo={code:retryPolicy==='never'?'INVALID_INPUT':'RESPONSE_UNAVAILABLE',message:'Explicit original backend failure',retryPolicy,details:{field:'input.price',invocationId:'original-backend-invocation'}};

@@ -1,10 +1,12 @@
 import {authoringSummary} from './authoring-summary.ts';
 import {createHash,randomUUID} from 'node:crypto';
-import {existsSync,lstatSync,mkdirSync,readFileSync,readdirSync,realpathSync} from 'node:fs';
+import {existsSync,lstatSync,mkdirSync,readdirSync,realpathSync} from 'node:fs';
 import {dirname,isAbsolute,join,relative,resolve,sep} from 'node:path';
 import {canonicalJson} from '../../app-contracts/src/index.ts';
 import type {CapabilityResult,ExecutionContext,JsonValue,ResourceRef} from '../../app-contracts/src/index.ts';
 import {distDigest} from '../../source-components/src/authoring-evidence.ts';
+import {FileVerificationCache} from '../../source-components/src/file-verification-cache.ts';
+import {queryRows} from './store-query.ts';
 import type {AppsComponent,AppsView} from './types.ts';
 import type {AppsAuthoringOptions,AuthoringAssertion,AuthoringAttempt,AuthoringAttemptInput,AuthoringDraft,AuthoringState,AuthoringView,BeginAuthoringInput,BuildExecutionEvidence,BuildReceipt,CandidateFrameIdentity,ComponentDisplay,DisplayFrameAuthorizationInput,FileEvidenceRef,FrameAuthorizationInput,ManageAuthoringComponentInput,OpenDisplayInput,PreviewReceipt,PreviewValidationEvidence,PublishAuthoringInput,RecordBuildInput,RecordPreviewInput,RenderReadyInput,ReportDisplayErrorInput,SaveAuthoringInput,StartMountInput,UiStateExportInput,UiStateRestoreInput,UiStateSnapshot,ViewPublication} from './authoring-types.ts';
 export * from './authoring-types.ts';
@@ -32,6 +34,7 @@ function assertions(value:AuthoringAssertion[]):boolean {
 export class AppsAuthoringService {
   readonly store:AppsAuthoringOptions['store'];readonly sources:AppsAuthoringOptions['sources'];readonly evidenceRoot:string;
   private options:AppsAuthoringOptions;
+  private evidenceFiles=new FileVerificationCache();
   constructor(options:AppsAuthoringOptions){
     this.options=options;this.store=options.store;this.sources=options.sources;
     this.evidenceRoot=resolve(options.evidenceRoot??join(dirname(options.sources.directory),'authoring-evidence'));
@@ -61,19 +64,31 @@ export class AppsAuthoringService {
   }
   private verifyFile(reference:FileEvidenceRef):Buffer {
     if(!reference||!hashPattern.test(reference.sha256)||!Number.isSafeInteger(reference.bytes)||reference.bytes<0||!isAbsolute(reference.path))fail('EVIDENCE_HASH_MISMATCH','File references require an absolute path, SHA256 and byte length.');
-    let path:string,bytes:Buffer;try{const actual=this.resolvePath(reference.path);if(lstatSync(actual).isSymbolicLink())fail('EVIDENCE_PATH_INVALID','Evidence must resolve to a managed regular file.');path=realpathSync(actual);bytes=readFileSync(path);}catch(error){if(error instanceof AuthoringError)throw error;return fail('EVIDENCE_HASH_MISMATCH','Referenced evidence file cannot be read.');}
+    let path:string;try{const actual=this.resolvePath(reference.path),stat=lstatSync(actual);if(stat.isSymbolicLink()||!stat.isFile())fail('EVIDENCE_PATH_INVALID','Evidence must resolve to a managed regular file.');path=realpathSync(actual);}catch(error){if(error instanceof AuthoringError)throw error;return fail('EVIDENCE_HASH_MISMATCH','Referenced evidence file cannot be read.');}
     const allowed=[this.evidenceRoot,this.sources.directory].some(root=>{const base=resolve(root),rel=relative(base,path);return rel!==''&&!isAbsolute(rel)&&rel!=='..'&&!rel.startsWith('..'+sep);});
     if(!allowed)fail('EVIDENCE_PATH_INVALID','Evidence is outside Runtime-managed roots.');
-    if(bytes.length!==reference.bytes||createHash('sha256').update(bytes).digest('hex')!==reference.sha256)fail('EVIDENCE_HASH_MISMATCH','Evidence file bytes no longer match its immutable reference.');
-    return bytes;
+    try{return this.evidenceFiles.read(path,reference.sha256,reference.bytes);}catch{return fail('EVIDENCE_HASH_MISMATCH','Evidence file bytes no longer match its immutable reference.');}
   }
   private fileRef(ownerKind:string,ownerId:string,reference:FileEvidenceRef):void {this.store.put('artifact_refs',`${ownerKind}:${ownerId}:file:${reference.sha256}`,{ownerKind,ownerId,targetKind:'file',targetId:reference.sha256,file:reference});}
   private buildRef(ownerKind:string,ownerId:string,buildId:string):void {this.store.put('artifact_refs',`${ownerKind}:${ownerId}:build:${buildId}`,{ownerKind,ownerId,targetKind:'build',targetId:buildId});}
+  private reusedBuildFiles(build:Pick<BuildReceipt,'reusedFrom'>,verify:(reference:FileEvidenceRef)=>Buffer=reference=>this.verifyFile(reference)):FileEvidenceRef[] {
+    const references:FileEvidenceRef[]=[],seen=new Set<string>();let reference=build.reusedFrom;
+    while(reference){
+      if(seen.has(reference.sha256)||references.length>=32)fail('BUILD_EVIDENCE_INVALID','Reused build evidence chain is invalid.');
+      seen.add(reference.sha256);references.push(reference);
+      let report:{executionKind?:string;reusedFrom?:FileEvidenceRef};try{report=JSON.parse(verify(reference).toString('utf8')).report;}catch(error){if(error instanceof AuthoringError)throw error;return fail('BUILD_EVIDENCE_INVALID','Reused build evidence report cannot be read.');}
+      if(!report||typeof report!=='object')fail('BUILD_EVIDENCE_INVALID','Reused build evidence report is invalid.');
+      reference=report.executionKind==='reuse'?report.reusedFrom:undefined;
+      if(report.executionKind==='reuse'&&!reference)fail('BUILD_EVIDENCE_INVALID','Reused build evidence chain is incomplete.');
+    }
+    return references;
+  }
   private verifyReceiptFiles(attempt:AuthoringAttempt,build:BuildReceipt,preview:PreviewReceipt):void {
     const verify=()=>{
-    for(const reference of [...attempt.evidenceRefs,build.logRef,...(build.fileManifestRef?[build.fileManifestRef]:[])])this.verifyFile(reference);
-    for(const viewport of preview.viewportResults)this.verifyFile(viewport.screenshot);
-    for(const assertion of preview.assertionResults)for(const reference of assertion.evidenceRefs)this.verifyFile(reference);
+      const references=[...attempt.evidenceRefs,build.logRef,...(build.fileManifestRef?[build.fileManifestRef]:[]),...preview.viewportResults.map(viewport=>viewport.screenshot),...preview.assertionResults.flatMap(assertion=>assertion.evidenceRefs)];
+      const verified=new Map<string,Buffer>(),verify=(reference:FileEvidenceRef)=>{const key=canonicalJson(reference),cached=verified.get(key);if(cached)return cached;const bytes=this.verifyFile(reference);verified.set(key,bytes);return bytes;};
+      for(const reference of references)verify(reference);
+      this.reusedBuildFiles(build,verify);
     };
     if(this.options.withEvidencePathScope)this.options.withEvidencePathScope(verify);else verify();
   }
@@ -93,13 +108,13 @@ export class AppsAuthoringService {
     let view:AuthoringView,draft:AuthoringDraft|undefined;
     const draftId=randomUUID(),defaultPath=join(this.sources.workspace,`draft-${draftId}`);
     if(input.mode==='edit'){
-      view=this.view(sessionId,required(input.viewId,'viewId'));if(input.context||input.sourceRefs||input.bindings)view=this.options.presentation.createView(sessionId,{viewId:view.viewId,title:input.title??view.title,...(input.bindings?{bindings:input.bindings}:{}),...(input.sourceRefs?{sourceRefs:input.sourceRefs}:{}),...(input.context?{context:input.context}:{})}) as AuthoringView;draft=this.store.list<AuthoringDraft>('authoring_drafts').find(row=>row.ownerSessionId===sessionId&&row.viewId===view.viewId&&row.status!=='discarded');
+      view=this.view(sessionId,required(input.viewId,'viewId'));if(input.context||input.sourceRefs||input.bindings)view=this.options.presentation.createView(sessionId,{viewId:view.viewId,title:input.title??view.title,...(input.bindings?{bindings:input.bindings}:{}),...(input.sourceRefs?{sourceRefs:input.sourceRefs}:{}),...(input.context?{context:input.context}:{})}) as AuthoringView;draft=queryRows<AuthoringDraft>(this.store,'authoring_drafts',{ownerSessionId:sessionId,viewId:view.viewId}).find(row=>row.status!=='discarded');
       if(draft&&input.workspacePath&&this.resolvePath(input.workspacePath)!==this.resolvePath(draft.workspacePath))fail('WORKSPACE_CONFLICT','An existing draft has a different recoverable workspace.');
     }else if(input.mode==='open_saved'){
       const componentId=required(input.componentId,'componentId');
       view=this.options.presentation.openComponent(sessionId,componentId,{...(input.revision!==undefined?{revision:integer(input.revision,'revision')}:{}),...(input.workspacePath?{directory:resolve(input.workspacePath)}:{}),...(input.context?{context:input.context}:{}),...(input.newCopy?{newCopy:true}:{})}) as AuthoringView;
       view=this.view(sessionId,view.viewId);
-      draft=this.store.list<AuthoringDraft>('authoring_drafts').find(row=>row.ownerSessionId===sessionId&&row.viewId===view.viewId&&row.status!=='discarded');
+      draft=queryRows<AuthoringDraft>(this.store,'authoring_drafts',{ownerSessionId:sessionId,viewId:view.viewId}).find(row=>row.status!=='discarded');
       if(draft&&input.workspacePath&&this.resolvePath(input.workspacePath)!==this.resolvePath(draft.workspacePath))fail('WORKSPACE_CONFLICT','An existing draft has a different recoverable workspace.');
     }else{
       if(input.workspacePath&&existsSync(resolve(input.workspacePath))&&readdirSync(resolve(input.workspacePath)).length)fail('WORKSPACE_NOT_EMPTY','New authoring workspaces must be independent empty directories.');
@@ -119,7 +134,7 @@ export class AppsAuthoringService {
     const attempt:AuthoringAttempt={attemptId,draftId:next.draftId,epoch:next.epoch,sourceRevision:next.sourceRevision,state:'editing',startedAt:at,expectedViewRevision:view.viewRevision,invocationRefs:input.invocationId?[input.invocationId]:[],evidenceRefs:[],terminalReason:null,requestHash};
     const superseded:{attemptId:string;epoch:number}[]=[];
     const result=this.store.transaction(()=>{
-      for(const previous of this.store.list<AuthoringAttempt>('authoring_attempts'))if(previous.draftId===next.draftId&&!terminal.has(previous.state)){
+      for(const previous of queryRows<AuthoringAttempt>(this.store,'authoring_attempts',{draftId:next.draftId}))if(!terminal.has(previous.state)){
         this.store.put('authoring_attempts',previous.attemptId,{...previous,state:'superseded',terminalReason:'An explicit newer attempt replaced this generation.'});
         superseded.push({attemptId:previous.attemptId,epoch:previous.epoch});
         if(previous.publicationId){const publication=this.store.get<ViewPublication>('view_publications',previous.publicationId);if(publication?.state==='prepared'||publication?.state==='mounting')this.store.put('view_publications',publication.publicationId,{...publication,state:'superseded',updatedAt:at});}
@@ -141,13 +156,14 @@ export class AppsAuthoringService {
     try{
       this.verifyFile(input.reportRef);if(!this.options.validateBuildEvidence)fail('BUILD_EVIDENCE_INVALID','No actual build-runner evidence validator is configured.');
       const value=await this.options.validateBuildEvidence(input.reportRef,context);this.validateBuild(value,context);
-      const receipt:BuildReceipt={schemaVersion:1,receiptId:randomUUID(),attemptId:value.attemptId,sourceRevision:value.sourceRevision,sourceInputDigest:value.sourceInputDigest,lockfileDigest:value.lockfileDigest,command:[...value.command],cwd:value.cwd,toolchain:clone(value.toolchain),exitCode:value.exitCode,startedAt:value.startedAt,finishedAt:value.finishedAt,logRef:clone(value.logRef),distDigest:value.distDigest,archiveBuildId:value.archiveBuildId,fileManifestRef:clone(value.fileManifestRef),inputUnchanged:value.inputUnchanged,verdict:value.verdict};
-      return this.store.transaction(()=>{context=this.context(sessionId,input);if(context.attempt.buildReceiptId)fail('BUILD_EVIDENCE_INVALID','Another receipt already completed this attempt.');this.store.put('build_receipts',receipt.receiptId,receipt);this.fileRef('build_receipt',receipt.receiptId,input.reportRef);this.fileRef('build_receipt',receipt.receiptId,receipt.logRef);if(receipt.fileManifestRef)this.fileRef('build_receipt',receipt.receiptId,receipt.fileManifestRef);if(receipt.archiveBuildId){this.buildRef('build_receipt',receipt.receiptId,receipt.archiveBuildId);this.store.put('builds',receipt.archiveBuildId,this.sources.manifest(receipt.archiveBuildId));}this.transition(context.draft,{...context.attempt,buildReceiptId:receipt.receiptId,evidenceRefs:[...context.attempt.evidenceRefs,input.reportRef]},receipt.verdict==='PASS'?'previewing':'build_failed',receipt.verdict==='FAIL'?'Actual build failed.':null);return clone(receipt);});
+      const receipt:BuildReceipt={schemaVersion:1,receiptId:randomUUID(),attemptId:value.attemptId,sourceRevision:value.sourceRevision,sourceInputDigest:value.sourceInputDigest,lockfileDigest:value.lockfileDigest,command:[...value.command],cwd:value.cwd,toolchain:clone(value.toolchain),exitCode:value.exitCode,startedAt:value.startedAt,finishedAt:value.finishedAt,logRef:clone(value.logRef),distDigest:value.distDigest,archiveBuildId:value.archiveBuildId,fileManifestRef:clone(value.fileManifestRef),inputUnchanged:value.inputUnchanged,verdict:value.verdict,...(value.executionKind?{executionKind:value.executionKind}:{}),...(value.executionId?{executionId:value.executionId}:{}),...(value.reusedFrom?{reusedFrom:clone(value.reusedFrom)}:{}),...(value.reuseVerifiedAt?{reuseVerifiedAt:value.reuseVerifiedAt}:{})};
+      return this.store.transaction(()=>{context=this.context(sessionId,input);if(context.attempt.buildReceiptId)fail('BUILD_EVIDENCE_INVALID','Another receipt already completed this attempt.');this.store.put('build_receipts',receipt.receiptId,receipt);this.fileRef('build_receipt',receipt.receiptId,input.reportRef);this.fileRef('build_receipt',receipt.receiptId,receipt.logRef);if(receipt.fileManifestRef)this.fileRef('build_receipt',receipt.receiptId,receipt.fileManifestRef);for(const reference of this.reusedBuildFiles(receipt))this.fileRef('build_receipt',receipt.receiptId,reference);if(receipt.archiveBuildId){this.buildRef('build_receipt',receipt.receiptId,receipt.archiveBuildId);this.store.put('builds',receipt.archiveBuildId,this.sources.manifest(receipt.archiveBuildId));}this.transition(context.draft,{...context.attempt,buildReceiptId:receipt.receiptId,evidenceRefs:[...context.attempt.evidenceRefs,input.reportRef]},receipt.verdict==='PASS'?'previewing':'build_failed',receipt.verdict==='FAIL'?'Actual build failed.':null);return clone(receipt);});
     }catch(error){const normalized=this.evidenceError(error,'BUILD_EVIDENCE_INVALID');this.failure(sessionId,input,'build_failed',normalized,input.reportRef);throw normalized;}
   }
   private validateBuild(value:BuildExecutionEvidence,context:ReturnType<AppsAuthoringService['context']>):void {
     if(!value||value.schemaVersion!==1||value.attemptId!==context.attempt.attemptId||value.epoch!==context.attempt.epoch||value.sourceRevision!==context.attempt.sourceRevision||this.resolvePath(value.workspacePath)!==this.resolvePath(context.draft.workspacePath))fail('BUILD_EVIDENCE_INVALID','Build evidence does not identify this source attempt.');
     dates(value.startedAt,value.finishedAt);if(!hashPattern.test(value.sourceInputDigest)||!hashPattern.test(value.sourceInputDigestAfter)||!hashPattern.test(value.lockfileDigest)||!Array.isArray(value.command)||!value.command.length||value.command.some(part=>typeof part!=='string'||!part)||!isAbsolute(value.cwd)||resolve(value.cwd)!==resolve(context.draft.workspacePath)||!Number.isInteger(value.exitCode)||typeof value.inputUnchanged!=='boolean'||!['PASS','FAIL'].includes(value.verdict)||!value.toolchain||typeof value.toolchain!=='object'||!Object.keys(value.toolchain).length||Object.values(value.toolchain).some(item=>typeof item!=='string')||!(value.distDigest===null||hashPattern.test(value.distDigest))||!(value.archiveBuildId===null||hashPattern.test(value.archiveBuildId)))fail('BUILD_EVIDENCE_INVALID','Build receipt fields are invalid.');
+    if(value.executionKind!==undefined&&!['executed','reuse'].includes(value.executionKind)||value.executionKind==='reuse'&&(!value.reusedFrom||!Number.isFinite(Date.parse(value.reuseVerifiedAt??''))||Date.parse(value.reuseVerifiedAt!)<Date.parse(value.finishedAt))||value.executionKind!=='reuse'&&(value.reusedFrom!==undefined||value.reuseVerifiedAt!==undefined))fail('BUILD_EVIDENCE_INVALID','Build reuse provenance is invalid.');
     required(value.runnerVersion,'runnerVersion');required(value.executionId,'executionId');if(value.fileManifestRef!==null)this.verifyFile(value.fileManifestRef);if(value.archiveBuildId!==null&&!this.sources.verify(value.archiveBuildId).valid)fail('BUILD_EVIDENCE_INVALID','Build archive is invalid.');
     this.verifyFile(value.logRef);
     if(value.verdict==='PASS'){
@@ -169,6 +185,7 @@ export class AppsAuthoringService {
     }catch(error){const normalized=this.evidenceError(error,'PREVIEW_INCOMPLETE');this.failure(sessionId,input,'preview_failed',normalized,input.reportRef);throw normalized;}
   }
   private validatePreview(value:PreviewValidationEvidence,context:ReturnType<AppsAuthoringService['context']>,build:BuildReceipt):void {
+    if(value?.validationProfile==='draft')fail('PREVIEW_INCOMPLETE','Draft diagnostics cannot satisfy publication evidence.');
     if(!value||value.schemaVersion!==1||value.attemptId!==context.attempt.attemptId||value.epoch!==context.attempt.epoch||value.buildReceiptId!==build.receiptId||value.buildId!==build.archiveBuildId||value.protocol!=='dsh.apps.component.v2'||!['fixture','live_readonly'].includes(value.mode)||!['PASS','FAIL','INCOMPLETE'].includes(value.verdict)||!this.sources.verify(value.buildId).valid)fail('PREVIEW_BUILD_MISMATCH','Preview does not identify this exact frozen v2 build.');
     required(value.runnerVersion,'runnerVersion');dates(value.startedAt,value.finishedAt);
     const passed=assertions(value.assertionResults),ids=new Set(value.assertionResults.map(item=>item.id));
@@ -215,7 +232,7 @@ export class AppsAuthoringService {
     });
   }
   private displays(viewId:string):ComponentDisplay[] {
-    return this.store.list<{namespace:string;value:ComponentDisplay}>('provider_records').filter(row=>row.namespace==='component_displays'&&row.value.viewId===viewId).map(row=>row.value).sort((a,b)=>a.generation-b.generation);
+    return queryRows<{namespace:string;value:ComponentDisplay}>(this.store,'provider_records',{namespace:'component_displays','value.viewId':viewId}).map(row=>row.value).sort((a,b)=>a.generation-b.generation);
   }
   private putDisplay(display:ComponentDisplay):ComponentDisplay {
     const recordId='component-display:'+display.displayId;
@@ -253,7 +270,7 @@ export class AppsAuthoringService {
       const previous=this.displays(input.viewId),at=this.stamp();
       for(const display of previous)if(display.state==='opening'||display.state==='ready')this.putDisplay({...display,state:'retired',updatedAt:at});
       // Retire old document grants only after the complete fixed target has validated.
-      for(const row of this.store.list<{namespace:string;recordId:string;value:{identity?:{sessionId?:string;viewId?:string};retired?:boolean}}>('provider_records'))if(row.namespace==='frame_grants'&&row.value.identity?.sessionId===sessionId&&row.value.identity.viewId===input.viewId)this.store.put('provider_records',row.recordId,{...row,value:{...row.value,retired:true}});
+      for(const row of queryRows<{namespace:string;recordId:string;value:{identity?:{sessionId?:string;viewId?:string};retired?:boolean}}>(this.store,'provider_records',{namespace:'frame_grants','value.identity.sessionId':sessionId,'value.identity.viewId':input.viewId}))this.store.put('provider_records',row.recordId,{...row,value:{...row.value,retired:true}});
       const display=this.putDisplay({...input,ownerSessionId:sessionId,generation:(previous.at(-1)?.generation??0)+1,state:'opening',view:clone(view),errors:[],createdAt:at,updatedAt:at});
       this.buildRef('display',display.displayId,input.buildId);return {publication:clone(publication),display,source:clone(publication.source),view:clone(view)};
     });
@@ -300,7 +317,7 @@ export class AppsAuthoringService {
   }
   reportDisplayError(sessionId:string,input:ReportDisplayErrorInput):ComponentDisplay {
     const error=input.error;if(!error||typeof error!=='object'||Object.keys(error).some(key=>!['phase','code','message'].includes(key))||['phase','code','message'].some(key=>typeof error[key as keyof typeof error]!=='string'||!String(error[key as keyof typeof error]).trim())||Buffer.byteLength(error.phase)>80||Buffer.byteLength(error.code)>160||Buffer.byteLength(error.message)>4096)fail('INVALID_INPUT','Display errors require bounded phase, code and message fields.');
-    return this.store.transaction(()=>{const display=this.display(sessionId,input),next=this.putDisplay({...display,state:'failed',errors:[...display.errors,{phase:error.phase,code:error.code,message:error.message,at:this.stamp()}],updatedAt:this.stamp()});for(const row of this.store.list<{namespace:string;recordId:string;value:{candidate?:{displayId?:string};retired?:boolean}}>('provider_records'))if(row.namespace==='frame_grants'&&row.value.candidate?.displayId===display.displayId)this.store.put('provider_records',row.recordId,{...row,value:{...row.value,retired:true}});return next;});
+    return this.store.transaction(()=>{const display=this.display(sessionId,input),next=this.putDisplay({...display,state:'failed',errors:[...display.errors,{phase:error.phase,code:error.code,message:error.message,at:this.stamp()}],updatedAt:this.stamp()});for(const row of queryRows<{namespace:string;recordId:string;value:{candidate?:{displayId?:string};retired?:boolean}}>(this.store,'provider_records',{namespace:'frame_grants','value.candidate.displayId':display.displayId}))this.store.put('provider_records',row.recordId,{...row,value:{...row.value,retired:true}});return next;});
   }
   private pending(sessionId:string,input:FrameAuthorizationInput){
     const publication=this.store.get<ViewPublication>('view_publications',required(input.publicationId,'publicationId'));if(!publication||publication.ownerSessionId!==sessionId)fail('VIEW_NOT_OWNED','Candidate publication does not belong to this session.');
@@ -378,7 +395,7 @@ export class AppsAuthoringService {
     required(input.userRequest,'userRequest');return this.store.transaction(()=>{
       const view=this.view(sessionId,input.viewId);if(view.viewRevision!==integer(input.expectedViewRevision,'expectedViewRevision')||view.pendingPublicationId)fail('VIEW_CONFLICT','Save requires the current confirmed view revision.');
       if(!this.options.presentation.canReuseSavedView?.(view)){
-        const publication=this.store.list<ViewPublication>('view_publications').find(row=>row.viewId===view.viewId&&row.ownerSessionId===sessionId&&row.state==='mounted'&&row.committedViewRevision===view.viewRevision&&row.candidateBuildId===view.activeBuildId);
+        const publication=queryRows<ViewPublication>(this.store,'view_publications',{viewId:view.viewId,ownerSessionId:sessionId,state:'mounted',committedViewRevision:view.viewRevision,candidateBuildId:view.activeBuildId}).at(0);
         if(view.validationStatus!=='verified'||!publication||!view.source||!this.sources.verify(view.source.buildId).valid)fail('BUILD_EVIDENCE_INVALID','此工作副本没有可复用的已验证版本，请完成当前内容的预览和发布后再保存。');
         const attempt=this.store.get<AuthoringAttempt>('authoring_attempts',publication.attemptId),build=this.store.get<BuildReceipt>('build_receipts',publication.buildReceiptId),preview=this.store.get<PreviewReceipt>('preview_receipts',publication.previewReceiptId);if(!attempt||build?.verdict!=='PASS'||preview?.verdict!=='PASS')fail('BUILD_EVIDENCE_INVALID','Confirmed view evidence is missing.');this.verifyReceiptFiles(attempt,build,preview);
       }
@@ -424,14 +441,14 @@ export class AppsAuthoringService {
   }
   closeDraft(sessionId:string,viewId:string,action:'keep'|'discard'):AuthoringDraft {
     this.view(sessionId,viewId);if(!['keep','discard'].includes(action))fail('INVALID_INPUT','Explicit keep/discard action is required.');
-    const drafts=this.store.list<AuthoringDraft>('authoring_drafts').filter(row=>row.ownerSessionId===sessionId&&row.viewId===viewId),draft=drafts.find(row=>row.status!=='discarded')??drafts.at(-1);if(!draft)fail('DRAFT_NOT_FOUND','This view has no authoring draft.');
-    const active=this.store.list<AuthoringAttempt>('authoring_attempts').find(row=>row.draftId===draft.draftId&&row.epoch===draft.epoch&&!terminal.has(row.state));if(active)this.cancel(sessionId,{attemptId:active.attemptId,expectedEpoch:active.epoch,reason:`User closed draft: ${action}.`});
+    const drafts=queryRows<AuthoringDraft>(this.store,'authoring_drafts',{ownerSessionId:sessionId,viewId}),draft=drafts.find(row=>row.status!=='discarded')??drafts.at(-1);if(!draft)fail('DRAFT_NOT_FOUND','This view has no authoring draft.');
+    const active=queryRows<AuthoringAttempt>(this.store,'authoring_attempts',{draftId:draft.draftId,epoch:draft.epoch}).find(row=>!terminal.has(row.state));if(active)this.cancel(sessionId,{attemptId:active.attemptId,expectedEpoch:active.epoch,reason:`User closed draft: ${action}.`});
     return this.store.transaction(()=>{const current=this.store.get<AuthoringDraft>('authoring_drafts',draft.draftId)!,at=this.stamp();this.store.put('views',viewId,{...this.view(sessionId,viewId),panelState:'closed',closedAt:at});return this.store.put('authoring_drafts',current.draftId,{...current,status:action==='keep'?'closed':'discarded',updatedAt:at});});
   }
   /** Panel closure is reversible even for copies opened without an authoring draft. */
   closeView(sessionId:string,viewId:string,action:'keep'|'discard'):AuthoringDraft|AppsView {
     const view=this.view(sessionId,viewId);if(!['keep','discard'].includes(action))fail('INVALID_INPUT','Explicit keep/discard action is required.');
-    if(this.store.list<AuthoringDraft>('authoring_drafts').some(row=>row.ownerSessionId===sessionId&&row.viewId===viewId))return this.closeDraft(sessionId,viewId,action);
+    if(queryRows<AuthoringDraft>(this.store,'authoring_drafts',{ownerSessionId:sessionId,viewId}).length)return this.closeDraft(sessionId,viewId,action);
     return clone(this.store.put('views',viewId,{...view,panelState:'closed' as const,closedAt:this.stamp()}));
   }
   restoreView(sessionId:string,viewId:string):AppsView {

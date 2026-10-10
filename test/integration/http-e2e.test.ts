@@ -110,7 +110,7 @@ test('ambiguous store, implicit listing scope and read-path writes never dispatc
   const h = await setup();
   try {
     await h.activate(); assert.equal((await h.tool('hallmark_resolve_store', { query: 'Al' })).status, 'needs_clarification');
-    assert.equal((await h.tool('hallmark_list_product', { storeId: 'store-A' }, '上品')).status, 'needs_clarification');
+    const incomplete=await h.request('/tools/hallmark_list_product',{sessionId:'session-main',arguments:{storeId:'store-A'},userRequest:'上品'});assert.equal(incomplete.httpStatus,400);assert.equal(incomplete.body.error.code,'INVALID_INPUT');assert.match(incomplete.body.error.message,/skuScope: required/);
     const invalidRead = await h.tool('hallmark_get_platform_data', { storeId: 'store-A', path: '/v3/product/import', body: { items: [] } }); assert.equal(invalidRead.error.code, 'ENDPOINT_NOT_ALLOWED');
     const wrongMethod = await h.tool('hallmark_get_platform_data', { storeId: 'store-A', path: '/v3/product/info/list', method: 'GET', body: {} }); assert.equal(wrongMethod.error.code, 'ENDPOINT_NOT_ALLOWED');
     h.state.tasks = []; const noTask = await h.tool('hallmark_get_platform_data', { storeId: 'store-A', path: '/v3/product/info/list' }); assert.equal(noTask.error.code, 'TASK_CONTEXT_REQUIRED');

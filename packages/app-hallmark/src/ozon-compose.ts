@@ -5,7 +5,6 @@ import type {CapabilityDescriptor,JsonSchema} from '../../app-contracts/src/inde
 import type {ToolResult} from '../../contracts/src/index.ts';
 import type {CoreStore,RecordData} from '../../core/src/types.ts';
 import {readOzonData} from './ozon-data.ts';
-import type {OzonKind} from './ozon-data.ts';
 import {COMPOSITION_FIELD_MAP,OZON_COMPOSITION_FIELDS,OZON_COMPOSITION_SOURCES,OZON_COMPOSITION_SOURCE_FIELDS,validateOzonCompositionRecipe} from './ozon-composition.ts';
 import type {OzonCompositionRecipe,OzonCompositionSource} from './ozon-composition.ts';
 import {OZON_FIELD_META} from './ozon-fields.ts';
@@ -26,7 +25,7 @@ type SourceProgress={rows:Row[];pages:number;cursors:string[];cursor?:string;dat
 const sourceInflight=new WeakMap<CoreStore,Map<string,Promise<Collected>>>();
 type Snapshot={scope:string;expiresAt:number;items:Row[];warnings:string[];sourceStates:SourceState[];offset:number};
 type Cursor={scope:string;expiresAt:number;snapshotId:string;offset:number};
-type Reader=(kind:OzonKind,args:RecordData)=>Promise<ToolResult>;
+type Reader=(kind:OzonCompositionSource,args:RecordData)=>Promise<ToolResult>;
 const fail=(code:string,message:string):never=>{throw Object.assign(new Error(message),{code});};
 const object=(value:unknown):value is Row=>!!value&&typeof value==='object'&&!Array.isArray(value);
 const validId=(value:unknown):value is string=>typeof value==='string'&&/^[1-9][0-9]*$/.test(value);
@@ -71,7 +70,7 @@ function aggregate(source:OzonCompositionSource,rows:Row[],warnings:Set<string>)
 }
 function assertUnique(rows:Row[],keys:string[],label:string):void {const found=new Set<string>();for(const row of rows){if(keys.some(key=>row[key]==null))continue;const key=canonicalJson(keys.map(key=>row[key]));if(found.has(key))fail('COMPOSITION_AMBIGUOUS_IDENTITY',`${label}存在重复身份，无法安全关联。`);found.add(key);}}
 function related(rows:Row[],product:Row|undefined):Row[]{if(!product)return [];return rows.filter(row=>validId(product.sku)&&row.sku===product.sku||validId(product.productId)&&row.productId===product.productId);}
-async function collect(kind:OzonKind,args:RecordData,reader:Reader,warnings:Set<string>,store:CoreStore,signal?:AbortSignal,forceRefresh=false):Promise<Collected> {
+async function collect(kind:OzonCompositionSource,args:RecordData,reader:Reader,warnings:Set<string>,store:CoreStore,signal?:AbortSignal,forceRefresh=false):Promise<Collected> {
  const key=createHash('sha256').update(canonicalJson({version:2,kind,args,generation:snapshotGeneration(store,args.storeId)})).digest('hex');
  const cooldownKey=canonicalJson([args.storeId,kind]);
  let inflight=sourceInflight.get(store);if(!inflight){inflight=new Map();sourceInflight.set(store,inflight);}

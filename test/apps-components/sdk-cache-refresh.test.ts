@@ -38,10 +38,11 @@ globalThis.window={document:globalThis.document,setTimeout,clearTimeout,
 const binding=(bindingId,after,stale=false)=>({bindingId,state:'ready',revision:'r1',payload:{items:[bindingId],cache:{nextRefreshAt:new Date(now+after).toISOString(),stale}}});
 const packet=(...bindings)=>({bindings});
 const queue=(method,...args)=>new Promise((resolve,reject)=>requests.push({method,args,at:now,resolve,reject}));
-let api,tree,subscriber;
+let api,tree,subscriber,visibilitySubscriber;
 function Component(){api=useApps();return null;}
 async function mount(data){
   globalThis.fakeClient={hello:async()=>({features:[]}),getData:async()=>data,getContext:async()=>({}),
+    isVisible:()=>true,subscribeVisibility:listener=>{visibilitySubscriber=listener;return()=>{visibilitySubscriber=undefined;};},
     subscribe:listener=>{subscriber=listener;return()=>{subscriber=undefined;};},
     dispose(){disposed++;},reportFrameError(){},
     refresh:(...args)=>queue('refresh',...args),readBindingPage:(...args)=>queue('page',...args)};
@@ -76,12 +77,21 @@ async function checkHook(fixture:string){
   const source=readFileSync('packages/component-runtime/src/apps-react.tsx','utf8').replace(
     "import {createAppsClient,ComponentBridgeError} from './apps-client.ts';",
     'const createAppsClient=()=>globalThis.fakeClient;class ComponentBridgeError extends Error {}',
-  );
+  ).replace("from './latest-state-saver.ts'","from './packages/component-runtime/src/latest-state-saver.ts'");
   await build({stdin:{contents:source+'\n'+harness+'\n'+fixture+'\nconsole.log("CACHE_PASS");',loader:'tsx',resolveDir:resolve('.')},outfile:output,bundle:true,platform:'node',format:'esm',packages:'external'});
   const result=spawnSync(process.execPath,[output],{encoding:'utf8',windowsHide:true,timeout:15000});
   assert.equal(result.status,0,result.stderr||result.error?.message);
   assert.match(result.stdout,/CACHE_PASS/);
 }
+
+test('useApps pauses a retained hidden iframe through host visibility and resumes its overdue cache once',async()=>{
+  await checkHook(`
+await mount(packet(binding('products',1000)));
+await act(async()=>visibilitySubscriber(false));await advance(60000);assert.equal(requests.length,0);
+await act(async()=>visibilitySubscriber(true));await advance(1);assert.equal(requests.length,1);assert.deepEqual(requests[0].args,[['products'],{forceRefresh:false}]);
+await settle(0,packet(binding('products',60000)));await unmount();assert.equal(visibilitySubscriber,undefined);assert.equal(timers.size,0);
+`);
+});
 
 test('useApps manual refresh forces a new read and preserves the requested binding ids',async()=>{
   await checkHook(`

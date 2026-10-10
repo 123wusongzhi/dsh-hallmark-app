@@ -1,11 +1,11 @@
 import {validateDataSelection} from '../../app-presentation/src/selection.ts';
 import { createServer } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { body as readBody, send, sameToken, loopback } from './http.ts';
 import { TOOL_DEFINITIONS, validate } from '../../contracts/src/index.ts';
 import type { ToolResult } from '../../contracts/src/index.ts';
 import type { BridgeIdentity, CapabilityResult, InvocationRequest, InvocationSource, JsonValue, SessionAppBinding } from '../../app-contracts/src/index.ts';
-import { canonicalJson } from '../../app-contracts/src/index.ts';
+import { canonicalJson,validateInvocation } from '../../app-contracts/src/index.ts';
 import type { AppsRuntime, AppConnection, InvocationRecord, RuntimeOperation } from '../../app-runtime/src/index.ts';
 import { projectModelResult, readResultPage } from '../../app-runtime/src/projection.ts';
 import type { AppsComponent, AppsPresentationService, AppsView } from '../../app-presentation/src/index.ts';
@@ -15,6 +15,11 @@ import {NativeAppBindings} from './native-bindings.ts';
 import type {CandidateFrameIdentity} from '../../app-presentation/src/authoring-types.ts';
 import type {AppsSnapshotScheduler} from './apps-scheduler.ts';
 import {workbenchRoutes} from './workbench-routes.ts';
+import type {BusinessSettingsService} from './business-settings.ts';
+import {componentFavorites} from './component-favorites.ts';
+import {DATA_TRANSFER_MAX_BYTES} from '../../app-presentation/src/data-transfers.ts';
+import {componentReviewInvocationId,type ReviewBridge} from './review-bridge.ts';
+import {reviewRoutes} from './review-routes.ts';
 
 function strict(value:Record<string,unknown>,keys:readonly string[],required:readonly string[]=[]):void {
   const invalid=Object.keys(value).filter(key=>!keys.includes(key));const missing=required.filter(key=>!Object.hasOwn(value,key));
@@ -26,9 +31,10 @@ function legacyResult(result:CapabilityResult):ToolResult {
   if(result.status==='needs_clarification')return {status:'needs_clarification',clarification:{missing:result.missing,candidates:result.candidates,question:result.question}};
   return {status:result.status==='cancelled'?'failed':result.status,...('data' in result?{data:result.data}:{}),...(result.operation?{operation:{operationId:result.operation.operationId,state:result.operation.state==='dispatching'?'running':result.operation.state==='queued'?'pending':result.operation.state==='cancelled'?'failed':result.operation.state}}:{}),...('error' in result?{error:{code:result.error.code,message:result.error.message,retryable:result.error.retryPolicy==='read_retry'}}:{}),...(result.provenance?.[0]?{provenance:{source:result.provenance[0].sourceKind==='derived'?'hallmark_compute':'app_snapshot',fetchedAt:result.provenance[0].fetchedAt,...(result.provenance[0].sourceDataTime?{dataTime:result.provenance[0].sourceDataTime}:{}),endpoint:result.provenance[0].sourceRef}}:{})};
 }
-export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsPresentationService;token:string;port?:number;allowedOrigins?:string[];health?:()=>Promise<unknown>;scheduler?:AppsSnapshotScheduler}) {
+export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsPresentationService;token:string;port?:number;allowedOrigins?:string[];health?:()=>Promise<unknown>;scheduler?:AppsSnapshotScheduler;reviewBridge?:ReviewBridge;businessSettings?:BusinessSettingsService}) {
   const {runtime,presentation}=options;if(options.token.length<32)throw new Error('SERVICE_KEY_TOO_SHORT');
-  const workbench=workbenchRoutes(runtime,presentation);
+  const workbench=workbenchRoutes(runtime,presentation,options.businessSettings?.gateway);
+  const favorites=componentFavorites(runtime);
   const body=async(req:Parameters<typeof readBody>[0])=>{const input=await readBody(req);runtime.assertAdmission();return input;};
   const nativeBindings=new NativeAppBindings(runtime);
   const frameKey=(value:{sessionId:string;viewId:string;frameInstanceId:string})=>canonicalJson(['apps','presentation','frame_grants',value.sessionId,value.viewId,value.frameInstanceId]);
@@ -49,7 +55,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
     validateClientFeatures(params);
     const prior=runtime.store.get<{value:Grant}>('provider_records',frameKey(identity))?.value;
     if(prior&&(prior.retired||canonicalJson(prior.identity)!==canonicalJson(identity)||prior.documentNonce!==params.documentNonce))throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});
-    const features=(params.clientFeatures as string[]??[]).filter(feature=>['renderReadyV1','uiStateV1','bindingPagesV1'].includes(feature)),grant:Grant={identity,documentNonce:String(params.documentNonce),features,...(candidate?{candidate}:{})};
+    const features=(params.clientFeatures as string[]??[]).filter(feature=>['renderReadyV1','uiStateV1','bindingPagesV1','dataTransferV1'].includes(feature)),grant:Grant={identity,documentNonce:String(params.documentNonce),features,...(candidate?{candidate}:{})};
     runtime.store.put('provider_records',frameKey(identity),{appId:'apps',connectionId:'presentation',namespace:'frame_grants',recordId:frameKey(identity),value:grant});return {features};
   };
   const legacyPresentation=createLegacyPresentationAdapter(presentation,runtime);
@@ -65,17 +71,16 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
     const name=String(input.name),sessionId=String(input.sessionId),definition=TOOL_DEFINITIONS.find(tool=>tool.name===name);
     if(!definition)return {status:'failed',error:{code:'TOOL_NOT_FOUND',message:'Unknown legacy tool.',retryable:false}};
     const args=input.arguments as Record<string,unknown>,errors=validate(definition.parameters,args);
-    if(input.userRequest&&args.userRequest&&input.userRequest!==args.userRequest)return {status:'failed',error:{code:'USER_REQUEST_MISMATCH',message:'Write/save instruction differs from the invocation context.',retryable:false}};
+    if(definition.kind==='save'&&input.userRequest&&args.userRequest&&input.userRequest!==args.userRequest)return {status:'failed',error:{code:'USER_REQUEST_MISMATCH',message:'Save instruction differs from the invocation context.',retryable:false}};
     const missing=(definition.parameters.required??[]).filter(key=>!Object.hasOwn(args,key));
     if(missing.length){if(definition.kind==='save'&&missing.includes('userRequest'))return {status:'failed',error:{code:'SAVE_NOT_REQUESTED',message:'保存须记录本轮明确保存原话。',retryable:false}};return {status:'needs_clarification',clarification:{missing,question:'Please supply required inputs.'}};}
     if(errors.length)return {status:'failed',error:{code:'INVALID_PARAMS',message:errors.join('; '),retryable:false}};
     if(definition.kind==='save'&&(typeof args.userRequest!=='string'||!args.userRequest.trim()))return {status:'failed',error:{code:'SAVE_NOT_REQUESTED',message:'仅本轮明确保存要求允许持久保存。',retryable:false}};
     if(name==='hallmark_save_component'&&args.mode==='update'&&(!args.componentId||args.expectedRevision===undefined))return {status:'needs_clarification',clarification:{missing:[...(!args.componentId?['componentId']:[]),...(args.expectedRevision===undefined?['expectedRevision']:[])],question:'请明确要更新的组件及预期修订。'}};
-    if(definition.kind==='write'&&!args.clientOperationKey)return {status:'needs_clarification',clarification:{missing:['clientOperationKey'],question:'请明确原写入幂等键；不会生成替代键发起业务写入。'}};
     const descriptor=runtime.describe(name);if(!descriptor)return {status:'unavailable',error:{code:'CAPABILITY_NOT_FOUND',message:'Legacy alias is not registered.',retryable:false}};
     const appId=descriptor.capabilityId.split('.')[0],route=runtime.resolveConnection(appId,sessionId,appId==='apps'?'presentation':legacyConnection());
     if('status' in route)return legacyResult({...route,invocationId:String(input.invocationId),traceId:String(input.traceId)});
-    if(definition.kind==='write'){
+    if(definition.kind==='write'&&args.clientOperationKey){
       const existing=runtime.store.list<RuntimeOperation>('operations').find(operation=>operation.appId===appId&&operation.connectionId===route.connectionId&&operation.capabilityId===descriptor.capabilityId&&operation.idempotencyKey===args.clientOperationKey);
       if(existing&&(!('sessionId' in existing.request.source)||existing.request.source.sessionId!==sessionId))return {status:'failed',error:{code:'OPERATION_NOT_FOUND',message:'幂等键属于其他会话。',retryable:false}};
     }
@@ -85,7 +90,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       catch(error){return {status:'failed',error:{code:(error as {code?:string}).code??'CORE_ERROR',message:error instanceof Error?error.message:String(error),retryable:false}};}
     }
     else if(definition.kind==='write'&&typeof input.userRequest==='string'&&!args.userRequest)normalized.userRequest=input.userRequest;
-    const request:InvocationRequest={protocolVersion:'1.0',...route,invocationId:String(input.invocationId),traceId:String(input.traceId),capabilityId:descriptor.capabilityId,capabilityVersion:descriptor.version,input:JSON.parse(canonicalJson(normalized)) as JsonValue,source:legacySource(sessionId),deadlineAt:String(input.deadlineAt),...(descriptor.effect==='mutation'?{idempotencyKey:String(args.clientOperationKey??`legacy:${input.invocationId}`)}:{})};
+    const request:InvocationRequest={protocolVersion:'1.0',...route,invocationId:String(input.invocationId),traceId:String(input.traceId),capabilityId:descriptor.capabilityId,capabilityVersion:descriptor.version,input:JSON.parse(canonicalJson(normalized)) as JsonValue,source:legacySource(sessionId),deadlineAt:String(input.deadlineAt),...(descriptor.effect==='mutation'&&(args.clientOperationKey||descriptor.execution.idempotency!=='upstream_supported')?{idempotencyKey:String(args.clientOperationKey??`legacy:${input.invocationId}`)}:{})};
     const result=await runtime.invoke(request,signal);
     if(appId==='apps')return projectLegacyPresentationResult(name,result,runtime);
     let projected=legacyResult(result);
@@ -120,7 +125,9 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       if(!new Set([`127.0.0.1:${port}`,`localhost:${port}`,`[::1]:${port}`]).has((req.headers.host??'').toLowerCase()))return send(res,403,{error:'INVALID_HOST'});
       if(req.headers.origin&&!(options.allowedOrigins??[]).includes(req.headers.origin))return send(res,403,{error:'INVALID_ORIGIN'});
       if(!sameToken(options.token,(req.headers.authorization??'').replace(/^Bearer /,'')))return send(res,401,{error:'UNAUTHORIZED'});
-      if(req.url?.match(/%2f|\.\./i))return send(res,400,{error:'INVALID_PATH'});
+      // JSON Pointer query values legitimately contain encoded slashes. Guard the
+      // route pathname only; each endpoint validates its own decoded query fields.
+      if(req.url?.split('?',1)[0].match(/%2f|\.\./i))return send(res,400,{error:'INVALID_PATH'});
       const url=new URL(req.url??'/',`http://127.0.0.1:${port}`),path=url.pathname;
       // Freeze ordinary entry points while retaining inspection of an existing operation.
       const operationInspection=path.match(/^\/v1\/operations\/[^/]+(\/inspect)?$/);
@@ -130,13 +137,36 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
         const result=await legacyPresentation.handle(path,req.method??'GET',input,url.searchParams.get('sessionId')??undefined);if(result!==undefined)return send(res,200,result);
       }
       const legacyTool=path.match(/^\/tools\/(hallmark_[a-z_]+)$/);
-      if(req.method==='POST'&&legacyTool){const input=await body(req);strict(input,['arguments','sessionId','userRequest'],['arguments','sessionId']);return send(res,200,await legacyInvoke({name:legacyTool[1],...input,invocationId:randomUUID(),traceId:randomUUID(),deadlineAt:new Date(Date.now()+90000).toISOString()},controller.signal));}
-      if(req.method==='GET'&&path==='/v1/runtime')return send(res,200,runtime.identity());
+      if(req.method==='POST'&&legacyTool){const input=await body(req);strict(input,['arguments','sessionId','userRequest'],['arguments','sessionId']);return send(res,200,await legacyInvoke({name:legacyTool[1],...input,invocationId:randomUUID(),traceId:randomUUID(),deadlineAt:new Date(Date.now()+(['hallmark_update_price','hallmark_update_stock','hallmark_list_product'].includes(legacyTool[1])?300000:90000)).toISOString()},controller.signal));}
+      if(req.method==='POST'&&path.startsWith('/v1/review-requests/')&&options.reviewBridge){const response=await reviewRoutes(options.reviewBridge,path,await body(req),controller.signal);if(response!==undefined)return send(res,200,response);}
+      if(req.method==='GET'&&path==='/v1/business-settings'&&options.businessSettings)return send(res,200,options.businessSettings.read(url.searchParams.get('connectionId')??undefined,url.searchParams.get('storeId')??undefined));
+      if(req.method==='POST'&&path==='/v1/business-settings'&&options.businessSettings)return send(res,200,await options.businessSettings.write(await body(req),controller.signal));
+      if(req.method==='GET'&&path==='/v1/runtime')return send(res,200,{...runtime.identity(),hostFeatures:['routedInvocationsV1','viewsEtagV1',...(options.reviewBridge?['independentReviewBridgeV1']:[])]});
       if(req.method==='GET'&&path==='/v1/apps')return send(res,200,{apps:runtime.listApps()});
       if(req.method==='GET'&&path==='/v1/workbench')return send(res,200,await workbench.read(url.searchParams.get('resource')??'workbench',url.searchParams.get('appId')));
       if(req.method==='POST'&&path==='/v1/workbench')return send(res,200,await workbench.write(await body(req),controller.signal));
-      if(req.method==='GET'&&path==='/v1/authoring/features')return send(res,200,{features:presentation.authoring?['renderReadyV1','uiStateV1','bindingPagesV1']:[]});
-      if(req.method==='GET'&&path==='/v1/views'){const sessionId=url.searchParams.get('sessionId');if(!sessionId)throw new Error('EXPLICIT_SESSION_REQUIRED');return send(res,200,{views:runtime.store.viewsForSession<AppsView>(sessionId)});}
+      if(req.method==='GET'&&path==='/v1/favorites'){
+        if([...url.searchParams.keys()].some(key=>key!=='sessionId'))throw Object.assign(new Error('INVALID_INPUT'),{code:'INVALID_INPUT',statusCode:400});
+        return send(res,200,favorites.list(url.searchParams.get('sessionId')));
+      }
+      if(req.method==='POST'&&path==='/v1/favorites')return send(res,200,favorites.set(await body(req)));
+      if(req.method==='GET'&&path==='/v1/authoring/features')return send(res,200,{features:presentation.authoring?['renderReadyV1','uiStateV1','bindingPagesV1','dataTransferV1']:[]});
+      if(req.method==='GET'&&path==='/v1/views'){
+        const sessionId=url.searchParams.get('sessionId');if(!sessionId||[...url.searchParams.keys()].some(key=>key!=='sessionId'))throw new Error('EXPLICIT_SESSION_REQUIRED');
+        const directory=()=>{
+          const summaries=runtime.store.authoringDraftSummaries(sessionId),drafts=new Map<string,(typeof summaries)[number]>();
+          for(const summary of summaries)if(!drafts.has(summary.viewId))drafts.set(summary.viewId,summary);
+          const views=runtime.store.viewsForSession<AppsView>(sessionId).map(view=>{const draft=drafts.get(view.viewId);return draft?{...view,authoringState:draft.status as AppsView['authoringState'],authoringUpdatedAt:draft.updatedAt,authoringEpoch:draft.epoch}:view;});
+          return {views};
+        };
+        // Draft status is directory metadata; neither collection is decoded for a matching token.
+        const version=runtime.store.collectionVersion?[runtime.store.collectionVersion('views'),runtime.store.collectionVersion('authoring_drafts')]:undefined;
+        const value=version?undefined:directory();
+        const etag='"'+createHash('sha256').update(canonicalJson([sessionId,version??value])).digest('hex')+'"';
+        res.setHeader('ETag',etag);
+        if(req.headers['if-none-match']===etag){res.writeHead(304,{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'});res.end();return;}
+        return send(res,200,value??directory());
+      }
       if(req.method==='GET'&&path==='/v1/component-history')return send(res,200,{revisions:runtime.store.componentSummaries(url.searchParams.get('componentId')??'')});
       if(req.method==='GET'&&path==='/v1/saved')return send(res,200,{components:runtime.store.componentSummaries(),assets:runtime.store.list<{kind:string}>('saved_assets').filter(asset=>['entry','template'].includes(asset.kind))});
       if(req.method==='GET'&&path==='/v1/component-thumbnail'){
@@ -163,7 +193,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
             const view=presentation.ownedView(sessionId,String(params.viewId));
             const scope=canonicalJson(['preview',sessionId,view.viewId,params.scopeId??'legacy']);
             if(params.action==='close'){presentation.clearBindingPages(scope);return send(res,200,{closed:true});}
-            if(params.action==='page')return send(res,200,await presentation.readBindingPage(view,scope,params as never,{kind:'agent',sessionId,nativeCallId:randomUUID()},()=>presentation.ownedView(sessionId,view.viewId),controller.signal));
+            if(params.action==='page'){if(params.dataTransfer!==undefined&&typeof params.dataTransfer!=='boolean')throw new Error('INVALID_DATA_TRANSFER_FLAG');return send(res,200,await presentation.readBindingPage(view,scope,params as never,{kind:'agent',sessionId,nativeCallId:randomUUID()},()=>presentation.ownedView(sessionId,view.viewId),controller.signal,params.dataTransfer===true?DATA_TRANSFER_MAX_BYTES:250000));}
             if(params.action==='data')return send(res,200,presentation.scopedData(view,scope));
             if(params.action==='refresh'){if(params.forceRefresh!==undefined&&typeof params.forceRefresh!=='boolean')throw new Error('INVALID_FORCE_REFRESH');presentation.clearBindingPages(scope);return send(res,200,await presentation.refreshView(sessionId,view.viewId,{kind:'agent',sessionId,nativeCallId:randomUUID()},params.bindingIds as string[]|undefined,controller.signal,{forceRefresh:params.forceRefresh!==false}));}
             if(params.action==='selection'){validateDataSelection(presentation.scopedData(view,scope),params.selection as never);return send(res,200,{status:'validated',preview:true});}
@@ -193,6 +223,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
             strict(params,['viewId','buildId','frameInstanceId','documentNonce'],['viewId','buildId','frameInstanceId','documentNonce']);presentation.ownedView(sessionId,String(params.viewId));
             const identity:BridgeIdentity={protocolVersion:'2.0',sessionId,viewId:String(params.viewId),buildId:String(params.buildId),frameInstanceId:String(params.frameInstanceId)},grant=frameGrant(identity);if(grant.documentNonce!==params.documentNonce)throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});runtime.store.transaction(()=>{
               presentation.clearBindingPages(canonicalJson(identity));
+              presentation.clearDataTransfers(canonicalJson(identity));
               runtime.store.put('provider_records',frameKey(identity),{appId:'apps',connectionId:'presentation',namespace:'frame_grants',recordId:frameKey(identity),value:{...grant,retired:true}});
               // A closed document must not pin its display: the same display may grant exactly one new iframe document afterwards.
               if(grant.candidate?.displayId)authoring.releaseDisplayFrame(sessionId,{displayId:grant.candidate.displayId,frameInstanceId:identity.frameInstanceId,documentNonce:grant.documentNonce});
@@ -253,12 +284,22 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
         }
       }
       const description=path.match(/^\/v1\/capabilities\/([^/]+)$/);if(req.method==='GET'&&description){const descriptor=runtime.describe(decodeURIComponent(description[1]),url.searchParams.get('version')??undefined);return send(res,descriptor?200:404,descriptor??{error:'CAPABILITY_NOT_FOUND'});}
+      if(req.method==='POST'&&path==='/v1/routed-invocations'){
+        const input=await body(req),request=input as unknown as InvocationRequest;
+        if(validateInvocation(request).length){const result=await runtime.invoke(request,controller.signal);return send(res,request.protocolVersion!=='1.0'?409:400,result);}
+        if(request.source.kind!=='agent')throw Object.assign(new Error('INVALID_ROUTED_INVOCATION'),{statusCode:400});
+        const route=runtime.resolveConnection(request.appId,request.source.sessionId,request.connectionId);
+        if('status' in route)return send(res,200,{result:{...route,invocationId:request.invocationId,traceId:request.traceId}});
+        const result=await runtime.invoke(request,controller.signal);
+        // Runtime still performs live schema, binding, lifecycle, deadline and mutation admission checks.
+        return send(res,result.status==='pending'?202:200,{result,modelProjection:projectModelResult(runtime.store,result)});
+      }
       if(req.method==='POST'&&path==='/v1/invocations'){const input=await body(req),result=await runtime.invoke(input as unknown as InvocationRequest,controller.signal);return send(res,input.protocolVersion!=='1.0'?409:result.status==='pending'?202:200,result);}
       if(req.method==='POST'&&path==='/v1/component-extension'){
         const input=await body(req);strict(input,['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','type','feature','action','params'],['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','type','feature','action','params']);
         const identity:BridgeIdentity={protocolVersion:input.protocolVersion as '2.0',sessionId:String(input.sessionId),viewId:String(input.viewId),buildId:String(input.buildId),frameInstanceId:String(input.frameInstanceId)},grant=frameGrant(identity);
         if(input.type!=='extension'||!grant.features.includes(String(input.feature)))throw new Error('UNSUPPORTED_HOST_CAPABILITY');
-        const params=input.params as Record<string,unknown>;if((grant.candidate?.displayId||params.documentNonce!==undefined)&&params.documentNonce!==grant.documentNonce)throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});
+        const params=input.params as Record<string,unknown>;if(!params||typeof params!=='object'||Array.isArray(params))throw new Error('INVALID_EXTENSION_PARAMS');if((grant.candidate?.displayId||input.feature==='dataTransferV1'||params.documentNonce!==undefined)&&params.documentNonce!==grant.documentNonce)throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});
         const host=presentation.createHost(identity,{signal:controller.signal,candidate:grant.candidate,clientFeatures:grant.features});try{return send(res,200,await host.handle(input));}finally{host.dispose();}
       }
       if(req.method==='POST'&&path==='/v1/component-bridge'){
@@ -270,7 +311,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
         if(grant?.retired)throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});
         if((!view.source||view.source.buildId!==input.buildId)&&(!grant?.candidate||!presentation.authoring?.acceptsFrame(grant.candidate)))throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});
         const host=presentation.createHost(identity,{signal:controller.signal,candidate:grant?.candidate,clientFeatures:grant?.features,attachSelection:async(_identity,selection)=>({status:'validated',selection:JSON.parse(canonicalJson(selection)) as JsonValue})});
-        try{const response=await host.handle(input);return send(res,response?200:400,response??{error:{code:'INVALID_BRIDGE_MESSAGE',retryPolicy:'never'}});}finally{host.dispose();}
+        try{const response=await (options.reviewBridge?options.reviewBridge.withOwner({sessionId:identity.sessionId,invocationId:componentReviewInvocationId({...identity,requestId:String(input.requestId)})},()=>host.handle(input)):host.handle(input));return send(res,response?200:400,response??{error:{code:'INVALID_BRIDGE_MESSAGE',retryPolicy:'never'}});}finally{host.dispose();}
       }
       const invocation=path.match(/^\/v1\/invocations\/([^/]+)$/);if(req.method==='GET'&&invocation){const record=runtime.store.get<InvocationRecord>('invocations',decodeURIComponent(invocation[1]));return send(res,record?200:404,record??{error:'INVOCATION_NOT_FOUND'});}
       const operation=path.match(/^\/v1\/operations\/([^/]+)(\/inspect)?$/);if(operation){const id=decodeURIComponent(operation[1]);if(req.method==='POST'&&operation[2]){const input=await readBody(req);strict(input,[]);return send(res,200,await runtime.inspect(id,controller.signal));}if(req.method==='GET'&&!operation[2]){const record=runtime.store.get<RuntimeOperation>('operations',id);return send(res,record?200:404,record?{...record,events:runtime.store.list<{operationId:string}>('operation_events').filter(row=>row.operationId===id)}:{error:'OPERATION_NOT_FOUND'});}}
@@ -308,7 +349,18 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
         return send(res,200,current);
       }if(req.method==='POST'&&viewRoute[2]==='/refresh'){const input=await body(req);strict(input,['sessionId','bindingIds','forceRefresh'],['sessionId']);if(input.forceRefresh!==undefined&&typeof input.forceRefresh!=='boolean')throw new Error('INVALID_FORCE_REFRESH');return send(res,200,await presentation.refreshView(String(input.sessionId),viewId,source(String(input.sessionId)),input.bindingIds as string[]|undefined,controller.signal,{forceRefresh:input.forceRefresh!==false}));}}
       if(path==='/v1/components'){if(req.method==='GET')return send(res,200,{components:runtime.store.list('components')});if(req.method==='POST'){const input=await body(req);strict(input,['sessionId','viewId','userRequest','mode','componentId','expectedRevision'],['sessionId','viewId','userRequest','mode']);return send(res,200,presentation.saveComponent(String(input.sessionId),String(input.viewId),String(input.userRequest),input as never));}}
-      const resultRoute=path.match(/^\/v1\/results\/(.+)$/);if(req.method==='GET'&&resultRoute)return send(res,200,readResultPage(runtime.store,decodeURIComponent(resultRoute[1]),url.searchParams.get('cursor')??'0',Number(url.searchParams.get('limit')??100)));
+      const resultRoute=path.match(/^\/v1\/results\/(.+)$/);if(req.method==='GET'&&resultRoute){
+        const id=decodeURIComponent(resultRoute[1]),bounded=url.searchParams.has('path');
+        if(bounded){
+          const sessionId=url.searchParams.get('sessionId'),stored=runtime.store.get<{result:CapabilityResult}>('datasets',id);
+          const invocation=stored?.result&&runtime.store.get<InvocationRecord>('invocations',stored.result.invocationId);
+          // An inherited result may be read by a fork only after the same application
+          // connection is enabled there. A binding to another connection is insufficient.
+          if(!sessionId||!invocation||'status' in runtime.resolveConnection(invocation.request.appId,sessionId,invocation.request.connectionId))
+            return send(res,403,{status:'failed',error:{code:'RESULT_ACCESS_DENIED',message:'Enable the original application connection in this session to read this result.',retryPolicy:'never'}});
+        }
+        return send(res,200,readResultPage(runtime.store,id,url.searchParams.get('cursor')??'0',Number(url.searchParams.get('limit')??100),bounded?{path:url.searchParams.get('path')!}:undefined));
+      }
       if(req.method==='POST'&&path==='/v1/model-result'){const input=await body(req);strict(input,['invocationId'],['invocationId']);const record=runtime.store.get<InvocationRecord>('invocations',String(input.invocationId));if(!record?.result)return send(res,404,{error:'INVOCATION_NOT_FOUND'});return send(res,200,projectModelResult(runtime.store,record.result));}
       if(req.method==='POST'&&path==='/v1/legacy-invocations')return send(res,200,await legacyInvoke(await body(req),controller.signal));
       if(req.method==='GET'&&path==='/health')return send(res,200,{status:'ok',service:'dsh-apps-runtime',version:runtime.runtimeVersion,...runtime.identity(),hallmark:options.health?await options.health():{status:'unavailable'}});

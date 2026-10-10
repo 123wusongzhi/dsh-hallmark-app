@@ -29,6 +29,16 @@ for(const name of ['apps-authoring-build','apps-authoring-preview','apps-authori
 await cp('scripts/apps-authoring-check.ps1',`${directory}/lib/apps-authoring-check.ps1`);
 await cp('docs/component-authoring',`${directory}/authoring-docs`,{recursive:true});
 for(const entry of await readdir('docs/component-authoring',{recursive:true,withFileTypes:true}))if(entry.isFile())sourceInputPaths.add(join(entry.parentPath,entry.name).replaceAll('\\','/'));
+// Ship the exact project skill bytes with the candidate; installing uses the official DSH filesystem provider root.
+const bundledSkills=['hallmark-component-design','ozon-listing'];
+for(const name of bundledSkills){
+  const target=resolve(directory,'skills',name),skillsRoot=resolve(directory,'skills');
+  if(target!==join(skillsRoot,name))throw new Error('INVALID_BUNDLED_SKILL_DIRECTORY');
+  await rm(target,{recursive:true,force:true});
+  await cp(`skills/${name}`,target,{recursive:true});
+  for(const entry of await readdir(`skills/${name}`,{recursive:true,withFileTypes:true}))if(entry.isFile())sourceInputPaths.add(join(entry.parentPath,entry.name).replaceAll('\\','/'));
+}
+await cp('scripts/install-design-skills.ps1',`${directory}/lib/install-skills.ps1`);
 // Installable development SDKs travel with the bundle; each component's normal React dependencies remain in its own lockfile.
 const generatedSdk=resolve(directory,'sdk'),bundleDirectory=resolve(directory);if(generatedSdk!==join(bundleDirectory,'sdk'))throw new Error('INVALID_GENERATED_SDK_DIRECTORY');
 await rm(generatedSdk,{recursive:true,force:true});
@@ -57,10 +67,10 @@ await mkdir(`${directory}/source-starter`,{recursive:true});
 await cp('scripts/create-apps-source.mjs',`${directory}/source-starter/create-apps-source.mjs`);
 const hashes = {};
 for (const file of ['package.json','cordis.patch.yml','versions.json','client/client.js']) hashes[file] = createHash('sha256').update(await readFile(`${directory}/${file}`)).digest('hex');
-for (const section of ['lib','sdk','source-starter','authoring-docs'])for (const entry of await readdir(`${directory}/${section}`,{recursive:true,withFileTypes:true}))if(entry.isFile()){const absolute=resolve(entry.parentPath,entry.name);const path=absolute.substring(resolve(directory).length+1).replaceAll('\\','/');hashes[path]=createHash('sha256').update(await readFile(absolute)).digest('hex');}
+for (const section of ['lib','sdk','source-starter','authoring-docs','skills'])for (const entry of await readdir(`${directory}/${section}`,{recursive:true,withFileTypes:true}))if(entry.isFile()){const absolute=resolve(entry.parentPath,entry.name);const path=absolute.substring(resolve(directory).length+1).replaceAll('\\','/');hashes[path]=createHash('sha256').update(await readFile(absolute)).digest('hex');}
 const evidence = `evidence/${versions.releaseId}/candidates/${manifest.version}`;await mkdir(evidence,{recursive:true});
 const sourceInputs={};for(const path of [...sourceInputPaths].sort())sourceInputs[path]=createHash('sha256').update(await readFile(path)).digest('hex');
-await writeFile(`${evidence}/build-manifest.json`,JSON.stringify({releaseId:versions.releaseId,bundleVersion:manifest.version,versions,artifacts:hashes,sourceInputs,sourceBuild:true,installed:false,liveAcceptance:'NOT_RUN',runtimeEntry:'lib/runtime.js',authoringEntries:{check:'lib/apps-authoring-check.js',build:'lib/apps-authoring-build.js',preview:'lib/apps-authoring-preview.js'},logicalPlugins:['plugin-apps','plugin-hallmark','plugin-notes'],publicEntries:1,runtimeProcesses:1},null,2)+'\n');
+await writeFile(`${evidence}/build-manifest.json`,JSON.stringify({releaseId:versions.releaseId,bundleVersion:manifest.version,versions,artifacts:hashes,sourceInputs,sourceBuild:true,installed:false,liveAcceptance:'NOT_RUN',runtimeEntry:'lib/runtime.js',authoringEntries:{check:'lib/apps-authoring-check.js',build:'lib/apps-authoring-build.js',preview:'lib/apps-authoring-preview.js'},skills:{names:bundledSkills,sourceDirectory:'skills',installer:'lib/install-skills.ps1',discovery:'official DSH filesystem provider: <DSH_HOME>/skills'},logicalPlugins:['plugin-apps','plugin-hallmark','plugin-notes'],publicEntries:1,runtimeProcesses:1},null,2)+'\n');
 // npm pack uses the ordinary manifest file allowlist and does not install anything.
 await mkdir('artifacts',{recursive:true});
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';

@@ -10,6 +10,7 @@ import {hallmarkProductSources,hallmarkCollectedSources} from '../../app-hallmar
 import {hallmarkOzonSources} from '../../app-hallmark/src/ozon-data.ts';
 import {createOzonCompositionDraft,DEFAULT_PRODUCT_FIELDS} from '../../app-hallmark/src/ozon-composition.ts';
 import {HallmarkClient} from '../../hallmark-adapter/client.ts';
+import type {OzonBusinessGateway} from '../../ozon-business/src/index.ts';
 
 const fail=(message:string):never=>{throw Object.assign(new Error(message),{code:'INVALID_INPUT',statusCode:400});};
 const object=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:fail('参数必须是对象。');
@@ -18,16 +19,18 @@ function app(value:unknown):string {if(typeof value!=='string'||!/^[-a-z][a-z0-9
 interface StoreOption {id:string;name:string;connectionId:string}
 
 /** The Runtime owns source definitions and selected-store context; credentials remain upstream. */
-export function workbenchRoutes(runtime:AppsRuntime,presentation:AppsPresentationService){
+export function workbenchRoutes(runtime:AppsRuntime,presentation:AppsPresentationService,gateway?:OzonBusinessGateway){
  const stores=async(appId:string,signal?:AbortSignal)=>{
   const result:StoreOption[]=[],issues:{id:string;message:string}[]=[];
   if(appId!=='hallmark')return {stores:result,issues};
+  for(const store of gateway?.listStores()??[]){if(store.enabled&&store.sourceConnectionId&&runtime.getConnection('hallmark',store.sourceConnectionId)?.enabled)result.push({id:store.id,name:store.name,connectionId:store.sourceConnectionId});}
   for(const connection of runtime.listConnections(appId).filter(item=>item.enabled)){
+   if(gateway?.listStores().some(store=>store.sourceConnectionId===connection.connectionId))continue;
    try{
     const config=connection.config as {baseUrl?:string};if(!config.baseUrl)throw Error('未配置平台连接地址。');
     const response=await new HallmarkClient({baseUrl:config.baseUrl,fetchImpl:(url,options)=>fetch(url,{...options,...(signal?{signal:AbortSignal.any([signal,...(options?.signal?[options.signal]:[])])}:{})})}).getStores();
     if(response.status!=='ok'||!Array.isArray(response.raw))throw Error(response.error?.message??'店铺列表读取失败。');
-    for(const row of response.raw){if(row.platform&&row.platform!=='ozon'||row.status&&row.status!=='active')continue;result.push({id:row.id,name:row.shopName,connectionId:connection.connectionId});}
+    for(const row of response.raw){if(row.platform&&row.platform!=='ozon'||row.status&&row.status!=='active'||result.some(store=>store.id===row.id&&store.connectionId===connection.connectionId))continue;result.push({id:row.id,name:row.shopName,connectionId:connection.connectionId});}
    }catch(error){issues.push({id:connection.connectionId,message:error instanceof Error?error.message:String(error)});}
   }
   return {stores:result,issues};

@@ -1,6 +1,6 @@
 import {checkpoint,buildFingerprint,inspectAttempt,newAttemptRequired} from './authoring-resume.mjs';
 import {SourceComponentStore} from '../packages/source-components/src/index.ts';
-import {AuthoringEvidenceRunner,sourceInputDigest} from '../packages/source-components/src/authoring-evidence.ts';
+import {AuthoringEvidenceRunner,sourceInputDigest,buildReuseSignature} from '../packages/source-components/src/authoring-evidence.ts';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {recordEvidence,writeSummary} from './authoring-output.mjs';
 import {resolve,join} from 'node:path';
@@ -8,6 +8,7 @@ import {fileURLToPath} from 'node:url';
 export async function runAuthoringBuild(input){
 let stage='build',summary;
 try{
+if(input.retryStage!==undefined)throw Object.assign(new Error('Use the check runner with retryStage and retryId to obtain a new runtime attempt.'),{code:'RETRY_REQUIRES_CHECK_RUNNER'});
 const runner=new AuthoringEvidenceRunner(input.evidenceRoot),sources=new SourceComponentStore(input.archiveRoot);
 const onStart=input.runtime?async()=>{
  const url=new URL(input.runtime.url);if(url.protocol!=='http:'||url.hostname!=='127.0.0.1')throw new Error('BUILD_RUNTIME_LOCAL_ONLY');
@@ -16,14 +17,18 @@ const onStart=input.runtime?async()=>{
 }:undefined;
 const buildStarted=performance.now();
 const key=buildFingerprint(input),previous=checkpoint(input,'build');
-let result,reused=false;
+let result,reused=false,verified;
 if(previous?.result){
  if(previous.key!==key)throw newAttemptRequired();
- try{const report=runner.verifyBuild(previous.result.reportRef,sources,{allowFailure:true});if(report.verdict==='FAIL'&&sourceInputDigest(input.workspacePath)!==report.sourceInputDigestAfter)throw newAttemptRequired();if(report.attemptId!==input.attemptId||report.epoch!==input.epoch||report.sourceRevision!==input.sourceRevision)throw newAttemptRequired();}catch(error){if(error.message==='BUILD_INPUT_CHANGED')throw newAttemptRequired();throw error;}
- await inspectAttempt(input);result=previous.result;reused=true;
-}else{result=await runner.build({...input,sources,onStart});checkpoint(input,'build',{key,result});}
+ try{const report=runner.verifyBuild(previous.result.reportRef,sources,{allowFailure:true});if(report.verdict==='FAIL'&&sourceInputDigest(input.workspacePath)!==report.sourceInputDigestAfter)throw newAttemptRequired();if(report.attemptId!==input.attemptId||report.epoch!==input.epoch||report.sourceRevision!==input.sourceRevision||report.reuseInput?.key!==buildReuseSignature(input).key)throw newAttemptRequired();verified=report;}catch(error){if(error.message==='BUILD_INPUT_CHANGED')throw newAttemptRequired();throw error;}
+ await inspectAttempt(input);result={report:verified,reportRef:previous.result.reportRef};reused=true;
+}else{
+ if(input.reuseBuildReportRef){await onStart?.();result=runner.reuseBuild(input.reuseBuildReportRef,{...input,sources});reused=true;}
+ else result=await runner.build({...input,sources,onStart});
+ checkpoint(input,'build',{version:2,key,result});
+}
 
-summary={reusedBuild:reused,reportRef:result.reportRef,verdict:result.report.verdict,archiveBuildId:result.report.archiveBuildId,buildMs:Math.round(performance.now()-buildStarted)};
+summary={attemptId:input.attemptId,epoch:input.epoch,reusedBuild:reused,executionKind:result.report.executionKind??'executed',executionId:result.report.executionId,reusedFrom:result.report.reusedFrom??null,reuseVerifiedAt:result.report.reuseVerifiedAt??null,environmentPolicy:result.report.reuseInput?.environment.policy??'legacy',environmentKeys:result.report.reuseInput?.environment.keys??[],reportRef:result.reportRef,verdict:result.report.verdict,archiveBuildId:result.report.archiveBuildId,buildMs:Math.round(performance.now()-buildStarted)};
 if(input.autoRecord){
  stage='record_build';const receipt=await recordEvidence(input,'build',result.reportRef);summary.buildReceiptId=receipt.receiptId;
  if(summary.verdict==='PASS'){

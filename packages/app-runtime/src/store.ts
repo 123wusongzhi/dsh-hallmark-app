@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
+import {randomUUID} from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { InvocationRequest, CapabilityResult, OperationState, JsonValue } from '../../app-contracts/src/index.ts';
@@ -7,8 +8,10 @@ export const DATABASE_SCHEMA_VERSION = 4;
 export const RUNTIME_V3_COLLECTIONS = ['connections', 'session_app_bindings', 'invocations', 'operations', 'invocation_operations', 'operation_events', 'runs', 'run_steps', 'datasets', 'builds', 'views', 'components', 'component_versions', 'component_contexts', 'saved_assets', 'provider_records', 'legacy_aliases', 'artifact_refs', 'migration_records'] as const;
 export const AUTHORING_COLLECTIONS = ['authoring_drafts', 'authoring_attempts', 'build_receipts', 'preview_receipts', 'view_publications', 'view_ui_states'] as const;
 export const RUNTIME_COLLECTIONS = [...RUNTIME_V3_COLLECTIONS, ...AUTHORING_COLLECTIONS] as const;
+export interface AuthoringDraftSummary {draftId:string;viewId:string;status:string;updatedAt:string;epoch:number}
 export interface RuntimeOperation {
   configRevision?: number;
+  resourceScope?: string[];
   operationId: string;
   appId: string;
   connectionId: string;
@@ -52,6 +55,13 @@ function assertJSON(value: unknown, seen = new Set<object>()): void {
   }
   seen.delete(value);
 }
+const queryFields:Record<string,readonly string[]>={
+  views:['ownerSessionId','sourceComponentId'],component_versions:['componentId'],saved_assets:['kind','appId'],
+  provider_records:['namespace','appId','connectionId','value.viewId','value.identity.sessionId','value.identity.viewId','value.candidate.displayId'],
+  authoring_drafts:['ownerSessionId','viewId'],authoring_attempts:['draftId','epoch'],
+  view_publications:['ownerSessionId','viewId','state','committedViewRevision','candidateBuildId'],
+  artifact_refs:['ownerKind','ownerId','targetKind','targetId'],
+};
 
 /** Normal Runtime opens schema 4. The explicit schema-3 mode is only for offline legacy migration. */
 export class RuntimeStore {
@@ -60,6 +70,8 @@ export class RuntimeStore {
   readonly collections: readonly string[];
   #depth = 0;
   #closed = false;
+  #versionNonce=randomUUID();
+  #collectionVersions=new Map<string,number>();
   constructor(path: string, options: {schemaVersion?: 3 | 4} = {}) {
     this.schemaVersion = options.schemaVersion ?? DATABASE_SCHEMA_VERSION;
     this.collections = this.schemaVersion === 3 ? RUNTIME_V3_COLLECTIONS : RUNTIME_COLLECTIONS;
@@ -71,6 +83,14 @@ export class RuntimeStore {
     this.transaction(() => {
       for (const table of this.collections) this.db.exec(`CREATE TABLE IF NOT EXISTS ${table} (id TEXT PRIMARY KEY, value_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`);
       this.db.exec("CREATE INDEX IF NOT EXISTS views_owner ON views(json_extract(value_json,'$.ownerSessionId'),created_at,id); CREATE INDEX IF NOT EXISTS component_versions_owner ON component_versions(json_extract(value_json,'$.componentId'),created_at,id)");
+      this.db.exec(`CREATE INDEX IF NOT EXISTS views_saved_owner ON views(json_extract(value_json,'$.ownerSessionId'),json_extract(value_json,'$.sourceComponentId'),created_at,id);
+        CREATE INDEX IF NOT EXISTS saved_assets_kind_app ON saved_assets(json_extract(value_json,'$.kind'),json_extract(value_json,'$.appId'),created_at,id);
+        CREATE INDEX IF NOT EXISTS provider_records_namespace_view ON provider_records(json_extract(value_json,'$.namespace'),json_extract(value_json,'$.value.viewId'),created_at,id) WHERE json_extract(value_json,'$.namespace')='component_displays';
+        CREATE INDEX IF NOT EXISTS provider_records_frame_owner ON provider_records(json_extract(value_json,'$.namespace'),json_extract(value_json,'$.value.identity.sessionId'),json_extract(value_json,'$.value.identity.viewId'),created_at,id) WHERE json_extract(value_json,'$.namespace')='frame_grants';
+        CREATE INDEX IF NOT EXISTS provider_records_frame_display ON provider_records(json_extract(value_json,'$.namespace'),json_extract(value_json,'$.value.candidate.displayId'),created_at,id) WHERE json_extract(value_json,'$.namespace')='frame_grants'`);
+      if(this.schemaVersion===4)this.db.exec(`CREATE INDEX IF NOT EXISTS authoring_drafts_owner_view ON authoring_drafts(json_extract(value_json,'$.ownerSessionId'),json_extract(value_json,'$.viewId'),created_at,id);
+        CREATE INDEX IF NOT EXISTS authoring_attempts_draft_epoch ON authoring_attempts(json_extract(value_json,'$.draftId'),json_extract(value_json,'$.epoch'),created_at,id);
+        CREATE INDEX IF NOT EXISTS view_publications_owner_view ON view_publications(json_extract(value_json,'$.ownerSessionId'),json_extract(value_json,'$.viewId'),json_extract(value_json,'$.state'),created_at,id)`);
       if (!version) {
         this.db.exec(`ALTER TABLE operations ADD COLUMN app_id TEXT NOT NULL DEFAULT '';
           ALTER TABLE operations ADD COLUMN connection_id TEXT NOT NULL DEFAULT '';
@@ -93,8 +113,24 @@ export class RuntimeStore {
   list<T = Record<string, JsonValue>>(collection: string): T[] {
     return this.db.prepare(`SELECT value_json FROM ${this.table(collection)} ORDER BY created_at,id`).all().map(row => JSON.parse(String(row.value_json)) as T);
   }
+  /** Opaque instance identity + local writes + external SQLite commits, without parsing collection rows. */
+  collectionVersion(collection:string):string {
+    const table=this.table(collection),externalVersion=Number(this.db.prepare('PRAGMA data_version').get()?.data_version??0);
+    return `${this.#versionNonce}:${table}:${this.#collectionVersions.get(table)??0}:${externalVersion}`;
+  }
+  /** Exact equality over declared indexed paths; never interpolate caller-provided SQL or JSON paths. */
+  query<T>(collection:string,filters:Record<string,string|number|boolean|null>):T[] {
+    const table=this.table(collection),entries=Object.entries(filters),allowed=queryFields[table];
+    if(!entries.length||!allowed||entries.some(([field,value])=>!allowed.includes(field)||!(value===null||typeof value==='string'||typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value))))throw new Error('INVALID_RUNTIME_QUERY');
+    const clauses=entries.map(([field,value])=>value===null?`json_type(value_json,'$.${field}')='null'`:`json_extract(value_json,'$.${field}')=?`),values=entries.filter(([,value])=>value!==null).map(([,value])=>typeof value==='boolean'?Number(value):value as string|number);
+    return this.db.prepare(`SELECT value_json FROM ${table} WHERE ${clauses.join(' AND ')} ORDER BY created_at,id`).all(...values).map(row=>JSON.parse(String(row.value_json)) as T);
+  }
   viewsForSession<T>(sessionId:string):T[] {
     return this.db.prepare(`SELECT value_json FROM ${this.table('views')} WHERE json_extract(value_json,'$.ownerSessionId')=? ORDER BY created_at,id`).all(sessionId).map(row=>JSON.parse(String(row.value_json)) as T);
+  }
+  authoringDraftSummaries(sessionId:string):AuthoringDraftSummary[] {
+    if(this.schemaVersion!==4)return [];
+    return this.db.prepare(`SELECT json_extract(value_json,'$.draftId') AS draftId,json_extract(value_json,'$.viewId') AS viewId,json_extract(value_json,'$.status') AS status,json_extract(value_json,'$.updatedAt') AS updatedAt,json_extract(value_json,'$.epoch') AS epoch FROM ${this.table('authoring_drafts')} WHERE json_extract(value_json,'$.ownerSessionId')=? ORDER BY (json_extract(value_json,'$.status')='discarded'),updatedAt DESC,epoch DESC,created_at DESC,id`).all(sessionId) as unknown as AuthoringDraftSummary[];
   }
   componentSummaries(componentId?:string):{componentId:string;title:string;revision:number;savedAt:string}[] {
     const table=this.table(componentId===undefined?'components':'component_versions');
@@ -116,13 +152,17 @@ export class RuntimeStore {
     } else {
       this.db.prepare(`INSERT INTO ${table}(id,value_json,created_at,updated_at) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at`).run(id,JSON.stringify(value),now,now);
     }
+    // Rollback may cause an extra refresh. It must never restore an older token and conceal a committed write.
+    this.#collectionVersions.set(table,(this.#collectionVersions.get(table)??0)+1);
     return structuredClone(value);
   }
   delete(collection: string, id: string): boolean {
     if(collection==='component_contexts'&&(id.startsWith('snapshot:')||id.startsWith('agent:')))throw new Error('EVIDENCE_DELETE_FORBIDDEN');
     if(collection==='provider_records'&&id.startsWith('view-revision:'))throw new Error('EVIDENCE_DELETE_FORBIDDEN');
     if (['operation_events','operations','invocations','component_versions','build_receipts','preview_receipts'].includes(collection)) throw new Error('EVIDENCE_DELETE_FORBIDDEN');
-    return Number(this.db.prepare(`DELETE FROM ${this.table(collection)} WHERE id=?`).run(id).changes) > 0;
+    const table=this.table(collection),deleted=Number(this.db.prepare(`DELETE FROM ${table} WHERE id=?`).run(id).changes)>0;
+    if(deleted)this.#collectionVersions.set(table,(this.#collectionVersions.get(table)??0)+1);
+    return deleted;
   }
   transaction<T>(fn: (store: RuntimeStore) => T): T {
     if (this.#closed) throw new Error('STORE_CLOSED');

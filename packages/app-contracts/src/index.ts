@@ -57,8 +57,12 @@ export interface AppManifest {
 }
 export interface AppProvider {
  manifest: AppManifest; descriptors: readonly CapabilityDescriptor[];
+ /** Trusted provider-owned identities; undefined retains the whole-connection lock. */
+ mutationScope?(request:Readonly<InvocationRequest>,configRevision?:number):readonly string[]|undefined;
  execute(context: ExecutionContext): Promise<CapabilityResult>;
  inspect?(operationId: string, context: ExecutionContext): Promise<CapabilityResult>;
+ /** Dedicated background execution of an unchanged, previously submitted business continuation. Never called by inspect. */
+ continueOperation?(operationId: string, context: ExecutionContext): Promise<CapabilityResult>;
  dispose(): Promise<void>;
 }
 export interface SessionAppBinding extends AppRef { sessionId: string; enabled: boolean; boundAt: string }
@@ -204,7 +208,7 @@ export const invocationSchema:JsonSchema={type:'object',properties:{protocolVers
 const invocationValidator=compileSchema(invocationSchema);
 export function validateInvocation(value:unknown,descriptor?:CapabilityDescriptor):string[]{
  const errors=invocationValidator(value);if(errors.length||!isObject(value))return errors;
- if(descriptor){if(value.capabilityId!==descriptor.capabilityId)errors.push('$.capabilityId: descriptor mismatch');if(value.capabilityVersion!==descriptor.version)errors.push('$.capabilityVersion: exact version required');if(descriptor.effect==='mutation'&&(typeof value.idempotencyKey!=='string'||!value.idempotencyKey))errors.push('$.idempotencyKey: required for mutation');errors.push(...compileSchema(descriptor.inputSchema)(value.input).map(error=>error.replace(/^\$/,'$.input')));}
+ if(descriptor){if(value.capabilityId!==descriptor.capabilityId)errors.push('$.capabilityId: descriptor mismatch');if(value.capabilityVersion!==descriptor.version)errors.push('$.capabilityVersion: exact version required');if(descriptor.effect==='mutation'&&descriptor.execution.idempotency!=='upstream_supported'&&(typeof value.idempotencyKey!=='string'||!value.idempotencyKey))errors.push('$.idempotencyKey: required for mutation');errors.push(...compileSchema(descriptor.inputSchema)(value.input).map(error=>error.replace(/^\$/,'$.input')));}
  return errors;
 }
 const errorSchema:JsonSchema={type:'object',properties:{code:stringSchema,message:stringSchema,retryPolicy:{enum:['never','read_retry','inspect_only']},retryAfterMs:{type:'integer',minimum:0},details:{}},required:['code','message','retryPolicy'],additionalProperties:false};

@@ -80,3 +80,13 @@ test('refresh forwards manual and automatic policy, rejects malformed refresh pa
   const timeout=client.refresh();const rejected=assert.rejects(timeout,{code:'BRIDGE_TIMEOUT'});await Promise.resolve();t.mock.timers.tick(150001);await rejected;
   client.dispose();host.dispose();
 });
+
+test('business component submission survives 150 seconds and retains explicit shorter deadlines',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  const host=new ComponentHost(identity,{getData:()=>({}),getContext:()=>({}),invokeCapability:()=>new Promise(()=>{})}),f=browser(host),client=createAppsClient({window:f.win});await client.hello();
+  const request={appId:'hallmark',capabilityId:'hallmark.plan.submit',input:{}};
+  let settled=false;const pending=client.invokeCapability(request);void pending.then(()=>{settled=true;},()=>{settled=true;});const rejected=assert.rejects(pending,error=>{assert.equal((error as any).failure.retryPolicy,'inspect_only');return true;});
+  await Promise.resolve();t.mock.timers.tick(150001);await Promise.resolve();assert.equal(settled,false);t.mock.timers.tick(150000);await rejected;
+  const shorter=client.invokeCapability({...request,deadlineAt:new Date(Date.now()+1000).toISOString()}),shortRejected=assert.rejects(shorter,{code:'BRIDGE_TIMEOUT'});await Promise.resolve();t.mock.timers.tick(1001);await shortRejected;
+  client.dispose();host.dispose();
+});

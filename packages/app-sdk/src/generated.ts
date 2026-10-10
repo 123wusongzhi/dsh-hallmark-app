@@ -3383,6 +3383,43 @@ export const catalog = [
             },
             "verdict": {
               "const": "PASS"
+            },
+            "executionKind": {
+              "enum": [
+                "executed",
+                "reuse"
+              ]
+            },
+            "executionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reusedFrom": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "path",
+                "sha256",
+                "bytes"
+              ],
+              "additionalProperties": false
+            },
+            "reuseVerifiedAt": {
+              "type": "string",
+              "format": "date-time"
             }
           },
           "required": [
@@ -3543,6 +3580,43 @@ export const catalog = [
             },
             "verdict": {
               "const": "FAIL"
+            },
+            "executionKind": {
+              "enum": [
+                "executed",
+                "reuse"
+              ]
+            },
+            "executionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reusedFrom": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "path",
+                "sha256",
+                "bytes"
+              ],
+              "additionalProperties": false
+            },
+            "reuseVerifiedAt": {
+              "type": "string",
+              "format": "date-time"
             }
           },
           "required": [
@@ -11572,7 +11646,7 @@ export const catalog = [
     "capabilityId": "hallmark.api.products.update_price",
     "version": "1.0.0",
     "title": "hallmarkPriceUpdate",
-    "description": "已登记的 Hallmark 普通调价适配操作，委托既有 WriteOperations 的输入核实、操作账本和只读 inspect；不是固定 URL 的直接调用。有已核实店铺任务时使用 task platform 调价并按同一商品、币种和金额回读；仅 TASK_CONTEXT_REQUIRED、CNY、无 actionId/oldPrice 且适配器具备普通 CNY 提交/读取/核实接口时，沿既有严格两位小数 CNY fallback。该 fallback 核实历史 price-state，不宣称实时平台回读。结果保留原请求编号、原始响应和 readback；unknown 仅查询原操作，不重发。",
+    "description": "普通调价通过统一经营变更引擎，程序精确读取商品身份及当前价格、审核确定规则、记录逐行结果。无需审阅声明或手填幂等键；返回经营变更单。写入直接使用经营应用保存的店铺连接，不依赖旧平台任务；持久化原请求后只发送一次，保留凭据版本供只读核查。actionId 不会转换为普通调价，应使用 promotion.update 并明确活动配额。pending/unknown 只 inspect 原操作，不重新提交。",
     "effect": "mutation",
     "inputSchema": {
       "type": "object",
@@ -11613,19 +11687,19 @@ export const catalog = [
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "user 或 rule:规则名，不允许猜测数值"
+          "description": "可选旧记录字段；程序不要求值来源声明"
         },
         "clientOperationKey": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "同一逻辑修改必须复用；未知结果先查询操作"
+          "description": "可选旧调用幂等键；未提供时程序自动管理，未知结果只查询原操作"
         },
         "userRequest": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "本轮用户明确修改指令原话"
+          "description": "可选经营说明；无需重复记录授权原话"
         },
         "scopeConfirmed": {
           "type": "boolean"
@@ -11647,69 +11721,22 @@ export const catalog = [
           "minimum": 1
         }
       },
-      "required": [],
+      "required": [
+        "storeId",
+        "price"
+      ],
       "additionalProperties": false
     },
     "outputSchema": {
       "type": "object",
-      "properties": {
-        "operationId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "kind": {
-          "type": "string",
-          "minLength": 1
-        },
-        "storeId": {
-          "type": "string"
-        },
-        "state": {
-          "enum": [
-            "pending",
-            "running",
-            "succeeded",
-            "failed",
-            "partial",
-            "unknown"
-          ]
-        },
-        "targets": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "input": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        }
-      },
-      "required": [
-        "operationId",
-        "kind",
-        "storeId",
-        "state",
-        "targets",
-        "input",
-        "items"
-      ],
       "additionalProperties": true
     },
     "execution": {
       "mode": "async",
-      "timeoutMs": 120000,
+      "timeoutMs": 300000,
       "concurrency": "exclusive",
       "lockScope": "connection",
-      "idempotency": "runtime_dedup",
+      "idempotency": "upstream_supported",
       "completionEvidence": "readback"
     },
     "discovery": {
@@ -12597,6 +12624,334 @@ export const catalog = [
     "aliases": []
   },
   {
+    "capabilityId": "hallmark.collection.read",
+    "version": "1.0.0",
+    "title": "读取精简采集资料",
+    "description": "默认返回可用于上品的精简事实：公共属性、真实包装、采购价含义、SKU差异表和主图。SKU每页最多40行，描述首1500字，批量受响应预算限制；未知与可继续读取分开。无需先搜索已知商品ID。",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "skuIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "selections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "skuIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              },
+              "cursor": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 40
+        },
+        "maxBytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65536
+        },
+        "refresh": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 90000,
+      "concurrency": "declared_safe",
+      "lockScope": "resources",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "采集箱",
+        "商品",
+        "sku",
+        "上品",
+        "图片",
+        "read"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "hallmark.collection.resource.read",
+    "version": "1.0.0",
+    "title": "查看素材与依据",
+    "description": "按短素材编号下载图片并返回当前执行环境可查看的文件，或展开SKU/详情图片、描述、原始资料指定路径。太大时给目录或续页，不截断JSON。完整原始资料仅用于具体追查。",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "raw",
+            "description",
+            "images",
+            "image"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "assetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "main",
+            "sku",
+            "detail"
+          ]
+        },
+        "skuIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "maxBytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65536
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 90000,
+      "concurrency": "declared_safe",
+      "lockScope": "resources",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "采集箱",
+        "商品",
+        "sku",
+        "上品",
+        "图片",
+        "resource.read"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "hallmark.collection.search",
+    "version": "1.0.0",
+    "title": "搜索采集商品",
+    "description": "搜索采集商品事实，默认每页30张精简卡片；关键词不匹配旧任务文本。价格明确采购价或来源展示售价。store.status筛历史成功铺货覆盖度，store.saleState筛当前在售/无库存/归档等，store.association筛采购关联，条件在分页统计前组合。店铺saleStates按去重销售商品offer计数，不是来源SKU数；过期或缺失观察为unknown。返回全量匹配统计与续页。",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1
+        },
+        "price": {
+          "type": "object",
+          "properties": {
+            "meaning": {
+              "enum": [
+                "purchase_cost",
+                "source_display_price"
+              ]
+            },
+            "currency": {
+              "type": "string",
+              "minLength": 1
+            },
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "meaning",
+            "currency"
+          ],
+          "additionalProperties": false
+        },
+        "store": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "status": {
+              "enum": [
+                "listed",
+                "partial",
+                "not_listed",
+                "unknown"
+              ]
+            },
+            "saleState": {
+              "enum": [
+                "on_sale",
+                "out_of_stock",
+                "pending",
+                "archived",
+                "failed",
+                "not_sellable",
+                "unknown"
+              ]
+            },
+            "association": {
+              "enum": [
+                "linked",
+                "none",
+                "unknown"
+              ]
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "refresh": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 90000,
+      "concurrency": "declared_safe",
+      "lockScope": "resources",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "采集箱",
+        "商品",
+        "sku",
+        "上品",
+        "图片",
+        "search"
+      ]
+    },
+    "aliases": []
+  },
+  {
     "capabilityId": "hallmark.datasets.refresh",
     "version": "1.0.0",
     "title": "hallmark_refresh_data",
@@ -12748,6 +13103,776 @@ export const catalog = [
     ]
   },
   {
+    "capabilityId": "hallmark.listing.assets.publish",
+    "version": "1.0.0",
+    "title": "交付上品图片",
+    "description": "将明确选中的本机 PNG、JPEG 或 WebP 成品图片交付为平台可读公网地址。程序自动导入、缓存和核对实际图片；同一内容重复调用可复用。返回逐文件地址、内容版本及 SKU 关联，失败不影响其他已成功图片。用于草稿素材，不提交 Ozon 商品。",
+    "effect": "mutation",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "skuIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 300000,
+      "concurrency": "exclusive",
+      "lockScope": "connection",
+      "idempotency": "upstream_supported",
+      "completionEvidence": "readback"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "上品",
+        "图片",
+        "素材",
+        "主图",
+        "发布图片"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "hallmark.listing.draft.create",
+    "version": "1.0.0",
+    "title": "创建经营草稿",
+    "description": "保存一张经营操作表，不触发模型或平台提交。程序读取原商品与采购SKU、绑定组成并补齐确定性数据。payload填写一次：价格 price/currency_code；库存 stock/warehouse_id；归档 archived；活动 action_id/price/stock（活动配额）；listing为原生Ozon item。上品procurement引用完整来源itemId/sourceSkuId及quantity。多主体参考图可在行级referenceSubjects填写真实sourceImageUrl和主体位置，例如“左侧银色贴片”；单一明确主体可省略。它只指定比较对象，不手填采购价或审核声明。",
+    "effect": "compute",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rowId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "enum": [
+                  "price",
+                  "stock",
+                  "archive",
+                  "promotion.enroll",
+                  "promotion.update",
+                  "promotion.exit",
+                  "listing"
+                ]
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "offerId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "productId": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                },
+                "required": [
+                  "offerId"
+                ],
+                "additionalProperties": false
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "procurement": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sourceSkuId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "quantity": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "itemId",
+                    "sourceSkuId",
+                    "quantity"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "referenceSubjects": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sourceImageUrl": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "subject": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "sourceImageUrl",
+                    "subject"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "pricing": {
+                "type": "object",
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "mode": {
+                    "enum": [
+                      "automatic",
+                      "manual"
+                    ]
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              },
+              "dependsOn": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "action",
+              "target",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "storeId",
+        "rows"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 90000,
+      "concurrency": "exclusive",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "ozon",
+        "经营",
+        "上品",
+        "调价",
+        "库存",
+        "归档",
+        "促销",
+        "草稿",
+        "create"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "hallmark.listing.draft.get",
+    "version": "1.0.0",
+    "title": "读取经营变更单",
+    "description": "读取一张经营变更单，或凭原runtime operationId找到它。默认精简表格；includeEvidence可读取完整来源和审核证据，不执行平台写入。",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "includeEvidence": {
+          "type": "boolean"
+        },
+        "rowIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "cursor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "required": [],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "planId"
+          ],
+          "not": {
+            "required": [
+              "operationId"
+            ]
+          }
+        },
+        {
+          "required": [
+            "operationId"
+          ],
+          "not": {
+            "required": [
+              "planId"
+            ]
+          }
+        }
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 90000,
+      "concurrency": "declared_safe",
+      "lockScope": "resources",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "ozon",
+        "经营",
+        "上品",
+        "调价",
+        "库存",
+        "归档",
+        "促销",
+        "草稿",
+        "get"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "hallmark.listing.draft.revise",
+    "version": "1.0.0",
+    "title": "修改经营草稿",
+    "description": "按稳定rowId修改尚未执行的行，程序更新版本和受影响的审核依赖。rows每项提供完整目标行；成功或未决行不可改写。草稿保存不调用模型。",
+    "effect": "compute",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rowId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "enum": [
+                  "price",
+                  "stock",
+                  "archive",
+                  "promotion.enroll",
+                  "promotion.update",
+                  "promotion.exit",
+                  "listing"
+                ]
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "offerId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "productId": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                },
+                "required": [
+                  "offerId"
+                ],
+                "additionalProperties": false
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "procurement": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sourceSkuId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "quantity": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "itemId",
+                    "sourceSkuId",
+                    "quantity"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "referenceSubjects": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sourceImageUrl": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "subject": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "sourceImageUrl",
+                    "subject"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "pricing": {
+                "type": "object",
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "mode": {
+                    "enum": [
+                      "automatic",
+                      "manual"
+                    ]
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              },
+              "dependsOn": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "action",
+              "target",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "planId",
+        "expectedRevision",
+        "rows"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 90000,
+      "concurrency": "exclusive",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "ozon",
+        "经营",
+        "上品",
+        "调价",
+        "库存",
+        "归档",
+        "促销",
+        "草稿",
+        "revise"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "hallmark.listing.draft.submit",
+    "version": "1.0.0",
+    "title": "审核并提交经营变更",
+    "description": "明确提交当前草稿版本。规则可确定的直接执行；图文/语义由独立模型审核，必要时Host启动独立子代理。通过行自动执行。缺事实只返回具体字段问题；无需userRequest/valueSource/scopeConfirmed或已审阅声明。程序负责行级幂等；pending/unknown仅inspect，勿另建同目标重复操作。",
+    "effect": "mutation",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "planId",
+        "expectedRevision"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "async",
+      "timeoutMs": 900000,
+      "concurrency": "exclusive",
+      "lockScope": "resources",
+      "idempotency": "upstream_supported",
+      "completionEvidence": "readback"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "ozon",
+        "经营",
+        "上品",
+        "调价",
+        "库存",
+        "归档",
+        "促销",
+        "草稿",
+        "submit"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "hallmark.listing.prepare",
+    "version": "1.0.0",
+    "title": "准备上品资料",
+    "description": "给目标店铺与已选商品/SKU，程序一次组合精简采集资料、采购组成、包装结果、经营规则、已有商品关联和类目候选/模板。支持多SKU组合销售；已有资料版本可复用。整个响应受字节预算限制，续页仅传 continuation.input，无需重读已返回资料；类目默认给必填约束，其余字段可按需展开。只准备数据，不审核、不生成检查声明；Agent接着制作标题、属性和图片，再保存草稿。",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "skuIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              },
+              "cursor": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 30
+        },
+        "compositions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sourceSkuId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "quantity": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "required": [
+                    "itemId",
+                    "sourceSkuId",
+                    "quantity"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 100
+              }
+            },
+            "required": [
+              "id",
+              "members"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "knownRevisions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "categoryQuery": {
+          "type": "string",
+          "minLength": 1
+        },
+        "categories": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "descriptionCategoryId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "typeId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "descriptionCategoryId",
+              "typeId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "maxBytes": {
+          "type": "integer",
+          "minimum": 2048,
+          "maximum": 65536
+        },
+        "salesLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "refresh": {
+          "type": "boolean"
+        },
+        "includeOptionalAttributes": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "storeId"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "selections"
+          ]
+        },
+        {
+          "required": [
+            "cursor"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 120000,
+      "concurrency": "declared_safe",
+      "lockScope": "resources",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "上品",
+        "准备",
+        "批量",
+        "组合",
+        "采购"
+      ]
+    },
+    "aliases": []
+  },
+  {
     "capabilityId": "hallmark.operations.get",
     "version": "1.0.0",
     "title": "hallmark_get_operation",
@@ -12768,58 +13893,98 @@ export const catalog = [
       "additionalProperties": false
     },
     "outputSchema": {
-      "type": "object",
-      "properties": {
-        "operationId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "kind": {
-          "type": "string",
-          "minLength": 1
-        },
-        "storeId": {
-          "type": "string"
-        },
-        "state": {
-          "enum": [
-            "pending",
-            "running",
-            "succeeded",
-            "failed",
-            "partial",
-            "unknown"
-          ]
-        },
-        "targets": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "input": {
+      "anyOf": [
+        {
           "type": "object",
+          "properties": {
+            "operationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1
+            },
+            "storeId": {
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "pending",
+                "running",
+                "succeeded",
+                "failed",
+                "partial",
+                "unknown"
+              ]
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "input": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "required": [
+            "operationId",
+            "kind",
+            "storeId",
+            "state",
+            "targets",
+            "input",
+            "items"
+          ],
           "additionalProperties": true
         },
-        "items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": true
-          }
+        {
+          "type": "object",
+          "properties": {
+            "planId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "storeId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "status": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "required": [
+            "planId",
+            "storeId",
+            "status",
+            "revision",
+            "rows"
+          ],
+          "additionalProperties": true
         }
-      },
-      "required": [
-        "operationId",
-        "kind",
-        "storeId",
-        "state",
-        "targets",
-        "input",
-        "items"
-      ],
-      "additionalProperties": true
+      ]
     },
     "execution": {
       "mode": "sync",
@@ -15493,6 +16658,217 @@ export const catalog = [
     }
   },
   {
+    "capabilityId": "hallmark.ozon.ratings",
+    "version": "1.0.0",
+    "title": "Ozon 商品内容评级",
+    "description": "按 Ozon SKU 读取内容评级（0–100 分）并附商品状态；未返回评级保持未知。支持单 SKU 或全店分页，只读且不修改商品。",
+    "effect": "query",
+    "aliases": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "loadAll": {
+          "type": "boolean"
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        },
+        "sku": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        }
+      },
+      "required": [
+        "storeId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 商品编号；不同于平台 SKU。"
+              },
+              "offerId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "卖家设置的商品货号。"
+              },
+              "sku": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Ozon 为商品分配的 SKU。"
+              },
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的商品名称。"
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "明确认识的状态以中文展示；其他状态标注未映射并保留原文。"
+              },
+              "statusCode": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的状态代码。"
+              },
+              "statusRaw": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台返回的原始状态文字，供核对。"
+              },
+              "rating": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Ozon 按 SKU 返回的商品内容评级，范围 0–100；无分数时保持未知。"
+              }
+            },
+            "required": [
+              "productId",
+              "offerId",
+              "sku",
+              "title",
+              "status",
+              "statusCode",
+              "statusRaw",
+              "rating"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataTime": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "dateFrom": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dateTo": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "dateFrom",
+            "dateTo"
+          ],
+          "additionalProperties": false
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "ttlMs": {
+              "const": 900000
+            },
+            "fetchedAt": {
+              "type": "string"
+            },
+            "expiresAt": {
+              "type": "string"
+            },
+            "nextRefreshAt": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "refreshing": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ttlMs",
+            "fetchedAt",
+            "expiresAt",
+            "nextRefreshAt",
+            "stale"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "items",
+        "dataTime",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 60000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "Ozon",
+        "数据源",
+        "商品内容评级"
+      ]
+    }
+  },
+  {
     "capabilityId": "hallmark.ozon.returns",
     "version": "1.0.0",
     "title": "Ozon rFBS 退货退款申请",
@@ -16403,6 +17779,671 @@ export const catalog = [
     }
   },
   {
+    "capabilityId": "hallmark.plan.create",
+    "version": "1.0.0",
+    "title": "创建经营草稿",
+    "description": "保存一张经营操作表，不触发模型或平台提交。程序读取原商品与采购SKU、绑定组成并补齐确定性数据。payload填写一次：价格 price/currency_code；库存 stock/warehouse_id；归档 archived；活动 action_id/price/stock（活动配额）；listing为原生Ozon item。上品procurement引用完整来源itemId/sourceSkuId及quantity。多主体参考图可在行级referenceSubjects填写真实sourceImageUrl和主体位置，例如“左侧银色贴片”；单一明确主体可省略。它只指定比较对象，不手填采购价或审核声明。",
+    "effect": "compute",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rowId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "enum": [
+                  "price",
+                  "stock",
+                  "archive",
+                  "promotion.enroll",
+                  "promotion.update",
+                  "promotion.exit",
+                  "listing"
+                ]
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "offerId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "productId": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                },
+                "required": [
+                  "offerId"
+                ],
+                "additionalProperties": false
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "procurement": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sourceSkuId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "quantity": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "itemId",
+                    "sourceSkuId",
+                    "quantity"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "referenceSubjects": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sourceImageUrl": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "subject": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "sourceImageUrl",
+                    "subject"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "pricing": {
+                "type": "object",
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "mode": {
+                    "enum": [
+                      "automatic",
+                      "manual"
+                    ]
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              },
+              "dependsOn": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "action",
+              "target",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "storeId",
+        "rows"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 90000,
+      "concurrency": "exclusive",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "ozon",
+        "经营",
+        "上品",
+        "调价",
+        "库存",
+        "归档",
+        "促销",
+        "草稿",
+        "create"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "hallmark.plan.get",
+    "version": "1.0.0",
+    "title": "读取经营变更单",
+    "description": "读取一张经营变更单，或凭原runtime operationId找到它。默认精简表格；includeEvidence可读取完整来源和审核证据，不执行平台写入。",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "includeEvidence": {
+          "type": "boolean"
+        },
+        "rowIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "cursor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "required": [],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "planId"
+          ],
+          "not": {
+            "required": [
+              "operationId"
+            ]
+          }
+        },
+        {
+          "required": [
+            "operationId"
+          ],
+          "not": {
+            "required": [
+              "planId"
+            ]
+          }
+        }
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 90000,
+      "concurrency": "declared_safe",
+      "lockScope": "resources",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "ozon",
+        "经营",
+        "上品",
+        "调价",
+        "库存",
+        "归档",
+        "促销",
+        "草稿",
+        "get"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "hallmark.plan.inspect",
+    "version": "1.0.0",
+    "title": "核查原经营请求",
+    "description": "只读核查原请求、异步导入及实际价格等结果，更新逐行状态；不重新发送未决平台请求。",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "planId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 90000,
+      "concurrency": "declared_safe",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "ozon",
+        "经营",
+        "上品",
+        "调价",
+        "库存",
+        "归档",
+        "促销",
+        "草稿",
+        "inspect"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "hallmark.plan.list",
+    "version": "1.0.0",
+    "title": "经营变更记录",
+    "description": "列出此连接（可筛选店铺）的经营操作记录，包含逐行价格、采购关联、审核问题和执行状态。",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 90000,
+      "concurrency": "declared_safe",
+      "lockScope": "resources",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "ozon",
+        "经营",
+        "上品",
+        "调价",
+        "库存",
+        "归档",
+        "促销",
+        "草稿",
+        "list"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "hallmark.plan.restore",
+    "version": "1.0.0",
+    "title": "恢复经营变更",
+    "description": "根据已成功变更生成反向单并通过同一审核入口执行。先比较当前值是否仍为原写入值，有冲突不覆盖。库存须单独确定新目标；新上品通过归档恢复。",
+    "effect": "mutation",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rowIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "planId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "async",
+      "timeoutMs": 900000,
+      "concurrency": "exclusive",
+      "lockScope": "resources",
+      "idempotency": "upstream_supported",
+      "completionEvidence": "readback"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "ozon",
+        "经营",
+        "上品",
+        "调价",
+        "库存",
+        "归档",
+        "促销",
+        "草稿",
+        "restore"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "hallmark.plan.revise",
+    "version": "1.0.0",
+    "title": "修改经营草稿",
+    "description": "按稳定rowId修改尚未执行的行，程序更新版本和受影响的审核依赖。rows每项提供完整目标行；成功或未决行不可改写。草稿保存不调用模型。",
+    "effect": "compute",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rowId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "enum": [
+                  "price",
+                  "stock",
+                  "archive",
+                  "promotion.enroll",
+                  "promotion.update",
+                  "promotion.exit",
+                  "listing"
+                ]
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "offerId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "productId": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                },
+                "required": [
+                  "offerId"
+                ],
+                "additionalProperties": false
+              },
+              "payload": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "procurement": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sourceSkuId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "quantity": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "itemId",
+                    "sourceSkuId",
+                    "quantity"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "referenceSubjects": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sourceImageUrl": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "subject": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "sourceImageUrl",
+                    "subject"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "pricing": {
+                "type": "object",
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "mode": {
+                    "enum": [
+                      "automatic",
+                      "manual"
+                    ]
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              },
+              "dependsOn": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": [
+              "action",
+              "target",
+              "payload"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "planId",
+        "expectedRevision",
+        "rows"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 90000,
+      "concurrency": "exclusive",
+      "lockScope": "connection",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "ozon",
+        "经营",
+        "上品",
+        "调价",
+        "库存",
+        "归档",
+        "促销",
+        "草稿",
+        "revise"
+      ]
+    },
+    "aliases": []
+  },
+  {
+    "capabilityId": "hallmark.plan.submit",
+    "version": "1.0.0",
+    "title": "审核并提交经营变更",
+    "description": "明确提交当前草稿版本。规则可确定的直接执行；图文/语义由独立模型审核，必要时Host启动独立子代理。通过行自动执行。缺事实只返回具体字段问题；无需userRequest/valueSource/scopeConfirmed或已审阅声明。程序负责行级幂等；pending/unknown仅inspect，勿另建同目标重复操作。",
+    "effect": "mutation",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "planId",
+        "expectedRevision"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "async",
+      "timeoutMs": 900000,
+      "concurrency": "exclusive",
+      "lockScope": "resources",
+      "idempotency": "upstream_supported",
+      "completionEvidence": "readback"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "ozon",
+        "经营",
+        "上品",
+        "调价",
+        "库存",
+        "归档",
+        "促销",
+        "草稿",
+        "submit"
+      ]
+    },
+    "aliases": []
+  },
+  {
     "capabilityId": "hallmark.platform.read",
     "version": "1.0.0",
     "title": "hallmark_get_platform_data",
@@ -16518,6 +18559,221 @@ export const catalog = [
     "aliases": [
       "hallmark_get_platform_data"
     ]
+  },
+  {
+    "capabilityId": "hallmark.pricing.quote",
+    "version": "1.0.0",
+    "title": "按采购与物流规则试算",
+    "description": "按经营行读取真实采购组成与成本、包装重量和店铺规则，返回建议售价、费用明细和阻塞字段。自动按本次售价和重量匹配物流方案，重叠取总费用最高；planId仅用于旧固定方案兼容模式。不会提交平台。",
+    "effect": "compute",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "row": {
+          "type": "object",
+          "properties": {
+            "rowId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "action": {
+              "enum": [
+                "price",
+                "stock",
+                "archive",
+                "promotion.enroll",
+                "promotion.update",
+                "promotion.exit",
+                "listing"
+              ]
+            },
+            "target": {
+              "type": "object",
+              "properties": {
+                "offerId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "productId": {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                },
+                "sku": {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                }
+              },
+              "required": [
+                "offerId"
+              ],
+              "additionalProperties": false
+            },
+            "payload": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "procurement": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "itemId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sourceSkuId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "quantity": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "itemId",
+                  "sourceSkuId",
+                  "quantity"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "referenceSubjects": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sourceImageUrl": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "subject": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "sourceImageUrl",
+                  "subject"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "pricing": {
+              "type": "object",
+              "properties": {
+                "planId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "mode": {
+                  "enum": [
+                    "automatic",
+                    "manual"
+                  ]
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "additionalProperties": false
+            },
+            "dependsOn": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "action",
+            "target",
+            "payload"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "storeId",
+        "row"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 90000,
+      "concurrency": "declared_safe",
+      "lockScope": "resources",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "aliases": [],
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "物流",
+        "报价",
+        "试算",
+        "定价"
+      ]
+    }
+  },
+  {
+    "capabilityId": "hallmark.pricing.read",
+    "version": "1.0.0",
+    "title": "读取经营规则",
+    "description": "读取经营应用保存的物流渠道报价、默认方案、目标利润与实际硬底线。不会返回店铺凭据。",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "storeId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 30000,
+      "concurrency": "declared_safe",
+      "lockScope": "resources",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "aliases": [],
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "物流",
+        "定价",
+        "利润",
+        "经营规则"
+      ]
+    }
   },
   {
     "capabilityId": "hallmark.products.filter",
@@ -16828,7 +19084,7 @@ export const catalog = [
     "capabilityId": "hallmark.products.list_product",
     "version": "1.0.0",
     "title": "hallmark_list_product",
-    "description": "仅上品用户指定的已有采集商品和 SKU 范围，不隐式全采集箱。仅在用户本轮明确要求修改时调用；缺信息必须澄清；unknown 禁止再次写入，先查询操作。",
+    "description": "提交已有采集商品及明确 SKU 范围的最终商品内容；每个 importItem 用 _sourceSkuId 关联采购规格，Ozon 字段填写一次。提交后由程序统一审核并执行；无需审阅声明或机械幂等键。pending/unknown 只查询原操作，不重复提交。 现由统一经营变更审核执行；不要求检查声明或用户值证明。",
     "effect": "mutation",
     "inputSchema": {
       "type": "object",
@@ -16869,19 +19125,19 @@ export const catalog = [
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "user 或 rule:规则名，不允许猜测数值"
+          "description": "可选旧记录字段；程序不要求值来源声明"
         },
         "clientOperationKey": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "同一逻辑修改必须复用；未知结果先查询操作"
+          "description": "可选旧调用幂等键；未提供时程序自动管理，未知结果只查询原操作"
         },
         "userRequest": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "本轮用户明确修改指令原话"
+          "description": "可选经营说明；无需重复记录授权原话"
         },
         "scopeConfirmed": {
           "type": "boolean"
@@ -16910,69 +19166,24 @@ export const catalog = [
           "maxItems": 100
         }
       },
-      "required": [],
+      "required": [
+        "storeId",
+        "collectedItemId",
+        "skuScope",
+        "importItems"
+      ],
       "additionalProperties": false
     },
     "outputSchema": {
       "type": "object",
-      "properties": {
-        "operationId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "kind": {
-          "type": "string",
-          "minLength": 1
-        },
-        "storeId": {
-          "type": "string"
-        },
-        "state": {
-          "enum": [
-            "pending",
-            "running",
-            "succeeded",
-            "failed",
-            "partial",
-            "unknown"
-          ]
-        },
-        "targets": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "input": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        }
-      },
-      "required": [
-        "operationId",
-        "kind",
-        "storeId",
-        "state",
-        "targets",
-        "input",
-        "items"
-      ],
       "additionalProperties": true
     },
     "execution": {
       "mode": "async",
-      "timeoutMs": 120000,
+      "timeoutMs": 300000,
       "concurrency": "exclusive",
       "lockScope": "connection",
-      "idempotency": "runtime_dedup",
+      "idempotency": "upstream_supported",
       "completionEvidence": "readback"
     },
     "discovery": {
@@ -16990,7 +19201,7 @@ export const catalog = [
     "capabilityId": "hallmark.products.procurement",
     "version": "1.0.0",
     "title": "商品-采购对照表",
-    "description": "同一店铺在售商品与精确采购来源对照。支持全量快照读取或搜索后分页，读取真实物流渠道并按库存仓分批关联匹配；接口无报价时需补充明确渠道的费用才能试算，缺失不按零计算。",
+    "description": "同一店铺在售商品与精确采购来源对照。支持全量快照读取或搜索后分页，默认使用应用独立维护的经营规则，按实际卖家价与重量自动匹配物流费用并计算利润；重叠取总费用较高方案，缺失不按零计算。",
     "effect": "query",
     "aliases": [],
     "inputSchema": {
@@ -17017,6 +19228,7 @@ export const catalog = [
         },
         "planMode": {
           "enum": [
+            "application",
             "delivery",
             "platform",
             "custom"
@@ -17190,6 +19402,24 @@ export const catalog = [
                   },
                   "metricBasis": {
                     "type": "string"
+                  },
+                  "configRevision": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "planId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "selectionReason": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   }
                 },
                 "required": [
@@ -17286,6 +19516,7 @@ export const catalog = [
           "properties": {
             "mode": {
               "enum": [
+                "application",
                 "delivery",
                 "platform",
                 "custom"
@@ -17511,7 +19742,7 @@ export const catalog = [
     "capabilityId": "hallmark.products.update_price",
     "version": "1.0.0",
     "title": "hallmark_update_price",
-    "description": "修改显式商品清单的价格并只读核实。仅在用户本轮明确要求修改时调用；缺信息必须澄清；unknown 禁止再次写入，先查询操作。",
+    "description": "修改明确商品清单的普通价格并只读核实；活动调价请使用经营草稿 promotion.update，并明确活动配额。省略 currency 时程序读取商品实际币种。提交后由程序统一审核并执行；无需审阅声明或机械幂等键。pending/unknown 只查询原操作，不重复提交。 现由统一经营变更审核执行；不要求检查声明或用户值证明。",
     "effect": "mutation",
     "inputSchema": {
       "type": "object",
@@ -17552,19 +19783,19 @@ export const catalog = [
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "user 或 rule:规则名，不允许猜测数值"
+          "description": "可选旧记录字段；程序不要求值来源声明"
         },
         "clientOperationKey": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "同一逻辑修改必须复用；未知结果先查询操作"
+          "description": "可选旧调用幂等键；未提供时程序自动管理，未知结果只查询原操作"
         },
         "userRequest": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "本轮用户明确修改指令原话"
+          "description": "可选经营说明；无需重复记录授权原话"
         },
         "scopeConfirmed": {
           "type": "boolean"
@@ -17586,69 +19817,22 @@ export const catalog = [
           "minimum": 1
         }
       },
-      "required": [],
+      "required": [
+        "storeId",
+        "price"
+      ],
       "additionalProperties": false
     },
     "outputSchema": {
       "type": "object",
-      "properties": {
-        "operationId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "kind": {
-          "type": "string",
-          "minLength": 1
-        },
-        "storeId": {
-          "type": "string"
-        },
-        "state": {
-          "enum": [
-            "pending",
-            "running",
-            "succeeded",
-            "failed",
-            "partial",
-            "unknown"
-          ]
-        },
-        "targets": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "input": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        }
-      },
-      "required": [
-        "operationId",
-        "kind",
-        "storeId",
-        "state",
-        "targets",
-        "input",
-        "items"
-      ],
       "additionalProperties": true
     },
     "execution": {
       "mode": "async",
-      "timeoutMs": 120000,
+      "timeoutMs": 300000,
       "concurrency": "exclusive",
       "lockScope": "connection",
-      "idempotency": "runtime_dedup",
+      "idempotency": "upstream_supported",
       "completionEvidence": "readback"
     },
     "discovery": {
@@ -17666,7 +19850,7 @@ export const catalog = [
     "capabilityId": "hallmark.products.update_stock",
     "version": "1.0.0",
     "title": "hallmark_update_stock",
-    "description": "修改显式商品清单在指定仓库的库存并只读核实。仅在用户本轮明确要求修改时调用；缺信息必须澄清；unknown 禁止再次写入，先查询操作。",
+    "description": "修改明确商品清单在指定仓库的库存并只读核实。提交后由程序统一审核并执行；无需审阅声明或机械幂等键。pending/unknown 只查询原操作，不重复提交。 现由统一经营变更审核执行；不要求检查声明或用户值证明。",
     "effect": "mutation",
     "inputSchema": {
       "type": "object",
@@ -17707,19 +19891,19 @@ export const catalog = [
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "user 或 rule:规则名，不允许猜测数值"
+          "description": "可选旧记录字段；程序不要求值来源声明"
         },
         "clientOperationKey": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "同一逻辑修改必须复用；未知结果先查询操作"
+          "description": "可选旧调用幂等键；未提供时程序自动管理，未知结果只查询原操作"
         },
         "userRequest": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000,
-          "description": "本轮用户明确修改指令原话"
+          "description": "可选经营说明；无需重复记录授权原话"
         },
         "scopeConfirmed": {
           "type": "boolean"
@@ -17734,69 +19918,23 @@ export const catalog = [
           "maxLength": 4000
         }
       },
-      "required": [],
+      "required": [
+        "storeId",
+        "stock",
+        "warehouseId"
+      ],
       "additionalProperties": false
     },
     "outputSchema": {
       "type": "object",
-      "properties": {
-        "operationId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "kind": {
-          "type": "string",
-          "minLength": 1
-        },
-        "storeId": {
-          "type": "string"
-        },
-        "state": {
-          "enum": [
-            "pending",
-            "running",
-            "succeeded",
-            "failed",
-            "partial",
-            "unknown"
-          ]
-        },
-        "targets": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "input": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        }
-      },
-      "required": [
-        "operationId",
-        "kind",
-        "storeId",
-        "state",
-        "targets",
-        "input",
-        "items"
-      ],
       "additionalProperties": true
     },
     "execution": {
       "mode": "async",
-      "timeoutMs": 120000,
+      "timeoutMs": 300000,
       "concurrency": "exclusive",
       "lockScope": "connection",
-      "idempotency": "runtime_dedup",
+      "idempotency": "upstream_supported",
       "completionEvidence": "readback"
     },
     "discovery": {
@@ -18662,7 +20800,7 @@ export type Output3 = { "publicationId": string; "viewId": string; "ownerSession
 export function call3(client: AppsClient, ref: AppRef, input: Input3, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output3>> { return client.invoke(ref, catalog[3], input as JsonValue, options) as Promise<CapabilityResult<Output3>>; }
 
 export type Input4 = { "attemptId": string; "epoch": number; "reportRef": { "path": string; "sha256": string; "bytes": number } };
-export type Output4 = { "schemaVersion": 1; "receiptId": string; "attemptId": string; "sourceRevision": number; "sourceInputDigest": string; "lockfileDigest": string; "command": Array<string>; "cwd": string; "toolchain": ({  } & { [key: string]: JsonValue }); "exitCode": 0; "startedAt": string; "finishedAt": string; "logRef": { "path": string; "sha256": string; "bytes": number }; "distDigest": string; "archiveBuildId": string; "fileManifestRef": { "path": string; "sha256": string; "bytes": number }; "inputUnchanged": true; "verdict": "PASS" } | { "schemaVersion": 1; "receiptId": string; "attemptId": string; "sourceRevision": number; "sourceInputDigest": string; "lockfileDigest": string; "command": Array<string>; "cwd": string; "toolchain": ({  } & { [key: string]: JsonValue }); "exitCode": number; "startedAt": string; "finishedAt": string; "logRef": { "path": string; "sha256": string; "bytes": number }; "distDigest": string | null; "archiveBuildId": string | null; "fileManifestRef": { "path": string; "sha256": string; "bytes": number } | null; "inputUnchanged": boolean; "verdict": "FAIL" };
+export type Output4 = { "schemaVersion": 1; "receiptId": string; "attemptId": string; "sourceRevision": number; "sourceInputDigest": string; "lockfileDigest": string; "command": Array<string>; "cwd": string; "toolchain": ({  } & { [key: string]: JsonValue }); "exitCode": 0; "startedAt": string; "finishedAt": string; "logRef": { "path": string; "sha256": string; "bytes": number }; "distDigest": string; "archiveBuildId": string; "fileManifestRef": { "path": string; "sha256": string; "bytes": number }; "inputUnchanged": true; "verdict": "PASS"; "executionKind"?: "executed" | "reuse"; "executionId"?: string; "reusedFrom"?: { "path": string; "sha256": string; "bytes": number }; "reuseVerifiedAt"?: string } | { "schemaVersion": 1; "receiptId": string; "attemptId": string; "sourceRevision": number; "sourceInputDigest": string; "lockfileDigest": string; "command": Array<string>; "cwd": string; "toolchain": ({  } & { [key: string]: JsonValue }); "exitCode": number; "startedAt": string; "finishedAt": string; "logRef": { "path": string; "sha256": string; "bytes": number }; "distDigest": string | null; "archiveBuildId": string | null; "fileManifestRef": { "path": string; "sha256": string; "bytes": number } | null; "inputUnchanged": boolean; "verdict": "FAIL"; "executionKind"?: "executed" | "reuse"; "executionId"?: string; "reusedFrom"?: { "path": string; "sha256": string; "bytes": number }; "reuseVerifiedAt"?: string };
 export function call4(client: AppsClient, ref: AppRef, input: Input4, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output4>> { return client.invoke(ref, catalog[4], input as JsonValue, options) as Promise<CapabilityResult<Output4>>; }
 
 export type Input5 = { "attemptId": string; "epoch": number; "buildReceiptId": string; "reportRef": { "path": string; "sha256": string; "bytes": number } };
@@ -18769,8 +20907,8 @@ export type Input30 = { "storeId"?: string; "store"?: string; "body"?: ({  } & {
 export type Output30 = JsonValue | JsonValue;
 export function call30(client: AppsClient, ref: AppRef, input: Input30, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output30>> { return client.invoke(ref, catalog[30], input as JsonValue, options) as Promise<CapabilityResult<Output30>>; }
 
-export type Input31 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "price"?: number; "currency"?: string; "oldPrice"?: number; "actionId"?: number };
-export type Output31 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export type Input31 = { "storeId": string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "price": number; "currency"?: string; "oldPrice"?: number; "actionId"?: number };
+export type Output31 = ({  } & { [key: string]: JsonValue });
 export function call31(client: AppsClient, ref: AppRef, input: Input31, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output31>> { return client.invoke(ref, catalog[31], input as JsonValue, options) as Promise<CapabilityResult<Output31>>; }
 
 export type Input32 = {  };
@@ -18813,122 +20951,198 @@ export type Input41 = { "itemId": string };
 export type Output41 = { "items": Array<({  } & { [key: string]: JsonValue })>; "total": number };
 export function call41(client: AppsClient, ref: AppRef, input: Input41, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output41>> { return client.invoke(ref, catalog[41], input as JsonValue, options) as Promise<CapabilityResult<Output41>>; }
 
-export type Input42 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
-export type Output42 = ({ "datasetKey": string; "snapshot": ({  } & { [key: string]: JsonValue }); "counts": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
+export type Input42 = { "id"?: string; "ids"?: Array<string>; "skuIds"?: Array<string>; "selections"?: Array<{ "id": string; "skuIds"?: Array<string>; "cursor"?: string; "revision"?: string }>; "cursor"?: string; "revision"?: string; "limit"?: number; "maxBytes"?: number; "refresh"?: boolean };
+export type Output42 = ({  } & { [key: string]: JsonValue });
 export function call42(client: AppsClient, ref: AppRef, input: Input42, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output42>> { return client.invoke(ref, catalog[42], input as JsonValue, options) as Promise<CapabilityResult<Output42>>; }
 
-export type Input43 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
-export type Output43 = ({ "datasetKey": string; "state": string; "lastSuccessAt": string | null; "lastError": JsonValue } & { [key: string]: JsonValue });
+export type Input43 = { "id": string; "kind"?: "raw" | "description" | "images" | "image"; "path"?: string; "assetId"?: string; "role"?: "main" | "sku" | "detail"; "skuIds"?: Array<string>; "cursor"?: string; "revision"?: string; "limit"?: number; "maxBytes"?: number };
+export type Output43 = ({  } & { [key: string]: JsonValue });
 export function call43(client: AppsClient, ref: AppRef, input: Input43, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output43>> { return client.invoke(ref, catalog[43], input as JsonValue, options) as Promise<CapabilityResult<Output43>>; }
 
-export type Input44 = { "operationId": string };
-export type Output44 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export type Input44 = { "query"?: string; "source"?: string; "category"?: string; "price"?: { "meaning": "purchase_cost" | "source_display_price"; "currency": string; "min"?: number; "max"?: number }; "store"?: { "id": string; "status"?: "listed" | "partial" | "not_listed" | "unknown"; "saleState"?: "on_sale" | "out_of_stock" | "pending" | "archived" | "failed" | "not_sellable" | "unknown"; "association"?: "linked" | "none" | "unknown" }; "limit"?: number; "cursor"?: string; "refresh"?: boolean };
+export type Output44 = ({  } & { [key: string]: JsonValue });
 export function call44(client: AppsClient, ref: AppRef, input: Input44, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output44>> { return client.invoke(ref, catalog[44], input as JsonValue, options) as Promise<CapabilityResult<Output44>>; }
 
-export type Input45 = { "storeId"?: string; "since"?: string; "limit"?: number };
-export type Output45 = Array<({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })>;
+export type Input45 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
+export type Output45 = ({ "datasetKey": string; "snapshot": ({  } & { [key: string]: JsonValue }); "counts": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
 export function call45(client: AppsClient, ref: AppRef, input: Input45, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output45>> { return client.invoke(ref, catalog[45], input as JsonValue, options) as Promise<CapabilityResult<Output45>>; }
 
-export type Input46 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "dateFrom": string; "dateTo": string; "groupBy"?: "day" | "sku" };
-export type Output46 = { "items": Array<{ "sku": string | null; "title": string | null; "date": string | null; "impressions": number | null; "views": number | null; "cartEvents": number | null; "orderedUnits": number | null; "visitors": number | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input46 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
+export type Output46 = ({ "datasetKey": string; "state": string; "lastSuccessAt": string | null; "lastError": JsonValue } & { [key: string]: JsonValue });
 export function call46(client: AppsClient, ref: AppRef, input: Input46, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output46>> { return client.invoke(ref, catalog[46], input as JsonValue, options) as Promise<CapabilityResult<Output46>>; }
 
-export type Input47 = { "storeId": string; "recipe": { "version": 1; "grain": "product" | "posting"; "fields": Array<"products.productId" | "products.offerId" | "products.sku" | "products.title" | "products.image" | "products.status" | "products.statusCode" | "products.statusRaw" | "products.errorReason" | "prices.productId" | "prices.offerId" | "prices.price" | "prices.ordinaryPrice" | "prices.oldPrice" | "prices.currency" | "warehouses.warehouseId" | "warehouses.warehouseName" | "warehouses.fulfillment" | "warehouses.status" | "warehouses.statusCode" | "warehouses.statusRaw" | "warehouses.deliveryMethods" | "stocks.productId" | "stocks.sku" | "stocks.offerId" | "stocks.warehouseId" | "stocks.warehouseName" | "stocks.stockPresent" | "stocks.stockReserved" | "stocks.stockAvailable" | "analytics.sku" | "analytics.title" | "analytics.date" | "analytics.impressions" | "analytics.views" | "analytics.cartEvents" | "analytics.orderedUnits" | "analytics.visitors" | "orders.orderId" | "orders.orderNumber" | "orders.postingNumber" | "orders.sku" | "orders.offerId" | "orders.title" | "orders.quantity" | "orders.orderPrice" | "orders.currency" | "orders.status" | "orders.statusCode" | "orders.statusRaw" | "orders.createdAt" | "orders.shipmentAt" | "orders.trackingNumber" | "weights.postingNumber" | "weights.sku" | "weights.offerId" | "weights.quantity" | "weights.actualWeight" | "weights.declaredWeight" | "weights.weightDifference" | "weights.weightScope" | "weights.shipmentAt" | "finance.accrualId" | "finance.unitNumber" | "finance.postingNumber" | "finance.date" | "finance.accrualType" | "finance.amount" | "finance.commission" | "finance.logisticsFee" | "finance.feeDetails" | "finance.currency" | "promotions.actionId" | "promotions.actionName" | "promotions.productId" | "promotions.participation" | "promotions.actionPrice" | "promotions.maxActionPrice" | "promotions.currency" | "promotions.startsAt" | "promotions.endsAt" | "returns.returnId" | "returns.postingNumber" | "returns.orderId" | "returns.orderNumber" | "returns.sku" | "returns.offerId" | "returns.title" | "returns.quantity" | "returns.returnReason" | "returns.status" | "returns.statusCode" | "returns.statusRaw" | "returns.createdAt" | "returns.orderPrice" | "returns.currency"> }; "dateFrom"?: string; "dateTo"?: string; "warehouseId"?: string; "actionId"?: string; "participation"?: "joined" | "eligible"; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean };
-export type Output47 = { "items": Array<{ "products"?: { "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "image": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "errorReason": string | null }; "prices"?: { "productId": string | null; "offerId": string | null; "price": number | null; "ordinaryPrice": number | null; "oldPrice": number | null; "currency": string | null }; "warehouses"?: { "warehouseId": string | null; "warehouseName": string | null; "fulfillment": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "deliveryMethods": string | null }; "stocks"?: { "productId": string | null; "sku": string | null; "offerId": string | null; "warehouseId": string | null; "warehouseName": string | null; "stockPresent": number | null; "stockReserved": number | null; "stockAvailable": number | null }; "analytics"?: { "sku": string | null; "title": string | null; "date": string | null; "impressions": number | null; "views": number | null; "cartEvents": number | null; "orderedUnits": number | null; "visitors": number | null }; "orders"?: { "orderId": string | null; "orderNumber": string | null; "postingNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "orderPrice": number | null; "currency": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "shipmentAt": string | null; "trackingNumber": string | null }; "weights"?: { "postingNumber": string | null; "sku": string | null; "offerId": string | null; "quantity": number | null; "actualWeight": number | null; "declaredWeight": number | null; "weightDifference": number | null; "weightScope": string | null; "shipmentAt": string | null }; "finance"?: { "accrualId": string | null; "unitNumber": string | null; "postingNumber": string | null; "date": string | null; "accrualType": string | null; "amount": number | null; "commission": number | null; "logisticsFee": number | null; "feeDetails": string | null; "currency": string | null }; "promotions"?: { "actionId": string | null; "actionName": string | null; "productId": string | null; "participation": string | null; "actionPrice": number | null; "maxActionPrice": number | null; "currency": string | null; "startsAt": string | null; "endsAt": string | null }; "returns"?: { "returnId": string | null; "postingNumber": string | null; "orderId": string | null; "orderNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "returnReason": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "orderPrice": number | null; "currency": string | null } }>; "cursor"?: string; "total": number; "dataTime": string | null; "warnings": Array<string>; "sourceStates": Array<{ "source": string; "status": "ready" | "empty" | "missing"; "rowCount": number; "pageCount": number; "dataTime": string | null; "fetchedAt": string | null; "cacheHit": boolean; "freshness": "fresh" | "stale"; "cacheReason": "none" | "ttl" | "rate_limit" | "upstream_unavailable" | "refresh_due"; "nextRetryAt"?: string }>; "cache": { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean }; "fieldMeta": Array<{ "key": string; "source": string; "label": string; "description": string; "format": string; "currencyPath"?: string; "unit"?: string }>; "period"?: { "dateFrom": string; "dateTo": string } };
+export type Input47 = { "files": Array<{ "path": string; "skuIds"?: Array<string> }> };
+export type Output47 = ({  } & { [key: string]: JsonValue });
 export function call47(client: AppsClient, ref: AppRef, input: Input47, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output47>> { return client.invoke(ref, catalog[47], input as JsonValue, options) as Promise<CapabilityResult<Output47>>; }
 
-export type Input48 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "dateFrom": string; "dateTo": string };
-export type Output48 = { "items": Array<{ "accrualId": string | null; "unitNumber": string | null; "postingNumber": string | null; "date": string | null; "accrualType": string | null; "amount": number | null; "commission": number | null; "logisticsFee": number | null; "feeDetails": string | null; "currency": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input48 = { "storeId": string; "title"?: string; "rows": Array<{ "rowId"?: string; "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "pricing"?: { "planId"?: string; "mode": "automatic" | "manual" }; "dependsOn"?: Array<string> }> };
+export type Output48 = ({  } & { [key: string]: JsonValue });
 export function call48(client: AppsClient, ref: AppRef, input: Input48, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output48>> { return client.invoke(ref, catalog[48], input as JsonValue, options) as Promise<CapabilityResult<Output48>>; }
 
-export type Input49 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "dateFrom": string; "dateTo": string; "postingNumber"?: string; "status"?: string };
-export type Output49 = { "items": Array<{ "orderId": string | null; "orderNumber": string | null; "postingNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "orderPrice": number | null; "currency": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "shipmentAt": string | null; "trackingNumber": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input49 = JsonValue | JsonValue;
+export type Output49 = ({  } & { [key: string]: JsonValue });
 export function call49(client: AppsClient, ref: AppRef, input: Input49, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output49>> { return client.invoke(ref, catalog[49], input as JsonValue, options) as Promise<CapabilityResult<Output49>>; }
 
-export type Input50 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "productId"?: string };
-export type Output50 = { "items": Array<{ "productId": string | null; "offerId": string | null; "price": number | null; "ordinaryPrice": number | null; "oldPrice": number | null; "currency": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input50 = { "planId": string; "expectedRevision": number; "rows": Array<{ "rowId"?: string; "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "pricing"?: { "planId"?: string; "mode": "automatic" | "manual" }; "dependsOn"?: Array<string> }> };
+export type Output50 = ({  } & { [key: string]: JsonValue });
 export function call50(client: AppsClient, ref: AppRef, input: Input50, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output50>> { return client.invoke(ref, catalog[50], input as JsonValue, options) as Promise<CapabilityResult<Output50>>; }
 
-export type Input51 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "productId"?: string; "sku"?: string };
-export type Output51 = { "items": Array<{ "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "image": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "errorReason": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input51 = { "planId": string; "expectedRevision": number };
+export type Output51 = ({  } & { [key: string]: JsonValue });
 export function call51(client: AppsClient, ref: AppRef, input: Input51, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output51>> { return client.invoke(ref, catalog[51], input as JsonValue, options) as Promise<CapabilityResult<Output51>>; }
 
-export type Input52 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "actionId"?: string; "participation"?: "joined" | "eligible" };
-export type Output52 = { "items": Array<{ "actionId": string | null; "actionName": string | null; "productId": string | null; "participation": string | null; "actionPrice": number | null; "maxActionPrice": number | null; "currency": string | null; "startsAt": string | null; "endsAt": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input52 = JsonValue | JsonValue;
+export type Output52 = ({  } & { [key: string]: JsonValue });
 export function call52(client: AppsClient, ref: AppRef, input: Input52, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output52>> { return client.invoke(ref, catalog[52], input as JsonValue, options) as Promise<CapabilityResult<Output52>>; }
 
-export type Input53 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "returnId"?: string };
-export type Output53 = { "items": Array<{ "returnId": string | null; "postingNumber": string | null; "orderId": string | null; "orderNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "returnReason": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "orderPrice": number | null; "currency": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input53 = { "operationId": string };
+export type Output53 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue }) | ({ "planId": string; "storeId": string; "status": string; "revision": number; "rows": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
 export function call53(client: AppsClient, ref: AppRef, input: Input53, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output53>> { return client.invoke(ref, catalog[53], input as JsonValue, options) as Promise<CapabilityResult<Output53>>; }
 
-export type Input54 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "sku"?: string; "warehouseId"?: string };
-export type Output54 = { "items": Array<{ "productId": string | null; "sku": string | null; "offerId": string | null; "warehouseId": string | null; "warehouseName": string | null; "stockPresent": number | null; "stockReserved": number | null; "stockAvailable": number | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input54 = { "storeId"?: string; "since"?: string; "limit"?: number };
+export type Output54 = Array<({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })>;
 export function call54(client: AppsClient, ref: AppRef, input: Input54, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output54>> { return client.invoke(ref, catalog[54], input as JsonValue, options) as Promise<CapabilityResult<Output54>>; }
 
-export type Input55 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "warehouseId"?: string };
-export type Output55 = { "items": Array<{ "warehouseId": string | null; "warehouseName": string | null; "fulfillment": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "deliveryMethods": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input55 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "dateFrom": string; "dateTo": string; "groupBy"?: "day" | "sku" };
+export type Output55 = { "items": Array<{ "sku": string | null; "title": string | null; "date": string | null; "impressions": number | null; "views": number | null; "cartEvents": number | null; "orderedUnits": number | null; "visitors": number | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call55(client: AppsClient, ref: AppRef, input: Input55, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output55>> { return client.invoke(ref, catalog[55], input as JsonValue, options) as Promise<CapabilityResult<Output55>>; }
 
-export type Input56 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "dateFrom": string; "dateTo": string };
-export type Output56 = { "items": Array<{ "postingNumber": string | null; "sku": string | null; "offerId": string | null; "quantity": number | null; "actualWeight": number | null; "declaredWeight": number | null; "weightDifference": number | null; "weightScope": string | null; "shipmentAt": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input56 = { "storeId": string; "recipe": { "version": 1; "grain": "product" | "posting"; "fields": Array<"products.productId" | "products.offerId" | "products.sku" | "products.title" | "products.image" | "products.status" | "products.statusCode" | "products.statusRaw" | "products.errorReason" | "prices.productId" | "prices.offerId" | "prices.price" | "prices.ordinaryPrice" | "prices.oldPrice" | "prices.currency" | "warehouses.warehouseId" | "warehouses.warehouseName" | "warehouses.fulfillment" | "warehouses.status" | "warehouses.statusCode" | "warehouses.statusRaw" | "warehouses.deliveryMethods" | "stocks.productId" | "stocks.sku" | "stocks.offerId" | "stocks.warehouseId" | "stocks.warehouseName" | "stocks.stockPresent" | "stocks.stockReserved" | "stocks.stockAvailable" | "analytics.sku" | "analytics.title" | "analytics.date" | "analytics.impressions" | "analytics.views" | "analytics.cartEvents" | "analytics.orderedUnits" | "analytics.visitors" | "orders.orderId" | "orders.orderNumber" | "orders.postingNumber" | "orders.sku" | "orders.offerId" | "orders.title" | "orders.quantity" | "orders.orderPrice" | "orders.currency" | "orders.status" | "orders.statusCode" | "orders.statusRaw" | "orders.createdAt" | "orders.shipmentAt" | "orders.trackingNumber" | "weights.postingNumber" | "weights.sku" | "weights.offerId" | "weights.quantity" | "weights.actualWeight" | "weights.declaredWeight" | "weights.weightDifference" | "weights.weightScope" | "weights.shipmentAt" | "finance.accrualId" | "finance.unitNumber" | "finance.postingNumber" | "finance.date" | "finance.accrualType" | "finance.amount" | "finance.commission" | "finance.logisticsFee" | "finance.feeDetails" | "finance.currency" | "promotions.actionId" | "promotions.actionName" | "promotions.productId" | "promotions.participation" | "promotions.actionPrice" | "promotions.maxActionPrice" | "promotions.currency" | "promotions.startsAt" | "promotions.endsAt" | "returns.returnId" | "returns.postingNumber" | "returns.orderId" | "returns.orderNumber" | "returns.sku" | "returns.offerId" | "returns.title" | "returns.quantity" | "returns.returnReason" | "returns.status" | "returns.statusCode" | "returns.statusRaw" | "returns.createdAt" | "returns.orderPrice" | "returns.currency"> }; "dateFrom"?: string; "dateTo"?: string; "warehouseId"?: string; "actionId"?: string; "participation"?: "joined" | "eligible"; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean };
+export type Output56 = { "items": Array<{ "products"?: { "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "image": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "errorReason": string | null }; "prices"?: { "productId": string | null; "offerId": string | null; "price": number | null; "ordinaryPrice": number | null; "oldPrice": number | null; "currency": string | null }; "warehouses"?: { "warehouseId": string | null; "warehouseName": string | null; "fulfillment": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "deliveryMethods": string | null }; "stocks"?: { "productId": string | null; "sku": string | null; "offerId": string | null; "warehouseId": string | null; "warehouseName": string | null; "stockPresent": number | null; "stockReserved": number | null; "stockAvailable": number | null }; "analytics"?: { "sku": string | null; "title": string | null; "date": string | null; "impressions": number | null; "views": number | null; "cartEvents": number | null; "orderedUnits": number | null; "visitors": number | null }; "orders"?: { "orderId": string | null; "orderNumber": string | null; "postingNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "orderPrice": number | null; "currency": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "shipmentAt": string | null; "trackingNumber": string | null }; "weights"?: { "postingNumber": string | null; "sku": string | null; "offerId": string | null; "quantity": number | null; "actualWeight": number | null; "declaredWeight": number | null; "weightDifference": number | null; "weightScope": string | null; "shipmentAt": string | null }; "finance"?: { "accrualId": string | null; "unitNumber": string | null; "postingNumber": string | null; "date": string | null; "accrualType": string | null; "amount": number | null; "commission": number | null; "logisticsFee": number | null; "feeDetails": string | null; "currency": string | null }; "promotions"?: { "actionId": string | null; "actionName": string | null; "productId": string | null; "participation": string | null; "actionPrice": number | null; "maxActionPrice": number | null; "currency": string | null; "startsAt": string | null; "endsAt": string | null }; "returns"?: { "returnId": string | null; "postingNumber": string | null; "orderId": string | null; "orderNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "returnReason": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "orderPrice": number | null; "currency": string | null } }>; "cursor"?: string; "total": number; "dataTime": string | null; "warnings": Array<string>; "sourceStates": Array<{ "source": string; "status": "ready" | "empty" | "missing"; "rowCount": number; "pageCount": number; "dataTime": string | null; "fetchedAt": string | null; "cacheHit": boolean; "freshness": "fresh" | "stale"; "cacheReason": "none" | "ttl" | "rate_limit" | "upstream_unavailable" | "refresh_due"; "nextRetryAt"?: string }>; "cache": { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean }; "fieldMeta": Array<{ "key": string; "source": string; "label": string; "description": string; "format": string; "currencyPath"?: string; "unit"?: string }>; "period"?: { "dateFrom": string; "dateTo": string } };
 export function call56(client: AppsClient, ref: AppRef, input: Input56, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output56>> { return client.invoke(ref, catalog[56], input as JsonValue, options) as Promise<CapabilityResult<Output56>>; }
 
-export type Input57 = { "storeId"?: string; "store"?: string; "path": string; "method"?: "GET" | "POST"; "body"?: ({  } & { [key: string]: JsonValue }) };
-export type Output57 = JsonValue | JsonValue;
+export type Input57 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "dateFrom": string; "dateTo": string };
+export type Output57 = { "items": Array<{ "accrualId": string | null; "unitNumber": string | null; "postingNumber": string | null; "date": string | null; "accrualType": string | null; "amount": number | null; "commission": number | null; "logisticsFee": number | null; "feeDetails": string | null; "currency": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call57(client: AppsClient, ref: AppRef, input: Input57, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output57>> { return client.invoke(ref, catalog[57], input as JsonValue, options) as Promise<CapabilityResult<Output57>>; }
 
-export type Input58 = { "storeId"?: string; "store"?: string; "minMargin"?: number; "maxMargin"?: number; "minPrice"?: number; "maxPrice"?: number; "minStock"?: number; "maxStock"?: number; "status"?: string; "resultSetId"?: string };
-export type Output58 = ({ "resultSetId": string; "storeId": string; "expiresAt": string; "payload": JsonValue | JsonValue } & { [key: string]: JsonValue });
+export type Input58 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "dateFrom": string; "dateTo": string; "postingNumber"?: string; "status"?: string };
+export type Output58 = { "items": Array<{ "orderId": string | null; "orderNumber": string | null; "postingNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "orderPrice": number | null; "currency": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "shipmentAt": string | null; "trackingNumber": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call58(client: AppsClient, ref: AppRef, input: Input58, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output58>> { return client.invoke(ref, catalog[58], input as JsonValue, options) as Promise<CapabilityResult<Output58>>; }
 
-export type Input59 = { "storeId"?: string; "store"?: string; "cursor"?: string; "limit"?: number; "query"?: string; "status"?: string; "fields"?: Array<"title" | "imageUrl" | "sku" | "status" | "platformStatus" | "currency" | "price" | "pricing" | "profit" | "stock" | "metrics" | "sources" | "declaredWeight" | "storeName"> };
-export type Output59 = ({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue }) | ({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue });
+export type Input59 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "productId"?: string };
+export type Output59 = { "items": Array<{ "productId": string | null; "offerId": string | null; "price": number | null; "ordinaryPrice": number | null; "oldPrice": number | null; "currency": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call59(client: AppsClient, ref: AppRef, input: Input59, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output59>> { return client.invoke(ref, catalog[59], input as JsonValue, options) as Promise<CapabilityResult<Output59>>; }
 
-export type Input60 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "collectedItemId"?: string; "skuScope"?: Array<string>; "importItems"?: Array<({  } & { [key: string]: JsonValue })> };
-export type Output60 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export type Input60 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "productId"?: string; "sku"?: string };
+export type Output60 = { "items": Array<{ "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "image": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "errorReason": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call60(client: AppsClient, ref: AppRef, input: Input60, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output60>> { return client.invoke(ref, catalog[60], input as JsonValue, options) as Promise<CapabilityResult<Output60>>; }
 
-export type Input61 = { "storeId": string; "query"?: string; "cursor"?: string; "limit"?: number; "loadAll"?: boolean; "planMode"?: "delivery" | "platform" | "custom"; "deliveryMethodId"?: string; "fixedFeeYuan"?: number; "logisticsYuanPerKg"?: number; "commissionPercent"?: number; "forceRefresh"?: boolean };
-export type Output61 = { "products": Array<{ "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "imageUrl": string | null; "currency": string | null; "productUrl": string | null; "salesSpecification": string | null; "purchaseSpecification": string | null; "purchaseLinks": Array<{ "url": string; "label": string }>; "purchaseMinor": number | null; "sellerMinor": number | null; "packageGrams": number | null; "referenceProfit": { "margin": number | null; "profitMinor": number | null; "logisticsMinor": number | null; "commissionMinor": number | null; "fixedMinor": number | null; "reason": string | null; "metricBasis": string }; "logisticsMatch": { "status": "unique" | "choice" | "unavailable" | "unknown"; "candidatePlanIds": Array<string>; "selectedPlanId"?: string; "label": string; "reason": string | null } }>; "total": number; "cursor"?: string; "dataTime": string | null; "warnings": Array<string>; "plan": { "mode": "delivery" | "platform" | "custom"; "label": string; "settingsRevision": number | null; "fixedFeeYuan": number | null; "logisticsYuanPerKg": number | null; "commissionPercent": number | null; "reason": string | null; "deliveryMethodId": string | null; "choices": Array<{ "id": string; "name": string; "warehouseId": string; "warehouseName": string | null; "active": boolean }>; "selectionNote": string }; "cache": { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input61 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "actionId"?: string; "participation"?: "joined" | "eligible" };
+export type Output61 = { "items": Array<{ "actionId": string | null; "actionName": string | null; "productId": string | null; "participation": string | null; "actionPrice": number | null; "maxActionPrice": number | null; "currency": string | null; "startsAt": string | null; "endsAt": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call61(client: AppsClient, ref: AppRef, input: Input61, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output61>> { return client.invoke(ref, catalog[61], input as JsonValue, options) as Promise<CapabilityResult<Output61>>; }
 
-export type Input62 = { "storeId": string; "productId": string };
-export type Output62 = { "items": Array<({  } & { [key: string]: JsonValue })>; "total": number };
+export type Input62 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "sku"?: string };
+export type Output62 = { "items": Array<{ "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "rating": number | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call62(client: AppsClient, ref: AppRef, input: Input62, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output62>> { return client.invoke(ref, catalog[62], input as JsonValue, options) as Promise<CapabilityResult<Output62>>; }
 
-export type Input63 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "price"?: number; "currency"?: string; "oldPrice"?: number; "actionId"?: number };
-export type Output63 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export type Input63 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "returnId"?: string };
+export type Output63 = { "items": Array<{ "returnId": string | null; "postingNumber": string | null; "orderId": string | null; "orderNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "returnReason": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "orderPrice": number | null; "currency": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call63(client: AppsClient, ref: AppRef, input: Input63, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output63>> { return client.invoke(ref, catalog[63], input as JsonValue, options) as Promise<CapabilityResult<Output63>>; }
 
-export type Input64 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "stock"?: number; "warehouseId"?: string };
-export type Output64 = ({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue });
+export type Input64 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "sku"?: string; "warehouseId"?: string };
+export type Output64 = { "items": Array<{ "productId": string | null; "sku": string | null; "offerId": string | null; "warehouseId": string | null; "warehouseName": string | null; "stockPresent": number | null; "stockReserved": number | null; "stockAvailable": number | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call64(client: AppsClient, ref: AppRef, input: Input64, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output64>> { return client.invoke(ref, catalog[64], input as JsonValue, options) as Promise<CapabilityResult<Output64>>; }
 
-export type Input65 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string> };
-export type Output65 = ({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue }) | ({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue });
+export type Input65 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "warehouseId"?: string };
+export type Output65 = { "items": Array<{ "warehouseId": string | null; "warehouseName": string | null; "fulfillment": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "deliveryMethods": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call65(client: AppsClient, ref: AppRef, input: Input65, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output65>> { return client.invoke(ref, catalog[65], input as JsonValue, options) as Promise<CapabilityResult<Output65>>; }
 
-export type Input66 = {  };
-export type Output66 = Array<JsonValue | JsonValue | JsonValue>;
+export type Input66 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "dateFrom": string; "dateTo": string };
+export type Output66 = { "items": Array<{ "postingNumber": string | null; "sku": string | null; "offerId": string | null; "quantity": number | null; "actualWeight": number | null; "declaredWeight": number | null; "weightDifference": number | null; "weightScope": string | null; "shipmentAt": string | null }>; "cursor"?: string; "total"?: number; "dataTime": string | null; "period"?: { "dateFrom": string; "dateTo": string }; "warnings": Array<string>; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call66(client: AppsClient, ref: AppRef, input: Input66, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output66>> { return client.invoke(ref, catalog[66], input as JsonValue, options) as Promise<CapabilityResult<Output66>>; }
 
-export type Input67 = { "query": string };
-export type Output67 = JsonValue | JsonValue | JsonValue;
+export type Input67 = { "storeId": string; "title"?: string; "rows": Array<{ "rowId"?: string; "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "pricing"?: { "planId"?: string; "mode": "automatic" | "manual" }; "dependsOn"?: Array<string> }> };
+export type Output67 = ({  } & { [key: string]: JsonValue });
 export function call67(client: AppsClient, ref: AppRef, input: Input67, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output67>> { return client.invoke(ref, catalog[67], input as JsonValue, options) as Promise<CapabilityResult<Output67>>; }
 
-export type Input68 = { "id"?: string; "title": string; "content": string };
-export type Output68 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export type Input68 = JsonValue | JsonValue;
+export type Output68 = ({  } & { [key: string]: JsonValue });
 export function call68(client: AppsClient, ref: AppRef, input: Input68, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output68>> { return client.invoke(ref, catalog[68], input as JsonValue, options) as Promise<CapabilityResult<Output68>>; }
 
-export type Input69 = { "id": string };
-export type Output69 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export type Input69 = { "planId": string };
+export type Output69 = ({  } & { [key: string]: JsonValue });
 export function call69(client: AppsClient, ref: AppRef, input: Input69, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output69>> { return client.invoke(ref, catalog[69], input as JsonValue, options) as Promise<CapabilityResult<Output69>>; }
 
-export type Input70 = { "query"?: string; "cursor"?: string; "limit"?: number };
-export type Output70 = { "items": Array<{ "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } }>; "total": number; "returned": number; "nextCursor": string | null; "completeness": "complete" | "partial" };
+export type Input70 = { "storeId"?: string };
+export type Output70 = ({  } & { [key: string]: JsonValue });
 export function call70(client: AppsClient, ref: AppRef, input: Input70, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output70>> { return client.invoke(ref, catalog[70], input as JsonValue, options) as Promise<CapabilityResult<Output70>>; }
 
-export type Input71 = JsonValue | JsonValue;
-export type Output71 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export type Input71 = { "planId": string; "rowIds"?: Array<string> };
+export type Output71 = ({  } & { [key: string]: JsonValue });
 export function call71(client: AppsClient, ref: AppRef, input: Input71, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output71>> { return client.invoke(ref, catalog[71], input as JsonValue, options) as Promise<CapabilityResult<Output71>>; }
+
+export type Input72 = { "planId": string; "expectedRevision": number; "rows": Array<{ "rowId"?: string; "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "pricing"?: { "planId"?: string; "mode": "automatic" | "manual" }; "dependsOn"?: Array<string> }> };
+export type Output72 = ({  } & { [key: string]: JsonValue });
+export function call72(client: AppsClient, ref: AppRef, input: Input72, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output72>> { return client.invoke(ref, catalog[72], input as JsonValue, options) as Promise<CapabilityResult<Output72>>; }
+
+export type Input73 = { "planId": string; "expectedRevision": number };
+export type Output73 = ({  } & { [key: string]: JsonValue });
+export function call73(client: AppsClient, ref: AppRef, input: Input73, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output73>> { return client.invoke(ref, catalog[73], input as JsonValue, options) as Promise<CapabilityResult<Output73>>; }
+
+export type Input74 = { "storeId"?: string; "store"?: string; "path": string; "method"?: "GET" | "POST"; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output74 = JsonValue | JsonValue;
+export function call74(client: AppsClient, ref: AppRef, input: Input74, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output74>> { return client.invoke(ref, catalog[74], input as JsonValue, options) as Promise<CapabilityResult<Output74>>; }
+
+export type Input75 = { "storeId": string; "row": { "rowId"?: string; "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "pricing"?: { "planId"?: string; "mode": "automatic" | "manual" }; "dependsOn"?: Array<string> } };
+export type Output75 = ({  } & { [key: string]: JsonValue });
+export function call75(client: AppsClient, ref: AppRef, input: Input75, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output75>> { return client.invoke(ref, catalog[75], input as JsonValue, options) as Promise<CapabilityResult<Output75>>; }
+
+export type Input76 = { "storeId": string };
+export type Output76 = ({  } & { [key: string]: JsonValue });
+export function call76(client: AppsClient, ref: AppRef, input: Input76, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output76>> { return client.invoke(ref, catalog[76], input as JsonValue, options) as Promise<CapabilityResult<Output76>>; }
+
+export type Input77 = { "storeId"?: string; "store"?: string; "minMargin"?: number; "maxMargin"?: number; "minPrice"?: number; "maxPrice"?: number; "minStock"?: number; "maxStock"?: number; "status"?: string; "resultSetId"?: string };
+export type Output77 = ({ "resultSetId": string; "storeId": string; "expiresAt": string; "payload": JsonValue | JsonValue } & { [key: string]: JsonValue });
+export function call77(client: AppsClient, ref: AppRef, input: Input77, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output77>> { return client.invoke(ref, catalog[77], input as JsonValue, options) as Promise<CapabilityResult<Output77>>; }
+
+export type Input78 = { "storeId"?: string; "store"?: string; "cursor"?: string; "limit"?: number; "query"?: string; "status"?: string; "fields"?: Array<"title" | "imageUrl" | "sku" | "status" | "platformStatus" | "currency" | "price" | "pricing" | "profit" | "stock" | "metrics" | "sources" | "declaredWeight" | "storeName"> };
+export type Output78 = ({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue }) | ({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue });
+export function call78(client: AppsClient, ref: AppRef, input: Input78, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output78>> { return client.invoke(ref, catalog[78], input as JsonValue, options) as Promise<CapabilityResult<Output78>>; }
+
+export type Input79 = { "storeId": string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "collectedItemId": string; "skuScope": Array<string>; "importItems": Array<({  } & { [key: string]: JsonValue })> };
+export type Output79 = ({  } & { [key: string]: JsonValue });
+export function call79(client: AppsClient, ref: AppRef, input: Input79, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output79>> { return client.invoke(ref, catalog[79], input as JsonValue, options) as Promise<CapabilityResult<Output79>>; }
+
+export type Input80 = { "storeId": string; "query"?: string; "cursor"?: string; "limit"?: number; "loadAll"?: boolean; "planMode"?: "application" | "delivery" | "platform" | "custom"; "deliveryMethodId"?: string; "fixedFeeYuan"?: number; "logisticsYuanPerKg"?: number; "commissionPercent"?: number; "forceRefresh"?: boolean };
+export type Output80 = { "products": Array<{ "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "imageUrl": string | null; "currency": string | null; "productUrl": string | null; "salesSpecification": string | null; "purchaseSpecification": string | null; "purchaseLinks": Array<{ "url": string; "label": string }>; "purchaseMinor": number | null; "sellerMinor": number | null; "packageGrams": number | null; "referenceProfit": { "margin": number | null; "profitMinor": number | null; "logisticsMinor": number | null; "commissionMinor": number | null; "fixedMinor": number | null; "reason": string | null; "metricBasis": string; "configRevision"?: number | null; "planId"?: string | null; "selectionReason"?: string | null }; "logisticsMatch": { "status": "unique" | "choice" | "unavailable" | "unknown"; "candidatePlanIds": Array<string>; "selectedPlanId"?: string; "label": string; "reason": string | null } }>; "total": number; "cursor"?: string; "dataTime": string | null; "warnings": Array<string>; "plan": { "mode": "application" | "delivery" | "platform" | "custom"; "label": string; "settingsRevision": number | null; "fixedFeeYuan": number | null; "logisticsYuanPerKg": number | null; "commissionPercent": number | null; "reason": string | null; "deliveryMethodId": string | null; "choices": Array<{ "id": string; "name": string; "warehouseId": string; "warehouseName": string | null; "active": boolean }>; "selectionNote": string }; "cache": { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export function call80(client: AppsClient, ref: AppRef, input: Input80, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output80>> { return client.invoke(ref, catalog[80], input as JsonValue, options) as Promise<CapabilityResult<Output80>>; }
+
+export type Input81 = { "storeId": string; "productId": string };
+export type Output81 = { "items": Array<({  } & { [key: string]: JsonValue })>; "total": number };
+export function call81(client: AppsClient, ref: AppRef, input: Input81, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output81>> { return client.invoke(ref, catalog[81], input as JsonValue, options) as Promise<CapabilityResult<Output81>>; }
+
+export type Input82 = { "storeId": string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "price": number; "currency"?: string; "oldPrice"?: number; "actionId"?: number };
+export type Output82 = ({  } & { [key: string]: JsonValue });
+export function call82(client: AppsClient, ref: AppRef, input: Input82, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output82>> { return client.invoke(ref, catalog[82], input as JsonValue, options) as Promise<CapabilityResult<Output82>>; }
+
+export type Input83 = { "storeId": string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "stock": number; "warehouseId": string };
+export type Output83 = ({  } & { [key: string]: JsonValue });
+export function call83(client: AppsClient, ref: AppRef, input: Input83, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output83>> { return client.invoke(ref, catalog[83], input as JsonValue, options) as Promise<CapabilityResult<Output83>>; }
+
+export type Input84 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string> };
+export type Output84 = ({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue }) | ({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue });
+export function call84(client: AppsClient, ref: AppRef, input: Input84, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output84>> { return client.invoke(ref, catalog[84], input as JsonValue, options) as Promise<CapabilityResult<Output84>>; }
+
+export type Input85 = {  };
+export type Output85 = Array<JsonValue | JsonValue | JsonValue>;
+export function call85(client: AppsClient, ref: AppRef, input: Input85, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output85>> { return client.invoke(ref, catalog[85], input as JsonValue, options) as Promise<CapabilityResult<Output85>>; }
+
+export type Input86 = { "query": string };
+export type Output86 = JsonValue | JsonValue | JsonValue;
+export function call86(client: AppsClient, ref: AppRef, input: Input86, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output86>> { return client.invoke(ref, catalog[86], input as JsonValue, options) as Promise<CapabilityResult<Output86>>; }
+
+export type Input87 = { "id"?: string; "title": string; "content": string };
+export type Output87 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export function call87(client: AppsClient, ref: AppRef, input: Input87, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output87>> { return client.invoke(ref, catalog[87], input as JsonValue, options) as Promise<CapabilityResult<Output87>>; }
+
+export type Input88 = { "id": string };
+export type Output88 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export function call88(client: AppsClient, ref: AppRef, input: Input88, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output88>> { return client.invoke(ref, catalog[88], input as JsonValue, options) as Promise<CapabilityResult<Output88>>; }
+
+export type Input89 = { "query"?: string; "cursor"?: string; "limit"?: number };
+export type Output89 = { "items": Array<{ "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } }>; "total": number; "returned": number; "nextCursor": string | null; "completeness": "complete" | "partial" };
+export function call89(client: AppsClient, ref: AppRef, input: Input89, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output89>> { return client.invoke(ref, catalog[89], input as JsonValue, options) as Promise<CapabilityResult<Output89>>; }
+
+export type Input90 = JsonValue | JsonValue;
+export type Output90 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export function call90(client: AppsClient, ref: AppRef, input: Input90, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output90>> { return client.invoke(ref, catalog[90], input as JsonValue, options) as Promise<CapabilityResult<Output90>>; }

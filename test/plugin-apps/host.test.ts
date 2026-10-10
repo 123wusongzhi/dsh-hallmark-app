@@ -30,6 +30,20 @@ function inProcessTransport(runtime: AppsRuntime): AppsHostTransport {
 }
 function connection(runtime: AppsRuntime,appId: string,connectionId: string,sessionId: string) {runtime.addConnection({appId,connectionId,displayName:connectionId,enabled:true,config:{},configRevision:1});runtime.bind({appId,connectionId,sessionId,enabled:true,boundAt:new Date().toISOString()});}
 
+test('stored result reader keeps trusted session identity and excludes mixed operation requests',async()=>{
+  const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),f=context(),calls:any[]=[];
+  const transport={...inProcessTransport(runtime),async readModelResult(input:any){calls.push(input);return {kind:'array',items:[{id:85,values:[{value:'Brand'}]}],completeness:'complete'};}};
+  const host=new AppsHost(f.ctx,transport);await host.start();
+  try{
+    const tool=f.tools.get('apps_inspect') as NativeGatewayTool,execution={agent:f.A,signal:new AbortController().signal};
+    const result=await tool.execute({resultRef:'result:original',path:'/data/result/0/attributes',limit:4},execution);
+    assert.deepEqual(calls,[{resultRef:'result:original',sessionId:'A',path:'/data/result/0/attributes',limit:4}]);
+    assert.match(tool.output.render({},result)[0].text,/Brand/);
+    for(const bad of [{resultRef:'r',sessionId:'B'},{resultRef:'r',operationId:'o'},{operationId:'o',path:''},{resultRef:'r',cursor:'-1'}])assert.equal((await tool.execute(bad,execution) as any).error.code,'INVALID_INPUT');
+    assert.equal(calls.length,1);
+  }finally{await host.dispose();await runtime.dispose();store.close();}
+});
+
 const previewBrowser=process.env.DSH_PREVIEW_BROWSER_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe';
 // Windows may assign a Fetch-restricted low port (for example 2049) to listen(0).
 async function listenForFetch(server:ReturnType<typeof createAppsServer>):Promise<string>{

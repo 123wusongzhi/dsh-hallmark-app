@@ -3,6 +3,7 @@ import type {FieldRole} from '../../app-presentation/src/types.ts';
 /** Provider-owned dictionary. Every value has a documented unit and source meaning. */
 const definitions:Record<string,[string,string,FieldRole['format'],string?]>={
  productId:['商品编号','Ozon 商品编号；不同于平台 SKU。','text'],offerId:['商家货号','卖家设置的商品货号。','text'],sku:['平台 SKU','Ozon 为商品分配的 SKU。','text'],title:['商品名称','平台返回的商品名称。','text'],image:['商品图片','平台返回的商品主图。','image'],
+ rating:['内容评级','Ozon 按 SKU 返回的商品内容评级，范围 0–100；无分数时保持未知。','text','分'],
  status:['当前状态','明确认识的状态以中文展示；其他状态标注未映射并保留原文。','text'],statusCode:['状态代码','平台返回的状态代码。','text'],statusRaw:['平台状态原文','平台返回的原始状态文字，供核对。','text'],errorReason:['异常原因','平台明确返回的错误或不可售说明。','text'],
  price:['当前卖家价','商品当前的卖家销售价格。','currency'],ordinaryPrice:['普通售价','商品设置的普通基础售价。','currency'],oldPrice:['划线价','商品展示的划线参考价格。','currency'],orderPrice:['订单商品单价','订单中该商品的每件价格。','currency'],currency:['币种','金额使用的货币，未提供时显示未知。','text'],
  warehouseId:['仓库编号','Ozon 仓库编号。','text'],warehouseName:['仓库名称','店铺为仓库设置的名称。','text'],fulfillment:['履约方式','该仓库采用的发货和配送方式。','text'],deliveryMethods:['配送渠道','可用配送渠道及当前状态。','text'],

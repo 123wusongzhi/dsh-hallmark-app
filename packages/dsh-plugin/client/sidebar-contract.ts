@@ -14,7 +14,7 @@ export interface NativeSidebarDefinition {
 export interface NativeSidebarRegistry {register:(definition:NativeSidebarDefinition)=>()=>void}
 export interface NativeSidebarTabInfo {tab:{navigation:{params:unknown;revision:number};signal:AbortSignal;visible:boolean;actions:{openTab:(kind:string,options?:{params?:SidebarNavigationParams})=>void;bindCommands?:(commands:{refresh?:()=>void})=>()=>void}}}
 export interface NativeSidebarProps {sessionId?:string;useTabInfo?:()=>NativeSidebarTabInfo}
-export const COMPONENTS_SIDEBAR_DEFINITION:NativeSidebarDefinition={id:COMPONENTS_SIDEBAR_ID,kind:COMPONENTS_SIDEBAR_KIND,title:()=> '本会话组件',keepMounted:true,guide:[{id:'session-components',order:40,title:()=> '本会话组件',description:()=> '查看本会话实际生成的组件，不新建聊天、不重放业务操作。'}]};
+export const COMPONENTS_SIDEBAR_DEFINITION:NativeSidebarDefinition={id:COMPONENTS_SIDEBAR_ID,kind:COMPONENTS_SIDEBAR_KIND,title:()=> '组件',keepMounted:true,guide:[{id:'session-components',order:40,title:()=> '本次会话',description:()=> '查看正在制作的组件，或打开我的收藏。'}]};
 /** The native boundary accepts JSON-shaped params by convention, so narrow them ourselves. */
 export function readSidebarNavigation(params:unknown):{valid:boolean;viewId?:string;publicationId?:string;displayId?:string}{
   if(params===undefined)return {valid:true};

@@ -6,7 +6,7 @@ import {join,resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {build} from 'esbuild';
 async function fixture(label:string,contents:string,timeout=15000){
-  mkdirSync('artifacts',{recursive:true});const directory=mkdtempSync(resolve('artifacts/native-display-'+label+'-')),entry=join(directory,'fixture.mjs');
+  const root=label.startsWith('performance-')?'artifacts/performance/ui':'artifacts';mkdirSync(root,{recursive:true});const directory=mkdtempSync(resolve(root+'/native-display-'+label+'-')),entry=join(directory,'fixture.mjs');
   writeFileSync(join(directory,'fixture.tsx'),contents,{flag:'wx'});
   await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents},banner:{js:"import {createRequire} from 'node:module';const require=createRequire(import.meta.url);"},outfile:entry,bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-test-renderer']});
   const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout,maxBuffer:8*1024*1024});
@@ -109,6 +109,17 @@ test('a visible prepared pane automatically displays once and reuses its display
 await act(async()=>{tree=create(<AppsNativeView sessionId='A' viewId='V' expectedPublicationId='P1' isCurrentOwner={()=>owner==='A'}/>,{createNodeMock:nodeMock});});
 await until(()=>nodes.length===1);assert.equal(displays.length,1);assert.equal(button('打开组件'),undefined);
 await act(async()=>button('重新读取').props.onClick());await settle(100);assert.equal(displays.length,1);assert.equal(nodes.length,1);
+`+finish));
+
+test('retained native source panes suspend hidden reads, resume the same frame, and release it only on eviction',()=>fixture('performance-retained-source',setup+`
+const draw=active=><AppsNativeView sessionId='A' viewId='V' expectedPublicationId='P1' active={active} isCurrentOwner={()=>owner==='A'}/>;
+await act(async()=>{tree=create(draw(true),{createNodeMock:nodeMock});});await until(()=>nodes.length===1);await send(hello('retained-doc'));const identity=packet();
+Object.assign(active,snapshot);await send({...identity,type:'extension',feature:'renderReadyV1',action:'ready',requestId:'retained-ready',params:{checks:{rendered:true,bridgeReady:true,dataRead:true,unhandledErrors:[],assertionResults:[]}}});
+const frame=tree.root.findByType('iframe'),beforeReads=http.filter(row=>row.resource==='viewData').length,beforeRetires=http.filter(row=>row.body?.operation==='retireFrame').length;
+await act(async()=>tree.update(draw(false)));assert.equal(tree.root.findByType('iframe'),frame);assert.equal(nodes.length,1);assert.equal(grants.length,1);assert.equal(http.filter(row=>row.body?.operation==='retireFrame').length,beforeRetires);assert.equal(posts.filter(row=>row.type==='visibility').at(-1).visible,false);
+const hiddenRequests=http.length;await send({...identity,requestId:'hidden-refresh',method:'refresh',params:null});assert.equal(http.length,hiddenRequests);assert.equal(posts.at(-1).error.code,'BRIDGE_PAUSED');await settle(80);assert.equal(http.length,hiddenRequests);
+await act(async()=>tree.update(draw(true)));await until(()=>http.some(row=>row.body?.operation==='inspect'));await settle(40);assert.equal(tree.root.findByType('iframe'),frame);assert.equal(nodes.length,1);assert.equal(grants.length,1);assert.equal(displays.length,1);assert.equal(http.filter(row=>row.resource==='viewData').length,beforeReads,'resume verifies ownership and display, retaining the unchanged binding snapshot');assert.equal(posts.filter(row=>row.type==='visibility').at(-1).visible,true);
+await send({...identity,requestId:'visible-refresh',method:'refresh',params:null});assert.ok(http.some(row=>row.body?.request?.requestId==='visible-refresh'));await act(async()=>tree.unmount());tree=undefined;await until(()=>http.filter(row=>row.body?.operation==='retireFrame').length===beforeRetires+1);console.log(JSON.stringify({scope:'single_pane_hide_and_resume',beforeSamePaneIframeCreations:2,afterSamePaneIframeCreations:nodes.length,grants:grants.length,resumeFullDataReads:http.filter(row=>row.resource==='viewData').length-beforeReads}));
 `+finish));
 
 test('a newly prepared component automatically opens the right pane without a click',()=>fixture('discover-auto',setup+`

@@ -46,7 +46,7 @@ Effect: compute; completion: response.
 
 Input: `{"additionalProperties":false,"properties":{"attemptId":{"minLength":1,"type":"string"},"epoch":{"minimum":1,"type":"integer"},"reportRef":{"additionalProperties":false,"properties":{"bytes":{"minimum":0,"type":"integer"},"path":{"minLength":1,"type":"string"},"sha256":{"pattern":"^[a-f0-9]{64}$","type":"string"}},"required":["path","sha256","bytes"],"type":"object"}},"required":["attemptId","epoch","reportRef"],"type":"object"}`
 
-Output: `{"oneOf":[{"additionalProperties":false,"properties":{"archiveBuildId":{"pattern":"^[a-f0-9]{64}$","type":"string"},"attemptId":{"minLength":1,"type":"string"},"command":{"items":{"minLength":1,"type":"string"},"minItems":1,"type":"array"},"cwd":{"minLength":1,"type":"string"},"distDigest":{"pattern":"^[a-f0-9]{64}$","type":"string"},"exitCode":{"const":0},"fileManifestRef":{"additionalProperties":false,"properties":{"bytes":{"minimum":0,"type":"integer"},"path":{"minLength":1,"type":"string"},"sha256":{"pattern":"^[a-f0-9]{64}$","type":"string"}},"required":["path","sha256","bytes"],"type":"object"},"finishedAt":{"format":"date-time","type":"string"},"inputUnchanged":{"const":true},"lockfileDigest":{"pattern":"^[a-f0-9]{64}$","type":"string"},"logRef":{"additionalProperties":false,"properties":{"bytes":{"minimum":0,"type":"integer"},"path":{"minLength":1,"type":"string"},"sha256":{"pattern":"^[a-f0-9]{64}$","type":"string"}},"required":["path","sha256","bytes"],"type":"object"},"receiptId":{"minLength":1,"type":"string"},"schemaVersion":{"const":1},"sourceInputDigest":{"pattern":"^[a-f0-9]{64}$","type":"string"},"sourceRevision":{"minimum":1,"type":"integer"},"startedAt":{"format":"date-time","type":"string"},"toolchain":{"additionalProperties":{"type":"string"},"minProperties":1,"type":"object"},"verdict":{"const":"PASS"}},"required":["schemaVersion","receiptId","attemptId","sourceRevision","sourceInputDigest","lockfileDigest","command","cwd","toolchain","exitCode","startedAt","finishedAt","logRef","distDigest","archiveBuildId","fileManifestRef","inputUnchanged","verdict"],"type":"object"},{"additionalProperties":false,"properties":{"archiveBuildId":{"anyOf":[{"pattern":"^[a-f0-9]{64}$","type":"string"},{"type":"null"}]},"attemptId":{"minLength":1,"type":"string"},"command":{"items":{"minLength":1,"type":"string"},"minItems":1,"type":"array"},"cwd":{"minLength":1,"type":"string"},"distDigest":{"anyOf":[{"pattern":"^[a-f0-9]{64}$","type":"string"},{"type":"null"}]},"exitCode":{"type":"integer"},"fileManifestRef":{"anyOf":[{"additionalProperties":false,"properties":{"bytes":{"minimum":0,"type":"integer"},"path":{"minLength":1,"type":"string"},"sha256":{"pattern":"^[a-f0-9]{64}$","type":"string"}},"required":["path","sha256","bytes"],"type":"object"},{"type":"null"}]},"finishedAt":{"format":"date-time","type":"string"},"inputUnchanged":{"type":"boolean"},"lockfileDigest":{"pattern":"^[a-f0-9]{64}$","type":"string"},"logRef":{"additionalProperties":false,"properties":{"bytes":{"minimum":0,"type":"integer"},"path":{"minLength":1,"type":"string"},"sha256":{"pattern":"^[a-f0-9]{64}$","type":"string"}},"required":["path","sha256","bytes"],"type":"object"},"receiptId":{"minLength":1,"type":"string"},"schemaVersion":{"const":1},"sourceInputDigest":{"pattern":"^[a-f0-9]{64}$","type":"string"},"sourceRevision":{"minimum":1,"type":"integer"},"startedAt":{"format":"date-time","type":"string"},"toolchain":{"additionalProperties":{"type":"string"},"minProperties":1,"type":"object"},"verdict":{"const":"FAIL"}},"required":["schemaVersion","receiptId","attemptId","sourceRevision","sourceInputDigest","lockfileDigest","command","cwd","toolchain","exitCode","startedAt","finishedAt","logRef","distDigest","archiveBuildId","fileManifestRef","inputUnchanged","verdict"],"type":"object"}]}`
+Output: `{"oneOf":[{"additionalProperties":false,"properties":{"archiveBuildId":{"pattern":"^[a-f0-9]{64}$","type":"string"},"attemptId":{"minLength":1,"type":"string"},"command":{"items":{"minLength":1,"type":"string"},"minItems":1,"type":"array"},"cwd":{"minLength":1,"type":"string"},"distDigest":{"pattern":"^[a-f0-9]{64}$","type":"string"},"executionId":{"minLength":1,"type":"string"},"executionKind":{"enum":["executed","reuse"]},"exitCode":{"const":0},"fileManifestRef":{"additionalProperties":false,"properties":{"bytes":{"minimum":0,"type":"integer"},"path":{"minLength":1,"type":"string"},"sha256":{"pattern":"^[a-f0-9]{64}$","type":"string"}},"required":["path","sha256","bytes"],"type":"object"},"finishedAt":{"format":"date-time","type":"string"},"inputUnchanged":{"const":true},"lockfileDigest":{"pattern":"^[a-f0-9]{64}$","type":"string"},"logRef":{"additionalProperties":false,"properties":{"bytes":{"minimum":0,"type":"integer"},"path":{"minLength":1,"type":"string"},"sha256":{"pattern":"^[a-f0-9]{64}$","type":"string"}},"required":["path","sha256","bytes"],"type":"object"},"receiptId":{"minLength":1,"type":"string"},"reuseVerifiedAt":{"format":"date-time","type":"string"},"reusedFrom":{"additionalProperties":false,"properties":{"bytes":{"minimum":0,"type":"integer"},"path":{"minLength":1,"type":"string"},"sha256":{"pattern":"^[a-f0-9]{64}$","type":"string"}},"required":["path","sha256","bytes"],"type":"object"},"schemaVersion":{"const":1},"sourceInputDigest":{"pattern":"^[a-f0-9]{64}$","type":"string"},"sourceRevision":{"minimum":1,"type":"integer"},"startedAt":{"format":"date-time","type":"string"},"toolchain":{"additionalProperties":{"type":"string"},"minProperties":1,"type":"object"},"verdict":{"const":"PASS"}},"required":["schemaVersion","receiptId","attemptId","sourceRevision","sourceInputDigest","lockfileDigest","command","cwd","toolchain","exitCode","startedAt","finishedAt","logRef","distDigest","archiveBuildId","fileManifestRef","inputUnchanged","verdict"],"type":"object"},{"additionalProperties":false,"properties":{"archiveBuildId":{"anyOf":[{"pattern":"^[a-f0-9]{64}$","type":"string"},{"type":"null"}]},"attemptId":{"minLength":1,"type":"string"},"command":{"items":{"minLength":1,"type":"string"},"minItems":1,"type":"array"},"cwd":{"minLength":1,"type":"string"},"distDigest":{"anyOf":[{"pattern":"^[a-f0-9]{64}$","type":"string"},{"type":"null"}]},"executionId":{"minLength":1,"type":"string"},"executionKind":{"enum":["executed","reuse"]},"exitCode":{"type":"integer"},"fileManifestRef":{"anyOf":[{"additionalProperties":false,"properties":{"bytes":{"minimum":0,"type":"integer"},"path":{"minLength":1,"type":"string"},"sha256":{"pattern":"^[a-f0-9]{64}$","type":"string"}},"required":["path","sha256","bytes"],"type":"object"},{"type":"null"}]},"finishedAt":{"format":"date-time","type":"string"},"inputUnchanged":{"type":"boolean"},"lockfileDigest":{"pattern":"^[a-f0-9]{64}$","type":"string"},"logRef":{"additionalProperties":false,"properties":{"bytes":{"minimum":0,"type":"integer"},"path":{"minLength":1,"type":"string"},"sha256":{"pattern":"^[a-f0-9]{64}$","type":"string"}},"required":["path","sha256","bytes"],"type":"object"},"receiptId":{"minLength":1,"type":"string"},"reuseVerifiedAt":{"format":"date-time","type":"string"},"reusedFrom":{"additionalProperties":false,"properties":{"bytes":{"minimum":0,"type":"integer"},"path":{"minLength":1,"type":"string"},"sha256":{"pattern":"^[a-f0-9]{64}$","type":"string"}},"required":["path","sha256","bytes"],"type":"object"},"schemaVersion":{"const":1},"sourceInputDigest":{"pattern":"^[a-f0-9]{64}$","type":"string"},"sourceRevision":{"minimum":1,"type":"integer"},"startedAt":{"format":"date-time","type":"string"},"toolchain":{"additionalProperties":{"type":"string"},"minProperties":1,"type":"object"},"verdict":{"const":"FAIL"}},"required":["schemaVersion","receiptId","attemptId","sourceRevision","sourceInputDigest","lockfileDigest","command","cwd","toolchain","exitCode","startedAt","finishedAt","logRef","distDigest","archiveBuildId","fileManifestRef","inputUnchanged","verdict"],"type":"object"}]}`
 
 ### apps.authoring.record_preview @ 1.0.0
 
@@ -310,13 +310,13 @@ Output: `{"additionalProperties":true,"anyOf":[{"required":["response"]},{"requi
 
 ### hallmark.api.products.update_price @ 1.0.0
 
-已登记的 Hallmark 普通调价适配操作，委托既有 WriteOperations 的输入核实、操作账本和只读 inspect；不是固定 URL 的直接调用。有已核实店铺任务时使用 task platform 调价并按同一商品、币种和金额回读；仅 TASK_CONTEXT_REQUIRED、CNY、无 actionId/oldPrice 且适配器具备普通 CNY 提交/读取/核实接口时，沿既有严格两位小数 CNY fallback。该 fallback 核实历史 price-state，不宣称实时平台回读。结果保留原请求编号、原始响应和 readback；unknown 仅查询原操作，不重发。
+普通调价通过统一经营变更引擎，程序精确读取商品身份及当前价格、审核确定规则、记录逐行结果。无需审阅声明或手填幂等键；返回经营变更单。写入直接使用经营应用保存的店铺连接，不依赖旧平台任务；持久化原请求后只发送一次，保留凭据版本供只读核查。actionId 不会转换为普通调价，应使用 promotion.update 并明确活动配额。pending/unknown 只 inspect 原操作，不重新提交。
 
 Effect: mutation; completion: readback.
 
-Input: `{"additionalProperties":false,"properties":{"actionId":{"minimum":1,"type":"integer"},"clientOperationKey":{"description":"同一逻辑修改必须复用；未知结果先查询操作","maxLength":4000,"minLength":1,"type":"string"},"currency":{"maxLength":4000,"minLength":1,"type":"string"},"offerIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"oldPrice":{"type":"number"},"price":{"minimum":0.01,"type":"number"},"productIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"scopeConfirmed":{"type":"boolean"},"store":{"description":"名称/别名，匹配不唯一须澄清","maxLength":4000,"minLength":1,"type":"string"},"storeId":{"description":"用户明确指定的店铺 ID","maxLength":4000,"minLength":1,"type":"string"},"userRequest":{"description":"本轮用户明确修改指令原话","maxLength":4000,"minLength":1,"type":"string"},"valueSource":{"description":"user 或 rule:规则名，不允许猜测数值","maxLength":4000,"minLength":1,"type":"string"}},"required":[],"type":"object"}`
+Input: `{"additionalProperties":false,"properties":{"actionId":{"minimum":1,"type":"integer"},"clientOperationKey":{"description":"可选旧调用幂等键；未提供时程序自动管理，未知结果只查询原操作","maxLength":4000,"minLength":1,"type":"string"},"currency":{"maxLength":4000,"minLength":1,"type":"string"},"offerIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"oldPrice":{"type":"number"},"price":{"minimum":0.01,"type":"number"},"productIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"scopeConfirmed":{"type":"boolean"},"store":{"description":"名称/别名，匹配不唯一须澄清","maxLength":4000,"minLength":1,"type":"string"},"storeId":{"description":"用户明确指定的店铺 ID","maxLength":4000,"minLength":1,"type":"string"},"userRequest":{"description":"可选经营说明；无需重复记录授权原话","maxLength":4000,"minLength":1,"type":"string"},"valueSource":{"description":"可选旧记录字段；程序不要求值来源声明","maxLength":4000,"minLength":1,"type":"string"}},"required":["storeId","price"],"type":"object"}`
 
-Output: `{"additionalProperties":true,"properties":{"input":{"additionalProperties":true,"type":"object"},"items":{"items":{"additionalProperties":true,"type":"object"},"type":"array"},"kind":{"minLength":1,"type":"string"},"operationId":{"minLength":1,"type":"string"},"state":{"enum":["pending","running","succeeded","failed","partial","unknown"]},"storeId":{"type":"string"},"targets":{"items":{"minLength":1,"type":"string"},"type":"array"}},"required":["operationId","kind","storeId","state","targets","input","items"],"type":"object"}`
+Output: `{"additionalProperties":true,"type":"object"}`
 
 ### hallmark.api.store_products.read @ 1.0.0
 
@@ -418,6 +418,36 @@ Input: `{"additionalProperties":false,"properties":{"itemId":{"minLength":1,"typ
 
 Output: `{"additionalProperties":false,"properties":{"items":{"items":{"additionalProperties":true,"type":"object"},"type":"array"},"total":{"minimum":0,"type":"integer"}},"required":["items","total"],"type":"object"}`
 
+### hallmark.collection.read @ 1.0.0
+
+默认返回可用于上品的精简事实：公共属性、真实包装、采购价含义、SKU差异表和主图。SKU每页最多40行，描述首1500字，批量受响应预算限制；未知与可继续读取分开。无需先搜索已知商品ID。
+
+Effect: query; completion: response.
+
+Input: `{"additionalProperties":false,"properties":{"cursor":{"minLength":1,"type":"string"},"id":{"minLength":1,"type":"string"},"ids":{"items":{"minLength":1,"type":"string"},"minItems":1,"type":"array"},"limit":{"maximum":40,"minimum":1,"type":"integer"},"maxBytes":{"maximum":65536,"minimum":1024,"type":"integer"},"refresh":{"type":"boolean"},"revision":{"minLength":1,"type":"string"},"selections":{"items":{"additionalProperties":false,"properties":{"cursor":{"minLength":1,"type":"string"},"id":{"minLength":1,"type":"string"},"revision":{"minLength":1,"type":"string"},"skuIds":{"items":{"minLength":1,"type":"string"},"minItems":1,"type":"array"}},"required":["id"],"type":"object"},"minItems":1,"type":"array"},"skuIds":{"items":{"minLength":1,"type":"string"},"minItems":1,"type":"array"}},"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
+### hallmark.collection.resource.read @ 1.0.0
+
+按短素材编号下载图片并返回当前执行环境可查看的文件，或展开SKU/详情图片、描述、原始资料指定路径。太大时给目录或续页，不截断JSON。完整原始资料仅用于具体追查。
+
+Effect: query; completion: response.
+
+Input: `{"additionalProperties":false,"properties":{"assetId":{"minLength":1,"type":"string"},"cursor":{"minLength":1,"type":"string"},"id":{"minLength":1,"type":"string"},"kind":{"enum":["raw","description","images","image"]},"limit":{"maximum":100,"minimum":1,"type":"integer"},"maxBytes":{"maximum":65536,"minimum":1024,"type":"integer"},"path":{"type":"string"},"revision":{"minLength":1,"type":"string"},"role":{"enum":["main","sku","detail"]},"skuIds":{"items":{"minLength":1,"type":"string"},"minItems":1,"type":"array"}},"required":["id"],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
+### hallmark.collection.search @ 1.0.0
+
+搜索采集商品事实，默认每页30张精简卡片；关键词不匹配旧任务文本。价格明确采购价或来源展示售价。store.status筛历史成功铺货覆盖度，store.saleState筛当前在售/无库存/归档等，store.association筛采购关联，条件在分页统计前组合。店铺saleStates按去重销售商品offer计数，不是来源SKU数；过期或缺失观察为unknown。返回全量匹配统计与续页。
+
+Effect: query; completion: response.
+
+Input: `{"additionalProperties":false,"properties":{"category":{"minLength":1,"type":"string"},"cursor":{"minLength":1,"type":"string"},"limit":{"maximum":100,"minimum":1,"type":"integer"},"price":{"additionalProperties":false,"properties":{"currency":{"minLength":1,"type":"string"},"max":{"type":"number"},"meaning":{"enum":["purchase_cost","source_display_price"]},"min":{"type":"number"}},"required":["meaning","currency"],"type":"object"},"query":{"type":"string"},"refresh":{"type":"boolean"},"source":{"minLength":1,"type":"string"},"store":{"additionalProperties":false,"properties":{"association":{"enum":["linked","none","unknown"]},"id":{"minLength":1,"type":"string"},"saleState":{"enum":["on_sale","out_of_stock","pending","archived","failed","not_sellable","unknown"]},"status":{"enum":["listed","partial","not_listed","unknown"]}},"required":["id"],"type":"object"}},"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
 ### hallmark.datasets.refresh @ 1.0.0
 
 只读同步并更新快照，不上品/调价/改库存或触发扩展采集
@@ -438,6 +468,66 @@ Input: `{"additionalProperties":false,"properties":{"datasetKey":{"maxLength":40
 
 Output: `{"additionalProperties":true,"properties":{"datasetKey":{"minLength":1,"type":"string"},"lastError":{},"lastSuccessAt":{"type":["string","null"]},"state":{"minLength":1,"type":"string"}},"required":["datasetKey","state","lastSuccessAt","lastError"],"type":"object"}`
 
+### hallmark.listing.assets.publish @ 1.0.0
+
+将明确选中的本机 PNG、JPEG 或 WebP 成品图片交付为平台可读公网地址。程序自动导入、缓存和核对实际图片；同一内容重复调用可复用。返回逐文件地址、内容版本及 SKU 关联，失败不影响其他已成功图片。用于草稿素材，不提交 Ozon 商品。
+
+Effect: mutation; completion: readback.
+
+Input: `{"additionalProperties":false,"properties":{"files":{"items":{"additionalProperties":false,"properties":{"path":{"minLength":1,"type":"string"},"skuIds":{"items":{"minLength":1,"type":"string"},"type":"array"}},"required":["path"],"type":"object"},"maxItems":20,"minItems":1,"type":"array"}},"required":["files"],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
+### hallmark.listing.draft.create @ 1.0.0
+
+保存一张经营操作表，不触发模型或平台提交。程序读取原商品与采购SKU、绑定组成并补齐确定性数据。payload填写一次：价格 price/currency_code；库存 stock/warehouse_id；归档 archived；活动 action_id/price/stock（活动配额）；listing为原生Ozon item。上品procurement引用完整来源itemId/sourceSkuId及quantity。多主体参考图可在行级referenceSubjects填写真实sourceImageUrl和主体位置，例如“左侧银色贴片”；单一明确主体可省略。它只指定比较对象，不手填采购价或审核声明。
+
+Effect: compute; completion: response.
+
+Input: `{"additionalProperties":false,"properties":{"rows":{"items":{"additionalProperties":false,"properties":{"action":{"enum":["price","stock","archive","promotion.enroll","promotion.update","promotion.exit","listing"]},"dependsOn":{"items":{"minLength":1,"type":"string"},"type":"array"},"payload":{"additionalProperties":true,"type":"object"},"pricing":{"additionalProperties":false,"properties":{"mode":{"enum":["automatic","manual"]},"planId":{"minLength":1,"type":"string"}},"required":["mode"],"type":"object"},"procurement":{"items":{"additionalProperties":false,"properties":{"itemId":{"minLength":1,"type":"string"},"quantity":{"exclusiveMinimum":0,"type":"number"},"sourceSkuId":{"minLength":1,"type":"string"}},"required":["itemId","sourceSkuId","quantity"],"type":"object"},"type":"array"},"referenceSubjects":{"items":{"additionalProperties":false,"properties":{"sourceImageUrl":{"minLength":1,"type":"string"},"subject":{"maxLength":500,"minLength":1,"type":"string"}},"required":["sourceImageUrl","subject"],"type":"object"},"maxItems":8,"type":"array"},"rowId":{"minLength":1,"type":"string"},"target":{"additionalProperties":false,"properties":{"offerId":{"minLength":1,"type":"string"},"productId":{"type":["string","number"]},"sku":{"type":["string","number"]}},"required":["offerId"],"type":"object"}},"required":["action","target","payload"],"type":"object"},"maxItems":200,"minItems":1,"type":"array"},"storeId":{"minLength":1,"type":"string"},"title":{"minLength":1,"type":"string"}},"required":["storeId","rows"],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
+### hallmark.listing.draft.get @ 1.0.0
+
+读取一张经营变更单，或凭原runtime operationId找到它。默认精简表格；includeEvidence可读取完整来源和审核证据，不执行平台写入。
+
+Effect: query; completion: response.
+
+Input: `{"additionalProperties":false,"oneOf":[{"not":{"required":["operationId"]},"required":["planId"]},{"not":{"required":["planId"]},"required":["operationId"]}],"properties":{"cursor":{"pattern":"^(0|[1-9][0-9]*)$","type":"string"},"includeEvidence":{"type":"boolean"},"limit":{"maximum":200,"minimum":1,"type":"integer"},"operationId":{"minLength":1,"type":"string"},"planId":{"minLength":1,"type":"string"},"rowIds":{"items":{"minLength":1,"type":"string"},"minItems":1,"type":"array"}},"required":[],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
+### hallmark.listing.draft.revise @ 1.0.0
+
+按稳定rowId修改尚未执行的行，程序更新版本和受影响的审核依赖。rows每项提供完整目标行；成功或未决行不可改写。草稿保存不调用模型。
+
+Effect: compute; completion: response.
+
+Input: `{"additionalProperties":false,"properties":{"expectedRevision":{"minimum":1,"type":"integer"},"planId":{"minLength":1,"type":"string"},"rows":{"items":{"additionalProperties":false,"properties":{"action":{"enum":["price","stock","archive","promotion.enroll","promotion.update","promotion.exit","listing"]},"dependsOn":{"items":{"minLength":1,"type":"string"},"type":"array"},"payload":{"additionalProperties":true,"type":"object"},"pricing":{"additionalProperties":false,"properties":{"mode":{"enum":["automatic","manual"]},"planId":{"minLength":1,"type":"string"}},"required":["mode"],"type":"object"},"procurement":{"items":{"additionalProperties":false,"properties":{"itemId":{"minLength":1,"type":"string"},"quantity":{"exclusiveMinimum":0,"type":"number"},"sourceSkuId":{"minLength":1,"type":"string"}},"required":["itemId","sourceSkuId","quantity"],"type":"object"},"type":"array"},"referenceSubjects":{"items":{"additionalProperties":false,"properties":{"sourceImageUrl":{"minLength":1,"type":"string"},"subject":{"maxLength":500,"minLength":1,"type":"string"}},"required":["sourceImageUrl","subject"],"type":"object"},"maxItems":8,"type":"array"},"rowId":{"minLength":1,"type":"string"},"target":{"additionalProperties":false,"properties":{"offerId":{"minLength":1,"type":"string"},"productId":{"type":["string","number"]},"sku":{"type":["string","number"]}},"required":["offerId"],"type":"object"}},"required":["action","target","payload"],"type":"object"},"maxItems":200,"minItems":1,"type":"array"}},"required":["planId","expectedRevision","rows"],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
+### hallmark.listing.draft.submit @ 1.0.0
+
+明确提交当前草稿版本。规则可确定的直接执行；图文/语义由独立模型审核，必要时Host启动独立子代理。通过行自动执行。缺事实只返回具体字段问题；无需userRequest/valueSource/scopeConfirmed或已审阅声明。程序负责行级幂等；pending/unknown仅inspect，勿另建同目标重复操作。
+
+Effect: mutation; completion: readback.
+
+Input: `{"additionalProperties":false,"properties":{"expectedRevision":{"minimum":1,"type":"integer"},"planId":{"minLength":1,"type":"string"}},"required":["planId","expectedRevision"],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
+### hallmark.listing.prepare @ 1.0.0
+
+给目标店铺与已选商品/SKU，程序一次组合精简采集资料、采购组成、包装结果、经营规则、已有商品关联和类目候选/模板。支持多SKU组合销售；已有资料版本可复用。整个响应受字节预算限制，续页仅传 continuation.input，无需重读已返回资料；类目默认给必填约束，其余字段可按需展开。只准备数据，不审核、不生成检查声明；Agent接着制作标题、属性和图片，再保存草稿。
+
+Effect: query; completion: response.
+
+Input: `{"additionalProperties":false,"oneOf":[{"required":["selections"]},{"required":["cursor"]}],"properties":{"categories":{"additionalProperties":{"additionalProperties":false,"properties":{"descriptionCategoryId":{"minLength":1,"type":"string"},"typeId":{"minLength":1,"type":"string"}},"required":["descriptionCategoryId","typeId"],"type":"object"},"type":"object"},"categoryQuery":{"minLength":1,"type":"string"},"compositions":{"items":{"additionalProperties":false,"properties":{"id":{"minLength":1,"type":"string"},"members":{"items":{"additionalProperties":false,"properties":{"itemId":{"minLength":1,"type":"string"},"quantity":{"minimum":1,"type":"integer"},"sourceSkuId":{"minLength":1,"type":"string"}},"required":["itemId","sourceSkuId","quantity"],"type":"object"},"maxItems":100,"minItems":1,"type":"array"}},"required":["id","members"],"type":"object"},"maxItems":200,"minItems":1,"type":"array"},"cursor":{"minLength":1,"type":"string"},"includeOptionalAttributes":{"type":"boolean"},"knownRevisions":{"additionalProperties":{"minLength":1,"type":"string"},"type":"object"},"maxBytes":{"maximum":65536,"minimum":2048,"type":"integer"},"refresh":{"type":"boolean"},"salesLimit":{"maximum":100,"minimum":1,"type":"integer"},"selections":{"items":{"additionalProperties":false,"properties":{"cursor":{"minLength":1,"type":"string"},"id":{"minLength":1,"type":"string"},"revision":{"minLength":1,"type":"string"},"skuIds":{"items":{"minLength":1,"type":"string"},"minItems":1,"type":"array"}},"required":["id"],"type":"object"},"maxItems":30,"minItems":1,"type":"array"},"storeId":{"minLength":1,"type":"string"}},"required":["storeId"],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
 ### hallmark.operations.get @ 1.0.0
 
 读取写入/刷新状态；unknown 时必须先查询，禁止自动重写
@@ -446,7 +536,7 @@ Effect: query; completion: response.
 
 Input: `{"additionalProperties":false,"properties":{"operationId":{"maxLength":4000,"minLength":1,"type":"string"}},"required":["operationId"],"type":"object"}`
 
-Output: `{"additionalProperties":true,"properties":{"input":{"additionalProperties":true,"type":"object"},"items":{"items":{"additionalProperties":true,"type":"object"},"type":"array"},"kind":{"minLength":1,"type":"string"},"operationId":{"minLength":1,"type":"string"},"state":{"enum":["pending","running","succeeded","failed","partial","unknown"]},"storeId":{"type":"string"},"targets":{"items":{"minLength":1,"type":"string"},"type":"array"}},"required":["operationId","kind","storeId","state","targets","input","items"],"type":"object"}`
+Output: `{"anyOf":[{"additionalProperties":true,"properties":{"input":{"additionalProperties":true,"type":"object"},"items":{"items":{"additionalProperties":true,"type":"object"},"type":"array"},"kind":{"minLength":1,"type":"string"},"operationId":{"minLength":1,"type":"string"},"state":{"enum":["pending","running","succeeded","failed","partial","unknown"]},"storeId":{"type":"string"},"targets":{"items":{"minLength":1,"type":"string"},"type":"array"}},"required":["operationId","kind","storeId","state","targets","input","items"],"type":"object"},{"additionalProperties":true,"properties":{"planId":{"minLength":1,"type":"string"},"revision":{"minimum":0,"type":"integer"},"rows":{"items":{"additionalProperties":true,"type":"object"},"type":"array"},"status":{"minLength":1,"type":"string"},"storeId":{"minLength":1,"type":"string"}},"required":["planId","storeId","status","revision","rows"],"type":"object"}]}`
 
 ### hallmark.operations.list @ 1.0.0
 
@@ -528,6 +618,16 @@ Input: `{"additionalProperties":false,"properties":{"actionId":{"pattern":"^[1-9
 
 Output: `{"additionalProperties":false,"properties":{"cache":{"additionalProperties":false,"properties":{"expiresAt":{"type":"string"},"fetchedAt":{"type":"string"},"nextRefreshAt":{"type":"string"},"refreshing":{"type":"boolean"},"stale":{"type":"boolean"},"ttlMs":{"const":900000}},"required":["ttlMs","fetchedAt","expiresAt","nextRefreshAt","stale"],"type":"object"},"cursor":{"minLength":1,"type":"string"},"dataTime":{"type":["string","null"]},"items":{"items":{"additionalProperties":false,"properties":{"actionId":{"description":"Ozon 促销活动编号。","type":["string","null"]},"actionName":{"description":"平台促销活动的名称。","type":["string","null"]},"actionPrice":{"description":"商品参加活动时的价格。","type":["number","null"]},"currency":{"description":"金额使用的货币，未提供时显示未知。","type":["string","null"]},"endsAt":{"description":"活动结束时间。","type":["string","null"]},"maxActionPrice":{"description":"参加活动所允许的最高商品价格。","type":["number","null"]},"participation":{"description":"商品已参加活动，或符合该活动的参加条件。","type":["string","null"]},"productId":{"description":"Ozon 商品编号；不同于平台 SKU。","type":["string","null"]},"startsAt":{"description":"活动开始时间。","type":["string","null"]}},"required":["actionId","actionName","productId","participation","actionPrice","maxActionPrice","currency","startsAt","endsAt"],"type":"object"},"type":"array"},"period":{"additionalProperties":false,"properties":{"dateFrom":{"minLength":1,"type":"string"},"dateTo":{"minLength":1,"type":"string"}},"required":["dateFrom","dateTo"],"type":"object"},"total":{"minimum":0,"type":"integer"},"warnings":{"items":{"type":"string"},"type":"array"}},"required":["items","dataTime","warnings"],"type":"object"}`
 
+### hallmark.ozon.ratings @ 1.0.0
+
+按 Ozon SKU 读取内容评级（0–100 分）并附商品状态；未返回评级保持未知。支持单 SKU 或全店分页，只读且不修改商品。
+
+Effect: query; completion: response.
+
+Input: `{"additionalProperties":false,"properties":{"cursor":{"minLength":1,"type":"string"},"forceRefresh":{"type":"boolean"},"limit":{"maximum":100,"minimum":1,"type":"integer"},"loadAll":{"type":"boolean"},"sku":{"pattern":"^[1-9][0-9]*$","type":"string"},"storeId":{"minLength":1,"type":"string"}},"required":["storeId"],"type":"object"}`
+
+Output: `{"additionalProperties":false,"properties":{"cache":{"additionalProperties":false,"properties":{"expiresAt":{"type":"string"},"fetchedAt":{"type":"string"},"nextRefreshAt":{"type":"string"},"refreshing":{"type":"boolean"},"stale":{"type":"boolean"},"ttlMs":{"const":900000}},"required":["ttlMs","fetchedAt","expiresAt","nextRefreshAt","stale"],"type":"object"},"cursor":{"minLength":1,"type":"string"},"dataTime":{"type":["string","null"]},"items":{"items":{"additionalProperties":false,"properties":{"offerId":{"description":"卖家设置的商品货号。","type":["string","null"]},"productId":{"description":"Ozon 商品编号；不同于平台 SKU。","type":["string","null"]},"rating":{"description":"Ozon 按 SKU 返回的商品内容评级，范围 0–100；无分数时保持未知。","type":["number","null"]},"sku":{"description":"Ozon 为商品分配的 SKU。","type":["string","null"]},"status":{"description":"明确认识的状态以中文展示；其他状态标注未映射并保留原文。","type":["string","null"]},"statusCode":{"description":"平台返回的状态代码。","type":["string","null"]},"statusRaw":{"description":"平台返回的原始状态文字，供核对。","type":["string","null"]},"title":{"description":"平台返回的商品名称。","type":["string","null"]}},"required":["productId","offerId","sku","title","status","statusCode","statusRaw","rating"],"type":"object"},"type":"array"},"period":{"additionalProperties":false,"properties":{"dateFrom":{"minLength":1,"type":"string"},"dateTo":{"minLength":1,"type":"string"}},"required":["dateFrom","dateTo"],"type":"object"},"total":{"minimum":0,"type":"integer"},"warnings":{"items":{"type":"string"},"type":"array"}},"required":["items","dataTime","warnings"],"type":"object"}`
+
 ### hallmark.ozon.returns @ 1.0.0
 
 读取 rFBS 售后申请；传入售后单编号可读详情原因。不执行退款或售后处理。
@@ -568,6 +668,76 @@ Input: `{"additionalProperties":false,"properties":{"cursor":{"minLength":1,"typ
 
 Output: `{"additionalProperties":false,"properties":{"cache":{"additionalProperties":false,"properties":{"expiresAt":{"type":"string"},"fetchedAt":{"type":"string"},"nextRefreshAt":{"type":"string"},"refreshing":{"type":"boolean"},"stale":{"type":"boolean"},"ttlMs":{"const":900000}},"required":["ttlMs","fetchedAt","expiresAt","nextRefreshAt","stale"],"type":"object"},"cursor":{"minLength":1,"type":"string"},"dataTime":{"type":["string","null"]},"items":{"items":{"additionalProperties":false,"properties":{"actualWeight":{"description":"承运商报告的实际重量，单位为克。","type":["number","null"]},"declaredWeight":{"description":"商品包装申报重量，单位为克。","type":["number","null"]},"offerId":{"description":"卖家设置的商品货号。","type":["string","null"]},"postingNumber":{"description":"订单发货包裹的编号，一个订单可能包含多个包裹。","type":["string","null"]},"quantity":{"description":"该行商品的件数。","type":["number","null"]},"shipmentAt":{"description":"平台记录的包裹交运或发货时间。","type":["string","null"]},"sku":{"description":"Ozon 为商品分配的 SKU。","type":["string","null"]},"weightDifference":{"description":"物流实重减去申报重量，单位为克。","type":["number","null"]},"weightScope":{"description":"说明该重量是否为已核实的单件商品实重。","type":["string","null"]}},"required":["postingNumber","sku","offerId","quantity","actualWeight","declaredWeight","weightDifference","weightScope","shipmentAt"],"type":"object"},"type":"array"},"period":{"additionalProperties":false,"properties":{"dateFrom":{"minLength":1,"type":"string"},"dateTo":{"minLength":1,"type":"string"}},"required":["dateFrom","dateTo"],"type":"object"},"total":{"minimum":0,"type":"integer"},"warnings":{"items":{"type":"string"},"type":"array"}},"required":["items","dataTime","warnings"],"type":"object"}`
 
+### hallmark.plan.create @ 1.0.0
+
+保存一张经营操作表，不触发模型或平台提交。程序读取原商品与采购SKU、绑定组成并补齐确定性数据。payload填写一次：价格 price/currency_code；库存 stock/warehouse_id；归档 archived；活动 action_id/price/stock（活动配额）；listing为原生Ozon item。上品procurement引用完整来源itemId/sourceSkuId及quantity。多主体参考图可在行级referenceSubjects填写真实sourceImageUrl和主体位置，例如“左侧银色贴片”；单一明确主体可省略。它只指定比较对象，不手填采购价或审核声明。
+
+Effect: compute; completion: response.
+
+Input: `{"additionalProperties":false,"properties":{"rows":{"items":{"additionalProperties":false,"properties":{"action":{"enum":["price","stock","archive","promotion.enroll","promotion.update","promotion.exit","listing"]},"dependsOn":{"items":{"minLength":1,"type":"string"},"type":"array"},"payload":{"additionalProperties":true,"type":"object"},"pricing":{"additionalProperties":false,"properties":{"mode":{"enum":["automatic","manual"]},"planId":{"minLength":1,"type":"string"}},"required":["mode"],"type":"object"},"procurement":{"items":{"additionalProperties":false,"properties":{"itemId":{"minLength":1,"type":"string"},"quantity":{"exclusiveMinimum":0,"type":"number"},"sourceSkuId":{"minLength":1,"type":"string"}},"required":["itemId","sourceSkuId","quantity"],"type":"object"},"type":"array"},"referenceSubjects":{"items":{"additionalProperties":false,"properties":{"sourceImageUrl":{"minLength":1,"type":"string"},"subject":{"maxLength":500,"minLength":1,"type":"string"}},"required":["sourceImageUrl","subject"],"type":"object"},"maxItems":8,"type":"array"},"rowId":{"minLength":1,"type":"string"},"target":{"additionalProperties":false,"properties":{"offerId":{"minLength":1,"type":"string"},"productId":{"type":["string","number"]},"sku":{"type":["string","number"]}},"required":["offerId"],"type":"object"}},"required":["action","target","payload"],"type":"object"},"maxItems":200,"minItems":1,"type":"array"},"storeId":{"minLength":1,"type":"string"},"title":{"minLength":1,"type":"string"}},"required":["storeId","rows"],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
+### hallmark.plan.get @ 1.0.0
+
+读取一张经营变更单，或凭原runtime operationId找到它。默认精简表格；includeEvidence可读取完整来源和审核证据，不执行平台写入。
+
+Effect: query; completion: response.
+
+Input: `{"additionalProperties":false,"oneOf":[{"not":{"required":["operationId"]},"required":["planId"]},{"not":{"required":["planId"]},"required":["operationId"]}],"properties":{"cursor":{"pattern":"^(0|[1-9][0-9]*)$","type":"string"},"includeEvidence":{"type":"boolean"},"limit":{"maximum":200,"minimum":1,"type":"integer"},"operationId":{"minLength":1,"type":"string"},"planId":{"minLength":1,"type":"string"},"rowIds":{"items":{"minLength":1,"type":"string"},"minItems":1,"type":"array"}},"required":[],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
+### hallmark.plan.inspect @ 1.0.0
+
+只读核查原请求、异步导入及实际价格等结果，更新逐行状态；不重新发送未决平台请求。
+
+Effect: query; completion: response.
+
+Input: `{"additionalProperties":false,"properties":{"planId":{"minLength":1,"type":"string"}},"required":["planId"],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
+### hallmark.plan.list @ 1.0.0
+
+列出此连接（可筛选店铺）的经营操作记录，包含逐行价格、采购关联、审核问题和执行状态。
+
+Effect: query; completion: response.
+
+Input: `{"additionalProperties":false,"properties":{"storeId":{"minLength":1,"type":"string"}},"required":[],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
+### hallmark.plan.restore @ 1.0.0
+
+根据已成功变更生成反向单并通过同一审核入口执行。先比较当前值是否仍为原写入值，有冲突不覆盖。库存须单独确定新目标；新上品通过归档恢复。
+
+Effect: mutation; completion: readback.
+
+Input: `{"additionalProperties":false,"properties":{"planId":{"minLength":1,"type":"string"},"rowIds":{"items":{"minLength":1,"type":"string"},"minItems":1,"type":"array"}},"required":["planId"],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
+### hallmark.plan.revise @ 1.0.0
+
+按稳定rowId修改尚未执行的行，程序更新版本和受影响的审核依赖。rows每项提供完整目标行；成功或未决行不可改写。草稿保存不调用模型。
+
+Effect: compute; completion: response.
+
+Input: `{"additionalProperties":false,"properties":{"expectedRevision":{"minimum":1,"type":"integer"},"planId":{"minLength":1,"type":"string"},"rows":{"items":{"additionalProperties":false,"properties":{"action":{"enum":["price","stock","archive","promotion.enroll","promotion.update","promotion.exit","listing"]},"dependsOn":{"items":{"minLength":1,"type":"string"},"type":"array"},"payload":{"additionalProperties":true,"type":"object"},"pricing":{"additionalProperties":false,"properties":{"mode":{"enum":["automatic","manual"]},"planId":{"minLength":1,"type":"string"}},"required":["mode"],"type":"object"},"procurement":{"items":{"additionalProperties":false,"properties":{"itemId":{"minLength":1,"type":"string"},"quantity":{"exclusiveMinimum":0,"type":"number"},"sourceSkuId":{"minLength":1,"type":"string"}},"required":["itemId","sourceSkuId","quantity"],"type":"object"},"type":"array"},"referenceSubjects":{"items":{"additionalProperties":false,"properties":{"sourceImageUrl":{"minLength":1,"type":"string"},"subject":{"maxLength":500,"minLength":1,"type":"string"}},"required":["sourceImageUrl","subject"],"type":"object"},"maxItems":8,"type":"array"},"rowId":{"minLength":1,"type":"string"},"target":{"additionalProperties":false,"properties":{"offerId":{"minLength":1,"type":"string"},"productId":{"type":["string","number"]},"sku":{"type":["string","number"]}},"required":["offerId"],"type":"object"}},"required":["action","target","payload"],"type":"object"},"maxItems":200,"minItems":1,"type":"array"}},"required":["planId","expectedRevision","rows"],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
+### hallmark.plan.submit @ 1.0.0
+
+明确提交当前草稿版本。规则可确定的直接执行；图文/语义由独立模型审核，必要时Host启动独立子代理。通过行自动执行。缺事实只返回具体字段问题；无需userRequest/valueSource/scopeConfirmed或已审阅声明。程序负责行级幂等；pending/unknown仅inspect，勿另建同目标重复操作。
+
+Effect: mutation; completion: readback.
+
+Input: `{"additionalProperties":false,"properties":{"expectedRevision":{"minimum":1,"type":"integer"},"planId":{"minLength":1,"type":"string"}},"required":["planId","expectedRevision"],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
 ### hallmark.platform.read @ 1.0.0
 
 仅对白名单只读平台端点调用，自动关联内部任务
@@ -577,6 +747,26 @@ Effect: query; completion: response.
 Input: `{"additionalProperties":false,"properties":{"body":{"type":"object"},"method":{"enum":["GET","POST"],"type":"string"},"path":{"maxLength":4000,"minLength":1,"type":"string"},"store":{"description":"名称/别名，匹配不唯一须澄清","maxLength":4000,"minLength":1,"type":"string"},"storeId":{"description":"用户明确指定的店铺 ID","maxLength":4000,"minLength":1,"type":"string"}},"required":["path"],"type":"object"}`
 
 Output: `{"additionalProperties":true,"anyOf":[{"required":["response"]},{"required":["spill"]}],"properties":{"httpStatus":{"type":"integer"},"outcome":{"enum":["pending","response_received","outcome_unknown"]},"response":{},"spill":{"additionalProperties":true,"properties":{"bytes":{"minimum":0,"type":"integer"},"cursor":{"type":"string"},"path":{"minLength":1,"type":"string"},"summary":{"additionalProperties":true,"type":"object"}},"required":["path","bytes","summary","cursor"],"type":"object"}},"type":"object"}`
+
+### hallmark.pricing.quote @ 1.0.0
+
+按经营行读取真实采购组成与成本、包装重量和店铺规则，返回建议售价、费用明细和阻塞字段。自动按本次售价和重量匹配物流方案，重叠取总费用最高；planId仅用于旧固定方案兼容模式。不会提交平台。
+
+Effect: compute; completion: response.
+
+Input: `{"additionalProperties":false,"properties":{"row":{"additionalProperties":false,"properties":{"action":{"enum":["price","stock","archive","promotion.enroll","promotion.update","promotion.exit","listing"]},"dependsOn":{"items":{"minLength":1,"type":"string"},"type":"array"},"payload":{"additionalProperties":true,"type":"object"},"pricing":{"additionalProperties":false,"properties":{"mode":{"enum":["automatic","manual"]},"planId":{"minLength":1,"type":"string"}},"required":["mode"],"type":"object"},"procurement":{"items":{"additionalProperties":false,"properties":{"itemId":{"minLength":1,"type":"string"},"quantity":{"exclusiveMinimum":0,"type":"number"},"sourceSkuId":{"minLength":1,"type":"string"}},"required":["itemId","sourceSkuId","quantity"],"type":"object"},"type":"array"},"referenceSubjects":{"items":{"additionalProperties":false,"properties":{"sourceImageUrl":{"minLength":1,"type":"string"},"subject":{"maxLength":500,"minLength":1,"type":"string"}},"required":["sourceImageUrl","subject"],"type":"object"},"maxItems":8,"type":"array"},"rowId":{"minLength":1,"type":"string"},"target":{"additionalProperties":false,"properties":{"offerId":{"minLength":1,"type":"string"},"productId":{"type":["string","number"]},"sku":{"type":["string","number"]}},"required":["offerId"],"type":"object"}},"required":["action","target","payload"],"type":"object"},"storeId":{"minLength":1,"type":"string"}},"required":["storeId","row"],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
+
+### hallmark.pricing.read @ 1.0.0
+
+读取经营应用保存的物流渠道报价、默认方案、目标利润与实际硬底线。不会返回店铺凭据。
+
+Effect: query; completion: response.
+
+Input: `{"additionalProperties":false,"properties":{"storeId":{"minLength":1,"type":"string"}},"required":["storeId"],"type":"object"}`
+
+Output: `{"additionalProperties":true,"type":"object"}`
 
 ### hallmark.products.filter @ 1.0.0
 
@@ -600,23 +790,23 @@ Output: `{"anyOf":[{"additionalProperties":true,"properties":{"products":{"items
 
 ### hallmark.products.list_product @ 1.0.0
 
-仅上品用户指定的已有采集商品和 SKU 范围，不隐式全采集箱。仅在用户本轮明确要求修改时调用；缺信息必须澄清；unknown 禁止再次写入，先查询操作。
+提交已有采集商品及明确 SKU 范围的最终商品内容；每个 importItem 用 _sourceSkuId 关联采购规格，Ozon 字段填写一次。提交后由程序统一审核并执行；无需审阅声明或机械幂等键。pending/unknown 只查询原操作，不重复提交。 现由统一经营变更审核执行；不要求检查声明或用户值证明。
 
 Effect: mutation; completion: readback.
 
-Input: `{"additionalProperties":false,"properties":{"clientOperationKey":{"description":"同一逻辑修改必须复用；未知结果先查询操作","maxLength":4000,"minLength":1,"type":"string"},"collectedItemId":{"maxLength":4000,"minLength":1,"type":"string"},"importItems":{"items":{"type":"object"},"maxItems":100,"minItems":1,"type":"array"},"offerIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"productIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"scopeConfirmed":{"type":"boolean"},"skuScope":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"store":{"description":"名称/别名，匹配不唯一须澄清","maxLength":4000,"minLength":1,"type":"string"},"storeId":{"description":"用户明确指定的店铺 ID","maxLength":4000,"minLength":1,"type":"string"},"userRequest":{"description":"本轮用户明确修改指令原话","maxLength":4000,"minLength":1,"type":"string"},"valueSource":{"description":"user 或 rule:规则名，不允许猜测数值","maxLength":4000,"minLength":1,"type":"string"}},"required":[],"type":"object"}`
+Input: `{"additionalProperties":false,"properties":{"clientOperationKey":{"description":"可选旧调用幂等键；未提供时程序自动管理，未知结果只查询原操作","maxLength":4000,"minLength":1,"type":"string"},"collectedItemId":{"maxLength":4000,"minLength":1,"type":"string"},"importItems":{"items":{"type":"object"},"maxItems":100,"minItems":1,"type":"array"},"offerIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"productIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"scopeConfirmed":{"type":"boolean"},"skuScope":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"store":{"description":"名称/别名，匹配不唯一须澄清","maxLength":4000,"minLength":1,"type":"string"},"storeId":{"description":"用户明确指定的店铺 ID","maxLength":4000,"minLength":1,"type":"string"},"userRequest":{"description":"可选经营说明；无需重复记录授权原话","maxLength":4000,"minLength":1,"type":"string"},"valueSource":{"description":"可选旧记录字段；程序不要求值来源声明","maxLength":4000,"minLength":1,"type":"string"}},"required":["storeId","collectedItemId","skuScope","importItems"],"type":"object"}`
 
-Output: `{"additionalProperties":true,"properties":{"input":{"additionalProperties":true,"type":"object"},"items":{"items":{"additionalProperties":true,"type":"object"},"type":"array"},"kind":{"minLength":1,"type":"string"},"operationId":{"minLength":1,"type":"string"},"state":{"enum":["pending","running","succeeded","failed","partial","unknown"]},"storeId":{"type":"string"},"targets":{"items":{"minLength":1,"type":"string"},"type":"array"}},"required":["operationId","kind","storeId","state","targets","input","items"],"type":"object"}`
+Output: `{"additionalProperties":true,"type":"object"}`
 
 ### hallmark.products.procurement @ 1.0.0
 
-同一店铺在售商品与精确采购来源对照。支持全量快照读取或搜索后分页，读取真实物流渠道并按库存仓分批关联匹配；接口无报价时需补充明确渠道的费用才能试算，缺失不按零计算。
+同一店铺在售商品与精确采购来源对照。支持全量快照读取或搜索后分页，默认使用应用独立维护的经营规则，按实际卖家价与重量自动匹配物流费用并计算利润；重叠取总费用较高方案，缺失不按零计算。
 
 Effect: query; completion: response.
 
-Input: `{"additionalProperties":false,"properties":{"commissionPercent":{"maximum":99.9999,"minimum":0,"type":"number"},"cursor":{"minLength":1,"type":"string"},"deliveryMethodId":{"minLength":1,"type":"string"},"fixedFeeYuan":{"maximum":1000000,"minimum":0,"type":"number"},"forceRefresh":{"type":"boolean"},"limit":{"maximum":100,"minimum":1,"type":"integer"},"loadAll":{"type":"boolean"},"logisticsYuanPerKg":{"maximum":100000,"minimum":0,"type":"number"},"planMode":{"enum":["delivery","platform","custom"]},"query":{"type":"string"},"storeId":{"minLength":1,"type":"string"}},"required":["storeId"],"type":"object"}`
+Input: `{"additionalProperties":false,"properties":{"commissionPercent":{"maximum":99.9999,"minimum":0,"type":"number"},"cursor":{"minLength":1,"type":"string"},"deliveryMethodId":{"minLength":1,"type":"string"},"fixedFeeYuan":{"maximum":1000000,"minimum":0,"type":"number"},"forceRefresh":{"type":"boolean"},"limit":{"maximum":100,"minimum":1,"type":"integer"},"loadAll":{"type":"boolean"},"logisticsYuanPerKg":{"maximum":100000,"minimum":0,"type":"number"},"planMode":{"enum":["application","delivery","platform","custom"]},"query":{"type":"string"},"storeId":{"minLength":1,"type":"string"}},"required":["storeId"],"type":"object"}`
 
-Output: `{"additionalProperties":false,"properties":{"cache":{"additionalProperties":false,"properties":{"expiresAt":{"type":"string"},"fetchedAt":{"type":"string"},"nextRefreshAt":{"type":"string"},"refreshing":{"type":"boolean"},"stale":{"type":"boolean"},"ttlMs":{"const":900000}},"required":["ttlMs","fetchedAt","expiresAt","nextRefreshAt","stale"],"type":"object"},"cursor":{"type":"string"},"dataTime":{"type":["string","null"]},"plan":{"additionalProperties":false,"properties":{"choices":{"items":{"additionalProperties":false,"properties":{"active":{"type":"boolean"},"id":{"type":"string"},"name":{"type":"string"},"warehouseId":{"type":"string"},"warehouseName":{"type":["string","null"]}},"required":["id","name","warehouseId","warehouseName","active"],"type":"object"},"type":"array"},"commissionPercent":{"type":["number","null"]},"deliveryMethodId":{"type":["string","null"]},"fixedFeeYuan":{"type":["number","null"]},"label":{"type":"string"},"logisticsYuanPerKg":{"type":["number","null"]},"mode":{"enum":["delivery","platform","custom"]},"reason":{"type":["string","null"]},"selectionNote":{"type":"string"},"settingsRevision":{"type":["integer","null"]}},"required":["mode","label","settingsRevision","fixedFeeYuan","logisticsYuanPerKg","commissionPercent","reason","deliveryMethodId","choices","selectionNote"],"type":"object"},"products":{"items":{"additionalProperties":false,"properties":{"currency":{"type":["string","null"]},"imageUrl":{"type":["string","null"]},"logisticsMatch":{"additionalProperties":false,"properties":{"candidatePlanIds":{"items":{"type":"string"},"type":"array"},"label":{"type":"string"},"reason":{"type":["string","null"]},"selectedPlanId":{"type":"string"},"status":{"enum":["unique","choice","unavailable","unknown"]}},"required":["status","candidatePlanIds","label","reason"],"type":"object"},"offerId":{"type":["string","null"]},"packageGrams":{"type":["number","null"]},"productId":{"type":["string","null"]},"productUrl":{"type":["string","null"]},"purchaseLinks":{"items":{"additionalProperties":false,"properties":{"label":{"type":"string"},"url":{"type":"string"}},"required":["url","label"],"type":"object"},"type":"array"},"purchaseMinor":{"type":["number","null"]},"purchaseSpecification":{"type":["string","null"]},"referenceProfit":{"additionalProperties":false,"properties":{"commissionMinor":{"type":["number","null"]},"fixedMinor":{"type":["number","null"]},"logisticsMinor":{"type":["number","null"]},"margin":{"type":["number","null"]},"metricBasis":{"type":"string"},"profitMinor":{"type":["number","null"]},"reason":{"type":["string","null"]}},"required":["margin","profitMinor","logisticsMinor","commissionMinor","fixedMinor","reason","metricBasis"],"type":"object"},"salesSpecification":{"type":["string","null"]},"sellerMinor":{"type":["number","null"]},"sku":{"type":["string","null"]},"title":{"type":["string","null"]}},"required":["productId","offerId","sku","title","imageUrl","currency","productUrl","salesSpecification","purchaseSpecification","purchaseLinks","purchaseMinor","sellerMinor","packageGrams","referenceProfit","logisticsMatch"],"type":"object"},"type":"array"},"total":{"minimum":0,"type":"integer"},"warnings":{"items":{"type":"string"},"type":"array"}},"required":["products","total","dataTime","warnings","plan","cache"],"type":"object"}`
+Output: `{"additionalProperties":false,"properties":{"cache":{"additionalProperties":false,"properties":{"expiresAt":{"type":"string"},"fetchedAt":{"type":"string"},"nextRefreshAt":{"type":"string"},"refreshing":{"type":"boolean"},"stale":{"type":"boolean"},"ttlMs":{"const":900000}},"required":["ttlMs","fetchedAt","expiresAt","nextRefreshAt","stale"],"type":"object"},"cursor":{"type":"string"},"dataTime":{"type":["string","null"]},"plan":{"additionalProperties":false,"properties":{"choices":{"items":{"additionalProperties":false,"properties":{"active":{"type":"boolean"},"id":{"type":"string"},"name":{"type":"string"},"warehouseId":{"type":"string"},"warehouseName":{"type":["string","null"]}},"required":["id","name","warehouseId","warehouseName","active"],"type":"object"},"type":"array"},"commissionPercent":{"type":["number","null"]},"deliveryMethodId":{"type":["string","null"]},"fixedFeeYuan":{"type":["number","null"]},"label":{"type":"string"},"logisticsYuanPerKg":{"type":["number","null"]},"mode":{"enum":["application","delivery","platform","custom"]},"reason":{"type":["string","null"]},"selectionNote":{"type":"string"},"settingsRevision":{"type":["integer","null"]}},"required":["mode","label","settingsRevision","fixedFeeYuan","logisticsYuanPerKg","commissionPercent","reason","deliveryMethodId","choices","selectionNote"],"type":"object"},"products":{"items":{"additionalProperties":false,"properties":{"currency":{"type":["string","null"]},"imageUrl":{"type":["string","null"]},"logisticsMatch":{"additionalProperties":false,"properties":{"candidatePlanIds":{"items":{"type":"string"},"type":"array"},"label":{"type":"string"},"reason":{"type":["string","null"]},"selectedPlanId":{"type":"string"},"status":{"enum":["unique","choice","unavailable","unknown"]}},"required":["status","candidatePlanIds","label","reason"],"type":"object"},"offerId":{"type":["string","null"]},"packageGrams":{"type":["number","null"]},"productId":{"type":["string","null"]},"productUrl":{"type":["string","null"]},"purchaseLinks":{"items":{"additionalProperties":false,"properties":{"label":{"type":"string"},"url":{"type":"string"}},"required":["url","label"],"type":"object"},"type":"array"},"purchaseMinor":{"type":["number","null"]},"purchaseSpecification":{"type":["string","null"]},"referenceProfit":{"additionalProperties":false,"properties":{"commissionMinor":{"type":["number","null"]},"configRevision":{"type":["number","null"]},"fixedMinor":{"type":["number","null"]},"logisticsMinor":{"type":["number","null"]},"margin":{"type":["number","null"]},"metricBasis":{"type":"string"},"planId":{"type":["string","null"]},"profitMinor":{"type":["number","null"]},"reason":{"type":["string","null"]},"selectionReason":{"type":["string","null"]}},"required":["margin","profitMinor","logisticsMinor","commissionMinor","fixedMinor","reason","metricBasis"],"type":"object"},"salesSpecification":{"type":["string","null"]},"sellerMinor":{"type":["number","null"]},"sku":{"type":["string","null"]},"title":{"type":["string","null"]}},"required":["productId","offerId","sku","title","imageUrl","currency","productUrl","salesSpecification","purchaseSpecification","purchaseLinks","purchaseMinor","sellerMinor","packageGrams","referenceProfit","logisticsMatch"],"type":"object"},"type":"array"},"total":{"minimum":0,"type":"integer"},"warnings":{"items":{"type":"string"},"type":"array"}},"required":["products","total","dataTime","warnings","plan","cache"],"type":"object"}`
 
 ### hallmark.products.skus @ 1.0.0
 
@@ -630,23 +820,23 @@ Output: `{"additionalProperties":false,"properties":{"items":{"items":{"addition
 
 ### hallmark.products.update_price @ 1.0.0
 
-修改显式商品清单的价格并只读核实。仅在用户本轮明确要求修改时调用；缺信息必须澄清；unknown 禁止再次写入，先查询操作。
+修改明确商品清单的普通价格并只读核实；活动调价请使用经营草稿 promotion.update，并明确活动配额。省略 currency 时程序读取商品实际币种。提交后由程序统一审核并执行；无需审阅声明或机械幂等键。pending/unknown 只查询原操作，不重复提交。 现由统一经营变更审核执行；不要求检查声明或用户值证明。
 
 Effect: mutation; completion: readback.
 
-Input: `{"additionalProperties":false,"properties":{"actionId":{"minimum":1,"type":"integer"},"clientOperationKey":{"description":"同一逻辑修改必须复用；未知结果先查询操作","maxLength":4000,"minLength":1,"type":"string"},"currency":{"maxLength":4000,"minLength":1,"type":"string"},"offerIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"oldPrice":{"type":"number"},"price":{"minimum":0.01,"type":"number"},"productIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"scopeConfirmed":{"type":"boolean"},"store":{"description":"名称/别名，匹配不唯一须澄清","maxLength":4000,"minLength":1,"type":"string"},"storeId":{"description":"用户明确指定的店铺 ID","maxLength":4000,"minLength":1,"type":"string"},"userRequest":{"description":"本轮用户明确修改指令原话","maxLength":4000,"minLength":1,"type":"string"},"valueSource":{"description":"user 或 rule:规则名，不允许猜测数值","maxLength":4000,"minLength":1,"type":"string"}},"required":[],"type":"object"}`
+Input: `{"additionalProperties":false,"properties":{"actionId":{"minimum":1,"type":"integer"},"clientOperationKey":{"description":"可选旧调用幂等键；未提供时程序自动管理，未知结果只查询原操作","maxLength":4000,"minLength":1,"type":"string"},"currency":{"maxLength":4000,"minLength":1,"type":"string"},"offerIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"oldPrice":{"type":"number"},"price":{"minimum":0.01,"type":"number"},"productIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"scopeConfirmed":{"type":"boolean"},"store":{"description":"名称/别名，匹配不唯一须澄清","maxLength":4000,"minLength":1,"type":"string"},"storeId":{"description":"用户明确指定的店铺 ID","maxLength":4000,"minLength":1,"type":"string"},"userRequest":{"description":"可选经营说明；无需重复记录授权原话","maxLength":4000,"minLength":1,"type":"string"},"valueSource":{"description":"可选旧记录字段；程序不要求值来源声明","maxLength":4000,"minLength":1,"type":"string"}},"required":["storeId","price"],"type":"object"}`
 
-Output: `{"additionalProperties":true,"properties":{"input":{"additionalProperties":true,"type":"object"},"items":{"items":{"additionalProperties":true,"type":"object"},"type":"array"},"kind":{"minLength":1,"type":"string"},"operationId":{"minLength":1,"type":"string"},"state":{"enum":["pending","running","succeeded","failed","partial","unknown"]},"storeId":{"type":"string"},"targets":{"items":{"minLength":1,"type":"string"},"type":"array"}},"required":["operationId","kind","storeId","state","targets","input","items"],"type":"object"}`
+Output: `{"additionalProperties":true,"type":"object"}`
 
 ### hallmark.products.update_stock @ 1.0.0
 
-修改显式商品清单在指定仓库的库存并只读核实。仅在用户本轮明确要求修改时调用；缺信息必须澄清；unknown 禁止再次写入，先查询操作。
+修改明确商品清单在指定仓库的库存并只读核实。提交后由程序统一审核并执行；无需审阅声明或机械幂等键。pending/unknown 只查询原操作，不重复提交。 现由统一经营变更审核执行；不要求检查声明或用户值证明。
 
 Effect: mutation; completion: readback.
 
-Input: `{"additionalProperties":false,"properties":{"clientOperationKey":{"description":"同一逻辑修改必须复用；未知结果先查询操作","maxLength":4000,"minLength":1,"type":"string"},"offerIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"productIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"scopeConfirmed":{"type":"boolean"},"stock":{"minimum":0,"type":"integer"},"store":{"description":"名称/别名，匹配不唯一须澄清","maxLength":4000,"minLength":1,"type":"string"},"storeId":{"description":"用户明确指定的店铺 ID","maxLength":4000,"minLength":1,"type":"string"},"userRequest":{"description":"本轮用户明确修改指令原话","maxLength":4000,"minLength":1,"type":"string"},"valueSource":{"description":"user 或 rule:规则名，不允许猜测数值","maxLength":4000,"minLength":1,"type":"string"},"warehouseId":{"maxLength":4000,"minLength":1,"type":"string"}},"required":[],"type":"object"}`
+Input: `{"additionalProperties":false,"properties":{"clientOperationKey":{"description":"可选旧调用幂等键；未提供时程序自动管理，未知结果只查询原操作","maxLength":4000,"minLength":1,"type":"string"},"offerIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"productIds":{"items":{"maxLength":4000,"minLength":1,"type":"string"},"maxItems":200,"minItems":1,"type":"array"},"scopeConfirmed":{"type":"boolean"},"stock":{"minimum":0,"type":"integer"},"store":{"description":"名称/别名，匹配不唯一须澄清","maxLength":4000,"minLength":1,"type":"string"},"storeId":{"description":"用户明确指定的店铺 ID","maxLength":4000,"minLength":1,"type":"string"},"userRequest":{"description":"可选经营说明；无需重复记录授权原话","maxLength":4000,"minLength":1,"type":"string"},"valueSource":{"description":"可选旧记录字段；程序不要求值来源声明","maxLength":4000,"minLength":1,"type":"string"},"warehouseId":{"maxLength":4000,"minLength":1,"type":"string"}},"required":["storeId","stock","warehouseId"],"type":"object"}`
 
-Output: `{"additionalProperties":true,"properties":{"input":{"additionalProperties":true,"type":"object"},"items":{"items":{"additionalProperties":true,"type":"object"},"type":"array"},"kind":{"minLength":1,"type":"string"},"operationId":{"minLength":1,"type":"string"},"state":{"enum":["pending","running","succeeded","failed","partial","unknown"]},"storeId":{"type":"string"},"targets":{"items":{"minLength":1,"type":"string"},"type":"array"}},"required":["operationId","kind","storeId","state","targets","input","items"],"type":"object"}`
+Output: `{"additionalProperties":true,"type":"object"}`
 
 ### hallmark.profit.compute @ 1.0.0
 
