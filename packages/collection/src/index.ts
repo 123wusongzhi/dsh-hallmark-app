@@ -117,19 +117,6 @@ export class CollectionService {
       rows = rows.filter(r => matches.has(String(r.id)));
     }
     const states = this.options.listingStates ? await this.options.listingStates(rows.map(r => String(r.id)), rows.map(r => ({ id: String(r.id), skuCount: Number(r.skuCount ?? 0) })), { refresh: input.refresh }) : {};
-    if (input.store) rows = rows.filter(r => {
-      const filter = input.store!, state = states[r.id]?.find(s => s.storeId === filter.id);
-      if (filter.status && (state?.status ?? 'unknown') !== filter.status) return false;
-      if (filter.association && (state?.association ?? 'unknown') !== filter.association) return false;
-      if (filter.saleState) {
-        // Unknown operating data is not an empty catalogue or evidence of sale availability.
-        // The provider counts stale/missing offers as unknown individually. Other
-        // freshly observed offers can still match when a store has mixed freshness.
-        if (!state?.saleStates) return filter.saleState === 'unknown';
-        return state.saleStates[filter.saleState] > 0 || filter.saleState === 'unknown' && state.offerCount === 0 && state.association === 'unknown';
-      }
-      return true;
-    });
     function range(r: any): any {
       if (r.goodsMinPrice !== undefined && r.goodsMaxPrice !== undefined && r.currency) return { meaning: 'purchase_cost', min: String(r.goodsMinPrice), max: String(r.goodsMaxPrice), currency: r.currency, unit: r.unit ?? null };
       const d = r.sourceSellingPrice;
@@ -140,12 +127,29 @@ export class CollectionService {
       const p = range(r), f = input.price!;
       return p && p.meaning === f.meaning && p.currency === f.currency && (f.min === undefined || Number(p.max) >= f.min) && (f.max === undefined || Number(p.min) <= f.max);
     });
+    const recordStates = input.store ? rows.map(r => states[r.id]?.find(s => s.storeId === input.store!.id)) : [];
+    const unavailableRecords = recordStates.filter(s => !s?.listingRecord || s.listingRecord === 'unavailable').length;
+    const incompleteRecordFilter = !!input.store?.listingRecord && input.store.listingRecord !== 'unavailable' && unavailableRecords > 0;
+    const recordReasons = [...new Set(recordStates.filter(s => !s?.listingRecord || s.listingRecord === 'unavailable').map(s => s?.listingRecordReason ?? 'RECORD_SOURCE_UNAVAILABLE'))];
+    const unlinkedHistory = recordStates.some(s => s?.hasUnlinkedHistory);
+    if (input.store) rows = rows.filter(r => {
+      const filter = input.store!, state = states[r.id]?.find(s => s.storeId === filter.id);
+      if (filter.listingRecord && (state?.listingRecord ?? 'unavailable') !== filter.listingRecord) return false;
+      if (filter.status && (state?.status ?? 'unknown') !== filter.status) return false;
+      if (filter.association && (state?.association ?? 'unknown') !== filter.association) return false;
+      if (filter.saleState) {
+        if (!state?.saleStates) return filter.saleState === 'unknown';
+        return state.saleStates[filter.saleState] > 0 || filter.saleState === 'unknown' && state.offerCount === 0 && state.association === 'unknown';
+      }
+      return true;
+    });
     const cards = rows.map(r => ({ id: String(r.id), title: String(r.title ?? ''), source: String(r.source ?? 'unknown'), category: r.categoryPath?.at(-1) ?? null, skuCount: Number(r.skuCount ?? 0), price: range(r), ...(states[r.id] ? { listedIn: states[r.id].map(state => {
       if ((state.listedSkuIds?.length ?? 0) <= 12 && (state.associatedSkuIds?.length ?? 0) <= 12) return state;
       return { ...state, listedSkuCount: state.listedSkuCount ?? state.listedSkuIds?.length, associatedSkuCount: state.associatedSkuCount ?? state.associatedSkuIds?.length,
         listedSkuIds: state.listedSkuIds?.slice(0, 12), associatedSkuIds: state.associatedSkuIds?.slice(0, 12), skuIdsComplete: false, available: this.reference(String(r.id), state) };
     }) } : {}) }));
-    const revision = hash(cards);
+    const recordLookup = input.store ? {storeId:input.store.id,status:unavailableRecords===0?'complete':unavailableRecords===recordStates.length?'unavailable':'partial',knownMatches:cards.length,unavailableItems:unavailableRecords,reasonCodes:recordReasons,meaning:'found 包含已保存草稿和精确销售关联；not_found 表示本店记录查询完成但未找到，不证明平台历史从未上架。',message:incompleteRecordFilter?'记录查询未完成，匹配总数暂不可确定；已知结果可用。':unavailableRecords?`商品检索完成；${unavailableRecords} 件的上品记录暂不可查。`:`查询完成，符合筛选条件的商品为 ${cards.length} 件。`,...(unlinkedHistory?{warning:'本店部分历史商品尚未关联；无上品记录不等于历史上绝对没有同款。'}:{})} : undefined;
+    const revision = hash({cards,...(recordLookup?{recordLookup}:{})});
     const scope = { query, source: input.source, category: input.category, price: input.price, store: input.store };
     const start = decode(input.cursor, 'search', revision, scope);
     const sourceCounts: Record<string, number> = {}, categoryCounts: Record<string, number> = {};
@@ -155,7 +159,7 @@ export class CollectionService {
     let facets: any = { sources: sourceCounts, categories: Object.fromEntries(categories), categoryCount: categories.length, categoriesOmitted: 0 };
     if (bytes(facets) > Math.floor(budget / 3)) facets = { sources: {}, categories: {}, categoryCount: categories.length, categoriesOmitted: categories.length, completeness: 'partial', available: [this.reference(cards[0].id, facets)] };
     const page: any[] = [];
-    const result = () => ({ revision, items: page, returned: page.length, total: cards.length, nextCursor: start + page.length < cards.length ? next('search', revision, scope, start + page.length) : null, completeness: start + page.length < cards.length || page.some(c => c.deferred) || facets.completeness === 'partial' ? 'partial' : 'complete', facets, listingState: this.options.listingStates ? 'operating_records' : 'unknown' });
+    const result = () => ({ revision, items: page, returned: page.length, total: incompleteRecordFilter?null:cards.length, nextCursor: start + page.length < cards.length ? next('search', revision, scope, start + page.length) : null, completeness: incompleteRecordFilter || start + page.length < cards.length || page.some(c => c.deferred) || facets.completeness === 'partial' ? 'partial' : 'complete', facets,...(recordLookup?{recordLookup}:{}), listingState: this.options.listingStates ? 'operating_records' : 'unknown' });
     for (const card of cards.slice(start, start + limit(input.limit, 30, 100))) {
       let shown: any = card;
       if (bytes(shown) > budget / 2) {

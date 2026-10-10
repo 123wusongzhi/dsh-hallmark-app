@@ -12830,7 +12830,7 @@ export const catalog = [
     "capabilityId": "hallmark.collection.search",
     "version": "1.0.0",
     "title": "搜索采集商品",
-    "description": "搜索采集商品事实，默认每页30张精简卡片；关键词不匹配旧任务文本。价格明确采购价或来源展示售价。store.status筛历史成功铺货覆盖度，store.saleState筛当前在售/无库存/归档等，store.association筛采购关联，条件在分页统计前组合。店铺saleStates按去重销售商品offer计数，不是来源SKU数；过期或缺失观察为unknown。返回全量匹配统计与续页。",
+    "description": "搜索采集商品事实，默认每页30张精简卡片；关键词不匹配旧任务文本。价格明确采购价或来源展示售价。用户找未上商品时推荐 store.listingRecord=not_found；found含保存的上品草稿及失败/归档记录，unavailable表示读取未完成，不能当无记录。recordLookup解释查询口径与失败原因；新记录筛选无法确定总数时total=null，knownMatches仅为已知匹配。不要轮流试旧status和association来猜未上。旧store.status仅兼容历史成功铺货覆盖度，store.saleState筛当前在售/无库存/归档等，store.association筛采购关联，条件在分页统计前组合。店铺saleStates按去重销售商品offer计数，不是来源SKU数；过期或缺失观察为unknown。返回全量匹配统计与续页。",
     "effect": "query",
     "inputSchema": {
       "type": "object",
@@ -12878,6 +12878,14 @@ export const catalog = [
             "id": {
               "type": "string",
               "minLength": 1
+            },
+            "listingRecord": {
+              "enum": [
+                "found",
+                "not_found",
+                "unavailable"
+              ],
+              "description": "推荐选品条件：found=本店有记录（含草稿、失败、归档）；not_found=已完成记录查询但未找到，可作上品候选，不证明历史从未上架；unavailable=记录暂不可查。"
             },
             "status": {
               "enum": [
@@ -20959,7 +20967,7 @@ export type Input43 = { "id": string; "kind"?: "raw" | "description" | "images" 
 export type Output43 = ({  } & { [key: string]: JsonValue });
 export function call43(client: AppsClient, ref: AppRef, input: Input43, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output43>> { return client.invoke(ref, catalog[43], input as JsonValue, options) as Promise<CapabilityResult<Output43>>; }
 
-export type Input44 = { "query"?: string; "source"?: string; "category"?: string; "price"?: { "meaning": "purchase_cost" | "source_display_price"; "currency": string; "min"?: number; "max"?: number }; "store"?: { "id": string; "status"?: "listed" | "partial" | "not_listed" | "unknown"; "saleState"?: "on_sale" | "out_of_stock" | "pending" | "archived" | "failed" | "not_sellable" | "unknown"; "association"?: "linked" | "none" | "unknown" }; "limit"?: number; "cursor"?: string; "refresh"?: boolean };
+export type Input44 = { "query"?: string; "source"?: string; "category"?: string; "price"?: { "meaning": "purchase_cost" | "source_display_price"; "currency": string; "min"?: number; "max"?: number }; "store"?: { "id": string; "listingRecord"?: "found" | "not_found" | "unavailable"; "status"?: "listed" | "partial" | "not_listed" | "unknown"; "saleState"?: "on_sale" | "out_of_stock" | "pending" | "archived" | "failed" | "not_sellable" | "unknown"; "association"?: "linked" | "none" | "unknown" }; "limit"?: number; "cursor"?: string; "refresh"?: boolean };
 export type Output44 = ({  } & { [key: string]: JsonValue });
 export function call44(client: AppsClient, ref: AppRef, input: Input44, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output44>> { return client.invoke(ref, catalog[44], input as JsonValue, options) as Promise<CapabilityResult<Output44>>; }
 

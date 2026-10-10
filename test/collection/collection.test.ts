@@ -101,6 +101,21 @@ test('store association and sale-state filters combine before paging and facets,
   assert.equal((await service.search({ ...input, store: { id: 'missing', saleState: 'unknown', association: 'unknown' } })).total, 35);
 });
 
+test('record candidates paginate without requiring full store associations and explain real zero versus unavailable',async()=>{
+ const details=Array.from({length:35},(_,i)=>fixture(`p${i}`));
+ let unavailable=false;
+ const {service}=setup(details,{listingStates:async ids=>Object.fromEntries(ids.map((id,i)=>[id,[{storeId:'bill',status:'unknown',association:'unknown',listingRecord:i===0?'found':unavailable?'unavailable':'not_found',listingRecordReason:unavailable?'RECORD_SYNC_FAILED':'NO_LOCAL_LISTING_RECORD',hasUnlinkedHistory:true}]]))});
+ const input={store:{id:'bill',listingRecord:'not_found' as const},limit:10};
+ const page=await service.search(input);assert.equal(page.total,34);assert.equal(page.returned,10);assert.equal(page.facets.sources.taobao_tmall,34);assert.equal(page.items[0].id,'p1');assert.equal(page.recordLookup?.status,'complete');assert.match(page.recordLookup!.warning!,/历史商品/);
+ assert.equal((await service.search({...input,cursor:page.nextCursor!})).items[0].id,'p11');assertBudget(page);
+ const zero=await service.search({...input,query:'no-such-item'});assert.equal(zero.total,0);assert.equal(zero.recordLookup?.status,'complete');assert.match(zero.recordLookup!.message,/0 件/);
+ unavailable=true;
+ const failed=await service.search(input);assert.equal(failed.total,null);assert.equal(failed.returned,0);assert.equal(failed.recordLookup?.knownMatches,0);assert.equal(failed.recordLookup?.unavailableItems,34);assert.equal(failed.completeness,'partial');assert.ok(failed.recordLookup?.reasonCodes.includes('RECORD_SYNC_FAILED'));
+ const found=await service.search({store:{id:'bill',listingRecord:'found'}});assert.equal(found.total,null);assert.equal(found.items[0].id,'p0');
+ const missing=await service.search({store:{id:'not-configured',listingRecord:'not_found'}});assert.equal(missing.total,null);assert.equal(missing.recordLookup?.status,'unavailable');
+ assert.equal((await service.search({store:{id:'bill',status:'not_listed'}})).total,0,'old strict semantics unchanged');
+});
+
 test('large SKU associations keep exact offer counts in bounded cards and expose complete IDs through a resource', async () => {
   const ids = Array.from({ length: 335 }, (_, i) => `sku-${i}`);
   const { service } = setup(Array.from({ length: 30 }, (_, i) => fixture(`item-${i}`, 335)), { listingStates: async productIds => Object.fromEntries(productIds.map(id => [id, [{ storeId: 'bill', status: 'listed', listedSkuIds: ids, listedSkuCount: 335, associatedSkuIds: ids, associatedSkuCount: 335, association: 'linked', offerCount: 402, countUnit: 'offers', freshness: 'fresh', observedAt: '2026-10-10T00:00:00Z', saleStates: { on_sale: 200, out_of_stock: 100, pending: 0, archived: 102, failed: 0, not_sellable: 0, unknown: 0 } }]])) });

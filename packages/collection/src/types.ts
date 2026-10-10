@@ -57,11 +57,18 @@ export interface CollectionProduct {
   mapping: { version: string; coverage: 'verified_structure' | 'partial' };
 }
 export type CollectionSaleState = 'on_sale' | 'out_of_stock' | 'pending' | 'archived' | 'failed' | 'not_sellable' | 'unknown';
+export type CollectionListingRecord = 'found' | 'not_found' | 'unavailable';
 export interface CollectionListingState {
   storeId: string;
   storeName?: string;
   /** Historical successful SKU coverage, independent of current availability. */
   status: 'listed' | 'partial' | 'not_listed' | 'unknown';
+  /** Exact local listing records, including saved drafts; not proof of all platform history. */
+  listingRecord?: CollectionListingRecord;
+  listingRecordReason?: string;
+  savedListingCount?: number;
+  /** Store-wide caveat, rendered once per result/table rather than on every card. */
+  hasUnlinkedHistory?: boolean;
   listedSkuIds?: string[];
   listedSkuCount?: number;
   association?: 'linked' | 'none' | 'unknown';
@@ -92,7 +99,7 @@ export interface CollectionSearchInput {
   source?: string;
   category?: string;
   price?: { meaning: 'purchase_cost' | 'source_display_price'; currency: string; min?: number; max?: number };
-  store?: { id: string; status?: 'listed' | 'partial' | 'not_listed' | 'unknown'; saleState?: CollectionSaleState; association?: 'linked' | 'none' | 'unknown' };
+  store?: { id: string; listingRecord?: CollectionListingRecord; status?: 'listed' | 'partial' | 'not_listed' | 'unknown'; saleState?: CollectionSaleState; association?: 'linked' | 'none' | 'unknown' };
   limit?: number;
   cursor?: string;
   refresh?: boolean;

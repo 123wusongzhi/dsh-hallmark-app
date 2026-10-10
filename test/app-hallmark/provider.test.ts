@@ -56,6 +56,19 @@ test('collection tools refresh status automatically and reuse it; precise native
   assert.equal(f.port('c').get<any>('snapshots',legacy.datasetKey).payload.items[0].listedIn[0].saleStates.archived,1);
  }finally{await f.runtime.dispose();f.store.close();}
 });
+test('failed first history import makes record lookup unavailable and recovers without Agent work',async()=>{
+ const f=fixture();try{
+  f.enableDirect();(f.gateway.getStore('shop') as any).legacyStoreId='legacy-shop';
+  f.client.getStoreProducts=async()=>({status:'unavailable',error:{code:'DOWN',message:'Down',retryable:true}});
+  const failed=data(await f.invoke('hallmark.collection.search',{store:{id:'shop',listingRecord:'not_found'}}));
+  assert.equal(failed.total,null);assert.equal(failed.recordLookup.status,'unavailable');assert.equal(failed.recordLookup.unavailableItems,1);
+  assert.equal(f.port('c').get<any>('business_catalog_status_sync','shop').error.code,'LISTING_HISTORY_READ_FAILED');
+  f.client.getStoreProducts=async()=>ok({products:[]});
+  const recovered=data(await f.invoke('hallmark.collection.search',{store:{id:'shop',listingRecord:'not_found'}}));
+  assert.equal(recovered.total,1);assert.equal(recovered.recordLookup.status,'complete');assert.equal(recovered.items[0].listedIn[0].listingRecord,'not_found');
+ }finally{await f.runtime.dispose();f.store.close();}
+});
+
 test('SKU reads retain exact item identity and source prices without inventing variant rows',async()=>{
  const f=fixture();try{
   f.client.getCollectedItemDetail=async id=>ok({id,title:'采集商品',currency:'CNY',skus:[{sourceSkuId:'sku-1',spec:'颜色:蓝色',price:22.68,image:'https://example.com/blue.jpg'},{sourceSkuId:'sku-2',spec:'颜色:白色'}]});

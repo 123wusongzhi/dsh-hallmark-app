@@ -440,11 +440,11 @@ Output: `{"additionalProperties":true,"type":"object"}`
 
 ### hallmark.collection.search @ 1.0.0
 
-搜索采集商品事实，默认每页30张精简卡片；关键词不匹配旧任务文本。价格明确采购价或来源展示售价。store.status筛历史成功铺货覆盖度，store.saleState筛当前在售/无库存/归档等，store.association筛采购关联，条件在分页统计前组合。店铺saleStates按去重销售商品offer计数，不是来源SKU数；过期或缺失观察为unknown。返回全量匹配统计与续页。
+搜索采集商品事实，默认每页30张精简卡片；关键词不匹配旧任务文本。价格明确采购价或来源展示售价。用户找未上商品时推荐 store.listingRecord=not_found；found含保存的上品草稿及失败/归档记录，unavailable表示读取未完成，不能当无记录。recordLookup解释查询口径与失败原因；新记录筛选无法确定总数时total=null，knownMatches仅为已知匹配。不要轮流试旧status和association来猜未上。旧store.status仅兼容历史成功铺货覆盖度，store.saleState筛当前在售/无库存/归档等，store.association筛采购关联，条件在分页统计前组合。店铺saleStates按去重销售商品offer计数，不是来源SKU数；过期或缺失观察为unknown。返回全量匹配统计与续页。
 
 Effect: query; completion: response.
 
-Input: `{"additionalProperties":false,"properties":{"category":{"minLength":1,"type":"string"},"cursor":{"minLength":1,"type":"string"},"limit":{"maximum":100,"minimum":1,"type":"integer"},"price":{"additionalProperties":false,"properties":{"currency":{"minLength":1,"type":"string"},"max":{"type":"number"},"meaning":{"enum":["purchase_cost","source_display_price"]},"min":{"type":"number"}},"required":["meaning","currency"],"type":"object"},"query":{"type":"string"},"refresh":{"type":"boolean"},"source":{"minLength":1,"type":"string"},"store":{"additionalProperties":false,"properties":{"association":{"enum":["linked","none","unknown"]},"id":{"minLength":1,"type":"string"},"saleState":{"enum":["on_sale","out_of_stock","pending","archived","failed","not_sellable","unknown"]},"status":{"enum":["listed","partial","not_listed","unknown"]}},"required":["id"],"type":"object"}},"type":"object"}`
+Input: `{"additionalProperties":false,"properties":{"category":{"minLength":1,"type":"string"},"cursor":{"minLength":1,"type":"string"},"limit":{"maximum":100,"minimum":1,"type":"integer"},"price":{"additionalProperties":false,"properties":{"currency":{"minLength":1,"type":"string"},"max":{"type":"number"},"meaning":{"enum":["purchase_cost","source_display_price"]},"min":{"type":"number"}},"required":["meaning","currency"],"type":"object"},"query":{"type":"string"},"refresh":{"type":"boolean"},"source":{"minLength":1,"type":"string"},"store":{"additionalProperties":false,"properties":{"association":{"enum":["linked","none","unknown"]},"id":{"minLength":1,"type":"string"},"listingRecord":{"description":"推荐选品条件：found=本店有记录（含草稿、失败、归档）；not_found=已完成记录查询但未找到，可作上品候选，不证明历史从未上架；unavailable=记录暂不可查。","enum":["found","not_found","unavailable"]},"saleState":{"enum":["on_sale","out_of_stock","pending","archived","failed","not_sellable","unknown"]},"status":{"enum":["listed","partial","not_listed","unknown"]}},"required":["id"],"type":"object"}},"type":"object"}`
 
 Output: `{"additionalProperties":true,"type":"object"}`
 

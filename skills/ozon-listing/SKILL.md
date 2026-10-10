@@ -9,6 +9,8 @@ description: 在 DSH 的 Hallmark 应用中完整制作 Ozon 上品内容，并�
 
 ## 工作入口
 
+用户询问某店“哪些还没上”时，用 `hallmark.collection.search` 一次传 `source` 和 `store:{id,listingRecord:"not_found"}`。这是“本店无上品记录”的选品候选，不是证明历史从未上架。`found` 包含已保存的上品草稿、已有销售关联、归档及失败记录；`unavailable` 是记录暂不可查，不能当成无记录。读取 `recordLookup` 的口径与原因：`total:0` 且查询完成才表示无匹配；`total:null` 表示不能确定总数，不要改查旧 `status`、`association` 猜结果。其他店铺的记录不等于本店有记录。已选商品直接准备，不额外加逐品确认或审核声明。
+
 通过当前会话的 Apps 网关发现 Hallmark 已启用连接和能力版本。已选商品直接调用 `hallmark.listing.prepare`，传入店铺与 `selections:[{id,skuIds?}]`，不重新搜索这些商品。多 SKU 组合通过 `compositions:[{id,members:[{itemId,sourceSkuId,quantity}]}]` 明确组成；单 SKU 默认逐个销售。制作后使用 `hallmark.plan.create / revise / get / list / submit / inspect / restore`；`hallmark.listing.draft.*` 是同一经营草稿的别名。以实际 `apps_describe` 返回的字段和版本为准。
 
 读取、比较商品、尝试文案和保存草稿不调用决策审核。`submit` 把确定版本送入统一审核，程序选择规则或模型并执行通过的内容。无需另写审核声明、证据清单、preflight 或“我看过”的证明。

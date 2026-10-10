@@ -118,6 +118,32 @@ test('only a complete fresh catalogue with known source associations proves no a
  }finally{f.database.close();}
 });
 
+test('listing records are item and store scoped; unrelated unmapped or missing offers do not hide candidates',()=>{
+ const f=fixture();try{
+  const now=new Date().toISOString();f.store.put('business_catalog_status_sync','bill',{state:'fresh',observedAt:now,expiresAt:new Date(Date.now()+300000).toISOString(),missing:1});
+  f.store.put('business_catalog','unmapped',{storeId:'bill',offerId:'old-unmapped',status:'on_sale'});
+  for(const [itemId,saleState] of [['archived','archived'],['failed','failed'],['partial','on_sale']])f.store.put('business_catalog',itemId,{storeId:'bill',offerId:itemId,saleState,observedAt:now,statusObservation:'observed',sources:[{productId:itemId,sourceSkuMatched:true,skuCode:'one'}]});
+  f.store.put('business_catalog','other',{storeId:'helen',offerId:'other',sources:[{productId:'absent',sourceSkuMatched:true,skuCode:'one'}]});
+  f.store.put('business_plans','draft',{planId:'draft',storeId:'bill',rows:[{action:'listing',status:'draft',procurement:[{itemId:'draft-only',sourceSkuId:'red',quantity:1},{itemId:'combo-member',sourceSkuId:'blue',quantity:2}]},{action:'price',procurement:[{itemId:'price-only',sourceSkuId:'red',quantity:1}]}]});
+  const states=collectionListingStates(f.store,['bill'],['absent','archived','failed','partial','draft-only','combo-member','price-only']);
+  assert.equal(states.absent[0].listingRecord,'not_found');assert.equal(states.absent[0].association,'unknown');assert.equal(states.absent[0].status,'unknown');assert.equal(states.absent[0].hasUnlinkedHistory,true);
+  for(const id of ['archived','failed','partial','draft-only','combo-member'])assert.equal(states[id][0].listingRecord,'found');
+  assert.equal(states['draft-only'][0].savedListingCount,1);assert.equal(states['draft-only'][0].offerCount,0);assert.equal(states['price-only'][0].listingRecord,'not_found');
+  f.store.put('business_catalog_status_sync','bill',{state:'failed',observedAt:now,attemptedAt:now});
+  const failed=collectionListingStates(f.store,['bill'],['absent','archived','draft-only']);
+  assert.equal(failed.absent[0].listingRecord,'unavailable');assert.equal(failed.absent[0].listingRecordReason,'RECORD_SYNC_FAILED');assert.equal(failed.archived[0].listingRecord,'found');assert.equal(failed['draft-only'][0].listingRecord,'found');
+ }finally{f.database.close();}
+});
+
+test('preparation exposes saved listing records without claiming successful platform creation',async()=>{
+ const f=fixture(1);try{
+  f.store.put('business_plans','draft',{planId:'draft',storeId:'bill',rows:[{action:'listing',status:'draft',procurement:[{itemId:'p1',sourceSkuId:'sku-0',quantity:1}]}]});
+  const result=await prepareListing({storeId:'bill',selections:[{id:'p1'}]},f.options);
+  assert.equal(result.listingRecords[0].listingRecord,'found');assert.equal(result.listingRecords[0].savedListingCount,1);assert.equal(result.listingRecords[0].available.capability,'hallmark.plan.list');assert.equal(result.sales[0].existingLinks.length,0);
+  const mismatched=await prepareListing({storeId:'bill',selections:[{id:'p1'}]},{...f.options,listingStates:()=>({})});assert.equal(mismatched.listingRecords[0].listingRecord,'unavailable');
+ }finally{f.database.close();}
+});
+
 test('prepare retains associations in every state and exposes their observation freshness',async()=>{
  const f=fixture(1);try{
   for(const [index,saleState] of ['archived','out_of_stock','failed','pending','on_sale'].entries())f.store.put('business_catalog',`offer${index}`,{storeId:'bill',offerId:`offer${index}`,productId:`id${index}`,status:saleState,saleState,observedAt:new Date(Date.now()-(saleState==='on_sale'?301000:0)).toISOString(),statusObservation:'observed',sources:[{productId:'p1',sourceSkuMatched:true,skuCode:'sku-0'}]});

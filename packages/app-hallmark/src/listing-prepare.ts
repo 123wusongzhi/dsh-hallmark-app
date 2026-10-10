@@ -5,6 +5,7 @@ import type {BusinessPackagingRepository,PackagingMember} from '../../business-p
 import type {BusinessPricingRepository} from '../../business-pricing/src/index.ts';
 import {localBusinessProducts,businessProductSaleState} from './operations-client.ts';
 import {readExistingCategoryHint} from './packaging-evidence.ts';
+import type {BusinessPlan} from './operations/types.ts';
 
 const hash=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const bytes=(value:unknown)=>Buffer.byteLength(JSON.stringify(value),'utf8');
@@ -32,6 +33,7 @@ const sourceSkuIds=(product:RecordData,itemId:string):string[]=>product.sources.
 /** Historical successful source coverage and currently observed sale offers are different facts. */
 export function collectionListingStates(store:CoreStore,storeIds:string[],itemIds:string[],summaries:Array<{id:string;skuCount:number;skuIds?:string[]}>=[]):Record<string,CollectionListingState[]>{
  const result:Record<string,CollectionListingState[]>={},catalogues=new Map(storeIds.map(id=>[id,localBusinessProducts(store,id)])),now=Date.now();
+ const plans=store.list<BusinessPlan>('business_plans');
  for(const itemId of itemIds){result[itemId]=[];for(const storeId of storeIds){
   const catalogue=catalogues.get(storeId)!,sync=store.get<RecordData>('business_catalog_status_sync',storeId);
   const linked=[...new Map(catalogue.filter(product=>typeof product.offerId==='string'&&product.offerId&&product.sources?.some((source:RecordData)=>source.productId===itemId)).map(product=>[product.offerId,product])).values()];
@@ -41,9 +43,14 @@ export function collectionListingStates(store:CoreStore,storeIds:string[],itemId
   const completeCatalogue=sync?.state==='fresh'&&Number.isFinite(Date.parse(sync.observedAt??''))&&now-Date.parse(sync.observedAt)<=STATUS_MAX_AGE_MS&&Date.parse(sync.expiresAt??'')>now&&sync.missing===0;
   const allSourcesKnown=catalogue.every(product=>product.sources?.length&&product.sources.every((source:RecordData)=>source.sourceSkuMatched===true));
   const association=linked.length?'linked':completeCatalogue&&allSourcesKnown?'none':'unknown';
+  const savedListingCount=plans.filter(plan=>plan.storeId===storeId).reduce((count,plan)=>count+plan.rows.filter(row=>row.action==='listing'&&row.procurement?.some(part=>part.itemId===itemId)).length,0);
+  // A complete record lookup need not resolve unrelated old source identities or missing offers.
+  const lookupReady=sync?.state==='fresh'&&Number.isFinite(Date.parse(sync.observedAt??''))&&now-Date.parse(sync.observedAt)>=0&&now-Date.parse(sync.observedAt)<=STATUS_MAX_AGE_MS&&Date.parse(sync.expiresAt??'')>now;
+  const listingRecord=linked.length||savedListingCount?'found':lookupReady?'not_found':'unavailable';
+  const listingRecordReason=linked.length?'EXACT_SALE_LINK':savedListingCount?'SAVED_LISTING':lookupReady?'NO_LOCAL_LISTING_RECORD':sync?.state==='failed'?'RECORD_SYNC_FAILED':sync?'RECORD_SYNC_EXPIRED':'RECORD_SYNC_REQUIRED';
   const freshness=observations.some(row=>row.freshness==='stale')?'stale':observations.some(row=>row.freshness==='unknown')?'unknown':observations.length?'fresh':completeCatalogue?'fresh':sync?.state==='failed'?'stale':'unknown';
   const times=observations.map(row=>row.observedAt).filter((at):at is string=>at!==null).sort();
-  result[itemId].push({storeId,...(catalogue.find(product=>product.storeName)?.storeName?{storeName:catalogue.find(product=>product.storeName)!.storeName}:{}),status:complete?'listed':listedSkuIds.length?'partial':association==='none'?'not_listed':'unknown',listedSkuIds,listedSkuCount:listedSkuIds.length,association,associatedSkuIds,associatedSkuCount:associatedSkuIds.length,offerCount:linked.length,saleStates:counts,countUnit:'offers',observedAt:linked.length?(times[0]??null):(sync?.observedAt??null),freshness});
+  result[itemId].push({storeId,...(catalogue.find(product=>product.storeName)?.storeName?{storeName:catalogue.find(product=>product.storeName)!.storeName}:{}),status:complete?'listed':listedSkuIds.length?'partial':association==='none'?'not_listed':'unknown',listingRecord,listingRecordReason,...(savedListingCount?{savedListingCount}:{}),hasUnlinkedHistory:!allSourcesKnown,listedSkuIds,listedSkuCount:listedSkuIds.length,association,associatedSkuIds,associatedSkuCount:associatedSkuIds.length,offerCount:linked.length,saleStates:counts,countUnit:'offers',observedAt:linked.length?(times[0]??null):(sync?.observedAt??null),freshness});
  }}return result;
 }
 export interface ListingPrepareInput {
@@ -52,8 +59,8 @@ export interface ListingPrepareInput {
  knownRevisions?:Record<string,string>;categoryQuery?:string;categories?:Record<string,{descriptionCategoryId:string;typeId:string}>;
  maxBytes?:number;salesLimit?:number;cursor?:string;refresh?:boolean;includeOptionalAttributes?:boolean;
 }
-interface PrepareOptions {collection:CollectionService;packaging:BusinessPackagingRepository;pricing?:Pick<BusinessPricingRepository,'read'|'quote'>;client:CoreClient;store:CoreStore;prepareProducts?:(products:CollectionProduct[])=>Promise<CollectionProduct[]>}
-type Part={kind:'material'|'sale'|'reused'|'existingLinks';data:any}|{kind:'category';id:string;data:any};
+interface PrepareOptions {collection:CollectionService;packaging:BusinessPackagingRepository;pricing?:Pick<BusinessPricingRepository,'read'|'quote'>;client:CoreClient;store:CoreStore;listingStates?:(ids:string[])=>Record<string,CollectionListingState[]>;prepareProducts?:(products:CollectionProduct[])=>Promise<CollectionProduct[]>}
+type Part={kind:'material'|'sale'|'reused'|'existingLinks'|'listingRecord';data:any}|{kind:'category';id:string;data:any};
 interface Preparation {storeId:string;revision:string;createdAt:string;parts:Part[];totals:{materials:number;sales:number;categories:number};rules:any;sourceRevisions:Record<string,string>}
 const NEXT='按已返回资料制作标题、属性和图片；草稿只填写原生 Ozon 字段及 procurement 引用，包装和自动售价由程序填入。缺失值为 null 时补充具体事实。';
 
@@ -97,7 +104,7 @@ function page(preparation:Preparation,offset:number,input:ListingPrepareInput){
   for(const part of parts)if(part.kind==='category'){const prior=categories[part.id];categories[part.id]={...part.data,...(part.data.attributes?{attributes:[...(prior?.attributes??[]),...part.data.attributes]}:{})};}
   for(const category of Object.values(categories))if(category.attributes)category.returnedAttributes=category.attributes.length;
   const cursor=end<preparation.parts.length?Buffer.from(JSON.stringify({revision:preparation.revision,offset:end})).toString('base64url'):null;
-  return {storeId:preparation.storeId,preparationRevision:preparation.revision,preparedAt:preparation.createdAt,materials:materials.length?{items:materials,returned:materials.length}:null,reused,sales,...(existingLinks.length?{existingLinks}:{}),rules:offset===0?preparation.rules:null,categories,totals:preparation.totals,completeness:cursor?'partial':'complete',continuation:cursor?{capability:'hallmark.listing.prepare',input:{storeId:preparation.storeId,cursor,maxBytes:budget,salesLimit}}:null,next:offset===0?NEXT:'当前页延续同一份准备结果；existingLinks 按 saleId 和 offset 延续对应销售组成的完整关联，无需重复读取已返回资料。'};
+  return {storeId:preparation.storeId,preparationRevision:preparation.revision,preparedAt:preparation.createdAt,listingRecords:parts.filter(part=>part.kind==='listingRecord').map(part=>part.data),materials:materials.length?{items:materials,returned:materials.length}:null,reused,sales,...(existingLinks.length?{existingLinks}:{}),rules:offset===0?preparation.rules:null,categories,totals:preparation.totals,completeness:cursor?'partial':'complete',continuation:cursor?{capability:'hallmark.listing.prepare',input:{storeId:preparation.storeId,cursor,maxBytes:budget,salesLimit}}:null,next:offset===0?NEXT:'当前页延续同一份准备结果；existingLinks 按 saleId 和 offset 延续对应销售组成的完整关联，无需重复读取已返回资料。'};
  };
  let end=offset,sales=0;while(end<preparation.parts.length){if(preparation.parts[end].kind==='sale'&&sales>=salesLimit)break;const candidate=make(end+1);if(bytes(candidate)>budget)break;if(preparation.parts[end].kind==='sale')sales++;end++;}
  if(end===offset&&offset<preparation.parts.length)fail('PREPARE_BUDGET_TOO_SMALL','一个完整资料单元超过当前预算，请提高 maxBytes 后读取；未返回截断内容。');
@@ -120,6 +127,8 @@ export async function prepareListing(input:ListingPrepareInput,options:PrepareOp
  const compositions=input.compositions??selections.flatMap(selection=>[...allowed.get(selection.id)!].map(id=>({id:`${selection.id}:${id}`,members:[{itemId:selection.id,sourceSkuId:id,quantity:1}]})));
  for(const composition of compositions)for(const member of composition.members)if(!allowed.get(member.itemId)?.has(member.sourceSkuId))fail('COMPOSITION_OUTSIDE_SELECTION','销售组成超出本次选中的商品或 SKU。');
  const config=pricing?.read(input.storeId),existing=localBusinessProducts(store,input.storeId),parts:Part[]=[],reused=originals.filter(product=>input.knownRevisions?.[product.id]===product.revision),toRead=selections.filter(selection=>!reused.some(product=>product.id===selection.id));
+ const recordStates=options.listingStates?options.listingStates(products.map(p=>p.id)):collectionListingStates(store,[input.storeId],products.map(p=>p.id));
+ for(const product of products){const state=recordStates[product.id]?.find(state=>state.storeId===input.storeId);parts.push({kind:'listingRecord',data:{itemId:product.id,listingRecord:state?.listingRecord??'unavailable',reason:state?.listingRecordReason??'RECORD_SOURCE_UNAVAILABLE',savedListingCount:state?.savedListingCount??0,...(state?.savedListingCount?{available:{capability:'hallmark.plan.list',input:{storeId:input.storeId}}}:{})}});}
  for(const product of reused)parts.push({kind:'reused',data:{id:product.id,revision:product.revision,skuIds:[...allowed.get(product.id)!],available:{capability:'hallmark.collection.read',input:{id:product.id,skuIds:[...allowed.get(product.id)!],revision:product.revision}}}});
  if(toRead.length){let materials=await collection.read({selections:toRead,maxBytes:11000});for(;;){for(const item of materials.items)parts.push({kind:'material',data:item});if(!materials.continuation)break;materials=await collection.read(materials.continuation.input);}}
  for(const product of products)parts.push(...await categoryParts(product,input,options));
