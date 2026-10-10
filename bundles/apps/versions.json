@@ -1,8 +1,8 @@
 {
   "releaseId": "apps-a2-20261007",
-  "bundleVersion": "1.0.0-candidate.71",
-  "hostPluginVersion": "1.0.0-candidate.71",
-  "runtimeVersion": "1.0.0-candidate.71",
+  "bundleVersion": "1.0.0-candidate.72",
+  "hostPluginVersion": "1.0.0-candidate.72",
+  "runtimeVersion": "1.0.0-candidate.72",
   "transportMajor": 1,
   "catalogSchemaVersion": 1,
   "databaseSchemaVersion": 4,

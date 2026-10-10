@@ -3,7 +3,7 @@ import {spawnSync} from 'node:child_process';
 import {cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join, resolve} from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 import {cleanEnvironment, extractArtifact, sha256} from './artifact.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -17,7 +17,7 @@ export function prepareRun(root, {provisionDiagnosticZod = false} = {}) {
       cpSync(join(here, name), join(harness, name));
     const resourceFile = join(directory, 'resources.json');
     return {directory, artifact, harness, home, resourceFile,
-      args: ['--import', join(harness, 'isolation-preload.mjs')],
+      args: ['--import', pathToFileURL(join(harness, 'isolation-preload.mjs')).href],
       env: cleanEnvironment(home, {PACKAGING_RUN_ROOT: directory, PACKAGING_RESOURCE_FILE: resourceFile}),
       cleanup: () => rmSync(directory, {recursive: true, force: true})};
   } catch (error) { rmSync(directory, {recursive: true, force: true}); throw error; }
