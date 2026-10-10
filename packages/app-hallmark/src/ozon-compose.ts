@@ -1,4 +1,5 @@
 import {createHash,randomUUID} from 'node:crypto';
+import {isDeepStrictEqual} from 'node:util';
 import {readCompleteSnapshot,SNAPSHOT_CACHE_SCHEMA,snapshotGeneration,snapshotAccessFailure,invalidateStoreSnapshots} from './snapshot-cache.ts';
 import {canonicalJson} from '../../app-contracts/src/index.ts';
 import type {CapabilityDescriptor,JsonSchema} from '../../app-contracts/src/index.ts';
@@ -70,7 +71,23 @@ function aggregate(source:OzonCompositionSource,rows:Row[],warnings:Set<string>)
  return result;
 }
 function assertUnique(rows:Row[],keys:string[],label:string):void {const found=new Set<string>();for(const row of rows){if(keys.some(key=>row[key]==null))continue;const key=canonicalJson(keys.map(key=>row[key]));if(found.has(key))fail('COMPOSITION_AMBIGUOUS_IDENTITY',`${label}存在重复身份，无法安全关联。`);found.add(key);}}
-function related(rows:Row[],product:Row|undefined):Row[]{if(!product)return [];return rows.filter(row=>validId(product.sku)&&row.sku===product.sku||validId(product.productId)&&row.productId===product.productId);}
+type SourceIndex={rows:Row[];bySku:Map<string,number[]>;byProductId:Map<string,number[]>;byPosting:Map<unknown,Row[]>};
+function indexSource(rows:Row[],posting:boolean):SourceIndex {
+ const bySku=new Map<string,number[]>(),byProductId=new Map<string,number[]>(),byPosting=new Map<unknown,Row[]>();
+ for(let i=0;i<rows.length;i++){
+  const row=rows[i];
+  if(posting){const group=byPosting.get(row.postingNumber)??[];group.push(row);byPosting.set(row.postingNumber,group);}
+  else for(const [key,index] of [['sku',bySku],['productId',byProductId]] as const)if(validId(row[key])){const group=index.get(row[key])??[];group.push(i);index.set(row[key],group);}
+ }
+ return {rows,bySku,byProductId,byPosting};
+}
+function related(index:SourceIndex,product:Row|undefined):Row[]{
+ if(!product)return [];
+ const skus=validId(product.sku)?index.bySku.get(product.sku)??[]:[],ids=validId(product.productId)?index.byProductId.get(product.productId)??[]:[],matches:Row[]=[];
+ // Merge source ordinals: preserve filter order and OR matching without double counting a row that matches both keys.
+ let a=0,b=0;while(a<skus.length||b<ids.length){const x=skus[a]??Infinity,y=ids[b]??Infinity;matches.push(index.rows[Math.min(x,y)]);if(x<=y)a++;if(y<=x)b++;}
+ return matches;
+}
 async function collect(kind:OzonKind,args:RecordData,reader:Reader,warnings:Set<string>,store:CoreStore,signal?:AbortSignal,forceRefresh=false):Promise<Collected> {
  const key=createHash('sha256').update(canonicalJson({version:2,kind,args,generation:snapshotGeneration(store,args.storeId)})).digest('hex');
  const cooldownKey=canonicalJson([args.storeId,kind]);
@@ -80,12 +97,14 @@ async function collect(kind:OzonKind,args:RecordData,reader:Reader,warnings:Set<
  const work=(async():Promise<Collected>=>{
   const saved=store.get<SourceProgress>('ozon_composition_sources',key),previous=saved&&(saved.complete?Date.parse(saved.fetchedAt)+SOURCE_CACHE_TTL_MS:saved.expiresAt)>Date.now()?saved:undefined;
   const archive=store.get<SourceProgress>('ozon_composition_source_results',key),archived=archive?.complete?archive:undefined,lastGood=saved?.complete&&(!archived||saved.fetchedAt>=archived.fetchedAt)?saved:archived;
-  if(lastGood)store.put('ozon_composition_source_results',key,lastGood);
+  // A fresh hit may skip only an identical durable archive; preserve repair of absent or divergent archives.
+  const freshHit=previous?.complete&&!forceRefresh&&!previous.refreshRequested;
+  if(lastGood&&(!freshHit||!isDeepStrictEqual(lastGood,archived)))store.put('ozon_composition_source_results',key,lastGood);
   const resultOf=(value:SourceProgress,cacheHit:boolean,freshness:SourceState['freshness']='fresh',cacheReason:SourceState['cacheReason']=cacheHit?'ttl':'none',nextRetryAt?:number):Collected=>({rows:value.rows,state:{source:kind,status:value.rows.length?'ready':'empty',rowCount:value.rows.length,pageCount:value.pages,dataTime:!value.unknownTime&&value.dataTimes.length===1?value.dataTimes[0]:null,fetchedAt:value.fetchedAt,cacheHit,freshness,cacheReason,...(nextRetryAt?{nextRetryAt:new Date(nextRetryAt).toISOString()}:{})}});
   // Incomplete pages are never usable rows. Expose the missing source while keeping
   // successful sibling sources visible, and resume only this exact query after retryAt.
   const missing=(retryAt:number):Collected=>({rows:[],state:{source:kind,status:'missing',rowCount:0,pageCount:0,dataTime:null,fetchedAt:null,cacheHit:false,freshness:'stale',cacheReason:'rate_limit',nextRetryAt:new Date(retryAt).toISOString()}});
-  if(previous?.complete&&!forceRefresh&&!previous.refreshRequested)return resultOf(previous,true);
+  if(freshHit)return resultOf(previous!,true);
   const rateUntil=Math.max(store.get<{retryAt:number}>('ozon_composition_cooldowns',cooldownKey)?.retryAt??0,kind==='analytics'&&lastGood?Date.parse(lastGood.fetchedAt)+60000:0,previous?.retryReason!=='upstream_unavailable'?previous?.retryAt??0:0);
   if(rateUntil>Date.now()){
    // A requested update must resume after cooldown even while the ordinary cache is valid.
@@ -170,6 +189,7 @@ async function build(recipe:OzonCompositionRecipe,args:RecordData,reader:Reader,
  if(selected.has('analytics'))warnings.add('流量按所选完整日期汇总；访问会话总数不等于期间去重人数。');
  if(selected.has('returns'))warnings.add('售后统计平台可返回的全部记录，不套用订单的日期范围。');
  if(recipe.grain==='product'&&(selected.has('orders')||selected.has('returns')))warnings.add('商品行数量按关联记录合计，订单及售后单价取各自最近一条记录；多个文本值并列显示。');
+ const indexes=new Map([...selected].filter(source=>source!=='products'&&source!=='warehouses').map(source=>[source,indexSource(rows[source]??[],source==='finance'||recipe.grain==='posting'&&['orders','returns','weights'].includes(source))]));
  const items=base.map(group=>{
   const posting=recipe.grain==='posting'?group[0].postingNumber:undefined;
   const skus=[...new Set(group.map(row=>row.sku).filter(validId))];
@@ -180,9 +200,9 @@ async function build(recipe:OzonCompositionRecipe,args:RecordData,reader:Reader,
    let matches:Row[]=[];
    if(source==='products')matches=product?[product]:[];
    else if(source==='warehouses')matches=rows.warehouses??[];
-   else if(source==='finance')matches=(rows.finance??[]).filter(row=>row.postingNumber===posting);
-   else if(recipe.grain==='posting'&&['orders','returns','weights'].includes(source))matches=(rows[source]??[]).filter(row=>row.postingNumber===posting);
-   else matches=related(rows[source]??[],product);
+   else if(source==='finance')matches=indexes.get(source)!.byPosting.get(posting)??[];
+   else if(recipe.grain==='posting'&&['orders','returns','weights'].includes(source))matches=indexes.get(source)!.byPosting.get(posting)??[];
+   else matches=related(indexes.get(source)!,product);
    result[source]=aggregate(source,matches,warnings);
    if(source==='orders'&&recipe.grain==='posting'&&!singleSku){result[source].orderPrice=null;result[source].currency=null;}
    if(source==='weights'&&recipe.grain==='posting'&&matches.length&&(!singleSku||numericSum(group,'quantity')!==1||matches.some(row=>row.sku!==skus[0]))){result[source]=empty(source);warnings.add('实重记录与包裹单 SKU 单件身份不一致，未展示该包裹的单品实重。');}

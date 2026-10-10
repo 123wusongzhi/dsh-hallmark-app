@@ -1,3 +1,4 @@
+import {formatMaterialCurrency} from './number-format.ts';
 import React from 'react';
 import type {DataBinding,WidgetSpec} from '../../../presentation/src/types.ts';
 import type {Row} from '../model.ts';
@@ -14,7 +15,7 @@ function object(value:unknown):Record<string,unknown>{return value&&typeof value
 function minorAmount(value:unknown,currency:unknown):string{
   const amount=finite(value);if(amount===undefined)return '待补充';
   if(typeof currency!=='string'||!/^[a-z]{3}$/i.test(currency))return '币种待确认';
-  try{return new Intl.NumberFormat('zh-CN',{style:'currency',currency:currency.toUpperCase(),currencyDisplay:'code',maximumFractionDigits:2}).format(amount/100);}catch{return '币种待确认';}
+  try{return formatMaterialCurrency(amount/100,currency.toUpperCase());}catch{return '币种待确认';}
 }
 function ProcurementLinks({value,purchase}:{value:unknown;purchase:boolean}){
   const values=Array.isArray(value)?value:value==null||value===''?[]:[value],action=purchase?'采购页':'商品页';

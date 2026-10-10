@@ -1,0 +1,36 @@
+{
+  "baseline": {
+    "path": "baseline-prepared-full-tests.log",
+    "counts": {
+      "tests": 1134,
+      "pass": 1119,
+      "fail": 3,
+      "cancelled": 0,
+      "skipped": 12,
+      "todo": 0
+    },
+    "failures": [
+      "symlinks in Runtime, external workspaces and backup input are rejected instead of followed",
+      "immutable archives, evidence and undeclared controlled-root directories never receive dependency-cache exclusions",
+      "resolver rejects anchor tamper, mapped file tamper, symlink, traversal, unmanifested mappings and conflicting proven facts"
+    ]
+  },
+  "candidate": {
+    "path": "integration-prepared-full-tests.log",
+    "counts": {
+      "tests": 1154,
+      "pass": 1139,
+      "fail": 3,
+      "cancelled": 0,
+      "skipped": 12,
+      "todo": 0
+    },
+    "failures": [
+      "symlinks in Runtime, external workspaces and backup input are rejected instead of followed",
+      "immutable archives, evidence and undeclared controlled-root directories never receive dependency-cache exclusions",
+      "resolver rejects anchor tamper, mapped file tamper, symlink, traversal, unmanifested mappings and conflicting proven facts"
+    ]
+  },
+  "newFailures": [],
+  "baselineOnlyFailures": []
+}

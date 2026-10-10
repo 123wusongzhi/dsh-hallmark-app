@@ -7,6 +7,7 @@ export interface PresentationStore {
   get<T>(collection:string,id:string):T|undefined;
   put<T>(collection:string,id:string,value:T):T;
   list<T>(collection:string):T[];
+  providerRecordScopeCandidates?<T>(appId:string,connectionId:string,namespace:string):T[];
   delete(collection:string,id:string):boolean;
   transaction<T>(action:()=>T):T;
 }
