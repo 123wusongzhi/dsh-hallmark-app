@@ -14,6 +14,8 @@ export interface ModelProjection {content: string;fullResultRef?: JsonValue}
 export interface PresentationInvocation {invocationId:string;request:InvocationRequest;state:'received'|'dispatching'|'settled';result?:CapabilityResult}
 export interface InvocationDiagnostic {invocationId: string;traceId: string;operationId: string | null;runId: string | null;appId: string;connectionId: string;capabilityId: string;capabilityVersion: string;status: string;durationMs: number | null}
 export interface AppsHostTransport extends RuntimeTransport {
+  inspectForSession?(operationId:string,sessionId:string,signal?:AbortSignal):Promise<{result:CapabilityResult;modelProjection:ModelProjection}>;
+  inspectInvocation?(invocationId:string,sessionId:string,signal?:AbortSignal):Promise<{result:CapabilityResult;modelProjection:ModelProjection}>;
   businessSettingsRead?(connectionId?:string,storeId?:string,signal?:AbortSignal):Promise<JsonValue>;
   businessSettingsWrite?(input:{connectionId:string;operation:string;input:JsonValue},signal?:AbortSignal):Promise<JsonValue>;
   reviewNext?(owner:ReviewOwner,signal?:AbortSignal):Promise<ReviewTicket|null>;
@@ -56,6 +58,8 @@ export interface AppsHostTransport extends RuntimeTransport {
 }
 /** Adds project catalogue/binding endpoints to the shared SDK transport, with no business dispatch implementation. */
 export class HttpAppsHostTransport extends HttpRuntimeTransport implements AppsHostTransport {
+  async inspectForSession(operationId:string,sessionId:string,signal?:AbortSignal){return await this.request(`/v1/operations/${encodeURIComponent(operationId)}/inspect-session`,{sessionId},signal) as {result:CapabilityResult;modelProjection:ModelProjection};}
+  async inspectInvocation(invocationId:string,sessionId:string,signal?:AbortSignal){return await this.request(`/v1/invocations/${encodeURIComponent(invocationId)}/inspect?${new URLSearchParams({sessionId})}`,undefined,signal) as {result:CapabilityResult;modelProjection:ModelProjection};}
   async businessSettingsRead(connectionId?:string,storeId?:string,signal?:AbortSignal):Promise<JsonValue>{return await this.request(`/v1/business-settings?${new URLSearchParams({...connectionId?{connectionId}:{},...storeId?{storeId}:{}})}`,undefined,signal) as JsonValue;}
   async businessSettingsWrite(input:{connectionId:string;operation:string;input:JsonValue},signal?:AbortSignal):Promise<JsonValue>{return await this.request('/v1/business-settings',input,signal) as JsonValue;}
   async reviewNext(owner:ReviewOwner,signal?:AbortSignal):Promise<ReviewTicket|null>{return (await this.request('/v1/review-requests/next',owner,signal,25000) as {ticket:ReviewTicket|null}).ticket;}

@@ -1,3 +1,4 @@
+import {inspectInvocation} from './invocation-recovery.ts';
 import {validateDataSelection} from '../../app-presentation/src/selection.ts';
 import { createServer } from 'node:http';
 import { createHash, randomUUID } from 'node:crypto';
@@ -130,8 +131,8 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       if(req.url?.split('?',1)[0].match(/%2f|\.\./i))return send(res,400,{error:'INVALID_PATH'});
       const url=new URL(req.url??'/',`http://127.0.0.1:${port}`),path=url.pathname;
       // Freeze ordinary entry points while retaining inspection of an existing operation.
-      const operationInspection=path.match(/^\/v1\/operations\/[^/]+(\/inspect)?$/);
-      if(!(operationInspection&&(req.method==='GET'&&!operationInspection[1]||req.method==='POST'&&operationInspection[1]==='/inspect')))runtime.assertAdmission();
+      const operationInspection=path.match(/^\/v1\/operations\/[^/]+(\/inspect(?:-session)?)?$/);
+      if(!(operationInspection&&(req.method==='GET'&&!operationInspection[1]||req.method==='POST'&&['/inspect','/inspect-session'].includes(operationInspection[1]))))runtime.assertAdmission();
       if(path.startsWith('/ui/')||/^\/sessions\/[^/]+\/views/.test(path)){
         const input=req.method==='POST'?await body(req):{};
         const result=await legacyPresentation.handle(path,req.method??'GET',input,url.searchParams.get('sessionId')??undefined);if(result!==undefined)return send(res,200,result);
@@ -313,7 +314,50 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
         const host=presentation.createHost(identity,{signal:controller.signal,candidate:grant?.candidate,clientFeatures:grant?.features,attachSelection:async(_identity,selection)=>({status:'validated',selection:JSON.parse(canonicalJson(selection)) as JsonValue})});
         try{const response=await (options.reviewBridge?options.reviewBridge.withOwner({sessionId:identity.sessionId,invocationId:componentReviewInvocationId({...identity,requestId:String(input.requestId)})},()=>host.handle(input)):host.handle(input));return send(res,response?200:400,response??{error:{code:'INVALID_BRIDGE_MESSAGE',retryPolicy:'never'}});}finally{host.dispose();}
       }
+      const invocationInspection=path.match(/^\/v1\/invocations\/([^/]+)\/inspect$/);
+      if(req.method==='GET'&&invocationInspection){
+        const sessionId=url.searchParams.get('sessionId');
+        if(!sessionId||!/^[-a-zA-Z0-9_]{1,160}$/.test(sessionId)||[...url.searchParams.keys()].some(key=>key!=='sessionId')||url.searchParams.getAll('sessionId').length!==1)
+          throw Object.assign(new Error('INVALID_SESSION'),{code:'INVALID_SESSION'});
+        const {result,recoveryEvidence}=inspectInvocation(runtime,decodeURIComponent(invocationInspection[1]),sessionId);
+        const modelProjection=projectModelResult(runtime.store,result,15000);
+        if(recoveryEvidence)modelProjection.content=JSON.stringify({...JSON.parse(modelProjection.content),recoveryEvidence});
+        if(['pending','unknown','unavailable'].includes(result.status))modelProjection.content=JSON.stringify({...JSON.parse(modelProjection.content),recovery:{tool:'apps_inspect',arguments:{invocationId:result.invocationId},readOnly:true,doNotResubmitMutation:true}});
+        return send(res,200,{result,modelProjection});
+      }
       const invocation=path.match(/^\/v1\/invocations\/([^/]+)$/);if(req.method==='GET'&&invocation){const record=runtime.store.get<InvocationRecord>('invocations',decodeURIComponent(invocation[1]));return send(res,record?200:404,record??{error:'INVOCATION_NOT_FOUND'});}
+      // Agent operation inspection requires the trusted Host session. The privileged SDK route below retains its existing contract.
+      const scopedOperation=path.match(/^\/v1\/operations\/([^/]+)\/inspect-session$/);
+      if(req.method==='POST'&&scopedOperation){
+        const input=await readBody(req);strict(input,['sessionId'],['sessionId']);
+        const sessionId=input.sessionId;
+        if(typeof sessionId!=='string'||!/^[-a-zA-Z0-9_]{1,160}$/.test(sessionId))throw Object.assign(new Error('INVALID_SESSION'),{code:'INVALID_SESSION'});
+        const id=decodeURIComponent(scopedOperation[1]);
+        const authorize=()=>{
+        const record=runtime.store.get<RuntimeOperation>('operations',id),request=record?.request;
+        if(!record||!request||!('sessionId' in request.source)||request.source.sessionId!==sessionId)
+          throw Object.assign(new Error('Original operation is not available in this session.'),{code:'OPERATION_NOT_FOUND',statusCode:404});
+        const original=runtime.store.get<InvocationRecord>('invocations',request.invocationId);
+        if(record.operationId!==id||record.appId!==request.appId||record.connectionId!==request.connectionId||record.capabilityId!==request.capabilityId||record.capabilityVersion!==request.capabilityVersion
+          ||!original||original.invocationId!==request.invocationId||!('sessionId' in original.request.source)||original.request.source.sessionId!==sessionId
+          ||original.request.appId!==record.appId||original.request.connectionId!==record.connectionId||original.request.capabilityId!==record.capabilityId||original.request.capabilityVersion!==record.capabilityVersion)
+          throw Object.assign(new Error('Original operation identity could not be verified.'),{code:'OPERATION_IDENTITY_MISMATCH',statusCode:409});
+        if('status' in runtime.resolveConnection(record.appId,sessionId,record.connectionId))
+          throw Object.assign(new Error('The original connection is not enabled in this session.'),{code:'CONNECTION_NOT_BOUND',statusCode:403});
+        if(record.configRevision===undefined||original.configRevision!==record.configRevision||runtime.getConnection(record.appId,record.connectionId)?.configRevision!==record.configRevision)
+          throw Object.assign(new Error('The original backend configuration is no longer active.'),{code:'CONNECTION_REVISION_CHANGED',statusCode:409});
+        const descriptor=runtime.describe(record.capabilityId,record.capabilityVersion);
+        if(!descriptor)throw Object.assign(new Error('The original capability version is no longer registered.'),{code:'CAPABILITY_VERSION_CHANGED',statusCode:409});
+        const binding=runtime.sessionBindings(sessionId).find(row=>row.appId===record.appId&&row.connectionId===record.connectionId&&row.enabled);
+        return createHash('sha256').update(canonicalJson({operationId:id,request,requestHash:record.requestHash,configRevision:record.configRevision,originalRequestHash:original.requestHash,descriptor,binding})).digest('hex');
+        };
+        const admittedScope=authorize(),result=await runtime.inspect(id,controller.signal);
+        // Inspection may finish after this session loses access. Preserve the actual operation outcome, but withhold delivery.
+        if(authorize()!==admittedScope)throw Object.assign(new Error('The original inspection scope changed before delivery.'),{code:'OPERATION_SCOPE_CHANGED',statusCode:409});
+        // No await between the final authorization snapshot, projection and serialization.
+        // Returning a paired projection removes the Host's later unscoped model-result request.
+        return send(res,200,{result,modelProjection:projectModelResult(runtime.store,result)});
+      }
       const operation=path.match(/^\/v1\/operations\/([^/]+)(\/inspect)?$/);if(operation){const id=decodeURIComponent(operation[1]);if(req.method==='POST'&&operation[2]){const input=await readBody(req);strict(input,[]);return send(res,200,await runtime.inspect(id,controller.signal));}if(req.method==='GET'&&!operation[2]){const record=runtime.store.get<RuntimeOperation>('operations',id);return send(res,record?200:404,record?{...record,events:runtime.store.list<{operationId:string}>('operation_events').filter(row=>row.operationId===id)}:{error:'OPERATION_NOT_FOUND'});}}
       if(path==='/v1/session-bindings'){if(req.method==='GET')return send(res,200,{bindings:runtime.sessionBindings(url.searchParams.get('sessionId')??'')});if(req.method==='POST'){const input=await body(req);strict(input,['sessionId','appId','connectionId','enabled','boundAt'],['sessionId','appId','connectionId','enabled','boundAt']);return send(res,200,runtime.bind(input as unknown as SessionAppBinding));}}
       if(path==='/v1/connections'){if(req.method==='GET')return send(res,200,{connections:runtime.listConnections(url.searchParams.get('appId')??undefined)});if(req.method==='POST'){const input=await body(req);strict(input,['appId','connectionId','displayName','config','configRevision','enabled'],['appId','connectionId','displayName','config','configRevision','enabled']);return send(res,200,runtime.addConnection(input as unknown as AppConnection));}if(req.method==='PATCH'){const input=await body(req);strict(input,['appId','connectionId','displayName','config','expectedConfigRevision','enabled','drainTimeoutMs'],['appId','connectionId','expectedConfigRevision']);return send(res,200,await runtime.updateConnection(input as never,controller.signal));}}

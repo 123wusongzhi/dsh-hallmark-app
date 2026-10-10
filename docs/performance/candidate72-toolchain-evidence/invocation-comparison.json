@@ -1,0 +1,85 @@
+{
+  "scope": "deterministic loopback gateway fixture; not LLM success rate",
+  "runs": [
+    {
+      "variant": "baseline",
+      "route": "routed",
+      "toolCalls": 2,
+      "httpCalls": 4,
+      "requestPayloadBytes": 454,
+      "responsePayloadBytes": 880,
+      "providerCalls": 1,
+      "providerInspections": 0,
+      "mutationPosts": 1,
+      "invocationRecords": 1,
+      "modelBytes": [
+        300,
+        228
+      ],
+      "statuses": [
+        "unavailable",
+        "failed"
+      ]
+    },
+    {
+      "variant": "baseline",
+      "route": "legacy",
+      "toolCalls": 2,
+      "httpCalls": 7,
+      "requestPayloadBytes": 500,
+      "responsePayloadBytes": 1331,
+      "providerCalls": 1,
+      "providerInspections": 0,
+      "mutationPosts": 1,
+      "invocationRecords": 1,
+      "modelBytes": [
+        222,
+        228
+      ],
+      "statuses": [
+        "failed",
+        "failed"
+      ]
+    },
+    {
+      "variant": "patched",
+      "route": "routed",
+      "toolCalls": 2,
+      "httpCalls": 6,
+      "requestPayloadBytes": 454,
+      "responsePayloadBytes": 1631,
+      "providerCalls": 1,
+      "providerInspections": 0,
+      "mutationPosts": 1,
+      "invocationRecords": 1,
+      "modelBytes": [
+        300,
+        217
+      ],
+      "statuses": [
+        "unavailable",
+        "ok"
+      ]
+    },
+    {
+      "variant": "patched",
+      "route": "legacy",
+      "toolCalls": 2,
+      "httpCalls": 9,
+      "requestPayloadBytes": 500,
+      "responsePayloadBytes": 2060,
+      "providerCalls": 1,
+      "providerInspections": 0,
+      "mutationPosts": 1,
+      "invocationRecords": 1,
+      "modelBytes": [
+        222,
+        217
+      ],
+      "statuses": [
+        "failed",
+        "ok"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,734 @@
+{
+  "archive": "artifacts/dsh-plugin-apps-bundle-1.0.0-candidate.72.tgz",
+  "sha256": "8435cd68c3e46863238bdbc79bb91b634ca6719357e1b3f67ffd8aa531cfd4de",
+  "installed": false,
+  "package": {
+    "id": "dsh-plugin-apps-bundle@1.0.0-candidate.72",
+    "name": "dsh-plugin-apps-bundle",
+    "version": "1.0.0-candidate.72",
+    "size": 2056031,
+    "unpackedSize": 10220661,
+    "shasum": "2e5ab8dd4ee28826d263f7a74fb674809602aaf3",
+    "integrity": "sha512-fabR0Q6peXenYnTty9vk2NuKf+FsV5QLFB6GjaOmmb81xErvC1/VlNfYFcIgpKAwxmTCdZJImohFSIwK4DTZKQ==",
+    "filename": "dsh-plugin-apps-bundle-1.0.0-candidate.72.tgz",
+    "files": [
+      {
+        "path": "authoring-docs/check-and-publish.md",
+        "size": 5889,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/cross-source.md",
+        "size": 4762,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/data.md",
+        "size": 2202,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/examples/composed-table/data.ts",
+        "size": 2401,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/examples/composed-table/main.tsx",
+        "size": 3790,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/examples/composed-table/preview.json",
+        "size": 658,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/examples/composed-table/README.md",
+        "size": 2404,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/examples/composed-table/style.css",
+        "size": 1302,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/examples/product-list/main.tsx",
+        "size": 4804,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/examples/product-list/preview.json",
+        "size": 1384,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/examples/product-list/README.md",
+        "size": 2582,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/examples/product-list/style.css",
+        "size": 1146,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/index.md",
+        "size": 4333,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/lifecycle.md",
+        "size": 6474,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/performance-cli.md",
+        "size": 4100,
+        "mode": 420
+      },
+      {
+        "path": "authoring-docs/user-preferences.md",
+        "size": 7628,
+        "mode": 420
+      },
+      {
+        "path": "client/client.js",
+        "size": 2753905,
+        "mode": 420
+      },
+      {
+        "path": "cordis.patch.yml",
+        "size": 379,
+        "mode": 420
+      },
+      {
+        "path": "lib/apps-authoring-build.js",
+        "size": 58636,
+        "mode": 420
+      },
+      {
+        "path": "lib/apps-authoring-build.js.map",
+        "size": 119089,
+        "mode": 420
+      },
+      {
+        "path": "lib/apps-authoring-check.js",
+        "size": 127371,
+        "mode": 420
+      },
+      {
+        "path": "lib/apps-authoring-check.js.map",
+        "size": 242262,
+        "mode": 420
+      },
+      {
+        "path": "lib/apps-authoring-check.ps1",
+        "size": 1965,
+        "mode": 420
+      },
+      {
+        "path": "lib/apps-authoring-preview.js",
+        "size": 111609,
+        "mode": 420
+      },
+      {
+        "path": "lib/apps-authoring-preview.js.map",
+        "size": 217180,
+        "mode": 420
+      },
+      {
+        "path": "lib/apps-read-result.js",
+        "size": 939,
+        "mode": 420
+      },
+      {
+        "path": "lib/apps-read-result.js.map",
+        "size": 1672,
+        "mode": 420
+      },
+      {
+        "path": "lib/index.js",
+        "size": 223972,
+        "mode": 420
+      },
+      {
+        "path": "lib/index.js.map",
+        "size": 421685,
+        "mode": 420
+      },
+      {
+        "path": "lib/install-skills.ps1",
+        "size": 7076,
+        "mode": 420
+      },
+      {
+        "path": "lib/runtime.js",
+        "size": 1360522,
+        "mode": 420
+      },
+      {
+        "path": "lib/runtime.js.map",
+        "size": 2309348,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/index.js",
+        "size": 121,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/LICENSE",
+        "size": 1072,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/package.json",
+        "size": 3796,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/classic/checks.js",
+        "size": 663,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/classic/coerce.js",
+        "size": 550,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/classic/compat.js",
+        "size": 1090,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/classic/errors.js",
+        "size": 1581,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/classic/external.js",
+        "size": 907,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/classic/from-json-schema.js",
+        "size": 23172,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/classic/iso.js",
+        "size": 1151,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/classic/parse.js",
+        "size": 997,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/classic/schemas.js",
+        "size": 45601,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/api.js",
+        "size": 27841,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/checks.js",
+        "size": 20005,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/core.js",
+        "size": 2459,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/doc.js",
+        "size": 1088,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/errors.js",
+        "size": 6123,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/index.js",
+        "size": 594,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/json-schema-generator.js",
+        "size": 3218,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/json-schema-processors.js",
+        "size": 20882,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/json-schema.js",
+        "size": 11,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/parse.js",
+        "size": 4528,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/regexes.js",
+        "size": 8840,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/registries.js",
+        "size": 1512,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/schemas.js",
+        "size": 76984,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/to-json-schema.js",
+        "size": 16397,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/util.js",
+        "size": 21335,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/core/versions.js",
+        "size": 70,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/ar.js",
+        "size": 5188,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/az.js",
+        "size": 4511,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/be.js",
+        "size": 6619,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/bg.js",
+        "size": 5785,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/ca.js",
+        "size": 4710,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/cs.js",
+        "size": 4772,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/da.js",
+        "size": 4804,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/de.js",
+        "size": 4588,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/en.js",
+        "size": 4533,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/eo.js",
+        "size": 4603,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/es.js",
+        "size": 5439,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/fa.js",
+        "size": 5131,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/fi.js",
+        "size": 4818,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/fr-CA.js",
+        "size": 4554,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/fr.js",
+        "size": 4585,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/he.js",
+        "size": 12005,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/hu.js",
+        "size": 4696,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/hy.js",
+        "size": 6390,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/id.js",
+        "size": 4577,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/index.js",
+        "size": 2026,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/is.js",
+        "size": 4635,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/it.js",
+        "size": 4572,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/ja.js",
+        "size": 4851,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/ka.js",
+        "size": 6274,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/kh.js",
+        "size": 111,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/km.js",
+        "size": 6242,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/ko.js",
+        "size": 4929,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/lt.js",
+        "size": 8082,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/mk.js",
+        "size": 5157,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/ms.js",
+        "size": 4491,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/nl.js",
+        "size": 4762,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/no.js",
+        "size": 4506,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/ota.js",
+        "size": 4525,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/pl.js",
+        "size": 4966,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/ps.js",
+        "size": 4909,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/pt.js",
+        "size": 4568,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/ru.js",
+        "size": 6714,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/sl.js",
+        "size": 4567,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/sv.js",
+        "size": 4663,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/ta.js",
+        "size": 6369,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/th.js",
+        "size": 6290,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/tr.js",
+        "size": 4454,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/ua.js",
+        "size": 111,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/uk.js",
+        "size": 5430,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/ur.js",
+        "size": 5271,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/uz.js",
+        "size": 4681,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/vi.js",
+        "size": 4772,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/yo.js",
+        "size": 4665,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/zh-CN.js",
+        "size": 4452,
+        "mode": 420
+      },
+      {
+        "path": "lib/vendor/zod/v4/locales/zh-TW.js",
+        "size": 4498,
+        "mode": 420
+      },
+      {
+        "path": "package.json",
+        "size": 1636,
+        "mode": 420
+      },
+      {
+        "path": "sdk/app-contracts/index.js",
+        "size": 20383,
+        "mode": 420
+      },
+      {
+        "path": "sdk/app-contracts/package.json",
+        "size": 235,
+        "mode": 420
+      },
+      {
+        "path": "sdk/app-contracts/src/authoring-ui.d.ts",
+        "size": 825,
+        "mode": 420
+      },
+      {
+        "path": "sdk/app-contracts/src/business-review.d.ts",
+        "size": 3569,
+        "mode": 420
+      },
+      {
+        "path": "sdk/app-contracts/src/context.d.ts",
+        "size": 1833,
+        "mode": 420
+      },
+      {
+        "path": "sdk/app-contracts/src/index.d.ts",
+        "size": 8691,
+        "mode": 420
+      },
+      {
+        "path": "sdk/app-sdk/generated.js",
+        "size": 594780,
+        "mode": 420
+      },
+      {
+        "path": "sdk/app-sdk/index.js",
+        "size": 29813,
+        "mode": 420
+      },
+      {
+        "path": "sdk/app-sdk/package.json",
+        "size": 406,
+        "mode": 420
+      },
+      {
+        "path": "sdk/app-sdk/src/deadlines.d.ts",
+        "size": 580,
+        "mode": 420
+      },
+      {
+        "path": "sdk/app-sdk/src/generated.d.ts",
+        "size": 814590,
+        "mode": 420
+      },
+      {
+        "path": "sdk/app-sdk/src/index.d.ts",
+        "size": 3378,
+        "mode": 420
+      },
+      {
+        "path": "sdk/app-sdk/src/loopback-http.d.ts",
+        "size": 294,
+        "mode": 420
+      },
+      {
+        "path": "sdk/component-runtime/apps-client.js",
+        "size": 17630,
+        "mode": 420
+      },
+      {
+        "path": "sdk/component-runtime/apps-react.js",
+        "size": 46706,
+        "mode": 420
+      },
+      {
+        "path": "sdk/component-runtime/client.js",
+        "size": 20301,
+        "mode": 420
+      },
+      {
+        "path": "sdk/component-runtime/package.json",
+        "size": 621,
+        "mode": 420
+      },
+      {
+        "path": "sdk/component-runtime/react.js",
+        "size": 47408,
+        "mode": 420
+      },
+      {
+        "path": "sdk/component-runtime/src/apps-client.d.ts",
+        "size": 3697,
+        "mode": 420
+      },
+      {
+        "path": "sdk/component-runtime/src/apps-react.d.ts",
+        "size": 2667,
+        "mode": 420
+      },
+      {
+        "path": "sdk/component-runtime/src/client.d.ts",
+        "size": 2655,
+        "mode": 420
+      },
+      {
+        "path": "sdk/component-runtime/src/data-transfer-client.d.ts",
+        "size": 333,
+        "mode": 420
+      },
+      {
+        "path": "sdk/component-runtime/src/host.d.ts",
+        "size": 2168,
+        "mode": 420
+      },
+      {
+        "path": "sdk/component-runtime/src/latest-state-saver.d.ts",
+        "size": 260,
+        "mode": 420
+      },
+      {
+        "path": "sdk/component-runtime/src/react.d.ts",
+        "size": 584,
+        "mode": 420
+      },
+      {
+        "path": "sdk/component-runtime/src/visible-deadline.d.ts",
+        "size": 392,
+        "mode": 420
+      },
+      {
+        "path": "skills/hallmark-component-design/references/visual-direction.md",
+        "size": 4047,
+        "mode": 420
+      },
+      {
+        "path": "skills/hallmark-component-design/SKILL.md",
+        "size": 13959,
+        "mode": 420
+      },
+      {
+        "path": "skills/ozon-listing/references/content.md",
+        "size": 2391,
+        "mode": 420
+      },
+      {
+        "path": "skills/ozon-listing/SKILL.md",
+        "size": 7674,
+        "mode": 420
+      },
+      {
+        "path": "source-starter/create-apps-source.mjs",
+        "size": 9701,
+        "mode": 420
+      },
+      {
+        "path": "versions.json",
+        "size": 1546,
+        "mode": 420
+      }
+    ],
+    "entryCount": 143,
+    "bundled": []
+  }
+}

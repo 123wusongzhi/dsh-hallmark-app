@@ -1,0 +1,66 @@
+{
+  "scope": "DETERMINISTIC_REGISTERED_TOOL_AND_HELPER",
+  "root": "<cloud-workspace>/hallmark-c72-toolchain",
+  "externalModel": false,
+  "externalBusiness": false,
+  "checks": [
+    {
+      "name": "default replies preserve every exact input and execution constraint",
+      "status": "PASS",
+      "descriptors": 91,
+      "complete": 54,
+      "deferred": 37
+    },
+    {
+      "name": "all real descriptor output schemas reconstruct exactly",
+      "status": "PASS",
+      "descriptors": 91,
+      "calls": 105,
+      "maxCalls": 15
+    },
+    {
+      "name": "large nested constraint vocabulary and Unicode round-trip",
+      "status": "PASS",
+      "calls": 164
+    },
+    {
+      "name": "invalid or inherited JSON pointers are rejected",
+      "status": "PASS",
+      "paths": 6
+    },
+    {
+      "name": "same-version descriptor changes are rejected while unrelated catalog changes continue",
+      "status": "PASS"
+    },
+    {
+      "name": "valid overlong property key has executable continuation",
+      "status": "PASS",
+      "calls": 6
+    },
+    {
+      "name": "Chinese property key exceeding response budget has executable continuation",
+      "status": "PASS",
+      "calls": 7
+    },
+    {
+      "name": "catalog changed between identity and describe still returns truthful descriptor fingerprint",
+      "status": "PASS"
+    },
+    {
+      "name": "serialization fallback kind does not change on later byte-budget pages",
+      "status": "PASS",
+      "exercised": 185
+    },
+    {
+      "name": "oversized input default remains recoverable and does not falsely claim complete",
+      "status": "PASS",
+      "calls": 28
+    },
+    {
+      "name": "guidance session changes invalidate content-bound continuation",
+      "status": "PASS"
+    }
+  ],
+  "passed": 11,
+  "failed": 0
+}

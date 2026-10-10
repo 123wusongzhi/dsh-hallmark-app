@@ -7,6 +7,7 @@ import type {AppsHostTransport, RuntimeApp, ModelProjection} from './transport.t
 import {nativeInputReceipt} from '../../dsh-compat/src/native-receipt.ts';
 import {parseNativeReference,type NativeBindingRequest} from '../client/native-apps.ts';
 import type {ComponentExtensionRequest} from '../../component-runtime/src/host.ts';
+import {describeForModel} from './descriptor-reader.ts';
 import {authoringInstructions,type AppsAuthoringGuidance} from './authoring-guidance.ts';
 import {withIndependentReviewPump,type ReviewSubagents,type ReviewAttachments} from './review-agent.ts';
 import {componentReviewInvocationId,type ReviewOwner} from '../../service/src/review-bridge.ts';
@@ -44,11 +45,11 @@ const text: JsonSchema = {type: 'string', minLength: 1, maxLength: 4000};
 const schema = (properties: Record<string,JsonSchema>, required: string[] = []): JsonSchema => ({type: 'object', properties, required, additionalProperties: false});
 const gatewaySchemas: Record<string, JsonSchema> = {
   apps_list: schema({appId: text, query: text, cursor: text, limit: {type: 'integer', minimum: 1, maximum: 100}}),
-  apps_describe: schema({capabilityId: text, version: text}, ['capabilityId']),
+  apps_describe: schema({capabilityId:text,version:text,view:{enum:['input','full']},path:{type:'string',maxLength:4000},cursor:{type:'string',pattern:'^[0-9]+$'},limit:{type:'integer',minimum:1,maximum:100},descriptorDigest:{type:'string',pattern:'^[a-f0-9]{64}$'}}, ['capabilityId']),
   apps_invoke: schema({appId: text, connectionId: text, capabilityId: text, capabilityVersion: text, input: {}, idempotencyKey: text, expectedResourceRevision: text, invocationId: text, traceId: text, deadlineAt: text}, ['appId', 'capabilityId', 'capabilityVersion', 'input']),
-  apps_inspect: {...schema({operationId:text,resultRef:text,path:{type:'string',maxLength:4000},cursor:{type:'string',pattern:'^[0-9]+$'},limit:{type:'integer',minimum:1,maximum:200}}),oneOf:[{required:['operationId'],not:{anyOf:[{required:['resultRef']},{required:['path']},{required:['cursor']},{required:['limit']}]}},{required:['resultRef'],not:{required:['operationId']}}]},
+  apps_inspect: {...schema({invocationId:text,operationId:text,resultRef:text,path:{type:'string',maxLength:4000},cursor:{type:'string',pattern:'^[0-9]+$'},limit:{type:'integer',minimum:1,maximum:200}}),oneOf:[{required:['invocationId'],not:{anyOf:[{required:['operationId']},{required:['resultRef']},{required:['path']},{required:['cursor']},{required:['limit']}]}},{required:['operationId'],not:{anyOf:[{required:['invocationId']},{required:['resultRef']},{required:['path']},{required:['cursor']},{required:['limit']}]}},{required:['resultRef'],not:{anyOf:[{required:['operationId']},{required:['invocationId']}]}}]},
 };
-const gatewayDescriptions:Record<string,string>={apps_list:'发现应用与能力摘要；按需apps_describe获取精确Schema，当前采用固定发现网关。',apps_describe:'读取Runtime唯一目录中的精确能力说明、输入输出与版本。',apps_invoke:'用明确应用/连接/能力版本调用Runtime统一实现；unknown先查操作，不自动重新写入。',apps_inspect:'只读回查已有操作，保留原操作身份，不重发业务修改。'};
+const gatewayDescriptions:Record<string,string>={apps_list:'发现应用与能力摘要；按需apps_describe获取精确Schema，当前采用固定发现网关。',apps_describe:'默认读取精确完整输入Schema、版本与执行约束；输出Schema与完整说明按返回的只读指针按需读取，分页保留固定版本与说明内容身份。',apps_invoke:'用明确应用/连接/能力版本调用Runtime统一实现；unknown先查操作，不自动重新写入。',apps_inspect:'用原invocationId只读恢复丢失的调用结果，或用operationId查操作、resultRef续读结果；三者互斥。仅原会话与原连接可恢复，未确定时稍后查询同一invocationId，不重发业务修改。'};
 const businessUiOperations=new Set(['create','revise','get','list','submit','inspect','restore']);
 const fail = (code: string,message: string,invocationId = 'host',traceId = 'host',details?: JsonValue): CapabilityResult => ({invocationId, traceId, status: 'failed', error: {code, message, retryPolicy: 'never',...(details === undefined ? {} : {details})}});
 function jsonResponse(value: unknown, status = 200) {return new Response(JSON.stringify(value), {status, headers: {'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'}});}
@@ -235,13 +236,36 @@ export class AppsHost {
           limit=Math.max(1,Math.floor(capabilities.items.length/2));
         }
       }
-      if (name === 'apps_describe') {const descriptor = await this.describe(String(input.capabilityId), typeof input.version === 'string' ? input.version : undefined);return descriptor ? {status: 'ok', descriptor,...(descriptor.capabilityId==='apps.authoring.begin'&&this.authoringGuidance?{authoringGuidance:authoringInstructions(this.authoringGuidance,sessionId)}:{})} : fail('CAPABILITY_NOT_FOUND', '精确能力未登记。');}
+      if (name === 'apps_describe') {
+        const descriptor=await this.describe(String(input.capabilityId),typeof input.version==='string'?input.version:undefined);
+        if(!descriptor)return fail('CAPABILITY_NOT_FOUND','精确能力未登记。');
+        try{return describeForModel(descriptor,this.catalogDigest,input as {view?:string;path?:string;cursor?:string;limit?:number;descriptorDigest?:string},descriptor.capabilityId==='apps.authoring.begin'&&this.authoringGuidance?authoringInstructions(this.authoringGuidance,sessionId):undefined);}
+        catch(error){return fail(error instanceof Error?error.message:'INVALID_DESCRIPTOR_READ',error instanceof Error&&error.message==='DESCRIPTOR_CHANGED'?'能力说明已变化；请重新apps_describe获取完整输入，勿混合不同内容的分页。':'能力说明读取参数无效；请沿返回的精确只读指针读取。');}
+      }
       if (name === 'apps_inspect') {
+        if(typeof input.invocationId==='string') {
+          if(!this.transport.inspectInvocation)return fail('INVOCATION_INSPECTION_UNAVAILABLE','当前 Runtime 不支持原调用只读恢复；不得重发变更。',invocationId,traceId);
+          const inspected=await this.transport.inspectInvocation(input.invocationId,sessionId,signal);
+          if(!inspected?.result||validateResult(inspected.result).length||inspected.result.invocationId!==input.invocationId)
+            throw new Error('INVOCATION_INSPECTION_IDENTITY_MISMATCH');
+          const projection=inspected.modelProjection;
+          if(!projection||typeof projection.content!=='string'||Buffer.byteLength(projection.content)>16384)throw new Error('INVALID_INVOCATION_PROJECTION');
+          const projected=JSON.parse(projection.content) as Partial<CapabilityResult>;
+          if(projected.invocationId!==inspected.result.invocationId||projected.traceId!==inspected.result.traceId||projected.status!==inspected.result.status)throw new Error('INVOCATION_PROJECTION_IDENTITY_MISMATCH');
+          // Keep this projection paired with this read, including concurrent reads of the same ID.
+          return {result:inspected.result,modelProjection:projection};
+        }
         if(typeof input.resultRef==='string') {
           if(!this.transport.readModelResult)return fail('RESULT_READER_UNAVAILABLE','当前 Runtime 不支持结果续读。');
           return await this.transport.readModelResult({resultRef:input.resultRef,sessionId,path:typeof input.path==='string'?input.path:'',...(typeof input.cursor==='string'?{cursor:input.cursor}:{}),...(typeof input.limit==='number'?{limit:input.limit}:{})},signal);
         }
-        const result=await this.transport.inspect(String(input.operationId), signal);onRuntimeResult?.();return result;
+        if(!this.transport.inspectForSession)return fail('OPERATION_SCOPE_UNAVAILABLE','当前 Runtime 不支持会话隔离的操作回查。');
+        const inspected=await this.transport.inspectForSession(String(input.operationId),sessionId,signal),result=inspected?.result,projection=inspected?.modelProjection;
+        if(!result||validateResult(result).length||result.operation?.operationId!==input.operationId)throw new Error('OPERATION_INSPECTION_IDENTITY_MISMATCH');
+        if(!projection||typeof projection.content!=='string'||Buffer.byteLength(projection.content)>16384)throw new Error('INVALID_OPERATION_PROJECTION');
+        const projected=JSON.parse(projection.content) as Partial<CapabilityResult>;
+        if(projected.invocationId!==result.invocationId||projected.traceId!==result.traceId||projected.status!==result.status)throw new Error('OPERATION_PROJECTION_IDENTITY_MISMATCH');
+        return {result,modelProjection:projection};
       }
       if (name !== 'apps_invoke') return fail('CAPABILITY_NOT_FOUND', '网关未登记。');
       const appId = String(input.appId);
@@ -284,7 +308,7 @@ export class AppsHost {
       if(submitted&&descriptor?.effect==='mutation'){
         try{const recovered=await recoverInvocationResult(this.transport,submitted,signal);if(recovered&&!validateResult(recovered,descriptor.outputSchema).length){onRuntimeResult?.();return recovered;}}catch{/* Only an original read is allowed; never repeat invoke. */}
       }
-      const uncertainMutation=!!submitted&&descriptor?.effect==='mutation';
+      const uncertainMutation=!!submitted&&descriptor?.effect==='mutation'||name==='apps_inspect'&&typeof input.invocationId==='string';
       return {invocationId,traceId,status:'unavailable',error:{code:'RUNTIME_UNAVAILABLE',message:error instanceof Error?error.message:'Runtime unavailable',retryPolicy:uncertainMutation?'inspect_only':'read_retry',details:{invocationId,doNotResubmitMutation:uncertainMutation,submitted:!!submitted}}};
     }
   }

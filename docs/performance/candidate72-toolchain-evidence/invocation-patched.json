@@ -1,0 +1,741 @@
+{
+  "scope": "DETERMINISTIC_GATEWAY_LOOPBACK_FIXTURE",
+  "realLLM": false,
+  "actualBusiness": false,
+  "baseline": false,
+  "traces": [
+    {
+      "mode": "routed",
+      "outcome": "ok",
+      "steps": [
+        {
+          "value": {
+            "invocationId": "fixture-original-invocation",
+            "traceId": "fixture-original-trace",
+            "status": "unavailable",
+            "error": {
+              "code": "RUNTIME_UNAVAILABLE",
+              "message": "fetch failed",
+              "retryPolicy": "inspect_only",
+              "details": {
+                "invocationId": "fixture-original-invocation",
+                "doNotResubmitMutation": true,
+                "submitted": true
+              }
+            }
+          },
+          "rendered": "{\"error\":{\"code\":\"RUNTIME_UNAVAILABLE\",\"details\":{\"doNotResubmitMutation\":true,\"invocationId\":\"fixture-original-invocation\",\"submitted\":true},\"message\":\"fetch failed\",\"retryPolicy\":\"inspect_only\"},\"invocationId\":\"fixture-original-invocation\",\"status\":\"unavailable\",\"traceId\":\"fixture-original-trace\"}",
+          "model": {
+            "error": {
+              "code": "RUNTIME_UNAVAILABLE",
+              "details": {
+                "doNotResubmitMutation": true,
+                "invocationId": "fixture-original-invocation",
+                "submitted": true
+              },
+              "message": "fetch failed",
+              "retryPolicy": "inspect_only"
+            },
+            "invocationId": "fixture-original-invocation",
+            "status": "unavailable",
+            "traceId": "fixture-original-trace"
+          },
+          "args": {
+            "appId": "recoveryfixture",
+            "connectionId": "C1",
+            "capabilityId": "recoveryfixture.rows.mutation",
+            "capabilityVersion": "1.0.0",
+            "input": {
+              "privatePayload": "PRIVATE_PAYLOAD_SENTINEL"
+            },
+            "idempotencyKey": "fixture-original-intent",
+            "invocationId": "fixture-original-invocation",
+            "traceId": "fixture-original-trace"
+          },
+          "modelBytes": 300
+        },
+        {
+          "value": {
+            "result": {
+              "invocationId": "fixture-original-invocation",
+              "traceId": "fixture-original-trace",
+              "status": "ok",
+              "data": {
+                "receipt": "accepted-once"
+              },
+              "operation": {
+                "operationId": "03cd35a4-df8d-40b1-873d-7644907fc633",
+                "state": "succeeded"
+              }
+            },
+            "modelProjection": {
+              "content": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"ok\",\"data\":{\"receipt\":\"accepted-once\"},\"operation\":{\"operationId\":\"03cd35a4-df8d-40b1-873d-7644907fc633\",\"state\":\"succeeded\"}}"
+            }
+          },
+          "rendered": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"ok\",\"data\":{\"receipt\":\"accepted-once\"},\"operation\":{\"operationId\":\"03cd35a4-df8d-40b1-873d-7644907fc633\",\"state\":\"succeeded\"}}",
+          "model": {
+            "invocationId": "fixture-original-invocation",
+            "traceId": "fixture-original-trace",
+            "status": "ok",
+            "data": {
+              "receipt": "accepted-once"
+            },
+            "operation": {
+              "operationId": "03cd35a4-df8d-40b1-873d-7644907fc633",
+              "state": "succeeded"
+            }
+          },
+          "args": {
+            "invocationId": "fixture-original-invocation"
+          },
+          "modelBytes": 217
+        }
+      ],
+      "http": [
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 245
+        },
+        {
+          "method": "GET",
+          "path": "/v1/capabilities/recoveryfixture.rows.mutation?version=1.0.0",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 635
+        },
+        {
+          "method": "POST",
+          "path": "/v1/routed-invocations",
+          "requestPayloadBytes": 454,
+          "status": 200,
+          "responsePayloadBytes": 506,
+          "dropped": "accepted-response"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/invocations/fixture-original-invocation",
+          "requestPayloadBytes": 0,
+          "dropped": "before-forward"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 245
+        },
+        {
+          "method": "GET",
+          "path": "/v1/invocations/fixture-original-invocation/inspect?sessionId=owner-session",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 506,
+          "safeResponse": {
+            "result": {
+              "invocationId": "fixture-original-invocation",
+              "traceId": "fixture-original-trace",
+              "status": "ok",
+              "data": {
+                "receipt": "accepted-once"
+              },
+              "operation": {
+                "operationId": "03cd35a4-df8d-40b1-873d-7644907fc633",
+                "state": "succeeded"
+              }
+            },
+            "modelProjection": {
+              "content": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"ok\",\"data\":{\"receipt\":\"accepted-once\"},\"operation\":{\"operationId\":\"03cd35a4-df8d-40b1-873d-7644907fc633\",\"state\":\"succeeded\"}}"
+            }
+          }
+        }
+      ],
+      "toolCalls": 2,
+      "httpCalls": 6,
+      "requestPayloadBytes": 454,
+      "responsePayloadBytes": 1631,
+      "providerCalls": 1,
+      "providerInspections": 0,
+      "mutationPosts": 1,
+      "invocationRecords": 1,
+      "operationRecords": 1
+    },
+    {
+      "mode": "legacy",
+      "outcome": "ok",
+      "steps": [
+        {
+          "value": {
+            "result": {
+              "invocationId": "fixture-original-invocation",
+              "traceId": "fixture-original-trace",
+              "status": "unavailable",
+              "error": {
+                "code": "RUNTIME_RESPONSE_UNAVAILABLE",
+                "message": "Resolve the original invocation ID when Runtime returns; mutation resubmission is disabled.",
+                "retryPolicy": "inspect_only",
+                "details": {
+                  "invocationId": "fixture-original-invocation",
+                  "doNotResubmitMutation": true
+                }
+              }
+            },
+            "modelProjection": {
+              "content": "{\"error\":{\"code\":\"RESULT_SPILL_FAILED\",\"message\":\"模型结果投影不可用。请读取原invocation记录并用较小分页查询；不得重发变更。\"},\"invocationId\":\"fixture-original-invocation\",\"status\":\"failed\"}"
+            }
+          },
+          "rendered": "{\"error\":{\"code\":\"RESULT_SPILL_FAILED\",\"message\":\"模型结果投影不可用。请读取原invocation记录并用较小分页查询；不得重发变更。\"},\"invocationId\":\"fixture-original-invocation\",\"status\":\"failed\"}",
+          "model": {
+            "error": {
+              "code": "RESULT_SPILL_FAILED",
+              "message": "模型结果投影不可用。请读取原invocation记录并用较小分页查询；不得重发变更。"
+            },
+            "invocationId": "fixture-original-invocation",
+            "status": "failed"
+          },
+          "args": {
+            "appId": "recoveryfixture",
+            "connectionId": "C1",
+            "capabilityId": "recoveryfixture.rows.mutation",
+            "capabilityVersion": "1.0.0",
+            "input": {
+              "privatePayload": "PRIVATE_PAYLOAD_SENTINEL"
+            },
+            "idempotencyKey": "fixture-original-intent",
+            "invocationId": "fixture-original-invocation",
+            "traceId": "fixture-original-trace"
+          },
+          "modelBytes": 222
+        },
+        {
+          "value": {
+            "result": {
+              "invocationId": "fixture-original-invocation",
+              "traceId": "fixture-original-trace",
+              "status": "ok",
+              "data": {
+                "receipt": "accepted-once"
+              },
+              "operation": {
+                "operationId": "94bd9425-7d5c-49f5-b038-1c95c94e0f00",
+                "state": "succeeded"
+              }
+            },
+            "modelProjection": {
+              "content": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"ok\",\"data\":{\"receipt\":\"accepted-once\"},\"operation\":{\"operationId\":\"94bd9425-7d5c-49f5-b038-1c95c94e0f00\",\"state\":\"succeeded\"}}"
+            }
+          },
+          "rendered": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"ok\",\"data\":{\"receipt\":\"accepted-once\"},\"operation\":{\"operationId\":\"94bd9425-7d5c-49f5-b038-1c95c94e0f00\",\"state\":\"succeeded\"}}",
+          "model": {
+            "invocationId": "fixture-original-invocation",
+            "traceId": "fixture-original-trace",
+            "status": "ok",
+            "data": {
+              "receipt": "accepted-once"
+            },
+            "operation": {
+              "operationId": "94bd9425-7d5c-49f5-b038-1c95c94e0f00",
+              "state": "succeeded"
+            }
+          },
+          "args": {
+            "invocationId": "fixture-original-invocation"
+          },
+          "modelBytes": 217
+        }
+      ],
+      "http": [
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 223
+        },
+        {
+          "method": "GET",
+          "path": "/v1/capabilities/recoveryfixture.rows.mutation?version=1.0.0",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 635
+        },
+        {
+          "method": "GET",
+          "path": "/v1/connections?appId=recoveryfixture",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 331
+        },
+        {
+          "method": "GET",
+          "path": "/v1/session-bindings?sessionId=owner-session",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 142
+        },
+        {
+          "method": "POST",
+          "path": "/v1/invocations",
+          "requestPayloadBytes": 454,
+          "status": 200,
+          "responsePayloadBytes": 217,
+          "dropped": "accepted-response"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/invocations/fixture-original-invocation",
+          "requestPayloadBytes": 0,
+          "dropped": "before-forward"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/model-result",
+          "requestPayloadBytes": 46,
+          "dropped": "before-forward"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 223
+        },
+        {
+          "method": "GET",
+          "path": "/v1/invocations/fixture-original-invocation/inspect?sessionId=owner-session",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 506,
+          "safeResponse": {
+            "result": {
+              "invocationId": "fixture-original-invocation",
+              "traceId": "fixture-original-trace",
+              "status": "ok",
+              "data": {
+                "receipt": "accepted-once"
+              },
+              "operation": {
+                "operationId": "94bd9425-7d5c-49f5-b038-1c95c94e0f00",
+                "state": "succeeded"
+              }
+            },
+            "modelProjection": {
+              "content": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"ok\",\"data\":{\"receipt\":\"accepted-once\"},\"operation\":{\"operationId\":\"94bd9425-7d5c-49f5-b038-1c95c94e0f00\",\"state\":\"succeeded\"}}"
+            }
+          }
+        }
+      ],
+      "toolCalls": 2,
+      "httpCalls": 9,
+      "requestPayloadBytes": 500,
+      "responsePayloadBytes": 2060,
+      "providerCalls": 1,
+      "providerInspections": 0,
+      "mutationPosts": 1,
+      "invocationRecords": 1,
+      "operationRecords": 1
+    }
+  ],
+  "transitionTraces": [
+    {
+      "initial": "pending",
+      "externalReadback": {
+        "invocationId": "ccd39e79-d7d5-4ee2-964c-9d2fe4afc43c",
+        "status": "ok"
+      },
+      "mode": "routed",
+      "outcome": "pending",
+      "steps": [
+        {
+          "value": {
+            "result": {
+              "invocationId": "fixture-original-invocation",
+              "traceId": "fixture-original-trace",
+              "status": "pending",
+              "operation": {
+                "operationId": "9aad2bab-7f54-415b-83f5-d6f5cbeaae75",
+                "state": "pending"
+              },
+              "pollAfterMs": 1000
+            },
+            "modelProjection": {
+              "content": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"pending\",\"operation\":{\"operationId\":\"9aad2bab-7f54-415b-83f5-d6f5cbeaae75\",\"state\":\"pending\"},\"pollAfterMs\":1000,\"recovery\":{\"tool\":\"apps_inspect\",\"arguments\":{\"invocationId\":\"fixture-original-invocation\"},\"readOnly\":true,\"doNotResubmitMutation\":true}}"
+            }
+          },
+          "rendered": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"pending\",\"operation\":{\"operationId\":\"9aad2bab-7f54-415b-83f5-d6f5cbeaae75\",\"state\":\"pending\"},\"pollAfterMs\":1000,\"recovery\":{\"tool\":\"apps_inspect\",\"arguments\":{\"invocationId\":\"fixture-original-invocation\"},\"readOnly\":true,\"doNotResubmitMutation\":true}}",
+          "model": {
+            "invocationId": "fixture-original-invocation",
+            "traceId": "fixture-original-trace",
+            "status": "pending",
+            "operation": {
+              "operationId": "9aad2bab-7f54-415b-83f5-d6f5cbeaae75",
+              "state": "pending"
+            },
+            "pollAfterMs": 1000,
+            "recovery": {
+              "tool": "apps_inspect",
+              "arguments": {
+                "invocationId": "fixture-original-invocation"
+              },
+              "readOnly": true,
+              "doNotResubmitMutation": true
+            }
+          },
+          "args": {
+            "invocationId": "fixture-original-invocation"
+          },
+          "modelBytes": 343
+        },
+        {
+          "value": {
+            "result": {
+              "invocationId": "fixture-original-invocation",
+              "traceId": "fixture-original-trace",
+              "status": "ok",
+              "data": {
+                "receipt": "accepted-once"
+              },
+              "operation": {
+                "operationId": "9aad2bab-7f54-415b-83f5-d6f5cbeaae75",
+                "state": "succeeded"
+              }
+            },
+            "modelProjection": {
+              "content": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"ok\",\"data\":{\"receipt\":\"accepted-once\"},\"operation\":{\"operationId\":\"9aad2bab-7f54-415b-83f5-d6f5cbeaae75\",\"state\":\"succeeded\"},\"recoveryEvidence\":{\"source\":\"operation-ledger\",\"operationId\":\"9aad2bab-7f54-415b-83f5-d6f5cbeaae75\",\"observedInvocationId\":\"ccd39e79-d7d5-4ee2-964c-9d2fe4afc43c\",\"observedTraceId\":\"fixture-original-trace\",\"originalStatus\":\"pending\"}}"
+            }
+          },
+          "rendered": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"ok\",\"data\":{\"receipt\":\"accepted-once\"},\"operation\":{\"operationId\":\"9aad2bab-7f54-415b-83f5-d6f5cbeaae75\",\"state\":\"succeeded\"},\"recoveryEvidence\":{\"source\":\"operation-ledger\",\"operationId\":\"9aad2bab-7f54-415b-83f5-d6f5cbeaae75\",\"observedInvocationId\":\"ccd39e79-d7d5-4ee2-964c-9d2fe4afc43c\",\"observedTraceId\":\"fixture-original-trace\",\"originalStatus\":\"pending\"}}",
+          "model": {
+            "invocationId": "fixture-original-invocation",
+            "traceId": "fixture-original-trace",
+            "status": "ok",
+            "data": {
+              "receipt": "accepted-once"
+            },
+            "operation": {
+              "operationId": "9aad2bab-7f54-415b-83f5-d6f5cbeaae75",
+              "state": "succeeded"
+            },
+            "recoveryEvidence": {
+              "source": "operation-ledger",
+              "operationId": "9aad2bab-7f54-415b-83f5-d6f5cbeaae75",
+              "observedInvocationId": "ccd39e79-d7d5-4ee2-964c-9d2fe4afc43c",
+              "observedTraceId": "fixture-original-trace",
+              "originalStatus": "pending"
+            }
+          },
+          "args": {
+            "invocationId": "fixture-original-invocation"
+          },
+          "modelBytes": 451
+        }
+      ],
+      "http": [
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 245
+        },
+        {
+          "method": "GET",
+          "path": "/v1/capabilities/recoveryfixture.rows.mutation?version=1.0.0",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 635
+        },
+        {
+          "method": "POST",
+          "path": "/v1/routed-invocations",
+          "requestPayloadBytes": 454,
+          "status": 202,
+          "responsePayloadBytes": 476,
+          "dropped": "accepted-response"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/invocations/fixture-original-invocation",
+          "requestPayloadBytes": 0,
+          "dropped": "before-forward"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 245
+        },
+        {
+          "method": "GET",
+          "path": "/v1/invocations/fixture-original-invocation/inspect?sessionId=owner-session",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 631,
+          "safeResponse": {
+            "result": {
+              "invocationId": "fixture-original-invocation",
+              "traceId": "fixture-original-trace",
+              "status": "pending",
+              "operation": {
+                "operationId": "9aad2bab-7f54-415b-83f5-d6f5cbeaae75",
+                "state": "pending"
+              },
+              "pollAfterMs": 1000
+            },
+            "modelProjection": {
+              "content": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"pending\",\"operation\":{\"operationId\":\"9aad2bab-7f54-415b-83f5-d6f5cbeaae75\",\"state\":\"pending\"},\"pollAfterMs\":1000,\"recovery\":{\"tool\":\"apps_inspect\",\"arguments\":{\"invocationId\":\"fixture-original-invocation\"},\"readOnly\":true,\"doNotResubmitMutation\":true}}"
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 245
+        },
+        {
+          "method": "GET",
+          "path": "/v1/invocations/fixture-original-invocation/inspect?sessionId=owner-session",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 762,
+          "safeResponse": {
+            "result": {
+              "invocationId": "fixture-original-invocation",
+              "traceId": "fixture-original-trace",
+              "status": "ok",
+              "data": {
+                "receipt": "accepted-once"
+              },
+              "operation": {
+                "operationId": "9aad2bab-7f54-415b-83f5-d6f5cbeaae75",
+                "state": "succeeded"
+              }
+            },
+            "modelProjection": {
+              "content": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"ok\",\"data\":{\"receipt\":\"accepted-once\"},\"operation\":{\"operationId\":\"9aad2bab-7f54-415b-83f5-d6f5cbeaae75\",\"state\":\"succeeded\"},\"recoveryEvidence\":{\"source\":\"operation-ledger\",\"operationId\":\"9aad2bab-7f54-415b-83f5-d6f5cbeaae75\",\"observedInvocationId\":\"ccd39e79-d7d5-4ee2-964c-9d2fe4afc43c\",\"observedTraceId\":\"fixture-original-trace\",\"originalStatus\":\"pending\"}}"
+            }
+          }
+        }
+      ],
+      "toolCalls": 2,
+      "httpCalls": 8,
+      "requestPayloadBytes": 454,
+      "responsePayloadBytes": 2763,
+      "providerCalls": 1,
+      "providerInspections": 1,
+      "mutationPosts": 1,
+      "invocationRecords": 2,
+      "operationRecords": 1
+    },
+    {
+      "initial": "unknown",
+      "externalReadback": {
+        "invocationId": "0e0bedff-c318-414b-9c28-f6e7ef39dbc7",
+        "status": "ok"
+      },
+      "mode": "routed",
+      "outcome": "unknown",
+      "steps": [
+        {
+          "value": {
+            "result": {
+              "invocationId": "fixture-original-invocation",
+              "traceId": "fixture-original-trace",
+              "status": "unknown",
+              "operation": {
+                "operationId": "6377fbae-f135-4a82-b94e-4d7a1f140afe",
+                "state": "unknown"
+              },
+              "error": {
+                "code": "OUTCOME_UNKNOWN",
+                "message": "Completion was not established after dispatch; inspect the original operation.",
+                "retryPolicy": "inspect_only"
+              }
+            },
+            "modelProjection": {
+              "content": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"unknown\",\"operation\":{\"operationId\":\"6377fbae-f135-4a82-b94e-4d7a1f140afe\",\"state\":\"unknown\"},\"error\":{\"code\":\"OUTCOME_UNKNOWN\",\"message\":\"Completion was not established after dispatch; inspect the original operation.\",\"retryPolicy\":\"inspect_only\"},\"recovery\":{\"tool\":\"apps_inspect\",\"arguments\":{\"invocationId\":\"fixture-original-invocation\"},\"readOnly\":true,\"doNotResubmitMutation\":true}}"
+            }
+          },
+          "rendered": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"unknown\",\"operation\":{\"operationId\":\"6377fbae-f135-4a82-b94e-4d7a1f140afe\",\"state\":\"unknown\"},\"error\":{\"code\":\"OUTCOME_UNKNOWN\",\"message\":\"Completion was not established after dispatch; inspect the original operation.\",\"retryPolicy\":\"inspect_only\"},\"recovery\":{\"tool\":\"apps_inspect\",\"arguments\":{\"invocationId\":\"fixture-original-invocation\"},\"readOnly\":true,\"doNotResubmitMutation\":true}}",
+          "model": {
+            "invocationId": "fixture-original-invocation",
+            "traceId": "fixture-original-trace",
+            "status": "unknown",
+            "operation": {
+              "operationId": "6377fbae-f135-4a82-b94e-4d7a1f140afe",
+              "state": "unknown"
+            },
+            "error": {
+              "code": "OUTCOME_UNKNOWN",
+              "message": "Completion was not established after dispatch; inspect the original operation.",
+              "retryPolicy": "inspect_only"
+            },
+            "recovery": {
+              "tool": "apps_inspect",
+              "arguments": {
+                "invocationId": "fixture-original-invocation"
+              },
+              "readOnly": true,
+              "doNotResubmitMutation": true
+            }
+          },
+          "args": {
+            "invocationId": "fixture-original-invocation"
+          },
+          "modelBytes": 479
+        },
+        {
+          "value": {
+            "result": {
+              "invocationId": "fixture-original-invocation",
+              "traceId": "fixture-original-trace",
+              "status": "ok",
+              "data": {
+                "receipt": "accepted-once"
+              },
+              "operation": {
+                "operationId": "6377fbae-f135-4a82-b94e-4d7a1f140afe",
+                "state": "succeeded"
+              }
+            },
+            "modelProjection": {
+              "content": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"ok\",\"data\":{\"receipt\":\"accepted-once\"},\"operation\":{\"operationId\":\"6377fbae-f135-4a82-b94e-4d7a1f140afe\",\"state\":\"succeeded\"},\"recoveryEvidence\":{\"source\":\"operation-ledger\",\"operationId\":\"6377fbae-f135-4a82-b94e-4d7a1f140afe\",\"observedInvocationId\":\"0e0bedff-c318-414b-9c28-f6e7ef39dbc7\",\"observedTraceId\":\"fixture-original-trace\",\"originalStatus\":\"unknown\"}}"
+            }
+          },
+          "rendered": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"ok\",\"data\":{\"receipt\":\"accepted-once\"},\"operation\":{\"operationId\":\"6377fbae-f135-4a82-b94e-4d7a1f140afe\",\"state\":\"succeeded\"},\"recoveryEvidence\":{\"source\":\"operation-ledger\",\"operationId\":\"6377fbae-f135-4a82-b94e-4d7a1f140afe\",\"observedInvocationId\":\"0e0bedff-c318-414b-9c28-f6e7ef39dbc7\",\"observedTraceId\":\"fixture-original-trace\",\"originalStatus\":\"unknown\"}}",
+          "model": {
+            "invocationId": "fixture-original-invocation",
+            "traceId": "fixture-original-trace",
+            "status": "ok",
+            "data": {
+              "receipt": "accepted-once"
+            },
+            "operation": {
+              "operationId": "6377fbae-f135-4a82-b94e-4d7a1f140afe",
+              "state": "succeeded"
+            },
+            "recoveryEvidence": {
+              "source": "operation-ledger",
+              "operationId": "6377fbae-f135-4a82-b94e-4d7a1f140afe",
+              "observedInvocationId": "0e0bedff-c318-414b-9c28-f6e7ef39dbc7",
+              "observedTraceId": "fixture-original-trace",
+              "originalStatus": "unknown"
+            }
+          },
+          "args": {
+            "invocationId": "fixture-original-invocation"
+          },
+          "modelBytes": 451
+        }
+      ],
+      "http": [
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 245
+        },
+        {
+          "method": "GET",
+          "path": "/v1/capabilities/recoveryfixture.rows.mutation?version=1.0.0",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 635
+        },
+        {
+          "method": "POST",
+          "path": "/v1/routed-invocations",
+          "requestPayloadBytes": 454,
+          "status": 200,
+          "responsePayloadBytes": 760,
+          "dropped": "accepted-response"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/invocations/fixture-original-invocation",
+          "requestPayloadBytes": 0,
+          "dropped": "before-forward"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 245
+        },
+        {
+          "method": "GET",
+          "path": "/v1/invocations/fixture-original-invocation/inspect?sessionId=owner-session",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 915,
+          "safeResponse": {
+            "result": {
+              "invocationId": "fixture-original-invocation",
+              "traceId": "fixture-original-trace",
+              "status": "unknown",
+              "operation": {
+                "operationId": "6377fbae-f135-4a82-b94e-4d7a1f140afe",
+                "state": "unknown"
+              },
+              "error": {
+                "code": "OUTCOME_UNKNOWN",
+                "message": "Completion was not established after dispatch; inspect the original operation.",
+                "retryPolicy": "inspect_only"
+              }
+            },
+            "modelProjection": {
+              "content": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"unknown\",\"operation\":{\"operationId\":\"6377fbae-f135-4a82-b94e-4d7a1f140afe\",\"state\":\"unknown\"},\"error\":{\"code\":\"OUTCOME_UNKNOWN\",\"message\":\"Completion was not established after dispatch; inspect the original operation.\",\"retryPolicy\":\"inspect_only\"},\"recovery\":{\"tool\":\"apps_inspect\",\"arguments\":{\"invocationId\":\"fixture-original-invocation\"},\"readOnly\":true,\"doNotResubmitMutation\":true}}"
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 245
+        },
+        {
+          "method": "GET",
+          "path": "/v1/invocations/fixture-original-invocation/inspect?sessionId=owner-session",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 762,
+          "safeResponse": {
+            "result": {
+              "invocationId": "fixture-original-invocation",
+              "traceId": "fixture-original-trace",
+              "status": "ok",
+              "data": {
+                "receipt": "accepted-once"
+              },
+              "operation": {
+                "operationId": "6377fbae-f135-4a82-b94e-4d7a1f140afe",
+                "state": "succeeded"
+              }
+            },
+            "modelProjection": {
+              "content": "{\"invocationId\":\"fixture-original-invocation\",\"traceId\":\"fixture-original-trace\",\"status\":\"ok\",\"data\":{\"receipt\":\"accepted-once\"},\"operation\":{\"operationId\":\"6377fbae-f135-4a82-b94e-4d7a1f140afe\",\"state\":\"succeeded\"},\"recoveryEvidence\":{\"source\":\"operation-ledger\",\"operationId\":\"6377fbae-f135-4a82-b94e-4d7a1f140afe\",\"observedInvocationId\":\"0e0bedff-c318-414b-9c28-f6e7ef39dbc7\",\"observedTraceId\":\"fixture-original-trace\",\"originalStatus\":\"unknown\"}}"
+            }
+          }
+        }
+      ],
+      "toolCalls": 2,
+      "httpCalls": 8,
+      "requestPayloadBytes": 454,
+      "responsePayloadBytes": 3047,
+      "providerCalls": 1,
+      "providerInspections": 1,
+      "mutationPosts": 1,
+      "invocationRecords": 2,
+      "operationRecords": 1
+    }
+  ]
+}

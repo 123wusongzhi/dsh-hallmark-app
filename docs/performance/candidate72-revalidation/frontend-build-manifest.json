@@ -1,0 +1,168 @@
+[
+  {
+    "arm": "baseline",
+    "root": "/workspace/scratch/69ac72838cc8/hallmark-c72-baseline",
+    "outfile": "/workspace/scratch/69ac72838cc8/hallmark-c72-performance-evidence/frontend/baseline.mjs",
+    "sha256": "644eccb05b5f3e44b2c297507a2363006c186ef53d74090c32b3c9d4b6a62d1f",
+    "inputs": [
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/react@18.3.1/node_modules/react/cjs/react.production.min.js",
+        "bytes": 6930,
+        "sha256": "4b35e378f469c4f492c7514bb106b5833746dbbae80496bd4aa9acc6e9ac4b42"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/react@18.3.1/node_modules/react/index.js",
+        "bytes": 190,
+        "sha256": "a216c390bf956cbb906c66d29fdb2e2ad6999464a5ca83e476533a6f25ad0ef3"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/scheduler@0.23.2/node_modules/scheduler/cjs/scheduler-unstable_mock.production.min.js",
+        "bytes": 4786,
+        "sha256": "7f6f194583dd0c4527c05cbfea1692bdc8da9665bff3fd492ff2e9779f2e7f10"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/scheduler@0.23.2/node_modules/scheduler/unstable_mock.js",
+        "bytes": 226,
+        "sha256": "4a49b7ebe0cd8195ece30c0eac5d3de2ecfb029dd8d86e8a2553c454cb3e93ec"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/scheduler@0.23.2/node_modules/scheduler/cjs/scheduler.production.min.js",
+        "bytes": 4235,
+        "sha256": "f6cb8cf42696980c702f6b879417ab8bd489660485eb012b46f67e92e18a78ee"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/scheduler@0.23.2/node_modules/scheduler/index.js",
+        "bytes": 198,
+        "sha256": "b413b3aac7bd209fd82cbe2241fda1467558daaef830744f45ed8396fac9185e"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/react-test-renderer@18.3.1_react@18.3.1/node_modules/react-test-renderer/cjs/react-test-renderer.production.min.js",
+        "bytes": 87271,
+        "sha256": "6b211166923e6b17dc5985db6cc723cc660e3c28c6506c08fc757b91c6b04f15"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/react-test-renderer@18.3.1_react@18.3.1/node_modules/react-test-renderer/index.js",
+        "bytes": 218,
+        "sha256": "c304f3d98e7a938dc4341c377bfbd2d14328db58359345dffd35f1bd5439703a"
+      },
+      {
+        "path": "../../hallmark-c72-baseline/packages/app-presentation/src/materials/business-operations.ts",
+        "bytes": 4221,
+        "sha256": "cbdcc308fff90b291e28edb5b223220cee639ac239ea14078b29567f77b10485"
+      },
+      {
+        "path": "../../hallmark-c72-baseline/packages/presentation/src/cache-display.ts",
+        "bytes": 1392,
+        "sha256": "f899a75ba37b0cd36dfcc66c9996f036fce6dd1efff108f1ef22b731f09c9a12"
+      },
+      {
+        "path": "../../hallmark-c72-baseline/packages/plugin-apps/client/api.ts",
+        "bytes": 9934,
+        "sha256": "0c8f4d6a3efd4859f3bf4af31aa481e46e678cd1ac990dd2d6cf23831829b92d"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/react@18.3.1/node_modules/react/cjs/react-jsx-runtime.production.min.js",
+        "bytes": 859,
+        "sha256": "76e3364c46895ed2c4a8d5cc332e5e4ef31d6f732d35b1e56826dc5895245452"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/react@18.3.1/node_modules/react/jsx-runtime.js",
+        "bytes": 214,
+        "sha256": "28170e60f2ff0bc045bc7d175f5849e86f68dd02d76d7255369420718b30295a"
+      },
+      {
+        "path": "../../hallmark-c72-baseline/packages/plugin-apps/client/business-operations.tsx",
+        "bytes": 35211,
+        "sha256": "8f59a90d427d619fb5f7488a5d731bf8eb21a0571a2f87ace28e8b8a56afafa1"
+      },
+      {
+        "path": "../../hallmark-c72-baseline/business-lazy-harness.tsx",
+        "bytes": 13280,
+        "sha256": "5dcce5313f8a1b6ed967e422e6e7db097a4706467aad7b58099476f981b3bf0a"
+      }
+    ]
+  },
+  {
+    "arm": "lazy",
+    "root": "/workspace/scratch/69ac72838cc8/hallmark-c72-three-repro",
+    "outfile": "/workspace/scratch/69ac72838cc8/hallmark-c72-performance-evidence/frontend/lazy.mjs",
+    "sha256": "8f39b1a927744f615a7c6432b37573b6e3a83c5d915baa5209ff689781d97bbc",
+    "inputs": [
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/react@18.3.1/node_modules/react/cjs/react.production.min.js",
+        "bytes": 6930,
+        "sha256": "4b35e378f469c4f492c7514bb106b5833746dbbae80496bd4aa9acc6e9ac4b42"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/react@18.3.1/node_modules/react/index.js",
+        "bytes": 190,
+        "sha256": "a216c390bf956cbb906c66d29fdb2e2ad6999464a5ca83e476533a6f25ad0ef3"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/scheduler@0.23.2/node_modules/scheduler/cjs/scheduler-unstable_mock.production.min.js",
+        "bytes": 4786,
+        "sha256": "7f6f194583dd0c4527c05cbfea1692bdc8da9665bff3fd492ff2e9779f2e7f10"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/scheduler@0.23.2/node_modules/scheduler/unstable_mock.js",
+        "bytes": 226,
+        "sha256": "4a49b7ebe0cd8195ece30c0eac5d3de2ecfb029dd8d86e8a2553c454cb3e93ec"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/scheduler@0.23.2/node_modules/scheduler/cjs/scheduler.production.min.js",
+        "bytes": 4235,
+        "sha256": "f6cb8cf42696980c702f6b879417ab8bd489660485eb012b46f67e92e18a78ee"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/scheduler@0.23.2/node_modules/scheduler/index.js",
+        "bytes": 198,
+        "sha256": "b413b3aac7bd209fd82cbe2241fda1467558daaef830744f45ed8396fac9185e"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/react-test-renderer@18.3.1_react@18.3.1/node_modules/react-test-renderer/cjs/react-test-renderer.production.min.js",
+        "bytes": 87271,
+        "sha256": "6b211166923e6b17dc5985db6cc723cc660e3c28c6506c08fc757b91c6b04f15"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/react-test-renderer@18.3.1_react@18.3.1/node_modules/react-test-renderer/index.js",
+        "bytes": 218,
+        "sha256": "c304f3d98e7a938dc4341c377bfbd2d14328db58359345dffd35f1bd5439703a"
+      },
+      {
+        "path": "../../hallmark-c72-three-repro/packages/app-presentation/src/materials/business-operations.ts",
+        "bytes": 4221,
+        "sha256": "cbdcc308fff90b291e28edb5b223220cee639ac239ea14078b29567f77b10485"
+      },
+      {
+        "path": "../../hallmark-c72-three-repro/packages/presentation/src/cache-display.ts",
+        "bytes": 1392,
+        "sha256": "f899a75ba37b0cd36dfcc66c9996f036fce6dd1efff108f1ef22b731f09c9a12"
+      },
+      {
+        "path": "../../hallmark-c72-three-repro/packages/plugin-apps/client/api.ts",
+        "bytes": 9934,
+        "sha256": "0c8f4d6a3efd4859f3bf4af31aa481e46e678cd1ac990dd2d6cf23831829b92d"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/react@18.3.1/node_modules/react/cjs/react-jsx-runtime.production.min.js",
+        "bytes": 859,
+        "sha256": "76e3364c46895ed2c4a8d5cc332e5e4ef31d6f732d35b1e56826dc5895245452"
+      },
+      {
+        "path": "../../hallmark-c70-vendored/node_modules/.pnpm/react@18.3.1/node_modules/react/jsx-runtime.js",
+        "bytes": 214,
+        "sha256": "28170e60f2ff0bc045bc7d175f5849e86f68dd02d76d7255369420718b30295a"
+      },
+      {
+        "path": "../../hallmark-c72-three-repro/packages/plugin-apps/client/business-operations.tsx",
+        "bytes": 35217,
+        "sha256": "c40bd87a1662f1d3d1c13d78bfec193060530ce453e46c0ca80f806a9b28e281"
+      },
+      {
+        "path": "../../hallmark-c72-three-repro/business-lazy-harness.tsx",
+        "bytes": 13282,
+        "sha256": "1bc19b18aedefec46d60b685169e2a41441168b4dcd789e9435ac12a2c849403"
+      }
+    ]
+  }
+]

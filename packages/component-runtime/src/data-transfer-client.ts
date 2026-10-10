@@ -23,7 +23,9 @@ export function createDataTransferReader(extension:(action:string,params:JsonVal
         const chunks=await Promise.all(Array.from({length:Math.min(4,transfer.chunks-start)},async(_,index)=>{
           const actualIndex=start+index,value=object(await extension('read',{id:transfer.id,index:actualIndex}));
           if(value.id!==transfer.id||value.index!==actualIndex||value.revision!==packet.revision||typeof value.chunk!=='string'||value.chunk.length>90000)invalid();
-          return Uint8Array.from(atob(value.chunk),character=>character.charCodeAt(0));
+          const decoded=atob(value.chunk),chunk=new Uint8Array(decoded.length);
+          for(let index=0;index<decoded.length;index++)chunk[index]=decoded.charCodeAt(index);
+          return chunk;
         }));
         for(const chunk of chunks){if(offset+chunk.length>bytes.length)invalid();bytes.set(chunk,offset);offset+=chunk.length;}
       }

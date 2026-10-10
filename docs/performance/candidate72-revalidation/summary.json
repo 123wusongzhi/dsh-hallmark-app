@@ -1,0 +1,849 @@
+{
+  "version": "candidate72 only",
+  "baseCommit": "4e1cd98082a432e2ca89f606927da29eb26ddb67",
+  "formalProcesses": 120,
+  "scope": "isolated three-patch source pair; actual production React / Runtime / DataTransfers and reader fixtures; not browser/network end-to-end",
+  "frontend": [
+    {
+      "name": "ten-small",
+      "rows": 10,
+      "attributes": 0,
+      "payloadBytes": 11870,
+      "textChars": 435,
+      "arms": {
+        "baseline": {
+          "median": 3.890637500000011,
+          "p95": 7.168621999999999,
+          "mountMedian": 35.442271500000004,
+          "cpuUserMedian": 226280,
+          "cpuSystemMedian": 12540,
+          "rssMedian": 69613568,
+          "actionMedians": [
+            0.5586420000000061,
+            0.5560685000000092,
+            0.566730000000014,
+            0.5256425000000036,
+            0.05846800000000485,
+            0.04989499999999225,
+            0.5612160000000017,
+            0.5560489999999874
+          ]
+        },
+        "lazy": {
+          "median": 3.623170000000002,
+          "p95": 7.322002999999995,
+          "mountMedian": 35.883928,
+          "cpuUserMedian": 233509,
+          "cpuSystemMedian": 9476.5,
+          "rssMedian": 70068224,
+          "actionMedians": [
+            0.5371754999999894,
+            0.5366295000000036,
+            0.5238005000000001,
+            0.5038849999999968,
+            0.05165250000000299,
+            0.04242400000001112,
+            0.507480000000001,
+            0.5455725000000058
+          ]
+        }
+      },
+      "reductionPct": 6.874644579455391,
+      "pairs": [
+        {
+          "cycle": 0,
+          "baseline": 3.6297649999999635,
+          "lazy": 3.735367499999981,
+          "reductionPct": -2.9093481258433807
+        },
+        {
+          "cycle": 1,
+          "baseline": 3.917988500000021,
+          "lazy": 3.561495999999991,
+          "reductionPct": 9.09886539993745
+        },
+        {
+          "cycle": 2,
+          "baseline": 3.556057999999993,
+          "lazy": 3.5678585,
+          "reductionPct": -0.3318421690536866
+        },
+        {
+          "cycle": 3,
+          "baseline": 4.173735500000035,
+          "lazy": 3.8137180000000086,
+          "reductionPct": 8.625786181228378
+        },
+        {
+          "cycle": 4,
+          "baseline": 4.223245500000019,
+          "lazy": 3.6320879999999676,
+          "reductionPct": 13.997706266425869
+        }
+      ]
+    },
+    {
+      "name": "ten-listing",
+      "rows": 10,
+      "attributes": 20,
+      "payloadBytes": 77651,
+      "textChars": 6487,
+      "arms": {
+        "baseline": {
+          "median": 4.7975440000000305,
+          "p95": 9.510030000000029,
+          "mountMedian": 36.8738265,
+          "cpuUserMedian": 261981,
+          "cpuSystemMedian": 9185.5,
+          "rssMedian": 71204864,
+          "actionMedians": [
+            0.717993000000007,
+            0.765909999999991,
+            0.7347529999999978,
+            0.6796695000000028,
+            0.07636499999999558,
+            0.06588949999999727,
+            0.7025594999999925,
+            0.7288189999999872
+          ]
+        },
+        "lazy": {
+          "median": 3.702844000000013,
+          "p95": 6.841863000000018,
+          "mountMedian": 36.86451649999999,
+          "cpuUserMedian": 231686.5,
+          "cpuSystemMedian": 12745,
+          "rssMedian": 70666240,
+          "actionMedians": [
+            0.5462890000000016,
+            0.5586325000000016,
+            0.5489775000000066,
+            0.5146260000000069,
+            0.053265500000001964,
+            0.04226349999999712,
+            0.5290375000000012,
+            0.5468044999999933
+          ]
+        }
+      },
+      "reductionPct": 22.81792517171307,
+      "pairs": [
+        {
+          "cycle": 0,
+          "baseline": 4.737720499999995,
+          "lazy": 3.687571000000034,
+          "reductionPct": 22.165712392699444
+        },
+        {
+          "cycle": 1,
+          "baseline": 4.961606000000003,
+          "lazy": 3.9200964999999712,
+          "reductionPct": 20.991378597978784
+        },
+        {
+          "cycle": 2,
+          "baseline": 5.0228035000000375,
+          "lazy": 3.8851445000000098,
+          "reductionPct": 22.649880689141423
+        },
+        {
+          "cycle": 3,
+          "baseline": 4.584817999999984,
+          "lazy": 3.6451565000000414,
+          "reductionPct": 20.495066543534467
+        },
+        {
+          "cycle": 4,
+          "baseline": 4.91452500000004,
+          "lazy": 3.5593970000000184,
+          "reductionPct": 27.57393644350188
+        }
+      ]
+    }
+  ],
+  "collection": {
+    "tiny": {
+      "old": {
+        "wallMedian": 2.355767,
+        "cpuMedian": 2.707,
+        "maxRss": 101698.0
+      },
+      "new": {
+        "wallMedian": 2.2781754999999997,
+        "cpuMedian": 2.84,
+        "maxRss": 101598.0
+      },
+      "pairedMedianRatio": {
+        "wallMedian": 0.9476608168427159,
+        "cpuMedian": 1.0136674259681093
+      },
+      "cycles": [
+        {
+          "cycle": 1,
+          "wallMedian": 0.9820783314426745,
+          "cpuMedian": 1.0235588077815456
+        },
+        {
+          "cycle": 2,
+          "wallMedian": 0.9020710231094241,
+          "cpuMedian": 0.9739869049725712
+        },
+        {
+          "cycle": 3,
+          "wallMedian": 0.9476608168427159,
+          "cpuMedian": 0.9707948243992607
+        },
+        {
+          "cycle": 4,
+          "wallMedian": 1.042183669576052,
+          "cpuMedian": 1.1140939597315438
+        },
+        {
+          "cycle": 5,
+          "wallMedian": 0.8904081535187587,
+          "cpuMedian": 1.0136674259681093
+        }
+      ],
+      "allDataDigestsEqual": true,
+      "processes": 20,
+      "dimensions": {
+        "items": 8,
+        "offers": 8,
+        "plans": 2,
+        "rows": 4,
+        "stores": 1
+      }
+    },
+    "medium": {
+      "old": {
+        "wallMedian": 79.0377685,
+        "cpuMedian": 87.9735,
+        "maxRss": 203830.0
+      },
+      "new": {
+        "wallMedian": 54.2367965,
+        "cpuMedian": 65.059,
+        "maxRss": 195644.0
+      },
+      "pairedMedianRatio": {
+        "wallMedian": 0.6840020699749161,
+        "cpuMedian": 0.7651990499485979
+      },
+      "cycles": [
+        {
+          "cycle": 1,
+          "wallMedian": 0.7127504908594059,
+          "cpuMedian": 0.6843049740026688
+        },
+        {
+          "cycle": 2,
+          "wallMedian": 0.6631694566807307,
+          "cpuMedian": 0.7678385732374257
+        },
+        {
+          "cycle": 3,
+          "wallMedian": 0.685799423025429,
+          "cpuMedian": 0.7843773754190083
+        },
+        {
+          "cycle": 4,
+          "wallMedian": 0.6840020699749161,
+          "cpuMedian": 0.7042134519177322
+        },
+        {
+          "cycle": 5,
+          "wallMedian": 0.6784802753722765,
+          "cpuMedian": 0.7651990499485979
+        }
+      ],
+      "allDataDigestsEqual": true,
+      "processes": 20,
+      "dimensions": {
+        "items": 367,
+        "offers": 600,
+        "plans": 60,
+        "rows": 15,
+        "stores": 2
+      }
+    }
+  },
+  "dataTransfer": [
+    {
+      "shape": "inline210k",
+      "snapshotBytes": 210333,
+      "arms": {
+        "baseline": {
+          "medianMs": 5.197310500000015,
+          "p95Ms": 8.470159000000024,
+          "stages": {
+            "initialMs": 2.0193754999999953,
+            "unchangedMs": 0.9539294999999868,
+            "changedMs": 2.0404829999999947
+          },
+          "rssMedian": 75165696
+        },
+        "patched": {
+          "medianMs": 5.090820000000008,
+          "p95Ms": 8.160142000000008,
+          "stages": {
+            "initialMs": 2.0364430000000056,
+            "unchangedMs": 0.9372220000000056,
+            "changedMs": 2.0092004999999915
+          },
+          "rssMedian": 75139072
+        }
+      },
+      "reductionPct": 2.0489539734061757,
+      "pairs": [
+        {
+          "cycle": 0,
+          "baseline": 5.989351000000013,
+          "patched": 5.5818949999999745,
+          "reductionPct": 6.803007537879113
+        },
+        {
+          "cycle": 1,
+          "baseline": 5.272455499999992,
+          "patched": 5.450821000000005,
+          "reductionPct": -3.3829683342042838
+        },
+        {
+          "cycle": 2,
+          "baseline": 5.1863125,
+          "patched": 5.052726000000021,
+          "reductionPct": 2.575751075547006
+        },
+        {
+          "cycle": 3,
+          "baseline": 5.1379850000000005,
+          "patched": 4.790334999999985,
+          "reductionPct": 6.766271213326158
+        },
+        {
+          "cycle": 4,
+          "baseline": 4.922716999999992,
+          "patched": 4.658485999999996,
+          "reductionPct": 5.367584608255882
+        }
+      ],
+      "prepareCallsPerCycle": 3,
+      "chunkReadsPerCycle": 0,
+      "protocolHash": "52b4a04e70a0338d4153b82398b5b1709b4f47f7f8135e41879ab66e5909d7bf"
+    },
+    {
+      "shape": "chunk333k",
+      "snapshotBytes": 333333,
+      "arms": {
+        "baseline": {
+          "medianMs": 52.79537149999993,
+          "p95Ms": 61.777929999999856,
+          "stages": {
+            "initialMs": 25.155301500000007,
+            "unchangedMs": 1.4233989999999608,
+            "changedMs": 25.502961500000026
+          },
+          "rssMedian": 156069888
+        },
+        "patched": {
+          "medianMs": 8.227079000000003,
+          "p95Ms": 10.739325999999977,
+          "stages": {
+            "initialMs": 3.074534000000014,
+            "unchangedMs": 1.374613999999994,
+            "changedMs": 3.1602789999999885
+          },
+          "rssMedian": 99022848
+        }
+      },
+      "reductionPct": 84.41704496766347,
+      "pairs": [
+        {
+          "cycle": 0,
+          "baseline": 55.84882099999999,
+          "patched": 8.292393999999987,
+          "reductionPct": 85.15206972766714
+        },
+        {
+          "cycle": 1,
+          "baseline": 52.89003800000012,
+          "patched": 7.862263499999955,
+          "reductionPct": 85.13469871207138
+        },
+        {
+          "cycle": 2,
+          "baseline": 51.66852250000011,
+          "patched": 8.30796250000003,
+          "reductionPct": 83.92065014051832
+        },
+        {
+          "cycle": 3,
+          "baseline": 53.59476000000001,
+          "patched": 8.144928499999992,
+          "reductionPct": 84.80275217204071
+        },
+        {
+          "cycle": 4,
+          "baseline": 51.659354500000006,
+          "patched": 7.917276999999999,
+          "reductionPct": 84.6740690497788
+        }
+      ],
+      "prepareCallsPerCycle": 3,
+      "chunkReadsPerCycle": 12,
+      "protocolHash": "ce2f425783a9fe43eae62ea55239af386aabb613e2a3fe56ee735bd29fad6c7e"
+    }
+  ],
+  "functional": {
+    "frontend": {
+      "baseline": {
+        "counts": {
+          "calls": 1003,
+          "chars": 5263534
+        },
+        "payloadBytes": 82501,
+        "frameCount": 43,
+        "frameHash": "cd0f35985a2a10fbc6199a957ca73a3d41607f795623d2bfcc47e58daef15e28"
+      },
+      "candidate": {
+        "counts": {
+          "calls": 204,
+          "chars": 1046797
+        },
+        "payloadBytes": 82501,
+        "frameCount": 43,
+        "frameHash": "cd0f35985a2a10fbc6199a957ca73a3d41607f795623d2bfcc47e58daef15e28"
+      }
+    },
+    "collection": {
+      "responses": 12,
+      "events": 42,
+      "sql": 12389,
+      "outputByteEqual": true,
+      "outputSha256": "c0e209583d239eea9442b7c3aeda27231ca9324a51cdf8e01049404485e62ad0",
+      "callbacks": {
+        "baseline": {
+          "scope": "Complete actual Runtime reproduction array-callback counts; instrumented, not elapsed-time evidence",
+          "counts": {
+            "filter": 9495656,
+            "find": 1519570,
+            "every": 121300,
+            "some": 15366316,
+            "reduce": 244799,
+            "map": 705942
+          }
+        },
+        "candidate": {
+          "scope": "Complete actual Runtime reproduction array-callback counts; instrumented, not elapsed-time evidence",
+          "counts": {
+            "filter": 539852,
+            "find": 17060,
+            "every": 83304,
+            "some": 271430,
+            "reduce": 33,
+            "map": 716974
+          }
+        }
+      }
+    },
+    "dataTransfer": {
+      "scope": "actual DataTransfers and production reader; no browser, no live network, no elapsed-time claim",
+      "records": [
+        {
+          "arm": "baseline",
+          "name": "inline",
+          "steps": [
+            {
+              "stage": "initial",
+              "hash": "68e8d7d35c2f6d411fd98cf4d0b32000bf479b5f8a6d5dc93617262809b82703",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 2,
+                "digestCalls": 1,
+                "digestBytes": 1146
+              }
+            },
+            {
+              "stage": "unchanged",
+              "hash": "3d89997f644c459776475be43db310f90ea27c07d29ceecf575619e5ecd46072",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 0,
+                "digestBytes": 0
+              }
+            },
+            {
+              "stage": "changed",
+              "hash": "87c11ee5b87baefc052c12d5f0147070192eb8d1eee67f8a28d303afe0bd3d28",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 2,
+                "digestCalls": 1,
+                "digestBytes": 1149
+              }
+            },
+            {
+              "stage": "caller-mutation",
+              "hash": "87c11ee5b87baefc052c12d5f0147070192eb8d1eee67f8a28d303afe0bd3d28",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 0,
+                "digestBytes": 0
+              }
+            }
+          ],
+          "traceHash": "1276823838cd3b38d402713ba703544119f555c9a4aa48aecdd5690f611bfe41"
+        },
+        {
+          "arm": "patched",
+          "name": "inline",
+          "steps": [
+            {
+              "stage": "initial",
+              "hash": "68e8d7d35c2f6d411fd98cf4d0b32000bf479b5f8a6d5dc93617262809b82703",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 2,
+                "digestCalls": 1,
+                "digestBytes": 1146
+              }
+            },
+            {
+              "stage": "unchanged",
+              "hash": "3d89997f644c459776475be43db310f90ea27c07d29ceecf575619e5ecd46072",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 0,
+                "digestBytes": 0
+              }
+            },
+            {
+              "stage": "changed",
+              "hash": "87c11ee5b87baefc052c12d5f0147070192eb8d1eee67f8a28d303afe0bd3d28",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 2,
+                "digestCalls": 1,
+                "digestBytes": 1149
+              }
+            },
+            {
+              "stage": "caller-mutation",
+              "hash": "87c11ee5b87baefc052c12d5f0147070192eb8d1eee67f8a28d303afe0bd3d28",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 0,
+                "digestBytes": 0
+              }
+            }
+          ],
+          "traceHash": "1276823838cd3b38d402713ba703544119f555c9a4aa48aecdd5690f611bfe41"
+        },
+        {
+          "arm": "baseline",
+          "name": "chunk333",
+          "steps": [
+            {
+              "stage": "initial",
+              "hash": "49c885ee2bd430287c1241f28d8f740deab7be2d63c011e37d4a61b96853a0ad",
+              "counts": {
+                "fromCalls": 6,
+                "decodedBytes": 333146,
+                "mapperCalls": 333146,
+                "cloneCalls": 1,
+                "digestCalls": 1,
+                "digestBytes": 333146
+              }
+            },
+            {
+              "stage": "unchanged",
+              "hash": "27631185f476a33329ef011a23e1c0590f3ccc6ecc788fe6bf4a1c7c77366b83",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 0,
+                "digestBytes": 0
+              }
+            },
+            {
+              "stage": "changed",
+              "hash": "f2802fa129e1a6a8632adea3142415f78e3324cb3f27b58daba6741d85280d88",
+              "counts": {
+                "fromCalls": 6,
+                "decodedBytes": 333149,
+                "mapperCalls": 333149,
+                "cloneCalls": 1,
+                "digestCalls": 1,
+                "digestBytes": 333149
+              }
+            },
+            {
+              "stage": "caller-mutation",
+              "hash": "f2802fa129e1a6a8632adea3142415f78e3324cb3f27b58daba6741d85280d88",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 0,
+                "digestBytes": 0
+              }
+            }
+          ],
+          "traceHash": "8dc65a8db32c53049e20893c697866ab188bf48c327484a7c19574f287bf418c"
+        },
+        {
+          "arm": "patched",
+          "name": "chunk333",
+          "steps": [
+            {
+              "stage": "initial",
+              "hash": "49c885ee2bd430287c1241f28d8f740deab7be2d63c011e37d4a61b96853a0ad",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 1,
+                "digestBytes": 333146
+              }
+            },
+            {
+              "stage": "unchanged",
+              "hash": "27631185f476a33329ef011a23e1c0590f3ccc6ecc788fe6bf4a1c7c77366b83",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 0,
+                "digestBytes": 0
+              }
+            },
+            {
+              "stage": "changed",
+              "hash": "f2802fa129e1a6a8632adea3142415f78e3324cb3f27b58daba6741d85280d88",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 1,
+                "digestBytes": 333149
+              }
+            },
+            {
+              "stage": "caller-mutation",
+              "hash": "f2802fa129e1a6a8632adea3142415f78e3324cb3f27b58daba6741d85280d88",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 0,
+                "digestBytes": 0
+              }
+            }
+          ],
+          "traceHash": "8dc65a8db32c53049e20893c697866ab188bf48c327484a7c19574f287bf418c"
+        },
+        {
+          "arm": "baseline",
+          "name": "chunk2m",
+          "steps": [
+            {
+              "stage": "initial",
+              "hash": "9620e026df6d06e982501dee3a55ff707e4a84c6f5075ecbdc970470907b2443",
+              "counts": {
+                "fromCalls": 33,
+                "decodedBytes": 2100146,
+                "mapperCalls": 2100146,
+                "cloneCalls": 1,
+                "digestCalls": 1,
+                "digestBytes": 2100146
+              }
+            },
+            {
+              "stage": "unchanged",
+              "hash": "79b6266807c2c06caff8ebc0c9904503fbb8be6b1f832d45d364eca47797d58a",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 0,
+                "digestBytes": 0
+              }
+            },
+            {
+              "stage": "changed",
+              "hash": "05f861ef418f18a3474521b99f12d0e031e0c8502d7b89e88c8611a286282903",
+              "counts": {
+                "fromCalls": 33,
+                "decodedBytes": 2100149,
+                "mapperCalls": 2100149,
+                "cloneCalls": 1,
+                "digestCalls": 1,
+                "digestBytes": 2100149
+              }
+            },
+            {
+              "stage": "caller-mutation",
+              "hash": "05f861ef418f18a3474521b99f12d0e031e0c8502d7b89e88c8611a286282903",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 0,
+                "digestBytes": 0
+              }
+            }
+          ],
+          "traceHash": "3535015beee6ee537dd2d21207803dd56e303e981b8bceb9f3779795bb21871e"
+        },
+        {
+          "arm": "patched",
+          "name": "chunk2m",
+          "steps": [
+            {
+              "stage": "initial",
+              "hash": "9620e026df6d06e982501dee3a55ff707e4a84c6f5075ecbdc970470907b2443",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 1,
+                "digestBytes": 2100146
+              }
+            },
+            {
+              "stage": "unchanged",
+              "hash": "79b6266807c2c06caff8ebc0c9904503fbb8be6b1f832d45d364eca47797d58a",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 0,
+                "digestBytes": 0
+              }
+            },
+            {
+              "stage": "changed",
+              "hash": "05f861ef418f18a3474521b99f12d0e031e0c8502d7b89e88c8611a286282903",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 1,
+                "digestBytes": 2100149
+              }
+            },
+            {
+              "stage": "caller-mutation",
+              "hash": "05f861ef418f18a3474521b99f12d0e031e0c8502d7b89e88c8611a286282903",
+              "counts": {
+                "fromCalls": 0,
+                "decodedBytes": 0,
+                "mapperCalls": 0,
+                "cloneCalls": 1,
+                "digestCalls": 0,
+                "digestBytes": 0
+              }
+            }
+          ],
+          "traceHash": "3535015beee6ee537dd2d21207803dd56e303e981b8bceb9f3779795bb21871e"
+        },
+        {
+          "defect": "bytes",
+          "error": {
+            "name": "Error",
+            "message": "INVALID_DATA_TRANSFER"
+          }
+        },
+        {
+          "defect": "id",
+          "error": {
+            "name": "Error",
+            "message": "INVALID_DATA_TRANSFER"
+          }
+        },
+        {
+          "defect": "index",
+          "error": {
+            "name": "Error",
+            "message": "INVALID_DATA_TRANSFER"
+          }
+        },
+        {
+          "defect": "revision",
+          "error": {
+            "name": "Error",
+            "message": "INVALID_DATA_TRANSFER"
+          }
+        },
+        {
+          "defect": "base64",
+          "error": {
+            "name": "InvalidCharacterError",
+            "message": "Invalid character"
+          }
+        },
+        {
+          "defect": "short",
+          "error": {
+            "name": "Error",
+            "message": "INVALID_DATA_TRANSFER"
+          }
+        },
+        {
+          "defect": "oversize",
+          "error": {
+            "name": "Error",
+            "message": "INVALID_DATA_TRANSFER"
+          }
+        },
+        {
+          "guard": "overlapping unchanged read uses its captured revision",
+          "baseline": true,
+          "patched": true
+        }
+      ]
+    }
+  },
+  "cpuCoordination": {
+    "frontend": "whole-group exclusive flock /tmp/hallmark-c72-cpu.lock",
+    "collection": "whole-group exclusive flock /tmp/hallmark-c72-cpu.lock",
+    "dataTransfer": "earlier manual exclusive window; all workers confirmed no overlap; no retroactive flock claim"
+  },
+  "excluded": [
+    "First candidate72 frontend 40-process batch overlapped short fixtures; archived diagnostic-only.",
+    "candidate70 speed, build and suite results are not candidate72 evidence."
+  ],
+  "integrationGate": "PENDING unified toolchain + three performance patches + #7 compatibility fix build/test review, separately compared with pure candidate72; not inherited from candidate70",
+  "browserAcceptance": "NOT_RUN; Chromium socket restriction not bypassed"
+}

@@ -1,0 +1,920 @@
+{
+  "scope": "DETERMINISTIC_REGISTERED_TOOL_RENDER",
+  "externalModel": false,
+  "externalBusiness": false,
+  "total": 91,
+  "unusable": [],
+  "totalModelBytes": 166891,
+  "rows": [
+    {
+      "capabilityId": "apps.authoring.begin",
+      "rawBytes": 12372,
+      "modelBytes": 12372,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": true
+    },
+    {
+      "capabilityId": "apps.authoring.cancel",
+      "rawBytes": 1597,
+      "modelBytes": 1597,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.authoring.inspect",
+      "rawBytes": 1726,
+      "modelBytes": 1726,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.authoring.publish",
+      "rawBytes": 1912,
+      "modelBytes": 1912,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.authoring.record_build",
+      "rawBytes": 1816,
+      "modelBytes": 1816,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.authoring.record_preview",
+      "rawBytes": 1892,
+      "modelBytes": 1892,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.authoring.save_component",
+      "rawBytes": 1761,
+      "modelBytes": 1761,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.presentation.list_data_sources",
+      "rawBytes": 1470,
+      "modelBytes": 1470,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.presentation.list_materials",
+      "rawBytes": 1184,
+      "modelBytes": 1184,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.presentation.list_saved",
+      "rawBytes": 1384,
+      "modelBytes": 1384,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.presentation.manage_saved",
+      "rawBytes": 1703,
+      "modelBytes": 1703,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.presentation.open_component",
+      "rawBytes": 1725,
+      "modelBytes": 1725,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.presentation.open_source_component",
+      "rawBytes": 3164,
+      "modelBytes": 3164,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.presentation.register_data_source",
+      "rawBytes": 4420,
+      "modelBytes": 4420,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.presentation.render_view",
+      "rawBytes": 3338,
+      "modelBytes": 3338,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.presentation.resolve_data_source",
+      "rawBytes": 1760,
+      "modelBytes": 1760,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.presentation.save_component",
+      "rawBytes": 1774,
+      "modelBytes": 1774,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.presentation.save_entry",
+      "rawBytes": 2714,
+      "modelBytes": 2714,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.presentation.save_template",
+      "rawBytes": 1593,
+      "modelBytes": 1593,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.presentation.update_view",
+      "rawBytes": 2628,
+      "modelBytes": 2628,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "apps.presentation.validate_data_source",
+      "rawBytes": 4072,
+      "modelBytes": 4072,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.actions.candidates",
+      "rawBytes": 1315,
+      "modelBytes": 1315,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.actions.list",
+      "rawBytes": 1273,
+      "modelBytes": 1273,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.actions.products",
+      "rawBytes": 1305,
+      "modelBytes": 1305,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.category.read",
+      "rawBytes": 2547,
+      "modelBytes": 2547,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.collected_item.raw",
+      "rawBytes": 1273,
+      "modelBytes": 1273,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.products.attributes",
+      "rawBytes": 1324,
+      "modelBytes": 1324,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.products.import_inspect",
+      "rawBytes": 1320,
+      "modelBytes": 1320,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.products.info",
+      "rawBytes": 1294,
+      "modelBytes": 1294,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.products.prices",
+      "rawBytes": 1304,
+      "modelBytes": 1304,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.products.stocks",
+      "rawBytes": 1300,
+      "modelBytes": 1300,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.products.update_price",
+      "rawBytes": 2242,
+      "modelBytes": 2242,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.store_products.read",
+      "rawBytes": 1242,
+      "modelBytes": 1242,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.store_products.sync",
+      "rawBytes": 720,
+      "modelBytes": 720,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.stores.list",
+      "rawBytes": 927,
+      "modelBytes": 927,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.target_margin.read",
+      "rawBytes": 715,
+      "modelBytes": 715,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.api.warehouses.list",
+      "rawBytes": 1288,
+      "modelBytes": 1288,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.app.info",
+      "rawBytes": 1037,
+      "modelBytes": 1037,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.categories.read",
+      "rawBytes": 2936,
+      "modelBytes": 2936,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.collected.get",
+      "rawBytes": 1170,
+      "modelBytes": 1170,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.collected.search",
+      "rawBytes": 1767,
+      "modelBytes": 1767,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.collected.skus",
+      "rawBytes": 879,
+      "modelBytes": 879,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.collection.read",
+      "rawBytes": 1576,
+      "modelBytes": 1576,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.collection.resource.read",
+      "rawBytes": 1312,
+      "modelBytes": 1312,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.collection.search",
+      "rawBytes": 2499,
+      "modelBytes": 2499,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.datasets.refresh",
+      "rawBytes": 1187,
+      "modelBytes": 1187,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.datasets.status",
+      "rawBytes": 1151,
+      "modelBytes": 1151,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.listing.assets.publish",
+      "rawBytes": 1163,
+      "modelBytes": 1163,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.listing.draft.create",
+      "rawBytes": 2682,
+      "modelBytes": 2682,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.listing.draft.get",
+      "rawBytes": 1221,
+      "modelBytes": 1221,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.listing.draft.revise",
+      "rawBytes": 2299,
+      "modelBytes": 2299,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.listing.draft.submit",
+      "rawBytes": 1102,
+      "modelBytes": 1102,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.listing.prepare",
+      "rawBytes": 2659,
+      "modelBytes": 2659,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.operations.get",
+      "rawBytes": 1436,
+      "modelBytes": 1436,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.operations.list",
+      "rawBytes": 1323,
+      "modelBytes": 1323,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.ozon.analytics",
+      "rawBytes": 1824,
+      "modelBytes": 1824,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.ozon.compose",
+      "rawBytes": 4256,
+      "modelBytes": 4256,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.ozon.finance",
+      "rawBytes": 1725,
+      "modelBytes": 1725,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.ozon.orders",
+      "rawBytes": 1786,
+      "modelBytes": 1786,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.ozon.prices",
+      "rawBytes": 1583,
+      "modelBytes": 1583,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.ozon.products",
+      "rawBytes": 1647,
+      "modelBytes": 1647,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.ozon.promotions",
+      "rawBytes": 1707,
+      "modelBytes": 1707,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.ozon.ratings",
+      "rawBytes": 1682,
+      "modelBytes": 1682,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.ozon.returns",
+      "rawBytes": 1641,
+      "modelBytes": 1641,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.ozon.stocks",
+      "rawBytes": 1662,
+      "modelBytes": 1662,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.ozon.warehouses",
+      "rawBytes": 1628,
+      "modelBytes": 1628,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.ozon.weights",
+      "rawBytes": 1740,
+      "modelBytes": 1740,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.plan.create",
+      "rawBytes": 2673,
+      "modelBytes": 2673,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.plan.get",
+      "rawBytes": 1212,
+      "modelBytes": 1212,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.plan.inspect",
+      "rawBytes": 780,
+      "modelBytes": 780,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.plan.list",
+      "rawBytes": 769,
+      "modelBytes": 769,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.plan.restore",
+      "rawBytes": 941,
+      "modelBytes": 941,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.plan.revise",
+      "rawBytes": 2290,
+      "modelBytes": 2290,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.plan.submit",
+      "rawBytes": 1093,
+      "modelBytes": 1093,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.platform.read",
+      "rawBytes": 1484,
+      "modelBytes": 1484,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.pricing.quote",
+      "rawBytes": 2229,
+      "modelBytes": 2229,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.pricing.read",
+      "rawBytes": 742,
+      "modelBytes": 742,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.products.filter",
+      "rawBytes": 1881,
+      "modelBytes": 1881,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.products.list",
+      "rawBytes": 2538,
+      "modelBytes": 2538,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.products.list_product",
+      "rawBytes": 2205,
+      "modelBytes": 2205,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.products.procurement",
+      "rawBytes": 2138,
+      "modelBytes": 2138,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.products.skus",
+      "rawBytes": 942,
+      "modelBytes": 942,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.products.update_price",
+      "rawBytes": 2113,
+      "modelBytes": 2113,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.products.update_stock",
+      "rawBytes": 1937,
+      "modelBytes": 1937,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.profit.compute",
+      "rawBytes": 1749,
+      "modelBytes": 1749,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.stores.list",
+      "rawBytes": 861,
+      "modelBytes": 861,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "hallmark.stores.resolve",
+      "rawBytes": 906,
+      "modelBytes": 906,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": true,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "notes.notes.create",
+      "rawBytes": 1469,
+      "modelBytes": 1469,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "notes.notes.get",
+      "rawBytes": 1332,
+      "modelBytes": 1332,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "notes.notes.list",
+      "rawBytes": 1419,
+      "modelBytes": 1419,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    },
+    {
+      "capabilityId": "notes.notes.update",
+      "rawBytes": 1514,
+      "modelBytes": 1514,
+      "modelStatus": "ok",
+      "error": null,
+      "hasInputSchema": true,
+      "hasOutputSchema": false,
+      "hasGuidance": false
+    }
+  ]
+}

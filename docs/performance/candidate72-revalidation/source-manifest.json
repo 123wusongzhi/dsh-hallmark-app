@@ -1,0 +1,90 @@
+{
+  "tag": "v1.0.0-candidate.72",
+  "tagObject": "52d12f7ee593fe04944c63b5d01fb0e924a6eee5",
+  "commit": "4e1cd98082a432e2ca89f606927da29eb26ddb67",
+  "tree": "fc82c44d9aae05812173b03e2f107b9b51612c96",
+  "sourceFiles": {
+    "packages/plugin-apps/client/business-operations.tsx": {
+      "baseline": "8f59a90d427d619fb5f7488a5d731bf8eb21a0571a2f87ace28e8b8a56afafa1",
+      "candidate": "c40bd87a1662f1d3d1c13d78bfec193060530ce453e46c0ca80f806a9b28e281"
+    },
+    "packages/app-hallmark/src/listing-prepare.ts": {
+      "baseline": "179c97e8cdf31ca54930318d49ccc814e8818e3fb20a5abb2306c76d48021017",
+      "candidate": "04b3c50d4395e9030fd24805d135bc74e89fc86a88fcc456baac7f75bb2af67d"
+    },
+    "packages/component-runtime/src/data-transfer-client.ts": {
+      "baseline": "3911482b255c59912d9d32ad2f19157c90b3d5b2b619c222dc77ae51dba629cb",
+      "candidate": "ecbc45bd68f22d7b4038f994f38bfc8dd0b79e28894f70091c75dfd922b2e1b7"
+    }
+  },
+  "originalMeasuredScripts": {
+    "frontend/build.mjs": "ed2bdff994e71fd4a056225816ea3db53c97b73d2843cef4071966e1c4955a5c",
+    "frontend/harness.tsx": "f27f3737e28bbe57ade13941a7ffdac545d5edd4f0c3cc0ac3f0ed6dfbef9044",
+    "frontend/timing.mjs": "dab26929a10af71445f7b92e406dcc6b2c12b26b7c1ce6300dc7e13e5962c632",
+    "collection/runtime-collection-harness.mjs": "2d8349501e606ceba2c5a981d4717b005896e284ec1c3697c009b6cbba051880",
+    "collection/run-abba.py": "beda831a5602284cf8aef54fc27cf34e2e1b1f74ddd89327f3fea14186524571",
+    "data-transfer/benchmark.mjs": "5b48c17bdac45ab4fffd5b3801c2d659ee6f5b70bd81701aaae76a70097df57a",
+    "data-transfer/run-abba.mjs": "95dcc81a33502f93940643216dbe92a89e095f41d27cef85203d838c9244adf0",
+    "data-transfer/count-and-parity.mjs": "daf2eee96b69cbde12e2bbb451f5559f41a2964c7b2cc226dd1fadde4844d36a",
+    "count-array-callbacks.mjs": "79fd298eb3f1736f495e63c3ee2b4cac8bbdd1402ae60109de2008c695f3d67b"
+  },
+  "portableScripts": {
+    "README.md": "cdf4e2f9012722c6e522e34c415eea2a83f716b1284a945d8cbfd05a9cc36450",
+    "collection/run-abba.py": "beda831a5602284cf8aef54fc27cf34e2e1b1f74ddd89327f3fea14186524571",
+    "collection/runtime-collection-harness.mjs": "2d8349501e606ceba2c5a981d4717b005896e284ec1c3697c009b6cbba051880",
+    "count-array-callbacks.mjs": "79fd298eb3f1736f495e63c3ee2b4cac8bbdd1402ae60109de2008c695f3d67b",
+    "data-transfer/benchmark.mjs": "5b48c17bdac45ab4fffd5b3801c2d659ee6f5b70bd81701aaae76a70097df57a",
+    "data-transfer/count-and-parity.mjs": "daf2eee96b69cbde12e2bbb451f5559f41a2964c7b2cc226dd1fadde4844d36a",
+    "data-transfer/run-abba.mjs": "95dcc81a33502f93940643216dbe92a89e095f41d27cef85203d838c9244adf0",
+    "frontend/build.mjs": "e037db88a8614b0102391180164c3ad490219af12ee5a487811c6749b7a79943",
+    "frontend/harness.tsx": "f27f3737e28bbe57ade13941a7ffdac545d5edd4f0c3cc0ac3f0ed6dfbef9044",
+    "frontend/timing.mjs": "dab26929a10af71445f7b92e406dcc6b2c12b26b7c1ce6300dc7e13e5962c632",
+    "run.mjs": "aee7a28c93c3d03b5ecbf2bf26f922f3d56544fe91c9e2bf73fa471caeb55547",
+    "run.sh": "b37c65819bbf58bf707fb370ef758c802de5455734845bea5e1c6a2a88359458"
+  },
+  "archives": {
+    "timing-frontend.json.gz": {
+      "sha256": "6afad4fd9109cc9d174b9d7a584a056d3020d7d42f05c6e298e4e31d5d4fa2b0",
+      "uncompressedSha256": "d6cec482b3cb0dc537423317d37fcb1a3796ebdd80999b42922fc31014701dc6",
+      "bytes": 41622,
+      "uncompressedBytes": 281559,
+      "role": "formal"
+    },
+    "timing-data-transfer.json.gz": {
+      "sha256": "6ce151823ab4d229d667fed68eb394e94a281662fc3ac2405262b011de907287",
+      "uncompressedSha256": "979649ce03d49be9be04a85f73bc42a0626f5443986a31dfd4b3f0d5aa4a605f",
+      "bytes": 24644,
+      "uncompressedBytes": 445435,
+      "role": "formal"
+    },
+    "diagnostic-overlapped-frontend.json.gz": {
+      "sha256": "4ecfb92114c5ca68ecb775aef872203bb7e47ce11c3303de8f0cf6a461aa299c",
+      "uncompressedSha256": "998a1ef42089bb7347ed1b1a1e4fa942153e9c9f670d05eee5c1210898104ab5",
+      "bytes": 42032,
+      "uncompressedBytes": 281428,
+      "role": "diagnostic-only-excluded"
+    },
+    "timing-collection.json.gz": {
+      "sha256": "5ab21a2563b8a2a1b8f99977e68bd7624e2a636b47326f6947d862f732c64e40",
+      "uncompressedSha256": "f1283ea2c0489a2842ef5c01d99dde3c609e391bc77ea8ce1ea8f7ccbf59e0e4",
+      "bytes": 6742,
+      "uncompressedBytes": 28905,
+      "role": "formal"
+    }
+  },
+  "dependencyManifests": {
+    "package.json": "b6998cca9efe6427a09a496ea66e54a42aee411339461a41a4fdd9c8274b1a7b",
+    "pnpm-lock.yaml": "6dfa707c589d59ad4442cc26ff1b4cb1441ff0c1453c1e952bdbd1e85376840b"
+  },
+  "regressionFiles": {
+    "test/plugin-apps/business-content-lazy.test.ts": "4b2f61f4be035621d14abbd6bdcbcdc5dcd78e6cbe3f61d58ab7d234fbedb6bc",
+    "test/app-hallmark/listing-state-index.test.ts": "7b78e4da1214d9c35e22e711b2ada9a7f66091350db03349b252b204fa659070",
+    "test/performance/data-transfer-byte-copy.test.ts": "aeaa7564b899271bf481ce1377c40c34c15b3235036ed0b0daa424c86df2c757"
+  },
+  "dependencyInstaller": {
+    "name": "pnpm",
+    "version": "11.25.0",
+    "provenance": "Observed reused frozen installation: node_modules/.modules.yaml packageManager and its original successful install log. candidate72 root package.json and pnpm-lock.yaml match this installation.",
+    "repositoryPackageManagerDeclaration": false
+  }
+}

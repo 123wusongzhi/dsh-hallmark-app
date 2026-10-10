@@ -1,0 +1,261 @@
+{
+  "scope": "DETERMINISTIC_GATEWAY_LOOPBACK_FIXTURE",
+  "realLLM": false,
+  "actualBusiness": false,
+  "baseline": true,
+  "traces": [
+    {
+      "mode": "routed",
+      "outcome": "ok",
+      "steps": [
+        {
+          "value": {
+            "invocationId": "fixture-original-invocation",
+            "traceId": "fixture-original-trace",
+            "status": "unavailable",
+            "error": {
+              "code": "RUNTIME_UNAVAILABLE",
+              "message": "fetch failed",
+              "retryPolicy": "inspect_only",
+              "details": {
+                "invocationId": "fixture-original-invocation",
+                "doNotResubmitMutation": true,
+                "submitted": true
+              }
+            }
+          },
+          "rendered": "{\"error\":{\"code\":\"RUNTIME_UNAVAILABLE\",\"details\":{\"doNotResubmitMutation\":true,\"invocationId\":\"fixture-original-invocation\",\"submitted\":true},\"message\":\"fetch failed\",\"retryPolicy\":\"inspect_only\"},\"invocationId\":\"fixture-original-invocation\",\"status\":\"unavailable\",\"traceId\":\"fixture-original-trace\"}",
+          "model": {
+            "error": {
+              "code": "RUNTIME_UNAVAILABLE",
+              "details": {
+                "doNotResubmitMutation": true,
+                "invocationId": "fixture-original-invocation",
+                "submitted": true
+              },
+              "message": "fetch failed",
+              "retryPolicy": "inspect_only"
+            },
+            "invocationId": "fixture-original-invocation",
+            "status": "unavailable",
+            "traceId": "fixture-original-trace"
+          },
+          "args": {
+            "appId": "recoveryfixture",
+            "connectionId": "C1",
+            "capabilityId": "recoveryfixture.rows.mutation",
+            "capabilityVersion": "1.0.0",
+            "input": {
+              "privatePayload": "PRIVATE_PAYLOAD_SENTINEL"
+            },
+            "idempotencyKey": "fixture-original-intent",
+            "invocationId": "fixture-original-invocation",
+            "traceId": "fixture-original-trace"
+          },
+          "modelBytes": 300
+        },
+        {
+          "value": {
+            "invocationId": "host",
+            "traceId": "host",
+            "status": "failed",
+            "error": {
+              "code": "INVALID_INPUT",
+              "message": "$.invocationId: unknown field; $: does not match oneOf; $.operationId: required; $.resultRef: required",
+              "retryPolicy": "never"
+            }
+          },
+          "rendered": "{\"error\":{\"code\":\"INVALID_INPUT\",\"message\":\"$.invocationId: unknown field; $: does not match oneOf; $.operationId: required; $.resultRef: required\",\"retryPolicy\":\"never\"},\"invocationId\":\"host\",\"status\":\"failed\",\"traceId\":\"host\"}",
+          "model": {
+            "error": {
+              "code": "INVALID_INPUT",
+              "message": "$.invocationId: unknown field; $: does not match oneOf; $.operationId: required; $.resultRef: required",
+              "retryPolicy": "never"
+            },
+            "invocationId": "host",
+            "status": "failed",
+            "traceId": "host"
+          },
+          "args": {
+            "invocationId": "fixture-original-invocation"
+          },
+          "modelBytes": 228
+        }
+      ],
+      "http": [
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 245
+        },
+        {
+          "method": "GET",
+          "path": "/v1/capabilities/recoveryfixture.rows.mutation?version=1.0.0",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 635
+        },
+        {
+          "method": "POST",
+          "path": "/v1/routed-invocations",
+          "requestPayloadBytes": 454,
+          "status": 200,
+          "responsePayloadBytes": 506,
+          "dropped": "accepted-response"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/invocations/fixture-original-invocation",
+          "requestPayloadBytes": 0,
+          "dropped": "before-forward"
+        }
+      ],
+      "toolCalls": 2,
+      "httpCalls": 4,
+      "requestPayloadBytes": 454,
+      "responsePayloadBytes": 880,
+      "providerCalls": 1,
+      "providerInspections": 0,
+      "mutationPosts": 1,
+      "invocationRecords": 1,
+      "operationRecords": 1
+    },
+    {
+      "mode": "legacy",
+      "outcome": "ok",
+      "steps": [
+        {
+          "value": {
+            "result": {
+              "invocationId": "fixture-original-invocation",
+              "traceId": "fixture-original-trace",
+              "status": "unavailable",
+              "error": {
+                "code": "RUNTIME_RESPONSE_UNAVAILABLE",
+                "message": "Resolve the original invocation ID when Runtime returns; mutation resubmission is disabled.",
+                "retryPolicy": "inspect_only",
+                "details": {
+                  "invocationId": "fixture-original-invocation",
+                  "doNotResubmitMutation": true
+                }
+              }
+            },
+            "modelProjection": {
+              "content": "{\"error\":{\"code\":\"RESULT_SPILL_FAILED\",\"message\":\"模型结果投影不可用。请读取原invocation记录并用较小分页查询；不得重发变更。\"},\"invocationId\":\"fixture-original-invocation\",\"status\":\"failed\"}"
+            }
+          },
+          "rendered": "{\"error\":{\"code\":\"RESULT_SPILL_FAILED\",\"message\":\"模型结果投影不可用。请读取原invocation记录并用较小分页查询；不得重发变更。\"},\"invocationId\":\"fixture-original-invocation\",\"status\":\"failed\"}",
+          "model": {
+            "error": {
+              "code": "RESULT_SPILL_FAILED",
+              "message": "模型结果投影不可用。请读取原invocation记录并用较小分页查询；不得重发变更。"
+            },
+            "invocationId": "fixture-original-invocation",
+            "status": "failed"
+          },
+          "args": {
+            "appId": "recoveryfixture",
+            "connectionId": "C1",
+            "capabilityId": "recoveryfixture.rows.mutation",
+            "capabilityVersion": "1.0.0",
+            "input": {
+              "privatePayload": "PRIVATE_PAYLOAD_SENTINEL"
+            },
+            "idempotencyKey": "fixture-original-intent",
+            "invocationId": "fixture-original-invocation",
+            "traceId": "fixture-original-trace"
+          },
+          "modelBytes": 222
+        },
+        {
+          "value": {
+            "invocationId": "host",
+            "traceId": "host",
+            "status": "failed",
+            "error": {
+              "code": "INVALID_INPUT",
+              "message": "$.invocationId: unknown field; $: does not match oneOf; $.operationId: required; $.resultRef: required",
+              "retryPolicy": "never"
+            }
+          },
+          "rendered": "{\"error\":{\"code\":\"INVALID_INPUT\",\"message\":\"$.invocationId: unknown field; $: does not match oneOf; $.operationId: required; $.resultRef: required\",\"retryPolicy\":\"never\"},\"invocationId\":\"host\",\"status\":\"failed\",\"traceId\":\"host\"}",
+          "model": {
+            "error": {
+              "code": "INVALID_INPUT",
+              "message": "$.invocationId: unknown field; $: does not match oneOf; $.operationId: required; $.resultRef: required",
+              "retryPolicy": "never"
+            },
+            "invocationId": "host",
+            "status": "failed",
+            "traceId": "host"
+          },
+          "args": {
+            "invocationId": "fixture-original-invocation"
+          },
+          "modelBytes": 228
+        }
+      ],
+      "http": [
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 223
+        },
+        {
+          "method": "GET",
+          "path": "/v1/capabilities/recoveryfixture.rows.mutation?version=1.0.0",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 635
+        },
+        {
+          "method": "GET",
+          "path": "/v1/session-bindings?sessionId=owner-session",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 142
+        },
+        {
+          "method": "GET",
+          "path": "/v1/connections?appId=recoveryfixture",
+          "requestPayloadBytes": 0,
+          "status": 200,
+          "responsePayloadBytes": 331
+        },
+        {
+          "method": "POST",
+          "path": "/v1/invocations",
+          "requestPayloadBytes": 454,
+          "status": 200,
+          "responsePayloadBytes": 217,
+          "dropped": "accepted-response"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/invocations/fixture-original-invocation",
+          "requestPayloadBytes": 0,
+          "dropped": "before-forward"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/model-result",
+          "requestPayloadBytes": 46,
+          "dropped": "before-forward"
+        }
+      ],
+      "toolCalls": 2,
+      "httpCalls": 7,
+      "requestPayloadBytes": 500,
+      "responsePayloadBytes": 1331,
+      "providerCalls": 1,
+      "providerInspections": 0,
+      "mutationPosts": 1,
+      "invocationRecords": 1,
+      "operationRecords": 1
+    }
+  ]
+}

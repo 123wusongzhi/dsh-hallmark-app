@@ -12,17 +12,50 @@ test('Agent guidance describes automatic display and retry of the same preview a
   assert.equal(instructions.resultReader.request.runtime.keyFile,'key-file-reference');
 });
 
+// Follow the model-visible continuation contract without dropping any policy fields.
+async function fullGuidance(host:AppsHost,sessionId:string,tool:import('../../packages/plugin-apps/src/index.ts').NativeGatewayTool):Promise<any>{
+  const call=async(args:Record<string,import('../../packages/app-contracts/src/index.ts').JsonValue>):Promise<any>=>{
+    const value=await host.call('apps_describe',args,sessionId);
+    const rendered=tool.output.render(args,value) as {text:string}[];
+    assert.ok(Buffer.byteLength(rendered[0].text)<=16384);
+    return JSON.parse(rendered[0].text);
+  };
+  const read=async(args:Record<string,import('../../packages/app-contracts/src/index.ts').JsonValue>):Promise<any>=>{
+    let page:any=await call(args);
+    assert.equal(page.status,'ok');assert.ok(Buffer.byteLength(JSON.stringify(page))<=14000);
+    if(page.authoringGuidance)return page.authoringGuidance;
+    if(page.completeness==='complete')return page.value;
+    if(page.kind==='string'||page.kind==='serialized-json'){
+      const serialized=page.kind==='serialized-json';let text=page.text;
+      while(page.continuation){page=await call(page.continuation.arguments);assert.equal(page.status,'ok');text+=page.text;}
+      return serialized?JSON.parse(text):text;
+    }
+    assert.equal(page.kind,'directory');const result:any=page.containerKind==='array'?[]:{};
+    while(true){for(const entry of page.entries)Object.defineProperty(result,entry.key,{value:await read(entry.read.arguments),enumerable:true});if(!page.continuation)break;page=await call(page.continuation.arguments);assert.equal(page.status,'ok');}
+    return result;
+  };
+  const initial:any=await call({capabilityId:'apps.authoring.begin'});
+  if(initial.authoringGuidance)return initial.authoringGuidance;
+  assert.equal(initial.kind,'directory');
+  const entry=initial.entries.find((value:any)=>value.key==='authoringGuidance');assert.ok(entry,'root must provide executable guidance read');
+  return read(entry.read.arguments);
+}
+
 test('Host keeps essential experience rules compact and returns full policy on authoring describe',async()=>{
   const agent={id:'original-session'},root='C:/Users/wubil/.dsh/profiles/desktop/node_modules/dsh-plugin-apps-bundle',directory='E:/project/deepseek_h/dsh-hallmark-app/artifacts/apps-a2-bill-runtime-restored';
   let summary!:(context:{agent?:{id:string};scope?:object})=>string;
-  const ctx={agents:{get:(id:string)=>id===agent.id?agent:undefined},tools:{register:()=>()=>{}},systemPrompt:{context(contribution:{text:typeof summary}){summary=contribution.text;return()=>{};}}} as unknown as AppsPluginContext;
+  const registered=new Map<string,import('../../packages/plugin-apps/src/index.ts').NativeGatewayTool>();
+  const ctx={agents:{get:(id:string)=>id===agent.id?agent:undefined},tools:{register:(tool:import('../../packages/plugin-apps/src/index.ts').NativeGatewayTool)=>{registered.set(tool.name,tool);return()=>{};}},systemPrompt:{context(contribution:{text:typeof summary}){summary=contribution.text;return()=>{};}}} as unknown as AppsPluginContext;
   const transport={identity:async()=>({transportMajor:1,catalogSchemaVersion:1}),describe:async()=>APP_AUTHORING_DESCRIPTORS.find(d=>d.capabilityId==='apps.authoring.begin'),listApps:async()=>[{appId:'hallmark',displayName:'Hallmark',providerState:'active'},{appId:'notes',displayName:'Notes',providerState:'active'}]} as unknown as AppsHostTransport;
   const guidance:AppsAuthoringGuidance={cliPath:'C:/Users/wubil/AppData/Local/Programs/DeepSeek Harness/resources/runtime/cli/bin/dsh.cmd',nodeExecutable:'C:/Users/wubil/AppData/Local/Programs/DeepSeek Harness/DeepSeek Harness.exe',nodeArgs:['--expose-internals'],nodeEnvironment:{ELECTRON_RUN_AS_NODE:'1'},starterPath:root+'/source-starter/create-apps-source.mjs',sdkDirectory:root+'/sdk/component-runtime',buildRunnerPath:root+'/lib/apps-authoring-build.js',previewRunnerPath:root+'/lib/apps-authoring-preview.js',runtime:{url:'http://127.0.0.1:36994',keyFile:directory+'/service-key',archiveRoot:directory+'/source-components',evidenceRoot:directory+'/authoring-evidence'}};
   const host=new AppsHost(ctx,transport,undefined,{authoringGuidance:guidance});
   await host.start();
   try{
     assert.equal(host.nativeSessionAdapter,'disabled');
-    const text=summary({scope:agent}),payload=(await host.call('apps_describe',{capabilityId:'apps.authoring.begin'},agent.id) as any).authoringGuidance,rules=payload.userPreferences.rules.join('\n');assert.match(text,/15分钟/);assert.match(text,/完整体验规则/);assert.equal(text.includes(guidance.runtime.keyFile),false);assert.ok(Buffer.byteLength(text)<1500);
+    const legacy={status:'ok',descriptor:APP_AUTHORING_DESCRIPTORS.find(d=>d.capabilityId==='apps.authoring.begin'),authoringGuidance:authoringInstructions(guidance,agent.id)};
+    const legacyText=registered.get('apps_describe')!.output.render({capabilityId:'apps.authoring.begin'},legacy) as {text:string}[];
+    assert.ok(Buffer.byteLength(JSON.stringify(legacy))>16384);assert.equal(JSON.parse(legacyText[0].text).error.code,'RESULT_SPILL_FAILED');
+    const text=summary({scope:agent}),payload=await fullGuidance(host,agent.id,registered.get('apps_describe')!),rules=payload.userPreferences.rules.join('\n');assert.match(text,/15分钟/);assert.match(text,/完整体验规则/);assert.equal(text.includes(guidance.runtime.keyFile),false);assert.ok(Buffer.byteLength(text)<1500);
     assert.equal(payload.guidanceVersion,9);assert.equal(payload.userPreferences.policy,'component-experience-v1');assert.equal(payload.userPreferences.cacheTtlMs,15*60*1000);
     assert.equal(payload.developerDocs.userPreferences,root+'/authoring-docs/user-preferences.md');
     for(const pattern of [/蓝白/,/易懂中文/,/店铺选择/,/跨接口/,/添加信息/,/全量逻辑数据/,/后端组合/,/上次成功完整快照/,/手动刷新都在后台/,/临时失败保留旧快照和原时间/,/首次无快照/,/权限撤销/])assert.match(rules,pattern);

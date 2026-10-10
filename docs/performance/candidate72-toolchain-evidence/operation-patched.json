@@ -1,0 +1,82 @@
+{
+  "scope": "DETERMINISTIC_AGENT_SCOPE_FIXTURE",
+  "realLLM": false,
+  "actualBusiness": false,
+  "baseline": false,
+  "traces": [
+    {
+      "scenario": "other-bound",
+      "result": {
+        "model": {
+          "error": {
+            "code": "OPERATION_NOT_FOUND",
+            "message": "Original operation is not available in this session.",
+            "retryPolicy": "never"
+          },
+          "invocationId": "host",
+          "status": "failed",
+          "traceId": "host"
+        },
+        "modelBytes": 184,
+        "rendered": "{\"error\":{\"code\":\"OPERATION_NOT_FOUND\",\"message\":\"Original operation is not available in this session.\",\"retryPolicy\":\"never\"},\"invocationId\":\"host\",\"status\":\"failed\",\"traceId\":\"host\"}"
+      },
+      "http": [
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "responsePayloadBytes": 245,
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/v1/operations/be801687-fc4f-428b-a274-6425c71f9e30/inspect-session",
+          "requestPayloadBytes": 35,
+          "responsePayloadBytes": 145,
+          "status": 404
+        }
+      ],
+      "providerCalls": 1,
+      "providerInspections": 0,
+      "invocationCount": 1,
+      "operationCount": 1
+    },
+    {
+      "scenario": "other-unbound",
+      "result": {
+        "model": {
+          "error": {
+            "code": "OPERATION_NOT_FOUND",
+            "message": "Original operation is not available in this session.",
+            "retryPolicy": "never"
+          },
+          "invocationId": "host",
+          "status": "failed",
+          "traceId": "host"
+        },
+        "modelBytes": 184,
+        "rendered": "{\"error\":{\"code\":\"OPERATION_NOT_FOUND\",\"message\":\"Original operation is not available in this session.\",\"retryPolicy\":\"never\"},\"invocationId\":\"host\",\"status\":\"failed\",\"traceId\":\"host\"}"
+      },
+      "http": [
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "responsePayloadBytes": 245,
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/v1/operations/0881c9b0-0072-4178-b141-263bf4255f18/inspect-session",
+          "requestPayloadBytes": 37,
+          "responsePayloadBytes": 145,
+          "status": 404
+        }
+      ],
+      "providerCalls": 1,
+      "providerInspections": 0,
+      "invocationCount": 1,
+      "operationCount": 1
+    }
+  ]
+}

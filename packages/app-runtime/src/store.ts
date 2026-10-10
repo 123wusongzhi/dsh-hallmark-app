@@ -127,6 +127,8 @@ export class RuntimeStore {
   }
   /** Keep error candidates; any matching duplicate key is a candidate, then the caller applies JS last-key-wins filtering. */
   providerRecordScopeCandidates<T>(appId:string,connectionId:string,namespace:string):T[] {
+    const list=this.list;
+    if(list!==originalRuntimeStoreList)return Reflect.apply(list,this,['provider_records']) as T[];
     return this.db.prepare(`SELECT value_json FROM ${this.table('provider_records')} WHERE CASE WHEN typeof(value_json)<>'text' OR NOT json_valid(value_json) THEN 1 WHEN json_type(value_json)='null' THEN 1 WHEN NOT EXISTS (SELECT 1 FROM json_each(value_json) WHERE key='appId' AND type='text' AND value=?) THEN 0 WHEN NOT EXISTS (SELECT 1 FROM json_each(value_json) WHERE key='connectionId' AND type='text' AND value=?) THEN 0 ELSE EXISTS (SELECT 1 FROM json_each(value_json) WHERE key='namespace' AND type='text' AND value=?) END ORDER BY created_at,id`).all(appId,connectionId,namespace).map(row=>JSON.parse(String(row.value_json)) as T);
   }
   viewsForSession<T>(sessionId:string):T[] {
@@ -205,3 +207,6 @@ export class RuntimeStore {
   }
   close(): void { if (!this.#closed) { this.db.close(); this.#closed = true; } }
 }
+
+// Capture once at module initialization, before callers can replace the prototype or an instance method.
+const originalRuntimeStoreList=RuntimeStore.prototype.list;

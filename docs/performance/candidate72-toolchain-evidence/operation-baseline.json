@@ -1,0 +1,100 @@
+{
+  "scope": "DETERMINISTIC_AGENT_SCOPE_FIXTURE",
+  "realLLM": false,
+  "actualBusiness": false,
+  "baseline": true,
+  "traces": [
+    {
+      "scenario": "other-bound",
+      "result": {
+        "model": {
+          "invocationId": "f5a4ee55-17c5-4112-9e59-70d833e09f6a",
+          "traceId": "owner-original-trace",
+          "status": "ok",
+          "data": {
+            "receipt": "OWNER_ONLY_SYNTHETIC_RECEIPT"
+          },
+          "operation": {
+            "operationId": "6f32656c-a3c6-4eb4-93d2-6f7b164cbba9",
+            "state": "succeeded"
+          }
+        },
+        "modelBytes": 239,
+        "rendered": "{\"invocationId\":\"f5a4ee55-17c5-4112-9e59-70d833e09f6a\",\"traceId\":\"owner-original-trace\",\"status\":\"ok\",\"data\":{\"receipt\":\"OWNER_ONLY_SYNTHETIC_RECEIPT\"},\"operation\":{\"operationId\":\"6f32656c-a3c6-4eb4-93d2-6f7b164cbba9\",\"state\":\"succeeded\"}}"
+      },
+      "http": [
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "responsePayloadBytes": 245,
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/v1/operations/6f32656c-a3c6-4eb4-93d2-6f7b164cbba9/inspect",
+          "requestPayloadBytes": 2,
+          "responsePayloadBytes": 239,
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/v1/model-result",
+          "requestPayloadBytes": 55,
+          "responsePayloadBytes": 281,
+          "status": 200
+        }
+      ],
+      "providerCalls": 1,
+      "providerInspections": 0,
+      "invocationCount": 2,
+      "operationCount": 1
+    },
+    {
+      "scenario": "other-unbound",
+      "result": {
+        "model": {
+          "invocationId": "e5e81b15-6125-4b30-ae04-a69e481c0d56",
+          "traceId": "owner-original-trace",
+          "status": "ok",
+          "data": {
+            "receipt": "OWNER_ONLY_SYNTHETIC_RECEIPT"
+          },
+          "operation": {
+            "operationId": "ed7adf75-9474-490d-a39f-8dab5477836b",
+            "state": "succeeded"
+          }
+        },
+        "modelBytes": 239,
+        "rendered": "{\"invocationId\":\"e5e81b15-6125-4b30-ae04-a69e481c0d56\",\"traceId\":\"owner-original-trace\",\"status\":\"ok\",\"data\":{\"receipt\":\"OWNER_ONLY_SYNTHETIC_RECEIPT\"},\"operation\":{\"operationId\":\"ed7adf75-9474-490d-a39f-8dab5477836b\",\"state\":\"succeeded\"}}"
+      },
+      "http": [
+        {
+          "method": "GET",
+          "path": "/v1/runtime",
+          "requestPayloadBytes": 0,
+          "responsePayloadBytes": 245,
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/v1/operations/ed7adf75-9474-490d-a39f-8dab5477836b/inspect",
+          "requestPayloadBytes": 2,
+          "responsePayloadBytes": 239,
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/v1/model-result",
+          "requestPayloadBytes": 55,
+          "responsePayloadBytes": 281,
+          "status": 200
+        }
+      ],
+      "providerCalls": 1,
+      "providerInspections": 0,
+      "invocationCount": 2,
+      "operationCount": 1
+    }
+  ]
+}

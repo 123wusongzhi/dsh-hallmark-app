@@ -1,0 +1,128 @@
+{
+  "mode": "smoke",
+  "scope": "functional-only-no-speed-claim",
+  "base": "<cloud-workspace>/hallmark-c72-baseline",
+  "candidate": "<cloud-workspace>/hallmark-c72-three-repro",
+  "baseCommit": "4e1cd98082a432e2ca89f606927da29eb26ddb67",
+  "candidateHead": "4e1cd98082a432e2ca89f606927da29eb26ddb67",
+  "candidateStatus": "M packages/app-hallmark/src/listing-prepare.ts\n M packages/component-runtime/src/data-transfer-client.ts\n M packages/plugin-apps/client/business-operations.tsx\n?? docs/performance/candidate72-revalidation.md\n?? docs/performance/candidate72-revalidation/\n?? scripts/performance/candidate72-revalidation/\n?? test/app-hallmark/listing-state-index.test.ts\n?? test/performance/data-transfer-byte-copy.test.ts\n?? test/plugin-apps/business-content-lazy.test.ts",
+  "sourceFiles": {
+    "packages/plugin-apps/client/business-operations.tsx": {
+      "baseline": "8f59a90d427d619fb5f7488a5d731bf8eb21a0571a2f87ace28e8b8a56afafa1",
+      "candidate": "c40bd87a1662f1d3d1c13d78bfec193060530ce453e46c0ca80f806a9b28e281"
+    },
+    "packages/app-hallmark/src/listing-prepare.ts": {
+      "baseline": "179c97e8cdf31ca54930318d49ccc814e8818e3fb20a5abb2306c76d48021017",
+      "candidate": "04b3c50d4395e9030fd24805d135bc74e89fc86a88fcc456baac7f75bb2af67d"
+    },
+    "packages/component-runtime/src/data-transfer-client.ts": {
+      "baseline": "3911482b255c59912d9d32ad2f19157c90b3d5b2b619c222dc77ae51dba629cb",
+      "candidate": "ecbc45bd68f22d7b4038f994f38bfc8dd0b79e28894f70091c75dfd922b2e1b7"
+    }
+  },
+  "node": "v24.19.0",
+  "versions": {
+    "node": "24.19.0",
+    "acorn": "8.17.0",
+    "ada": "3.4.4",
+    "amaro": "1.1.10",
+    "ares": "1.34.6",
+    "brotli": "1.2.0",
+    "cldr": "48.0",
+    "icu": "78.3",
+    "llhttp": "9.4.3",
+    "merve": "1.2.2",
+    "modules": "137",
+    "napi": "10",
+    "nbytes": "0.1.4",
+    "ncrypto": "0.0.1",
+    "nghttp2": "1.69.0",
+    "nghttp3": "",
+    "ngtcp2": "",
+    "openssl": "3.5.7",
+    "simdjson": "4.6.4",
+    "simdutf": "6.4.0",
+    "sqlite": "3.53.3",
+    "tz": "2026b",
+    "undici": "7.29.0",
+    "unicode": "17.0",
+    "uv": "1.52.1",
+    "uvwasi": "0.0.23",
+    "v8": "13.6.233.17-node.51",
+    "zlib": "1.3.2.1-motley-3246f1b",
+    "zstd": "1.5.7"
+  },
+  "lock": "/tmp/hallmark-c72-cpu.lock",
+  "steps": [
+    {
+      "label": "frontend-build",
+      "program": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "args": [
+        "build.mjs"
+      ],
+      "cwd": "<cloud-workspace>/hallmark-c72-portable-smoke/hallmark-c72-performance-evidence/frontend",
+      "status": 0
+    },
+    {
+      "label": "frontend-baseline",
+      "program": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "args": [
+        "baseline.mjs",
+        "10",
+        "0",
+        "parity",
+        "baseline"
+      ],
+      "cwd": "<cloud-workspace>/hallmark-c72-portable-smoke/hallmark-c72-performance-evidence/frontend",
+      "status": 0
+    },
+    {
+      "label": "frontend-lazy",
+      "program": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "args": [
+        "lazy.mjs",
+        "10",
+        "0",
+        "parity",
+        "lazy"
+      ],
+      "cwd": "<cloud-workspace>/hallmark-c72-portable-smoke/hallmark-c72-performance-evidence/frontend",
+      "status": 0
+    },
+    {
+      "label": "collection-baseline",
+      "program": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "args": [
+        "runtime-collection-harness.mjs",
+        "root=<cloud-workspace>/hallmark-c72-baseline",
+        "mode=parity",
+        "size=tiny",
+        "output=<cloud-workspace>/hallmark-c72-portable-smoke/hallmark-c72-performance-evidence/collection/baseline.json"
+      ],
+      "cwd": "<cloud-workspace>/hallmark-c72-portable-smoke/hallmark-c72-performance-evidence/collection",
+      "status": 0
+    },
+    {
+      "label": "collection-candidate",
+      "program": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "args": [
+        "runtime-collection-harness.mjs",
+        "root=<cloud-workspace>/hallmark-c72-three-repro",
+        "mode=parity",
+        "size=tiny",
+        "output=<cloud-workspace>/hallmark-c72-portable-smoke/hallmark-c72-performance-evidence/collection/candidate.json"
+      ],
+      "cwd": "<cloud-workspace>/hallmark-c72-portable-smoke/hallmark-c72-performance-evidence/collection",
+      "status": 0
+    },
+    {
+      "label": "transfer-functional",
+      "program": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "args": [
+        "count-and-parity.mjs"
+      ],
+      "cwd": "<cloud-workspace>/hallmark-c72-portable-smoke/hallmark-c72-performance-evidence/data-transfer",
+      "status": 0
+    }
+  ]
+}

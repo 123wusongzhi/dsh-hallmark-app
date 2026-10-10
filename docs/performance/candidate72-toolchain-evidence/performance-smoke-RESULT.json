@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "mode": "smoke",
+  "baseCommit": "4e1cd98082a432e2ca89f606927da29eb26ddb67",
+  "frontendFrames": 43,
+  "collectionSize": "tiny",
+  "collectionBytesSha256": "248116aabc7c0870049fbf9041e9f994ddcfa30f5f2b97aa05eb5bad6962549e",
+  "sourceIdentity": "run-identity.json",
+  "timingProcesses": 0,
+  "browserAcceptance": "NOT_RUN",
+  "integrationGate": "not run by this focused script"
+}

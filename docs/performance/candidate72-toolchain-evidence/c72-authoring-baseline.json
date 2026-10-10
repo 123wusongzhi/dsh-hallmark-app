@@ -1,0 +1,44 @@
+{
+  "scope": "DETERMINISTIC_AGENT_TRAJECTORY_REAL_REGISTERED_TOOL_AND_RUNTIME",
+  "externalLLM": false,
+  "externalBusiness": false,
+  "completion": false,
+  "diagnostic": null,
+  "toolCalls": 2,
+  "outputBytes": 1500,
+  "events": [
+    {
+      "name": "apps_invoke",
+      "args": {
+        "appId": "apps",
+        "connectionId": "presentation",
+        "capabilityId": "apps.authoring.begin",
+        "capabilityVersion": "1.0.0",
+        "input": {
+          "mode": "new",
+          "title": "Isolated toolchain diagnostic"
+        }
+      },
+      "inputBytes": 175,
+      "outputBytes": 1350,
+      "elapsedMs": 9.61918700000001,
+      "status": "ok",
+      "error": null
+    },
+    {
+      "name": "apps_describe",
+      "args": {
+        "capabilityId": "apps.authoring.inspect",
+        "version": "1.0.0"
+      },
+      "inputBytes": 59,
+      "outputBytes": 150,
+      "elapsedMs": 1.3626639999999952,
+      "status": "failed",
+      "error": {
+        "code": "RESULT_SPILL_FAILED",
+        "message": "此发现/说明结果超过预算。请限制能力分页或缩小工作集。"
+      }
+    }
+  ]
+}

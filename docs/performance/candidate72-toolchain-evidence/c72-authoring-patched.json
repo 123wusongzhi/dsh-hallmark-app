@@ -1,0 +1,76 @@
+{
+  "scope": "DETERMINISTIC_AGENT_TRAJECTORY_REAL_REGISTERED_TOOL_AND_RUNTIME",
+  "externalLLM": false,
+  "externalBusiness": false,
+  "completion": true,
+  "diagnostic": {
+    "blockedStage": "build",
+    "currentDisplay": null,
+    "lastConfirmedDisplay": null,
+    "nextAction": {
+      "action": "build",
+      "errorCodes": [],
+      "reason": "当前尝试还没有构建回执，完成源码后执行构建。",
+      "target": {
+        "attemptId": "e1ee8e12-fc04-450c-88c7-03552102e6b6",
+        "buildId": null,
+        "displayId": null,
+        "epoch": 1,
+        "publicationId": null
+      }
+    },
+    "preparedBuild": null,
+    "requiresRebuild": false
+  },
+  "toolCalls": 3,
+  "outputBytes": 4939,
+  "events": [
+    {
+      "name": "apps_invoke",
+      "args": {
+        "appId": "apps",
+        "connectionId": "presentation",
+        "capabilityId": "apps.authoring.begin",
+        "capabilityVersion": "1.0.0",
+        "input": {
+          "mode": "new",
+          "title": "Isolated toolchain diagnostic"
+        }
+      },
+      "inputBytes": 175,
+      "outputBytes": 1350,
+      "elapsedMs": 10.57127300000002,
+      "status": "ok",
+      "error": null
+    },
+    {
+      "name": "apps_describe",
+      "args": {
+        "capabilityId": "apps.authoring.inspect",
+        "version": "1.0.0"
+      },
+      "inputBytes": 59,
+      "outputBytes": 1726,
+      "elapsedMs": 2.5152009999999905,
+      "status": "ok",
+      "error": null
+    },
+    {
+      "name": "apps_invoke",
+      "args": {
+        "appId": "apps",
+        "connectionId": "presentation",
+        "capabilityId": "apps.authoring.inspect",
+        "capabilityVersion": "1.0.0",
+        "input": {
+          "attemptId": "e1ee8e12-fc04-450c-88c7-03552102e6b6"
+        }
+      },
+      "inputBytes": 175,
+      "outputBytes": 1863,
+      "elapsedMs": 5.709535000000017,
+      "status": "ok",
+      "error": null
+    }
+  ]
+}
