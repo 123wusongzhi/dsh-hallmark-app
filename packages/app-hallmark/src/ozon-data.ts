@@ -39,11 +39,21 @@ export function hallmarkOzonSources(connectionId:string):DataSourceDraft[]{retur
  return {id:`hallmark:${connectionId}:ozon:${kind}`,title:`Ozon ${spec.title}`,description:spec.description,appId:'hallmark',connectionId,capabilityId:`hallmark.ozon.${kind}`,capabilityMajor:1,storeScoped:true,input:{loadAll:true},parameters,rowsPath:'items',fields:spec.fields.map(key=>({path:key,role:`ozon.${key}`,confirmed:true,label:OZON_FIELD_META[key].label,description:OZON_FIELD_META[key].description,...(OZON_FIELD_META[key].unit?{unit:OZON_FIELD_META[key].unit}:{}),...(OZON_FIELD_META[key].format==='currency'?{currencyPath:'currency'}:{})})),operations:{search:{scope:'loaded'},sort:{scope:'loaded'}}};
 });}
 
-interface OzonClient {storeDataRead?:(storeId:string,input:PlatformCallInput)=>Promise<AdapterResponse>;readOrderWeights?:(storeId:string,input:RecordData)=>Promise<AdapterResponse>}
+interface OzonClient {storeDataRead?:(storeId:string,input:PlatformCallInput)=>Promise<AdapterResponse>;readOrderWeights?:(storeId:string,input:RecordData,signal?:AbortSignal)=>Promise<AdapterResponse>}
 interface Page {items:Row[];next?:RecordData;total?:number;dataTime?:string|null;warnings?:string[]}
 interface SavedCursor extends Page {scope:string;expiresAt:number;buffer:Row[];continuation?:RecordData}
 const record=(v:unknown):RecordData=>v!==null&&typeof v==='object'&&!Array.isArray(v)?v as RecordData:{};
 const str=(v:unknown):string|null=>typeof v==='string'?v:typeof v==='number'&&Number.isSafeInteger(v)?String(v):null;
+/** Ozon platform identity only: collector SKU codes and seller offer IDs are unrelated. */
+export function normalizeOzonSku(value:unknown):string|null {const sku=str(value);return sku!==null&&/^[1-9][0-9]*$/.test(sku)?sku:null;}
+function withValidPlatformSkus(result:ToolResult,kind:OzonKind):ToolResult {
+ if(!specs[kind].fields.includes('sku'))return result;
+ const data=record(result.data);if(result.status!=='ok'||!Array.isArray(data.items))return result;
+ let missing=0,changed=false;
+ const items=data.items.map((row:RecordData)=>{if(!Object.hasOwn(row,'sku'))return row;const sku=normalizeOzonSku(row.sku);if(sku===null)missing++;if(sku===row.sku)return row;changed=true;return {...row,sku};});
+ if(!missing&&!changed)return result;
+ return {...result,data:{...data,items,warnings:[...new Set([...(data.warnings??[]),...(missing?[`当前返回的 ${missing} 条记录没有有效平台 SKU；保留其他身份和平台状态，不将未知值用于 SKU 查询或关联。`]:[])])]}};
+}
 const num=(v:unknown):number|null=>typeof v==='number'&&Number.isFinite(v)?v:typeof v==='string'&&/^-?\d+(?:\.\d+)?$/.test(v.trim())&&Number.isFinite(Number(v))?Number(v):null;
 const fail=(code:string,message:string):never=>{throw Object.assign(new Error(message),{code});};
 const statusLabels:Record<string,Record<string,string>>={products:{'Продается':'在售','Не продается':'暂不可售','На модерации':'审核中','Отклонен':'审核未通过','В архиве':'已归档','Архив':'已归档'},orders:{awaiting_packaging:'待打包',awaiting_deliver:'待交运',delivering:'运输中',delivered:'已送达',cancelled:'已取消',awaiting_registration:'待登记',not_accepted:'未接收',arbitration:'争议处理中',client_arbitration:'买家争议处理中',driver_pickup:'司机揽收中'},warehouses:{working:'正常工作',disabled:'已停用',ACTIVE:'已启用',DISABLED:'已停用'},returns:{Utilizing:'销毁处理中',Utilized:'已销毁'}};
@@ -61,31 +71,69 @@ function nextToken(raw:RecordData,state:RecordData,rows:RecordData[],limit:numbe
  if(has===true||rows.length>=limit||total!==null&&seen<total)fail('OZON_PAGINATION_MISSING','平台返回完整页但缺少继续分页的位置。');return undefined;
 }
 
+type WeightSnapshotFlight={controller:AbortController;waiters:number;pending:Set<Promise<ToolResult>>};
+const weightSnapshotFlights=new WeakMap<CoreStore,Map<string,WeightSnapshotFlight>>();
+const weightCancelled=():ToolResult=>({status:'failed',error:{code:'OZON_REQUEST_CANCELLED',message:'实重读取已取消。',retryable:false}});
+function waitForWeightRead(work:Promise<ToolResult>,signal:AbortSignal|undefined,leave:(cancelled:boolean)=>void):Promise<ToolResult>{
+ return new Promise((resolve,reject)=>{
+  let done=false;
+  const finish=(cancelled:boolean,settle:()=>void)=>{if(done)return;done=true;signal?.removeEventListener('abort',abort);leave(cancelled);settle();};
+  const abort=()=>finish(true,()=>resolve(weightCancelled()));
+  signal?.addEventListener('abort',abort,{once:true});
+  work.then(result=>finish(false,()=>resolve(result)),error=>finish(false,()=>reject(error)));
+  if(signal?.aborted)abort();
+ });
+}
+/** Full snapshots share their build. Only the final waiting caller can cancel that build. */
+function readWeightSnapshot(store:CoreStore,storeId:string,scope:unknown,signal:AbortSignal|undefined,run:(signal:AbortSignal)=>Promise<ToolResult>):Promise<ToolResult>{
+ if(signal?.aborted)return Promise.resolve(weightCancelled());
+ const key=canonicalJson({storeId,generation:snapshotGeneration(store,storeId),scope});
+ let active=weightSnapshotFlights.get(store);if(!active){active=new Map();weightSnapshotFlights.set(store,active);}
+ let flight=active.get(key);
+ // Do not let a new caller attach to an aborted snapshot build that is still retiring.
+ if(flight?.controller.signal.aborted)return waitForWeightRead(Promise.allSettled([...flight.pending]).then(()=>readWeightSnapshot(store,storeId,scope,signal,run)),signal,()=>{});
+ if(!flight){flight={controller:new AbortController(),waiters:0,pending:new Set()};active.set(key,flight);}
+ const owned=flight;
+ const cleanup=()=>{if(!owned.waiters&&!owned.pending.size&&active.get(key)===owned)active.delete(key);};
+ owned.waiters++;
+ const work=Promise.resolve().then(()=>owned.controller.signal.aborted?weightCancelled():run(owned.controller.signal));owned.pending.add(work);
+ const settled=()=>{owned.pending.delete(work);cleanup();};void work.then(settled,settled);
+ return waitForWeightRead(work,signal,cancelled=>{owned.waiters--;if(cancelled&&!owned.waiters)owned.controller.abort();cleanup();});
+}
+
 /** New business reads never create or reuse an unrelated listing task. */
 export async function readOzonData(kind:OzonKind,args:RecordData,store:CoreStore,client:OzonClient,signal?:AbortSignal):Promise<ToolResult>{
+ if(kind==='weights'&&signal?.aborted)return weightCancelled();
  if(args.loadAll===true){
   if(typeof args.storeId!=='string'||!args.storeId||args.cursor!==undefined||args.forceRefresh!==undefined&&typeof args.forceRefresh!=='boolean')return {status:'failed',error:{code:'INVALID_FULL_READ',message:'完整读取需要店铺，不使用分页位置，刷新标记须为布尔值。',retryable:false}};
   const {forceRefresh,loadAll,limit,...filters}=args;
-  return readCompleteSnapshot({store,storeId:args.storeId,scope:{kind:`ozon:${kind}`,input:filters},force:forceRefresh===true,build:async()=>{
+  const scope={kind:`ozon:${kind}`,input:filters};
+  const readSnapshot=(sharedSignal?:AbortSignal)=>readCompleteSnapshot({store,storeId:args.storeId,scope,force:forceRefresh===true,build:async()=>{
    const items:Row[]=[],warnings=new Set<string>(),times=new Set<string>();let cursor:string|undefined,unknownTime=false,pages=0,first:ToolResult|undefined;const cursors=new Set<string>();
    do{
+    if(sharedSignal?.aborted)return weightCancelled();
     if(++pages>1000||items.length>100000)return {status:'failed',error:{code:'OZON_FULL_READ_LIMIT',message:'数据超出完整读取上限，请缩小日期范围；保留上次完整快照。',retryable:false}};
-    const response=await readOzonDataPage(kind,{...filters,limit:100,...(cursor?{cursor}:{})},store,client);if(response.status!=='ok')return response;first??=response;
+    const response=await readOzonDataPage(kind,{...filters,limit:100,...(cursor?{cursor}:{})},store,client,sharedSignal);if(sharedSignal?.aborted)return weightCancelled();if(response.status!=='ok')return response;first??=response;
     const payload=record(response.data);items.push(...payload.items);for(const warning of payload.warnings??[])warnings.add(warning);if(typeof payload.dataTime==='string')times.add(payload.dataTime);else unknownTime=true;
     cursor=typeof payload.cursor==='string'?payload.cursor:undefined;if(cursor){if(cursors.has(cursor))return {status:'failed',error:{code:'OZON_PAGINATION_STALLED',message:'数据分页重复，保留上次完整快照。',retryable:false}};cursors.add(cursor);}
    }while(cursor);
    return {...first!,data:{items,total:items.length,dataTime:!unknownTime&&times.size===1?[...times][0]:null,warnings:[...warnings],...(args.dateFrom?{period:{dateFrom:args.dateFrom,dateTo:args.dateTo}}:{})}};
   }});
+  return withValidPlatformSkus(await(kind==='weights'?readWeightSnapshot(store,args.storeId,scope,signal,readSnapshot):readSnapshot()),kind);
  }
- return readOzonDataPage(kind,args,store,client,signal);
+ // Normalize at the public boundary as old durable snapshots/cursors may still contain zero.
+ // Do not mutate stored upstream evidence or force an otherwise unnecessary refresh.
+ return withValidPlatformSkus(await readOzonDataPage(kind,args,store,client,signal),kind);
 }
 async function readOzonDataPage(kind:OzonKind,args:RecordData,store:CoreStore,client:OzonClient,signal?:AbortSignal):Promise<ToolResult>{
+ if(kind==='weights'&&signal?.aborted)return weightCancelled();
  try {
   if(typeof args.storeId!=='string'||!args.storeId)fail('STORE_REQUIRED','请在工作台选择店铺。');dateRange(args,kind);
   const limit=args.limit??20,{cursor,...filters}=args,scope=createHash('sha256').update(canonicalJson({kind,generation:snapshotGeneration(store,args.storeId),filters:{...filters,limit}})).digest('hex');
   let page:Page;
   if(cursor){const saved=store.get<SavedCursor>('ozon_read_cursors',cursor);if(!saved||saved.scope!==scope||saved.expiresAt<Date.now())throw Object.assign(new Error('分页已过期或不属于当前店铺和筛选条件，请从第一页读取。'),{code:'INVALID_CURSOR'});page=saved.buffer.length?{...saved,items:saved.buffer,next:saved.continuation}:await fetchPage(kind,args,saved.continuation??{},client,signal);}
-  else {let initial:RecordData={};if(kind==='weights'){const previous=store.get<RecordData>('ozon_weight_queries',scope);const requestId=previous&&previous.expiresAt>Date.now()?previous.requestId:randomUUID();store.put('ozon_weight_queries',scope,{requestId,expiresAt:Date.now()+3600000});initial={requestId};}page=await fetchPage(kind,args,initial,client,signal);}
+  else {let initial:RecordData={};if(kind==='weights'){const previous=store.get<RecordData>('ozon_weight_queries',scope),query=previous&&previous.expiresAt>Date.now()?previous:{requestId:randomUUID(),expiresAt:Date.now()+3600000};if(query!==previous)store.put('ozon_weight_queries',scope,query);initial={requestId:query.requestId};}page=await fetchPage(kind,args,initial,client,signal);}
+  if(kind==='weights'&&signal?.aborted)return weightCancelled();
   const items=page.items.slice(0,limit),buffer=page.items.slice(limit);let next:string|undefined;
   if(buffer.length||page.next){next=`ozon:${randomUUID()}`;store.put<SavedCursor>('ozon_read_cursors',next,clean({...page,items:[],scope,expiresAt:Date.now()+3600000,buffer,continuation:page.next}));}
   const zonedTime=page.dataTime&&/^\d{4}-\d{2}-\d{2}T.+(?:Z|[+-]\d{2}:\d{2})$/.test(page.dataTime)?page.dataTime:undefined;
@@ -162,7 +210,7 @@ async function fetchPage(kind:OzonKind,args:RecordData,state:RecordData,client:O
  }
  if(kind==='weights'){
   if(!client.readOrderWeights)fail('ORDER_WEIGHT_QUERY_UNAVAILABLE','连接尚未提供物流实重只读查询。');
-  const response=await client.readOrderWeights!(args.storeId,{dateFrom:args.dateFrom,dateTo:args.dateTo,requestId:state.requestId,agentId:'dsh-hallmark-app'});
+  const response=await client.readOrderWeights!(args.storeId,{dateFrom:args.dateFrom,dateTo:args.dateTo,requestId:state.requestId,agentId:'dsh-hallmark-app'},signal);
   if(response.status!=='ok')throw Object.assign(new Error(response.error?.message??'物流实重查询失败。'),response.error);
   const raw=record(response.raw);if(raw.storeId!==args.storeId)fail('OZON_STORE_MISMATCH','物流实重返回店铺不匹配。');if(raw.status==='pending')fail('REPORT_PENDING','物流报告正在生成，请稍后刷新；将继续查询同一报告。');if(raw.status!=='ready')fail('OZON_RESPONSE_INVALID','物流报告状态无法识别。');
   const items=rowsAt(raw,'items').map(r=>normalized(kind,{postingNumber:r.postingNumber,sku:r.sku,offerId:r.offerId,quantity:1,shipmentAt:r.shipmentAt,actualWeight:r.grams,declaredWeight:r.declaredGrams,weightDifference:r.grams!=null&&r.declaredGrams!=null?num(r.grams)!-num(r.declaredGrams)!:null,weightScope:'已核实单 SKU 单件'}));return {items,total:items.length,dataTime:null,warnings:['仅返回报告中已核实的单 SKU 单件包裹实重；多件、混装及未知重量不作为单品实重。',...(Array.isArray(raw.skipped)&&raw.skipped.length?[`报告有 ${raw.skipped.length} 条不满足单件实重条件的记录。`]:[])]};

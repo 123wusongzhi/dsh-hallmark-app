@@ -11,6 +11,7 @@ const reads: Readonly<Record<string, 'GET' | 'POST'>> = Object.freeze({
   '/v1/product/info/description': 'POST',
   '/v2/product/pictures/info': 'POST',
   '/v1/product/import/info': 'POST',
+  '/v1/report/info': 'POST',
   '/v1/description-category/tree': 'POST',
   '/v1/description-category/attribute': 'POST',
   '/v1/description-category/attribute/values': 'POST',
@@ -29,6 +30,8 @@ const reads: Readonly<Record<string, 'GET' | 'POST'>> = Object.freeze({
   '/v2/returns/rfbs/get': 'POST',
 });
 const writes = new Set([
+  // Report creation has a durable server-side result; an uncertain response must not be retried as a read.
+  '/v1/report/postings/create',
   '/v3/product/import', '/v1/product/import/prices', '/v2/products/stocks',
   '/v1/product/archive', '/v1/product/unarchive',
   '/v1/actions/products/update', '/v2/actions/products/deactivate',

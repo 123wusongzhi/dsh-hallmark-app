@@ -5,7 +5,7 @@ import {canonicalJson} from '../../app-contracts/src/index.ts';
 import type {CapabilityDescriptor,JsonSchema} from '../../app-contracts/src/index.ts';
 import type {ToolResult} from '../../contracts/src/index.ts';
 import type {CoreStore,RecordData} from '../../core/src/types.ts';
-import {readOzonData} from './ozon-data.ts';
+import {readOzonData,normalizeOzonSku} from './ozon-data.ts';
 import {COMPOSITION_FIELD_MAP,OZON_COMPOSITION_FIELDS,OZON_COMPOSITION_SOURCES,OZON_COMPOSITION_SOURCE_FIELDS,validateOzonCompositionRecipe} from './ozon-composition.ts';
 import type {OzonCompositionRecipe,OzonCompositionSource} from './ozon-composition.ts';
 import {OZON_FIELD_META} from './ozon-fields.ts';
@@ -226,9 +226,26 @@ export async function readOzonComposition(args:RecordData,store:CoreStore,client
  if(args.loadAll===true){
   if(typeof args.storeId!=='string'||!args.storeId||args.cursor!==undefined||args.forceRefresh!==undefined&&typeof args.forceRefresh!=='boolean')return {status:'failed',error:{code:'INVALID_FULL_READ',message:'完整读取需要店铺，不使用分页位置，刷新标记须为布尔值。',retryable:false}};
   const {forceRefresh,...scope}=args;
-  return readCompleteSnapshot({store,storeId:args.storeId,scope:{kind:'composition',input:scope},force:forceRefresh===true,build:refresh=>readOzonCompositionNow({...args,forceRefresh:refresh},store,client,undefined,read)});
+  return withValidPlatformSkus(await readCompleteSnapshot({store,storeId:args.storeId,scope:{kind:'composition',input:scope},force:forceRefresh===true,build:refresh=>readOzonCompositionNow({...args,forceRefresh:refresh},store,client,undefined,read)}));
  }
- return readOzonCompositionNow(args,store,client,signal,read);
+ return withValidPlatformSkus(await readOzonCompositionNow(args,store,client,signal,read));
+}
+function withValidPlatformSkus(result:ToolResult):ToolResult {
+ if(result.status!=='ok'||!object(result.data)||!Array.isArray(result.data.items))return result;
+ let invalid=0,changed=false;
+ // Old source caches, complete snapshots and cursor pages can precede the SKU normalization.
+ // Project a copy, leaving their original evidence and exact product/offer identities intact.
+ const items=result.data.items.map((item:Row)=>{
+  let normalized:Row|undefined;
+  for(const [source,row]of Object.entries(item)){
+   if(!object(row)||!Object.hasOwn(row,'sku'))continue;
+   const sku=normalizeOzonSku(row.sku);if(sku===null&&row.sku!==null)invalid++;
+   if(sku!==row.sku){normalized??={...item};normalized[source]={...row,sku};changed=true;}
+  }
+  return normalized??item;
+ });
+ if(!changed)return result;
+ return {...result,data:{...result.data,items,warnings:[...new Set([...(result.data.warnings??[]),...(invalid?[`组合结果有 ${invalid} 个来源记录没有有效平台 SKU；保留商品编号、商家货号和平台状态，不将未知值用于 SKU 查询或关联。`]:[])])]}};
 }
 async function readOzonCompositionNow(args:RecordData,store:CoreStore,client:Parameters<typeof readOzonData>[3],signal?:AbortSignal,read?:Reader):Promise<ToolResult> {
  try{

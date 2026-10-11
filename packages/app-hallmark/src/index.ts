@@ -25,6 +25,8 @@ import {BUSINESS_PRICING_DESCRIPTORS,BUSINESS_DESCRIPTORS,businessOperation,lega
 export {hallmarkOzonSources} from './ozon-data.ts';
 export {createOzonCompositionDraft,OZON_COMPOSITION_FIELDS,OZON_COMPOSITION_SOURCES,DEFAULT_PRODUCT_FIELDS} from './ozon-composition.ts';
 import { validateLoopbackUrl } from '../../hallmark-adapter/client.ts';
+import {refineInput,productInfoBody,legacyListingIssue} from './input-contracts.ts';
+import {platformFailureDetails} from './failure-details.ts';
 export { HallmarkStorePort, StableHallmarkBusinessStore } from './store.ts';
 export type { ProviderRecordStore } from './store.ts';
 export type { HallmarkDomainOptions } from './domain.ts';
@@ -66,12 +68,13 @@ const outputSchemas:Record<string,JsonSchema>={
 function descriptor(suffix:string):CapabilityDescriptor{
  const tool=TOOL_DEFINITIONS.find(tool=>tool.name===`hallmark_${suffix}`)!;
  const mutation=tool.kind==='write';
- const inputSchema=structuredClone(tool.parameters) as unknown as JsonSchema;
+ let inputSchema=structuredClone(tool.parameters) as unknown as JsonSchema;
  if(mutation&&['update_price','update_stock','list_product'].includes(suffix))inputSchema.required=(inputSchema.required as string[]??[]).filter(key=>!['userRequest','valueSource','scopeConfirmed','clientOperationKey'].includes(key));
  if(suffix==='list_store_products'){
   inputSchema.properties={...(inputSchema.properties as Record<string,JsonSchema>),fields:{type:'array',items:{type:'string',enum:['title','imageUrl','sku','status','platformStatus','currency','price','pricing','profit','stock','metrics','sources','declaredWeight','storeName']},description:'可选：只返回指定商品字段；身份字段始终保留。列表推荐 title/imageUrl/sku/status/currency/pricing/profit/stock；详情需要来源或规格时再请求 sources。省略保持完整响应。'}};
  }
 
+ inputSchema=refineInput(suffix,inputSchema);
  return {capabilityId:domainCapabilityIds[suffix],version:'1.0.0',title:tool.name,description:mutation?`${tool.description} 现由统一经营变更审核执行；不要求检查声明或用户值证明。`:tool.description,effect:mutation?'mutation':tool.kind==='compute'?'compute':'query',inputSchema,outputSchema:mutation?rawObject:outputSchemas[suffix],execution:{mode:mutation?'async':'sync',timeoutMs:mutation?300000:60000,concurrency:mutation?'exclusive':'declared_safe',lockScope:'connection',idempotency:mutation?'upstream_supported':'not_applicable',completionEvidence:mutation?'readback':'response'},discovery:{defaultVisible:['app_info','list_stores','list_store_products'].includes(suffix),keywords:['hallmark',suffix]},aliases:[tool.name]};
 }
 interface ApiRoute { apiOperationId:string;capabilityId:string;description?:string;legacyName?:string;path?:string;method?:'GET'|'POST';sourceMethod?:'getStores'|'getStoreProducts'|'syncStoreProducts'|'getTargetMargin' }
@@ -97,7 +100,7 @@ export const HALLMARK_API_OPERATIONS:readonly ApiRoute[]=[
 const sourceProductsSchema:JsonSchema={type:'object',properties:{products:{type:'array',items:rawObject},stores:{type:'array',items:rawObject},spill},anyOf:[{required:['products','stores']},{required:['spill']}],additionalProperties:true};
 function apiDescriptor(route:ApiRoute):CapabilityDescriptor{
  const inherited=descriptor((route.legacyName??'hallmark_get_platform_data').replace(/^hallmark_/,''));
- const inputSchema=route.sourceMethod?{type:'object',properties:{},additionalProperties:false}:route.path?{type:'object',properties:{storeId:text,store:text,body:rawObject},additionalProperties:false}:inherited.inputSchema;
+ const inputSchema=route.sourceMethod?{type:'object',properties:{},additionalProperties:false}:route.path?{type:'object',properties:{storeId:text,store:text,body:route.capabilityId==='hallmark.api.products.info'?productInfoBody:rawObject},...(route.capabilityId==='hallmark.api.products.info'?{required:['body'],anyOf:[{required:['storeId']},{required:['store']}]}:{}),additionalProperties:false}:inherited.inputSchema;
  const outputSchema=route.sourceMethod==='getStores'?outputSchemas.list_stores:route.sourceMethod==='getStoreProducts'?sourceProductsSchema:route.sourceMethod==='syncStoreProducts'||route.sourceMethod==='getTargetMargin'?rawObject:inherited.outputSchema;
  return {...inherited,capabilityId:route.capabilityId,title:route.apiOperationId,description:route.description??`已登记接口 ${route.apiOperationId}；使用 Hallmark 原实现并保留请求/响应证据`,inputSchema:inputSchema as JsonSchema,outputSchema,aliases:[],apiOperationId:route.apiOperationId,discovery:{defaultVisible:false,keywords:['hallmark','api',route.apiOperationId]}};
 }
@@ -133,7 +136,7 @@ export class HallmarkProvider implements AppProvider {
  constructor(options:HallmarkProviderOptions){this.options=options;}
  private resolve<T>(value:T|((id:string,revision?:number)=>T),connectionId:string,revision=1):T{return typeof value==='function'?(value as (id:string,revision?:number)=>T)(connectionId,revision):value;}
  private businessStore(connectionId:string,revision=1):CoreStore{return this.resolve(this.options.businessStore??this.options.store,connectionId,revision);}
- private domain(connectionId:string,configRevision=1):HallmarkDomain{const key=canonicalJson([connectionId,configRevision]);let domain=this.domains.get(key);if(!domain){const gateway=this.resolve(this.options.businessGateway,connectionId,configRevision),source=this.resolve(this.options.client,connectionId,configRevision),client=gateway?businessConnectedClient(source,gateway,this.businessStore(connectionId,configRevision),connectionId,this.resolve(this.options.collectionSourceMatches,connectionId,configRevision),this.resolve(this.options.pricing,connectionId,configRevision)):source;domain=new HallmarkDomain({store:this.resolve(this.options.store,connectionId,configRevision),client,broker:this.resolve(this.options.broker,connectionId,configRevision),pricing:this.resolve(this.options.pricing,connectionId,configRevision)});this.domains.set(key,domain);}return domain;}
+ private domain(connectionId:string,configRevision=1):HallmarkDomain{const key=canonicalJson([connectionId,configRevision]);let domain=this.domains.get(key);if(!domain){const gateway=this.resolve(this.options.businessGateway,connectionId,configRevision),source=this.resolve(this.options.client,connectionId,configRevision),client=gateway?businessConnectedClient(source,gateway,this.businessStore(connectionId,configRevision),connectionId,this.resolve(this.options.collectionSourceMatches,connectionId,configRevision),this.resolve(this.options.pricing,connectionId,configRevision),configRevision):source;domain=new HallmarkDomain({store:this.resolve(this.options.store,connectionId,configRevision),client,broker:this.resolve(this.options.broker,connectionId,configRevision),pricing:this.resolve(this.options.pricing,connectionId,configRevision)});this.domains.set(key,domain);}return domain;}
  private collection(connectionId:string,revision=1):CollectionService {if(this.options.collection)return this.resolve(this.options.collection,connectionId,revision);const key=canonicalJson([connectionId,revision]);let service=this.collections.get(key);if(!service){service=new CollectionService({client:this.resolve(this.options.client,connectionId,revision),store:this.resolve(this.options.store,connectionId,revision),sourceId:connectionId,listingStates:async(ids,summaries)=>this.collectionStates(connectionId,revision,ids,summaries)});this.collections.set(key,service);}return service;}
  private collectionStates(connectionId:string,revision:number=1,ids:string[],summaries?:Array<{id:string;skuCount:number}>){
   if(this.resolve(this.options.collectionSourceMatches,connectionId,revision)===false)return {};
@@ -184,6 +187,7 @@ export class HallmarkProvider implements AppProvider {
   }
   if(businessOperation(request.capabilityId))return executeBusiness(this.business(request.connectionId,context.configRevision),this.businessStore(request.connectionId,context.configRevision),context);
   if(legacyBusinessKind(request.capabilityId)){
+   if(legacyBusinessKind(request.capabilityId)==='listing'){const issue=legacyListingIssue(args);if(issue)return {invocationId:request.invocationId,traceId:request.traceId,status:'failed',error:issue};}
    try{return await executeLegacyBusiness(this.business(request.connectionId,context.configRevision),this.businessStore(request.connectionId,context.configRevision),domain.options.client,context);}catch(error){return this.failure(context,'BUSINESS_OPERATION_FAILED',error instanceof Error?error.message:'经营操作无法完成。');}
   }
   if(request.capabilityId==='hallmark.operations.get'){
@@ -266,7 +270,8 @@ export class HallmarkProvider implements AppProvider {
  private convert(legacy:ToolResult,context:ExecutionContext,descriptor?:CapabilityDescriptor):CapabilityResult{
   const request=context.request,base={invocationId:request.invocationId,traceId:request.traceId};
   let operationRef=legacy.operation?{operationId:legacy.operation.operationId,state:state(legacy.operation.state)}:context.operationId?{operationId:context.operationId,state:'unknown' as const}:undefined;
-  const error=(fallback:string,retryPolicy:FailureInfo['retryPolicy']):FailureInfo=>({code:legacy.error?.code==='IDEMPOTENCY_KEY_CONFLICT'?'IDEMPOTENCY_CONFLICT':legacy.error?.code??fallback,message:legacy.error?.message??'Hallmark 未取得业务结果证据。',retryPolicy,...(legacy.error?.retryAfterMs!==undefined?{retryAfterMs:legacy.error.retryAfterMs}:{})});
+  const details=platformFailureDetails(legacy);
+  const error=(fallback:string,retryPolicy:FailureInfo['retryPolicy']):FailureInfo=>({code:legacy.error?.code==='IDEMPOTENCY_KEY_CONFLICT'?'IDEMPOTENCY_CONFLICT':legacy.error?.code??fallback,message:legacy.error?.message??'Hallmark 未取得业务结果证据。',retryPolicy,...(legacy.error?.retryAfterMs!==undefined?{retryAfterMs:legacy.error.retryAfterMs}:{}),...(details!==undefined?{details}:{})});
   let provenance:DataProvenance[]|undefined;
 if(legacy.provenance||legacy.metricBasis){const old=legacy.provenance,input:RecordData=isObject(request.input)?request.input:{},cache=['hallmark.ozon.compose','hallmark.products.procurement'].includes(request.capabilityId)&&isObject(legacy.data)&&isObject(legacy.data.cache)?legacy.data.cache:undefined;
  // Self-contained provenance needs no unrelated store_products payload; retain both fallback paths.

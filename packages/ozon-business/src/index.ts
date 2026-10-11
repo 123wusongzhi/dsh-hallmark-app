@@ -5,6 +5,7 @@ import { OzonBusinessError } from './types.ts';
 import type { OzonBusinessGatewayOptions, OzonBusinessRequest, OzonBusinessStore, OzonProductTargets, SaveOzonBusinessStoreInput } from './types.ts';
 export * from './types.ts';
 export { ozonBusinessEndpoint } from './endpoints.ts';
+export { OzonOrderWeightReports } from './order-weights.ts';
 
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const failed = (code: string, message: string, status: AdapterResponse['status'] = 'failed', retryable = false, extra: Partial<AdapterResponse> = {}): AdapterResponse => ({ status, error: { code, message, retryable }, ...extra });
@@ -17,6 +18,25 @@ function sanitized(value: unknown, credentials: { clientId: string; apiKey: stri
     for (const secret of [credentials.apiKey, credentials.clientId]) if (secret) child = child.split(secret).join('[redacted]');
     return child;
   }));
+}
+
+/** Report failures may echo private handles or URLs. Retain bounded diagnostics, never report/customer fields. */
+function reportDiagnostics(payload: unknown, code: unknown, credentials: { clientId: string; apiKey: string }): unknown {
+  const allowed = new Set(['code', 'message', 'details', 'field', 'field_name', 'fieldName', 'description', 'reason', 'errors']);
+  let remaining = 3000;
+  const visit = (value: unknown, depth = 0): unknown => {
+    if (depth > 4 || remaining <= 0) return '[truncated]';
+    if (typeof value === 'string') {
+      let text = typeof code === 'string' && code ? value.split(code).join('[private report]') : value;
+      text = sanitized(text.replace(/https?:\/\/[^\s"<>]+/gi, '[private URL]'), credentials);
+      const kept = text.slice(0, Math.min(800, remaining)); remaining -= kept.length; return kept;
+    }
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if (Array.isArray(value)) return value.slice(0, 10).map(item => visit(item, depth + 1));
+    if (object(value)) return Object.fromEntries(Object.entries(value).filter(([key]) => allowed.has(key)).slice(0, 10).map(([key, child]) => [key, visit(child, depth + 1)]));
+    return null;
+  };
+  return visit(payload);
 }
 
 function plainJson(value: unknown, seen = new Set<object>(), depth = 0): boolean {
@@ -67,6 +87,24 @@ export class OzonBusinessGateway {
   importLegacyStore(input: Omit<SaveOzonBusinessStoreInput, 'id' | 'expectedRevision'> & { legacyStoreId: string; sourceConnectionId: string }): OzonBusinessStore { return this.#stores.importLegacyStore(input); }
 
   async request(storeId: string, input: OzonBusinessRequest, signal?: AbortSignal): Promise<AdapterResponse> {
+    return this.#request(storeId, input, signal);
+  }
+
+  /** Private opaque report handles must not pass through the public credential-string redactor. */
+  createOrderWeightReport(storeId: string, dateFrom: string, dateTo: string, credentialRevision: number, signal?: AbortSignal): Promise<AdapterResponse> {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateFrom) || !/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) return Promise.resolve(failed('WEIGHT_DATE_RANGE_INVALID', '实重报告日期无效。'));
+    return this.#request(storeId, { path: '/v1/report/postings/create', credentialRevision, body: {
+      filter: { delivery_schema: ['fbs'], processed_at_from: `${dateFrom}T00:00:00.000Z`, processed_at_to: `${dateTo}T23:59:59.999Z` },
+      language: 'EN', with: { additional_data: true, analytics_data: true, customer_data: false, jewelry_codes: false },
+    } }, signal, true);
+  }
+
+  inspectOrderWeightReport(storeId: string, code: string, credentialRevision: number, signal?: AbortSignal): Promise<AdapterResponse> {
+    if (typeof code !== 'string' || !code.trim() || code.length > 4096) return Promise.resolve(failed('WEIGHT_REPORT_CODE_INVALID', '报告标识无效。'));
+    return this.#request(storeId, { path: '/v1/report/info', credentialRevision, body: { code } }, signal, true);
+  }
+
+  async #request(storeId: string, input: OzonBusinessRequest, signal?: AbortSignal, privateReport = false): Promise<AdapterResponse> {
     const endpoint = input && ozonBusinessEndpoint(input.path);
     if (!endpoint || (input.method ?? endpoint.method) !== endpoint.method) return failed('OZON_ENDPOINT_UNSUPPORTED', '该接口不属于已接入的经营操作。');
     const body = input.body ?? {};
@@ -84,7 +122,8 @@ export class OzonBusinessGateway {
     catch { return failed('OZON_CREDENTIAL_UNAVAILABLE', '当前系统用户无法读取店铺凭据。', 'unavailable'); }
     if (!credential) return failed('OZON_CREDENTIAL_REVISION_UNAVAILABLE', '原请求使用的店铺凭据版本不可用。', 'unavailable');
     // Never forward or record accidental secret copies in business payloads.
-    if (JSON.stringify(sanitized(body, credential)) !== JSON.stringify(body)) return failed('OZON_REQUEST_CONTAINS_CREDENTIAL', '经营内容包含私有凭据，未发送。');
+    // The report methods construct a fixed body; its opaque code can legitimately embed Client-Id.
+    if (!privateReport && JSON.stringify(sanitized(body, credential)) !== JSON.stringify(body)) return failed('OZON_REQUEST_CONTAINS_CREDENTIAL', '经营内容包含私有凭据，未发送。');
     const base = { credentialRevision: revision };
     let httpStatus: number | undefined;
     try {
@@ -102,7 +141,11 @@ export class OzonBusinessGateway {
         if (response.ok) throw new Error('OZON_RESPONSE_INVALID');
         payload = { message: text.slice(0, 2000) };
       }
-      const raw = { ...base, httpStatus, response: sanitized(payload, credential), outcome: response.ok ? 'succeeded' : 'rejected' };
+      const report = object(payload) && object(payload.result) ? payload.result : {};
+      const projected = privateReport && response.ok
+        ? { result: input.path === '/v1/report/postings/create' ? { code: report.code } : { status: report.status, file: report.file } }
+        : privateReport ? reportDiagnostics(payload, body.code, credential) : sanitized(payload, credential);
+      const raw = { ...base, httpStatus, response: projected, outcome: response.ok ? 'succeeded' : 'rejected' };
       if (httpStatus === 408 || httpStatus >= 500) {
         return failed(endpoint.readOnly ? 'OZON_READ_UNAVAILABLE' : 'OZON_OUTCOME_UNKNOWN', endpoint.readOnly ? 'Ozon 查询暂时不可用。' : '未确认 Ozon 写入结果；请核查原请求，不要重新发送。', endpoint.readOnly ? 'unavailable' : 'unknown', endpoint.readOnly, { raw: { ...raw, outcome: 'outcome_unknown' } });
       }
@@ -117,6 +160,23 @@ export class OzonBusinessGateway {
   }
 
   checkStore(storeId: string, signal?: AbortSignal): Promise<AdapterResponse> { return this.request(storeId, { path: '/v1/seller/info', body: {} }, signal); }
+
+  /** Only the private report reader consumes this text. No Seller credentials or cookies reach the download host. */
+  async downloadOrderWeightReport(address: string, signal?: AbortSignal): Promise<string> {
+    let url: URL;
+    try { url = new URL(address); } catch { throw new OzonBusinessError('WEIGHT_REPORT_URL_INVALID', '报告下载地址不安全。'); }
+    if (url.protocol !== 'https:' || url.username || url.password || url.port || !/(^|\.)(ozon\.ru|ozone\.ru)$/.test(url.hostname)) throw new OzonBusinessError('WEIGHT_REPORT_URL_INVALID', '报告下载地址不安全。');
+    signal?.throwIfAborted();
+    const response = await this.#fetch(url.href, { method: 'GET', redirect: 'error', credentials: 'omit', signal: AbortSignal.any([AbortSignal.timeout(Math.min(this.#timeout, 30_000)), ...(signal ? [signal] : [])]) });
+    const maximum = 10 * 1024 * 1024;
+    if (!response.ok || response.redirected || Number(response.headers.get('content-length')) > maximum) { await response.body?.cancel(); throw new OzonBusinessError('WEIGHT_REPORT_DOWNLOAD_FAILED', '未取得有效的重量报告。'); }
+    if (!response.body) throw new OzonBusinessError('WEIGHT_REPORT_DOWNLOAD_FAILED', '重量报告为空。');
+    const reader = response.body.getReader(), chunks: Uint8Array[] = []; let length = 0;
+    try {
+      for (;;) { signal?.throwIfAborted(); const part = await reader.read(); if (part.done) break; length += part.value.length; if (length > maximum) throw new OzonBusinessError('WEIGHT_REPORT_TOO_LARGE', '重量报告超过 10 MiB，请缩小日期范围。'); chunks.push(part.value); }
+    } finally { await reader.cancel(); }
+    return Buffer.concat(chunks).toString('utf8');
+  }
 
   async getProducts(storeId: string, targets?: OzonProductTargets, signal?: AbortSignal): Promise<AdapterResponse> {
     const selected = targets ? [targets.offerIds ?? [], targets.productIds ?? [], targets.skus ?? []] : undefined;

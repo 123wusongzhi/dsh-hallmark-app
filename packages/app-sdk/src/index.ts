@@ -97,17 +97,25 @@ export class HttpRuntimeTransport implements RuntimeTransport {
   async inspect(operationId:string,signal?:AbortSignal) {return await this.read(`/v1/operations/${encodeURIComponent(operationId)}/inspect`,{},signal) as CapabilityResult;}
   async getInvocation(invocationId:string,signal?:AbortSignal) {return await this.read(`/v1/invocations/${encodeURIComponent(invocationId)}`,undefined,signal) as InvocationRecoveryRecord;}
 }
-function schemaType(schema:JsonSchema):string {
+function schemaType(schema:JsonSchema,inheritedProperties:Record<string,JsonSchema>={},inheritedAdditionalProperties?:unknown):string {
+  const declared=(schema.properties??{}) as Record<string,JsonSchema>,required=(schema.required??[]) as string[];
+  const alternatives=['anyOf','oneOf','allOf'].filter(key=>Array.isArray(schema[key]));
+  if(alternatives.length){
+    const {anyOf:_anyOf,oneOf:_oneOf,allOf:_allOf,...base}=schema;
+    const scope={...inheritedProperties,...declared},parts:string[]=[];
+    if(['type','properties','required','enum','const'].some(key=>key in base))parts.push(base.type==='object'&&!base.properties&&!base.required&&base.additionalProperties===undefined?'object':schemaType(base,inheritedProperties,inheritedAdditionalProperties));
+    for(const key of alternatives)parts.push((schema[key] as JsonSchema[]).map(branch=>`(${schemaType(branch,scope,base.additionalProperties??inheritedAdditionalProperties)})`).join(key==='allOf'?' & ':' | '));
+    return parts.map(part=>`(${part})`).join(' & ');
+  }
   if(Array.isArray(schema.enum))return schema.enum.map(item=>JSON.stringify(item)).join(' | ');
   if('const' in schema)return JSON.stringify(schema.const);
-  if(Array.isArray(schema.anyOf)||Array.isArray(schema.oneOf))return ((schema.anyOf??schema.oneOf) as JsonSchema[]).map(schemaType).join(' | ');
-  if(Array.isArray(schema.allOf))return (schema.allOf as JsonSchema[]).map(schemaType).join(' & ');
-  if(Array.isArray(schema.type))return schema.type.map(type=>schemaType({...schema,type})).join(' | ');
+  if(Array.isArray(schema.type))return schema.type.map(type=>schemaType({...schema,type},inheritedProperties,inheritedAdditionalProperties)).join(' | ');
   if(schema.type==='array')return `Array<${schemaType((schema.items??{}) as JsonSchema)}>`;
-  if(schema.type==='object'){
-    const properties=(schema.properties??{}) as Record<string,JsonSchema>, required=(schema.required??[]) as string[];
+  if(schema.type==='object'||schema.properties!==undefined||schema.required!==undefined){
+    // A required-only alternative names properties declared by its surrounding object.
+    const properties={...Object.fromEntries(required.map(key=>[key,declared[key]??inheritedProperties[key]??{}])),...declared};
     const fields=Object.entries(properties).map(([name,item])=>`${JSON.stringify(name)}${required.includes(name)?'':'?'}: ${schemaType(item)}`);
-    return schema.additionalProperties===false?`{ ${fields.join('; ')} }`:`({ ${fields.join('; ')} } & { [key: string]: JsonValue })`;
+    return (schema.additionalProperties??inheritedAdditionalProperties)===false?`{ ${fields.join('; ')} }`:`({ ${fields.join('; ')} } & { [key: string]: JsonValue })`;
   }
   return schema.type==='integer'?'number':schema.type==='null'?'null':['string','number','boolean'].includes(String(schema.type))?String(schema.type):'JsonValue';
 }

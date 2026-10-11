@@ -48,7 +48,7 @@ const gatewaySchemas: Record<string, JsonSchema> = {
   apps_invoke: schema({appId: text, connectionId: text, capabilityId: text, capabilityVersion: text, input: {}, idempotencyKey: text, expectedResourceRevision: text, invocationId: text, traceId: text, deadlineAt: text}, ['appId', 'capabilityId', 'capabilityVersion', 'input']),
   apps_inspect: {...schema({operationId:text,resultRef:text,path:{type:'string',maxLength:4000},cursor:{type:'string',pattern:'^[0-9]+$'},limit:{type:'integer',minimum:1,maximum:200}}),oneOf:[{required:['operationId'],not:{anyOf:[{required:['resultRef']},{required:['path']},{required:['cursor']},{required:['limit']}]}},{required:['resultRef'],not:{required:['operationId']}}]},
 };
-const gatewayDescriptions:Record<string,string>={apps_list:'发现应用与能力摘要；按需apps_describe获取精确Schema，当前采用固定发现网关。',apps_describe:'读取Runtime唯一目录中的精确能力说明、输入输出与版本。',apps_invoke:'用明确应用/连接/能力版本调用Runtime统一实现；unknown先查操作，不自动重新写入。',apps_inspect:'只读回查已有操作，保留原操作身份，不重发业务修改。'};
+const gatewayDescriptions:Record<string,string>={apps_list:'发现应用与能力摘要；按需apps_describe获取精确Schema，当前采用固定发现网关。',apps_describe:'读取Runtime唯一目录中的精确能力说明、输入输出与版本。',apps_invoke:'用明确应用/连接/能力版本调用Runtime统一实现；unknown先查操作，不自动重新写入。',apps_inspect:'只读回查已有操作或续读结果。操作使用返回的 operation.operationId，不能使用 invocationId；结果续读使用 resultRef。不重发业务修改。'};
 const businessUiOperations=new Set(['create','revise','get','list','submit','inspect','restore']);
 const fail = (code: string,message: string,invocationId = 'host',traceId = 'host',details?: JsonValue): CapabilityResult => ({invocationId, traceId, status: 'failed', error: {code, message, retryPolicy: 'never',...(details === undefined ? {} : {details})}});
 function jsonResponse(value: unknown, status = 200) {return new Response(JSON.stringify(value), {status, headers: {'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'}});}
@@ -241,7 +241,10 @@ export class AppsHost {
           if(!this.transport.readModelResult)return fail('RESULT_READER_UNAVAILABLE','当前 Runtime 不支持结果续读。');
           return await this.transport.readModelResult({resultRef:input.resultRef,sessionId,path:typeof input.path==='string'?input.path:'',...(typeof input.cursor==='string'?{cursor:input.cursor}:{}),...(typeof input.limit==='number'?{limit:input.limit}:{})},signal);
         }
-        const result=await this.transport.inspect(String(input.operationId), signal);onRuntimeResult?.();return result;
+        const result=await this.transport.inspect(String(input.operationId), signal);
+        // A missing operation returns before Runtime creates an invocation record.
+        if(result.status==='failed'&&result.error.code==='OPERATION_NOT_FOUND'&&!result.operation)return result;
+        onRuntimeResult?.();return result;
       }
       if (name !== 'apps_invoke') return fail('CAPABILITY_NOT_FOUND', '网关未登记。');
       const appId = String(input.appId);
@@ -261,6 +264,7 @@ export class AppsHost {
       }
       const candidates = connections.filter(row => row.enabled && bindings.some(binding => binding.appId === appId && binding.connectionId === row.connectionId && binding.enabled));
       const matches = typeof input.connectionId === 'string' ? candidates.filter(row => row.connectionId === input.connectionId) : candidates;
+      if(!fastRoute&&!matches.length)return {invocationId,traceId,status:'needs_clarification',missing:['connectionBinding'],candidates:candidates.map(row=>({appId,connectionId:row.connectionId,displayName:row.displayName})),question:'所请求的连接不可用或未在当前会话启用。请通过宿主 Apps 绑定选择并启用连接（输入框 @应用）；子代理需要宿主明确授权，也可由已有绑定的父会话读取后传递资料。重复填写 connectionId 不会授予权限。'};
       if (!fastRoute&&matches.length !== 1) return {invocationId, traceId, status: 'needs_clarification', missing: ['connectionId'], candidates: candidates.map(row => ({appId, connectionId: row.connectionId, displayName: row.displayName})), question: '请明确一个在当前会话启用的connectionId。'};
       if(signal?.aborted)return {invocationId,traceId,status:'cancelled',error:{code:'CANCELLED_BEFORE_DISPATCH',message:'Capability invocation was not submitted.',retryPolicy:'never'}};
       submitted={protocolVersion: '1.0', invocationId, traceId, appId, connectionId: fastRoute?String(input.connectionId):matches[0].connectionId, capabilityId: descriptor.capabilityId, capabilityVersion: descriptor.version, input: input.input, source: invocationSource??{kind: 'agent', sessionId, nativeCallId: nativeCallId ?? invocationId}, deadlineAt: typeof input.deadlineAt === 'string' ? input.deadlineAt : new Date(Date.now() + Math.min(appsInvocationTimeout({appId,capabilityId}), descriptor.execution.timeoutMs)).toISOString(), ...(typeof input.idempotencyKey === 'string' ? {idempotencyKey: input.idempotencyKey} : {}), ...(typeof input.expectedResourceRevision === 'string' ? {expectedResourceRevision: input.expectedResourceRevision} : {})};

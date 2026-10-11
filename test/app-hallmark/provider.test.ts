@@ -193,7 +193,7 @@ test('legacy operation list merges old and business receipts without crossing se
 test('legacy SKU and product references cannot expand the supplied business scope',async()=>{
  const f=fixture();f.enableDirect();try{
   const mismatch=await f.invoke('hallmark.products.update_price',{...priceInput,productIds:['2']});assert.equal(mismatch.status,'failed');assert.ok('error'in mismatch);assert.match(mismatch.error.message,/PRODUCT_SCOPE_NOT_EXACT/);
-  const outside=await f.invoke('hallmark.products.list_product',{storeId:'shop',collectedItemId:'item',skuScope:['sku-allowed'],importItems:[{_sourceSkuId:'sku-other',offer_id:'new-offer'}]});assert.equal(outside.status,'failed');assert.ok('error'in outside);assert.match(outside.error.message,/SOURCE_SKU_OUTSIDE_SCOPE/);assert.equal(f.calls.filter(row=>row.write).length,0);
+  const outside=await f.invoke('hallmark.products.list_product',{storeId:'shop',collectedItemId:'item',skuScope:['sku-allowed'],importItems:[{_sourceSkuId:'sku-other',offer_id:'new-offer'}]});assert.equal(outside.status,'failed');assert.ok('error'in outside);assert.equal(outside.error.code,'SOURCE_SKU_OUTSIDE_SCOPE');assert.deepEqual(outside.error.details,{field:'importItems[0]._sourceSkuId'});assert.equal(f.calls.filter(row=>row.write).length,0);
  }finally{await f.runtime.dispose();f.store.close();}
 });
 

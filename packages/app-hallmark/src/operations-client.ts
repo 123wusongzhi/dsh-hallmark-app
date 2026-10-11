@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {canonicalJson} from '../../app-contracts/src/index.ts';
 import type {CoreClient,CoreStore,RecordData,AdapterResponse} from '../../core/src/types.ts';
-import type {OzonBusinessGateway} from '../../ozon-business/src/index.ts';
+import {OzonOrderWeightReports,type OzonBusinessGateway} from '../../ozon-business/src/index.ts';
 import type {CategoryDataInput,PlatformCallInput} from '../../hallmark-adapter/types.ts';
 import {applicationProfit,businessWeight,type PricingReader} from './dynamic-profit.ts';
 
@@ -80,7 +80,7 @@ export function compatibilityReadResponse(response:AdapterResponse):AdapterRespo
 export function connectionBusinessGateway(gateway:OzonBusinessGateway,connectionId:string):OzonBusinessGateway {
  const owns=(id:string)=>{const entry=gateway.getStore(id);return !!entry&&(!entry.sourceConnectionId||entry.sourceConnectionId===connectionId);};
  const rejected=():AdapterResponse=>({status:'failed',error:{code:'STORE_CONNECTION_MISMATCH',message:'店铺不属于当前经营连接。',retryable:false}});
- return new Proxy(gateway,{get(target,key){if(key==='hasStore')return owns;if(key==='getStore')return (id:string)=>owns(id)?gateway.getStore(id):undefined;if(key==='listStores')return ()=>gateway.listStores().filter(entry=>owns(entry.id));if(key==='request')return (id:string,...args:unknown[])=>owns(id)?(gateway.request as any)(id,...args):Promise.resolve(rejected());if(key==='getProducts')return (id:string,...args:unknown[])=>owns(id)?(gateway.getProducts as any)(id,...args):Promise.resolve(rejected());const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;}});
+ return new Proxy(gateway,{get(target,key){if(key==='hasStore')return owns;if(key==='getStore')return (id:string)=>owns(id)?gateway.getStore(id):undefined;if(key==='listStores')return ()=>gateway.listStores().filter(entry=>owns(entry.id));if(['request','getProducts','createOrderWeightReport','inspectOrderWeightReport'].includes(String(key)))return (id:string,...args:unknown[])=>owns(id)?(Reflect.get(gateway,key) as any).call(gateway,id,...args):Promise.resolve(rejected());const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;}});
 }
 
 /** Locally owned sale/source identities. Reading a catalogue never invents a procurement match. */
@@ -95,9 +95,16 @@ export function localBusinessProducts(store:CoreStore,storeId:string):RecordData
 }
 
 /** One-time explicit legacy catalogue import, followed by directly read Ozon facts. Collection methods stay on the source client. */
-export function businessConnectedClient(source:CoreClient,gateway:OzonBusinessGateway,store:CoreStore,connectionId:string,collectionSourceMatches=true,pricing?:PricingReader):CoreClient & {storeDataRead:(storeId:string,input:PlatformCallInput)=>Promise<AdapterResponse>;ensureBusinessCatalog:(storeId:string)=>Promise<void>;syncBusinessProductStates:(storeId:string,options?:{refresh?:boolean;maxAgeMs?:number})=>Promise<BusinessCatalogStatusSync>}{
+export function businessConnectedClient(source:CoreClient,gateway:OzonBusinessGateway,store:CoreStore,connectionId:string,collectionSourceMatches=true,pricing?:PricingReader,configRevision=1):CoreClient & {readOrderWeights:(storeId:string,input:RecordData,signal?:AbortSignal)=>Promise<AdapterResponse>;storeDataRead:(storeId:string,input:PlatformCallInput)=>Promise<AdapterResponse>;ensureBusinessCatalog:(storeId:string)=>Promise<void>;syncBusinessProductStates:(storeId:string,options?:{refresh?:boolean;maxAgeMs?:number})=>Promise<BusinessCatalogStatusSync>}{
  const stores=()=>gateway.listStores().filter(item=>!item.sourceConnectionId||item.sourceConnectionId===connectionId);
  const owns=(id:string)=>stores().some(item=>item.id===id);
+ const weightReports=new OzonOrderWeightReports(gateway,store,connectionId,configRevision);
+ const readOrderWeights=async(storeId:string,input:RecordData,signal?:AbortSignal):Promise<AdapterResponse>=>{
+  if(signal?.aborted)return {status:'failed',error:{code:'OZON_REQUEST_CANCELLED',message:'实重读取已取消。',retryable:false}};
+  if(owns(storeId))return weightReports.read(storeId,input,signal);
+  if(gateway.hasStore(storeId)||!collectionSourceMatches)return {status:'failed',error:{code:'STORE_CONNECTION_MISMATCH',message:'店铺不属于当前经营连接。',retryable:false}};
+  return typeof (source as any).readOrderWeights==='function'?(source as any).readOrderWeights(storeId,input,signal):{status:'failed',error:{code:'DIRECT_STORE_CONFIGURATION_REQUIRED',message:'店铺尚未配置独立连接。',retryable:false}};
+ };
  const catalogImports=new Map<string,Promise<void>>();
  const ensureBusinessCatalog=async(storeId:string):Promise<void>=>{
   const entry=stores().find(item=>item.id===storeId);if(!entry||!entry.legacyStoreId||!collectionSourceMatches||store.get('business_migrations',`catalog:${entry.id}`))return;
@@ -190,6 +197,6 @@ export function businessConnectedClient(source:CoreClient,gateway:OzonBusinessGa
   const response=await gateway.request(input.storeId,{path,body:{...base,...(p.attributeId?{attribute_id:Number(p.attributeId)}:{}),...(p.mode==='values'||p.mode==='validate_value'?{limit:p.limit??100,...(p.q?{value:p.q}:{}),last_value_id:p.lastValueId??0}:{})}});if(response.status!=='ok')return response;
   const data=payload(response);return ok({...data,storeId:input.storeId,...(p.mode==='validate_value'?{valueFound:Array.isArray(data.result)&&data.result.some((value:RecordData)=>Number(value.id)===Number(p.valueId)),note:'返回平台实际选项；未出现在本页不等于无效。'}:{}),fetchedAt:new Date().toISOString()});
  };
- const overrides:Record<string,unknown>={getStoreProducts:catalogue,syncStoreProducts:catalogue,ensureBusinessCatalog,syncBusinessProductStates,storeDataRead:directRead,getCategoryData:category,getStores:async()=>{let legacy:AdapterResponse|undefined;try{if(!stores().length)legacy=await source.getStores();}catch{}const direct=stores(),ids=new Set(direct.flatMap(item=>[item.id,item.legacyStoreId].filter(Boolean)));return ok([...(Array.isArray(legacy?.raw)?legacy!.raw.filter((item:RecordData)=>!ids.has(String(item.id??item.storeId))):[]),...direct]);}};
+ const overrides:Record<string,unknown>={readOrderWeights,getStoreProducts:catalogue,syncStoreProducts:catalogue,ensureBusinessCatalog,syncBusinessProductStates,storeDataRead:directRead,getCategoryData:category,getStores:async()=>{let legacy:AdapterResponse|undefined;try{if(!stores().length)legacy=await source.getStores();}catch{}const direct=stores(),ids=new Set(direct.flatMap(item=>[item.id,item.legacyStoreId].filter(Boolean)));return ok([...(Array.isArray(legacy?.raw)?legacy!.raw.filter((item:RecordData)=>!ids.has(String(item.id??item.storeId))):[]),...direct]);}};
  return new Proxy(source,{get(target,key){if(typeof key==='string'&&Object.hasOwn(overrides,key))return overrides[key];const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;}}) as ReturnType<typeof businessConnectedClient>;
 }

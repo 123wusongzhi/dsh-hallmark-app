@@ -15,10 +15,102 @@ function fixture(responder:(path:string,body:any,storeId:string)=>any){
  const records=new Map<string,any>(),calls:{storeId:string;input:PlatformCallInput}[]=[];
  const store={get:(collection:string,id:string)=>records.get(`${collection}:${id}`),put:(collection:string,id:string,value:any)=>{records.set(`${collection}:${id}`,structuredClone(value));return value;}} as CoreStore;
  const client={storeDataRead:async(storeId:string,input:PlatformCallInput)=>{calls.push({storeId,input});return {status:'ok' as const,raw:{outcome:'response_received',httpStatus:200,storeId,response:await responder(input.path,input.body,storeId)}};}} as CoreClient&{storeDataRead:any;readOrderWeights?:any};
- return {store,client,calls};
+ return {store,client,calls,records};
 }
 function data(result:any):any{assert.equal(result.status,'ok',JSON.stringify(result));return result.data;}
 const range={dateFrom:'2026-09-01',dateTo:'2026-09-02'};
+
+test('platform SKU normalization keeps exact positive IDs and represents invalid IDs as unknown',async()=>{
+ const rawSkus=[0,'0',-1,'-1',1.5,'1.5','source-A','01','',null,Number.MAX_SAFE_INTEGER+1,1,'22','900719925474099312345'];
+ const original=rawSkus.map((sku,index)=>({id:index+1,offer_id:`source-${index}`,sku,name:'Title',statuses:{status_name:'Не продается',status_description:'ORIGINAL_PLATFORM_REASON'}}));
+ const before=structuredClone(original),f=fixture(path=>path==='/v3/product/list'?{result:{items:original.map(row=>({product_id:row.id})),total:original.length}}:{items:original});
+ const result=data(await readOzonData('products',{storeId:'s',limit:100},f.store,f.client));
+ assert.deepEqual(result.items.map((row:any)=>row.sku),[...Array(11).fill(null),'1','22','900719925474099312345']);
+ assert.deepEqual(result.items.map((row:any)=>row.productId),original.map(row=>String(row.id)));assert.deepEqual(result.items.map((row:any)=>row.offerId),original.map(row=>row.offer_id));
+ assert.ok(result.items.every((row:any)=>row.errorReason==='ORIGINAL_PLATFORM_REASON'));assert.deepEqual(original,before);assert.match(result.warnings.join(' '),/平台 SKU/);
+ const descriptor=OZON_DESCRIPTORS.find(d=>d.capabilityId==='hallmark.ozon.products')!,compiled=compileCapability(descriptor);
+ assert.deepEqual(compiled.output(result),[]);assert.ok(compiled.input({storeId:'s',sku:'0'}).length);
+ for(const sku of result.items.map((row:any)=>row.sku).filter(Boolean))assert.deepEqual(compiled.input({storeId:'s',sku}),[]);
+});
+
+test('valid platform SKU filters are forwarded exactly without converting large string identifiers',async()=>{
+ const sku='900719925474099312345',f=fixture((_path,body)=>{assert.deepEqual(body,{sku:[sku]});return {items:[{id:1,offer_id:'source-code-A',sku}]};});
+ const result=data(await readOzonData('products',{storeId:'s',sku},f.store,f.client));assert.equal(result.items[0].sku,sku);assert.equal(result.items[0].offerId,'source-code-A');assert.deepEqual(result.warnings,[]);
+});
+
+test('legacy cached full and cursor reads normalize platform SKU without rewriting cached evidence',async()=>{
+ const f=fixture(path=>path==='/v3/product/list'?{result:{items:[{product_id:1},{product_id:2}],total:2}}:{items:[{id:1,sku:11},{id:2,sku:22}]});
+ await readOzonData('products',{storeId:'s',loadAll:true},f.store,f.client);
+ const [key,entry]=[...f.records.entries()].find(([key])=>key.startsWith('complete_snapshots:'))!;entry.result.data.items[0].sku='0';const calls=f.calls.length;
+ const cached=data(await readOzonData('products',{storeId:'s',loadAll:true},f.store,f.client));assert.equal(cached.items[0].sku,null);assert.equal(entry.result.data.items[0].sku,'0');assert.equal(f.calls.length,calls);assert.ok(f.records.has(key));
+ const first=data(await readOzonData('products',{storeId:'s',limit:1},f.store,f.client)),cursor=f.store.get<any>('ozon_read_cursors',first.cursor);cursor.buffer[0].sku='0';
+ const second=data(await readOzonData('products',{storeId:'s',limit:1,cursor:first.cursor},f.store,f.client));assert.equal(second.items[0].sku,null);assert.equal(cursor.buffer[0].sku,'0');assert.equal(second.items[0].productId,'2');
+});
+
+test('non-product Ozon sources normalize platform SKU while keeping arbitrary seller offer codes',async()=>{
+ const f=fixture(()=>({postings:[{posting_number:'posting-1',products:[{sku:0,offer_id:'source-SKU-A',quantity:2},{sku:'900719925474099312345',offer_id:'source-SKU-B',quantity:1}]}],has_next:false}));
+ const result=data(await readOzonData('orders',{storeId:'s',...range},f.store,f.client));assert.deepEqual(result.items.map((r:any)=>r.sku),[null,'900719925474099312345']);assert.deepEqual(result.items.map((r:any)=>r.offerId),['source-SKU-A','source-SKU-B']);assert.deepEqual(result.items.map((r:any)=>r.quantity),[2,1]);
+});
+
+test('ratings, stock, analytics, returns and measured weights share the platform-SKU boundary',async()=>{
+ const cases=[
+  {kind:'ratings' as const,input:{},response:(path:string)=>path==='/v3/product/list'?{result:{items:[{product_id:1}],total:1}}:{items:[{id:1,sku:0}]}},
+  {kind:'stocks' as const,input:{sku:'1'},response:()=>({products:[{product_id:1,sku:0,warehouse_id:2,present:0,free_stock:0}],has_next:false})},
+  {kind:'analytics' as const,input:{...range},response:()=>({result:{data:[{dimensions:[{id:'0',name:'Unknown SKU'},{id:'2026-09-01'}],metrics:[0,0,0,0,0]}]}})},
+  {kind:'returns' as const,input:{},response:()=>({returns:[{return_id:1,product:{sku:0,offer_id:'seller-code-A'},state:{state:'Utilized'}}]})},
+ ];
+ for(const row of cases){const f=fixture(row.response),result=data(await readOzonData(row.kind,{storeId:'s',...row.input},f.store,f.client));assert.equal(result.items[0].sku,null,row.kind);assert.deepEqual(compileCapability(OZON_DESCRIPTORS.find(d=>d.capabilityId===`hallmark.ozon.${row.kind}`)!).output(result),[]);}
+ const f=fixture(()=>({}));f.client.readOrderWeights=async(storeId:string)=>({status:'ok',raw:{storeId,status:'ready',items:[{postingNumber:'p',offerId:'seller-code-A',sku:0,grams:310,declaredGrams:250}]}});
+ const measured=data(await readOzonData('weights',{storeId:'s',...range},f.store,f.client));assert.equal(measured.items[0].sku,null);assert.equal(measured.items[0].actualWeight,310);assert.equal(measured.items[0].offerId,'seller-code-A');
+});
+
+test('weight report reader receives the original invocation cancellation signal',async()=>{
+ const f=fixture(()=>({})),controller=new AbortController();let received:AbortSignal|undefined;
+ f.client.readOrderWeights=async(storeId:string,_input:RecordData,signal?:AbortSignal)=>{received=signal;return {status:'ok',raw:{storeId,status:'ready',items:[]}};};
+ data(await readOzonData('weights',{storeId:'s',...range},f.store,f.client,controller.signal));assert.equal(received,controller.signal);
+});
+
+test('pre-cancelled complete weight reads do no work and create no cache records',async()=>{
+ const f=fixture(()=>({})),controller=new AbortController();let reads=0;controller.abort();
+ f.client.readOrderWeights=async(storeId:string)=>{reads++;return {status:'ok',raw:{storeId,status:'ready',items:[]}};};
+ const result=await readOzonData('weights',{storeId:'s',...range,loadAll:true},f.store,f.client,controller.signal);
+ assert.equal(result.error?.code,'OZON_REQUEST_CANCELLED');assert.equal(reads,0);assert.equal(f.records.size,0);
+});
+
+test('one cancelled complete-weight waiter does not cancel a remaining reader',async t=>{
+ const f=fixture(()=>({})),controller=new AbortController();let release!:()=>void,received:AbortSignal|undefined,reads=0;
+ const gate=new Promise<void>(resolve=>{release=resolve;});t.after(release);
+ f.client.readOrderWeights=async(storeId:string,_input:RecordData,signal?:AbortSignal)=>{reads++;received=signal;await gate;return {status:'ok',raw:{storeId,status:'ready',items:[]}};};
+ const args={storeId:'s',...range,loadAll:true},first=readOzonData('weights',args,f.store,f.client,controller.signal),second=readOzonData('weights',args,f.store,f.client);
+ await new Promise<void>(resolve=>setImmediate(resolve));controller.abort();
+ const result=await Promise.race([first,new Promise<any>(resolve=>setImmediate(()=>resolve({error:{code:'NOT_CANCELLED'}})))]);
+ assert.equal(result.error?.code,'OZON_REQUEST_CANCELLED');assert.equal(received?.aborted,false);
+ release();data(await second);assert.equal(reads,1);
+});
+
+test('last complete-weight cancellation discards late evidence; next caller waits for retirement then starts fresh',async t=>{
+ const f=fixture(()=>({})),controller=new AbortController();let release!:()=>void,received:AbortSignal|undefined,reads=0;
+ const gate=new Promise<void>(resolve=>{release=resolve;});t.after(release);
+ f.client.readOrderWeights=async(storeId:string,_input:RecordData,signal?:AbortSignal)=>{reads++;if(reads===1){received=signal;await gate;return {status:'ok',raw:{storeId,status:'ready',items:Array.from({length:101},(_,i)=>({postingNumber:`old-${i}`,sku:String(i+1),grams:100}))}};}return {status:'ok',raw:{storeId,status:'ready',items:[{postingNumber:'fresh',sku:'1',grams:200}]}};};
+ const args={storeId:'s',...range,loadAll:true},first=readOzonData('weights',args,f.store,f.client,controller.signal);
+ await new Promise<void>(resolve=>setImmediate(resolve));controller.abort();
+ const result=await Promise.race([first,new Promise<any>(resolve=>setImmediate(()=>resolve({error:{code:'NOT_CANCELLED'}})))]);
+ assert.equal(result.error?.code,'OZON_REQUEST_CANCELLED');assert.equal(received?.aborted,true);
+ const next=readOzonData('weights',args,f.store,f.client);await new Promise<void>(resolve=>setImmediate(resolve));assert.equal(reads,1);
+ release();const fresh=data(await next);assert.equal(reads,2);assert.deepEqual(fresh.items.map((row:any)=>row.postingNumber),['fresh']);
+ assert.equal([...f.records.keys()].some(key=>key.startsWith('ozon_read_cursors:')),false);
+ assert.equal([...f.records.values()].some(value=>JSON.stringify(value).includes('old-')),false);
+});
+
+test('a returned cached weight read does not cancel its background refresh',async t=>{
+ const f=fixture(()=>({}));let release!:()=>void,received:AbortSignal|undefined,reads=0;
+ const gate=new Promise<void>(resolve=>{release=resolve;});t.after(release);
+ f.client.readOrderWeights=async(storeId:string,_input:RecordData,signal?:AbortSignal)=>{reads++;if(reads===2){received=signal;await gate;}return {status:'ok',raw:{storeId,status:'ready',items:[{postingNumber:'p',sku:'1',grams:reads*100}]}};};
+ const args={storeId:'s',...range,loadAll:true};assert.equal(data(await readOzonData('weights',args,f.store,f.client)).items[0].actualWeight,100);
+ const controller=new AbortController(),cached=data(await readOzonData('weights',{...args,forceRefresh:true},f.store,f.client,controller.signal));assert.equal(cached.items[0].actualWeight,100);assert.equal(cached.cache.refreshing,true);
+ await new Promise<void>(resolve=>setImmediate(resolve));controller.abort();assert.equal(received?.aborted,false);
+ release();await new Promise<void>(resolve=>setImmediate(resolve));assert.equal(data(await readOzonData('weights',args,f.store,f.client)).items[0].actualWeight,200);assert.equal(reads,2);
+});
 
 test('retryable platform HTTP failures stay distinct from authorization errors',async()=>{
  for(const status of [429,503,408,403]){
@@ -101,6 +193,17 @@ test('pending weight report reuses the same request and never returns declared w
  const f=fixture(()=>({})),requests:RecordData[]=[];let ready=false;
  f.client.readOrderWeights=async(storeId:string,input:RecordData)=>{requests.push(input);return {status:'ok',raw:{storeId,status:ready?'ready':'pending',items:ready?[{postingNumber:'p',sku:'1',offerId:'o',grams:310,declaredGrams:250,shipmentAt:'2026-09-01T00:00:00Z'}]:[],skipped:[{postingNumber:'multi',reason:'multiple items'}]}};};
  assert.equal((await readOzonData('weights',{storeId:'s',...range},f.store,f.client)).error?.code,'REPORT_PENDING');ready=true;const result=data(await readOzonData('weights',{storeId:'s',...range},f.store,f.client));assert.equal(requests[0].requestId,requests[1].requestId);assert.equal(result.items[0].actualWeight,310);assert.equal(result.items[0].weightDifference,60);assert.equal(result.items[0].quantity,1);assert.equal(result.items[0].weightScope,'已核实单 SKU 单件');
+});
+
+test('frequent weight refreshes keep a fixed query expiry and obtain a fresh completed report after one hour',async t=>{
+ const f=fixture(()=>({})),ids:string[]=[];let now=Date.now();t.mock.method(Date,'now',()=>now);
+ f.client.readOrderWeights=async(storeId:string,input:RecordData)=>{ids.push(input.requestId);return {status:'ok',raw:{storeId,status:'ready',items:[{postingNumber:'p',sku:'1',grams:new Set(ids).size*100}]}};};
+ const args={storeId:'s',...range};assert.equal(data(await readOzonData('weights',args,f.store,f.client)).items[0].actualWeight,100);
+ const firstExpiry=[...f.records.entries()].find(([key])=>key.startsWith('ozon_weight_queries:'))![1].expiresAt;
+ for(let i=0;i<2;i++){now+=20*60_000;assert.equal(data(await readOzonData('weights',args,f.store,f.client)).items[0].actualWeight,100);}
+ assert.equal([...f.records.entries()].find(([key])=>key.startsWith('ozon_weight_queries:'))![1].expiresAt,firstExpiry);
+ now+=20*60_000;assert.equal(data(await readOzonData('weights',args,f.store,f.client)).items[0].actualWeight,200);
+ assert.equal(new Set(ids.slice(0,3)).size,1);assert.notEqual(ids[3],ids[0]);
 });
 test('finance dates advance without implying first-day records are the full period',async()=>{
  const f=fixture((path,body)=>({accruals:[{accrual_id:body.date,amount:{amount:'-10.50',currency:'CNY'},posting_number:'p'}],has_next:false}));const input={storeId:'s',...range};const first=data(await readOzonData('finance',input,f.store,f.client));assert.equal(first.items[0].amount,-10.5);assert.equal(first.items[0].commission,null);assert.ok(first.cursor);

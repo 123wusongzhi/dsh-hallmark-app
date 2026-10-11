@@ -25,6 +25,22 @@ function fixture(respond:(source:OzonCompositionSource,input:any)=>any){
  return {read,reader,store,calls,records};
 }
 function data(result:any):any{assert.equal(result.status,'ok',JSON.stringify(result));assert.deepEqual(compileSchema(OZON_COMPOSE_DESCRIPTOR.outputSchema)(result.data),[]);return result.data;}
+
+test('composition exposes invalid platform SKUs as unknown while retaining separate product joins',async()=>{
+ const f=fixture(source=>source==='products'?[{productId:'1',offerId:'source-A',sku:'0',title:'A'},{productId:'2',offerId:'source-B',sku:'0',title:'B'},{productId:'3',sku:'900719925474099312345',title:'C'}]:[{productId:'1',price:11},{productId:'2',price:22},{productId:'3',price:33}]);
+ const result=data(await f.read({recipe:recipe(['products.productId','products.sku','prices.price'])}));
+ assert.deepEqual(result.items.map((row:any)=>row.products.sku),[null,null,'900719925474099312345']);assert.deepEqual(result.items.map((row:any)=>row.products.productId),['1','2','3']);assert.deepEqual(result.items.map((row:any)=>row.prices.price),[11,22,33]);
+ assert.deepEqual(result.items.slice(0,2).map((row:any)=>row.products.offerId),['source-A','source-B']);assert.match(result.warnings.join(' '),/平台 SKU/);
+ const cached=data(await f.read({recipe:recipe(['products.productId','products.sku','prices.price'])}));assert.deepEqual(cached.items,result.items);assert.equal(cached.sourceStates[0].cacheHit,true);
+});
+
+test('composition normalizes old complete snapshots and page cursors without overwriting their evidence',async()=>{
+ const f=fixture(()=>[{productId:'1',sku:'11'},{productId:'2',sku:'22'}]),args={recipe:recipe(['products.productId']),limit:1};
+ const first=data(await f.read(args)),position=f.store.get<any>('ozon_composition_cursors',first.cursor),saved=f.store.get<any>('ozon_composition_snapshots',position.snapshotId);saved.items[1].products.sku='0';const calls=f.calls.length;
+ const second=data(await f.read({...args,cursor:first.cursor}));assert.equal(second.items[0].products.sku,null);assert.equal(second.items[0].products.productId,'2');assert.equal(saved.items[1].products.sku,'0');assert.equal(f.calls.length,calls);
+ await f.read({...args,loadAll:true});const [,complete]=[...f.records.entries()].find(([key])=>key.startsWith('complete_snapshots:'))!;complete.result.data.items[0].products.sku='0';
+ const cached=data(await f.read({...args,loadAll:true}));assert.equal(cached.items[0].products.sku,null);assert.equal(complete.result.data.items[0].products.sku,'0');
+});
 test('browser-safe recipe source has stable column keys, source currency paths and no embedded shop',()=>{
  assert.doesNotThrow(()=>compileCapability(OZON_COMPOSE_DESCRIPTOR));
  const draft=createOzonCompositionDraft('c',recipe(['products.status','orders.status','prices.price']));

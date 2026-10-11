@@ -164,6 +164,7 @@ export class AppsRuntime {
     const candidates=this.listConnections(appId).filter(row=>row.enabled&&(!bindings||bindings.some(binding=>binding.connectionId===row.connectionId)));
     const matches=connectionId?candidates.filter(row=>row.connectionId===connectionId):candidates;
     if(matches.length===1)return {appId,connectionId:matches[0].connectionId};
+    if(!matches.length)return {status:'needs_clarification',missing:['connectionBinding'],candidates:candidates.map(row=>({appId:row.appId,connectionId:row.connectionId,displayName:row.displayName})),question:'所请求的连接不可用或未在当前会话启用。请通过宿主 Apps 绑定选择并启用连接（输入框 @应用）；子代理需要宿主明确授权，也可由已有绑定的父会话读取后传递资料。重复填写 connectionId 不会授予权限。'};
     return {status:'needs_clarification',missing:['connectionId'],candidates:candidates.map(row=>({appId:row.appId,connectionId:row.connectionId,displayName:row.displayName})),question:'Specify one enabled connection ID.'};
   }
   async invoke(request: InvocationRequest, signal?: AbortSignal): Promise<CapabilityResult> {
@@ -309,7 +310,7 @@ export class AppsRuntime {
   async inspect(operationId: string, signal?: AbortSignal): Promise<CapabilityResult> {
     const operation=this.store.get<RuntimeOperation>('operations',operationId);
     const identity={invocationId:randomUUID(),traceId:operation?.request.traceId??randomUUID()};
-    if(!operation)return failure(identity,'OPERATION_NOT_FOUND','No such operation.');
+    if(!operation)return failure(identity,'OPERATION_NOT_FOUND','No such operation. Use operation.operationId from an operation result, not invocationId; read a stored result with resultRef.');
     const request:InvocationRequest={...operation.request,...identity,source:{kind:'recovery',operationId},deadlineAt:new Date(Date.now()+30000).toISOString()};
     const startedAt=new Date().toISOString();
     this.store.put('invocations',request.invocationId,{invocationId:request.invocationId,requestHash:digest(request),request,state:'received',operationId,startedAt,...(operation.configRevision!==undefined?{configRevision:operation.configRevision}:{})} satisfies InvocationRecord);
