@@ -9,15 +9,16 @@ import {HallmarkProvider,HallmarkStorePort} from '../../packages/app-hallmark/sr
 const baseline=process.env.HANDOFF_BASELINE==='1';
 const ok=(raw:any)=>({status:'ok' as const,raw});
 function fixture(id:any=123,direct=true){
- const database=new RuntimeStore(':memory:'),runtime=new AppsRuntime(database),store=new HallmarkStorePort(database,'c');let sequence=0;const calls:any[]=[];
+ const database=new RuntimeStore(':memory:'),runtime=new AppsRuntime(database),store=new HallmarkStorePort(database,'c');let sequence=0,providerCalls=0;const calls:any[]=[];
  const item={description_category_id:id,type_id:456,type_name:'Cup',children:[]};
  const client:any={getStores:async()=>ok([{id:'shop'}]),getStoreProducts:async()=>ok({stores:[{id:'shop'}],products:[]}),syncStoreProducts:async()=>ok({}),getTargetMargin:async()=>ok({}),searchCollectedItems:async()=>ok([]),getCollectedItem:async()=>{throw Error('no raw');},getCollectedItemDetail:async()=>ok({id:'p1',source:'taobao_tmall',title:'Cup',currency:'CNY',skus:[{sourceSkuId:'sku1',spec:'red',goodsPrice:3,currency:'CNY'}]}),getCategoryData:async(input:any)=>{calls.push(input);return input.mode==='search'?ok({items:[item]}):ok({result:[{id:85,is_required:true,dictionary_id:1}]});},platformCall:async()=>{throw Error('WRITE FORBIDDEN');},platformRead:async()=>{throw Error('NETWORK FORBIDDEN');}};
  const directStore={id:'shop',name:'Shop',platform:'ozon',enabled:true,revision:1,credentialRevision:1,hasCredentials:true,sourceConnectionId:'c'};
  const gateway:any={listStores:()=>[directStore],hasStore:(id:string)=>id==='shop',getStore:()=>directStore,getProducts:async()=>ok({response:{items:[]}}),request:async(storeId:string,input:any)=>{calls.push(input);if(input.path==='/v1/description-category/tree')return ok({result:[item]});if(input.path==='/v1/description-category/attribute')return ok({result:[{id:85,is_required:true,dictionary_id:1}]});throw Error('UNEXPECTED '+input.path);}};
- runtime.register(new HallmarkProvider({store:()=>store,client,businessGateway:direct?gateway:undefined,broker:{getStoreTask:async()=>{throw Error('NO TASK');},getListingTask:async()=>{throw Error('NO TASK');},requestId:()=>''}}));
+ const provider=new HallmarkProvider({store:()=>store,client,businessGateway:direct?gateway:undefined,broker:{getStoreTask:async()=>{throw Error('NO TASK');},getListingTask:async()=>{throw Error('NO TASK');},requestId:()=>''}}),execute=provider.execute.bind(provider);
+ provider.execute=async context=>{providerCalls++;return execute(context);};runtime.register(provider);
  runtime.addConnection({appId:'hallmark',connectionId:'c',displayName:'fixture',config:{backend:'fixture'},configRevision:1,enabled:true});runtime.bind({sessionId:'s',appId:'hallmark',connectionId:'c',enabled:true,boundAt:new Date().toISOString()});
  const invoke=async(capabilityId:string,input:any)=>{const n=++sequence;const result=await runtime.invoke({protocolVersion:'1.0',invocationId:`h-${n}`,traceId:`h-${n}`,appId:'hallmark',connectionId:'c',capabilityId,capabilityVersion:'1.0.0',input:JSON.parse(JSON.stringify(input)),source:{kind:'agent',sessionId:'s',nativeCallId:`h-${n}`},deadlineAt:new Date(Date.now()+60000).toISOString()});return JSON.parse(projectModelResult(database,result).content);};
- return {invoke,calls,close:async()=>{await runtime.dispose();database.close();}};
+ return {invoke,calls,providerCalls:()=>providerCalls,close:async()=>{await runtime.dispose();database.close();}};
 }
 const cases=[{id:123,label:'numeric'},{id:Number.MAX_SAFE_INTEGER,label:'safe-boundary'},{id:'123',label:'string'}];
 const measurements:any[]=[];
@@ -52,8 +53,10 @@ for(const field of ['descriptionCategoryId','typeId'])for(const value of [Number
  const f=fixture();try{
   const selected={descriptionCategoryId:'123',typeId:'456',[field]:categoryToolId(value)};
   const result=await f.invoke(target==='read'?'hallmark.categories.read':'hallmark.listing.prepare',target==='read'?{storeId:'shop',mode:'template',...selected}:{storeId:'shop',selections:[{id:'p1'}],categories:{p1:selected}});
-  if(value===undefined&&target==='read')assert.equal(result.status,'needs_clarification');
-  else {assert.equal(result.status,'failed');assert.equal(result.error.code,'INPUT_SCHEMA_INVALID');}
+  // Current category contracts require both identities before provider dispatch,
+  // including fields omitted by JSON serialization (verified on baseline 92b2890).
+  assert.equal(result.status,'failed');assert.equal(result.error.code,'INPUT_SCHEMA_INVALID');
+  assert.equal(f.providerCalls(),0,'invalid or missing IDs do not dispatch the provider');
   assert.equal(f.calls.length,0,'invalid IDs do not reach category transport');
  }finally{await f.close();}
 });

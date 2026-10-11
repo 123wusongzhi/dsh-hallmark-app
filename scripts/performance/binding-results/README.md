@@ -25,7 +25,7 @@ node scripts/performance/binding-results/summarize.mjs artifacts/performance/bin
 ## 协议与正确性
 
 - 默认十套件：category、fields、literal-long、literal-absent、literal-short、arrays-whole、unicode、collection、sku、namespace。每套件 5 对独立 Node 进程，AB/BA 交替，共 100 进程；两臂串行，不删预热轮、离群值或失败样本。
-- fixtures 已逐字节复制自审过的本地驱动，来源及原始散列见 provenance.json。只有合成数据、内存 SQLite、隔离 Runtime 和动态 127.0.0.1 HTTP。metrics 预加载拒绝非 loopback fetch，保留整个进程 CPU、wall 和 RSS。
+- fixtures 初次从审过的本地驱动逐字节复制。变基后的 8 个 Git blob 仍逐字节一致；Windows `core.autocrlf=true` 将工作副本换成 CRLF，因此工作副本原始 SHA 与旧 LF 文件不同。provenance.json 的 `sha256` 明确指已核对的 LF Git blob；两个 oracle 的旧工作副本散列另行保留。每次运行的 manifest 仍记录实际工作副本字节，不用规范化散列冒充原始字节相同。只有合成数据、内存 SQLite、隔离 Runtime 和动态 127.0.0.1 HTTP。metrics 预加载拒绝非 loopback fetch，保留整个进程 CPU、wall 和 RSS。
 - fields 比较 A 的完整读取与 B 的显式字段投影；literal 比较完整读取与精确定位加原文恢复。其他套件两臂使用相同策略，不把组合效果归给单个补丁。
 - 原始 oracle 完整保留：字段与顺序、缺失/null、字面量全文/否定语义、Unicode 精确拼接、collection 返回数据与 total、SKU 所有分页及选择顺序。category 原字段一致性与新增字典提示分开核验。
 - 正式 Unicode 维度不缩小，长/缺失 literal 为 240 段、短 literal 为 12 段；driver 清除继承的所有 fixture 开关。校准将 Unicode 缩到 0.2%、数组只留两个小控制、collection 缩到 16、SKU/namespace 为 32；category/literal 不缩。
@@ -46,6 +46,10 @@ node scripts/performance/binding-results/reader-parity.mjs ../baseline .
 
 reader-parity 对正常可恢复路径仍要求原始页面 JSON 字节完全一致。发现差异时先递归执行基线实际给出的全部读取入口：基线能完整恢复就判回退，不能仅凭“双方最终值相同”放行。只有基线确实因预算不足或超过公开 4000 码点路径限制而无法完整恢复，才允许已审的 serialized-json 分支；该分支必须逐页不超过预算、游标严格前进、text 与原 JSON 的码点区间精确一致，最终拼接 JSON.parse 后与原 result 子树深度相等。不会忽略其他错误或任意页形状差异。
 
-当前修复后验证为 860 组比较，831 组字节全等，29 组经上述完整恢复证据允许的差异；另保存 76 个完整恢复记录。普通 512 字节 root 反例已由不必要的 1162 次 serialized 读取修回与基线相同的 363 次目录/文本读取。这是兼容修复证据，不是性能基准百分比。
+15b 冻结候选修复后验证为 860 组比较，831 组字节全等，29 组经上述完整恢复证据允许的差异；另保存 76 个完整恢复记录。普通 512 字节 root 反例已由不必要的 1162 次 serialized 读取修回与基线相同的 363 次目录/文本读取。这是兼容修复证据，不是性能基准百分比。
+
+对最新 92b 基线与变基候选 77a9464 的严格 reader-parity 另行通过：860 组、831 组字节全等、29 组经完整恢复证据验证的差异、76 份完整恢复记录，exit 0。运行前后相关源码与校验脚本散列不变，原始输出在 `compat/reader-parity-92b.*`；这次检查仍不作性能声明。
+
+最新 92b 比较的正式性能运行独立保存。可通过 `--suites=category,fields,literal-long,literal-absent,literal-short,arrays-whole,unicode,collection,sku` 排除已剔除优化的 namespace 套件，共 9 套件、5 对、90 个独立进程；collection 继续检查剔除后的实际行为。最新基线已有 ten01 与 batch02-02，计为 2 项已有、17 项新增、1 项剔除。旧 15b 结果不能冒称 92b 的验收。
 
 报告与精简原始样本见 `docs/performance/binding-results-windows-20261011.md` 及同名 `.summary.json`。已中止的旧基线记录只作历史，不与当前正式结果混用。此目录的可移植入口不改变原 output 驱动或既有 raw 记录。

@@ -23,7 +23,7 @@
     "Explicit baseline/candidate checkout arguments required",
     "Default output in ignored artifacts/performance/binding-results",
     "No attachment extraction or prepare step",
-    "Already-reviewed fixtures copied byte-for-byte",
+    "Initially copied reviewed fixtures byte-for-byte; committed LF Git blobs remain exact, while Windows autocrlf may change working-tree bytes",
     "Preserve five independent paired rounds, all negative controls, source/runner/fixture identity, loopback fetch guard",
     "Reject unsupported/duplicate arguments; preserve Node 24.12.0 pin"
   ],
@@ -36,7 +36,8 @@
       "adaptations": [
         "Windows file-URL dynamic imports",
         "optional calibration-only case filter"
-      ]
+      ],
+      "sha256Scope": "Committed LF Git blob; also equals current working content with CRLF normalized to LF"
     },
     {
       "file": "fixtures/category.ts",
@@ -45,7 +46,8 @@
       "originalSha256": "8ebf820e06f0e18a0995e1cf47dd79da6f2ae2669873924c5080e509116a23cb",
       "adaptations": [
         "Windows file-URL dynamic imports"
-      ]
+      ],
+      "sha256Scope": "Committed LF Git blob; also equals current working content with CRLF normalized to LF"
     },
     {
       "file": "fixtures/collection.mjs",
@@ -54,7 +56,8 @@
       "originalSha256": "f43be18a1a93efe6a0fa0012b0913bb05226f384bf5d12bdddcfd92585cb2502",
       "adaptations": [
         "Windows file-URL dynamic imports"
-      ]
+      ],
+      "sha256Scope": "Committed LF Git blob; also equals current working content with CRLF normalized to LF"
     },
     {
       "file": "fixtures/fields.ts",
@@ -64,7 +67,8 @@
       "adaptations": [
         "Windows file-URL dynamic imports",
         "optional calibration-only case filter"
-      ]
+      ],
+      "sha256Scope": "Committed LF Git blob; also equals current working content with CRLF normalized to LF"
     },
     {
       "file": "fixtures/literal.mjs",
@@ -73,7 +77,8 @@
       "originalSha256": "e7c369d87fd3d4f1df12dd2e76f98dff1789aec78b646b4e009e8ed5df3a840b",
       "adaptations": [
         "Windows file-URL dynamic imports"
-      ]
+      ],
+      "sha256Scope": "Committed LF Git blob; also equals current working content with CRLF normalized to LF"
     },
     {
       "file": "fixtures/namespace.mjs",
@@ -82,7 +87,8 @@
       "originalSha256": null,
       "adaptations": [
         "32/5000 rows; legacy/stable adapters; all/sparse/none; ten measured calls; exact oracle"
-      ]
+      ],
+      "sha256Scope": "Committed LF Git blob; also equals current working content with CRLF normalized to LF"
     },
     {
       "file": "fixtures/sku.mjs",
@@ -92,7 +98,8 @@
       "adaptations": [
         "Windows file-URL dynamic imports",
         "retain exact 2048 call assertions; permit 32-SKU negative control"
-      ]
+      ],
+      "sha256Scope": "Committed LF Git blob; also equals current working content with CRLF normalized to LF"
     },
     {
       "file": "fixtures/unicode.ts",
@@ -102,22 +109,25 @@
       "adaptations": [
         "Windows file-URL dynamic imports",
         "optional calibration-only scale; formal scale stays 1"
-      ]
+      ],
+      "sha256Scope": "Committed LF Git blob; also equals current working content with CRLF normalized to LF"
     }
   ],
   "independentOracles": [
     {
       "file": "literal-oracle.mjs",
       "originalSha256": "2e907c89eb38362de6d3d832d4d8329f109dc0a0753076075627cab6b2b42c35",
-      "sha256": "dbc6c4a7f37d17ecc123817f7e3d5d66554d433cecf998e9b49b17a8e30ebca4",
+      "sha256": "24f9825fb5e3e3911175b288945a365373fe760ee8e8235ac4406eece4688ab0",
       "adaptations": [
         "Required checkout argument and Windows file-URL import; complete original oracle preserved"
-      ]
+      ],
+      "preGitWorkingSha256": "dbc6c4a7f37d17ecc123817f7e3d5d66554d433cecf998e9b49b17a8e30ebca4",
+      "sha256Scope": "Committed LF Git blob; also equals current working content with CRLF normalized to LF"
     },
     {
       "file": "reader-parity.mjs",
       "originalSha256": "1d97d6e4d271f637ebedb68460e325b14588b6a11d771b929108ec121414768e",
-      "sha256": "32ba8f9f7cc0c2b688cdbd55856ac6a28a7edde23314f3aa11c2d0d72b7664f8",
+      "sha256": "77e4f2f5a54b56f842746480f82672b259819e8651d5b20f8b4055418aff1b51",
       "adaptations": [
         "Required checkout arguments and Windows file-URL imports",
         "Retain the original 854 comparison matrix, adding six long-pointer controls",
@@ -140,10 +150,97 @@
           "maxPageBytes": 512,
           "byteExactFirstPage": true
         },
-        "performanceClaim": false
+        "performanceClaim": false,
+        "sourceScope": "Historical frozen 15b candidate"
+      },
+      "preGitWorkingSha256": "32ba8f9f7cc0c2b688cdbd55856ac6a28a7edde23314f3aa11c2d0d72b7664f8",
+      "sha256Scope": "Committed LF Git blob; also equals current working content with CRLF normalized to LF",
+      "validation92b": {
+        "baselineCommit": "92b289023d2ebd286116b3d3eebabeeb8ced38d3",
+        "candidateCommit": "77a94643306357f14762d3d1e8d6efa7a15b420f",
+        "sourceIdentity": "Exact tested store/projection/oracle hashes preserved in local reader-parity-92b.metadata.json",
+        "exitCode": 0,
+        "comparisons": 860,
+        "strictByteEqual": 831,
+        "verifiedRecoveryDifferences": 29,
+        "completeRecoveryRecords": 76,
+        "sourceUnchanged": true,
+        "performanceClaim": false,
+        "resultSha256": "a7c6eb6a7331c110f9c128f480714f4970ce722f7ce0e4314781fd21092e9856"
       }
     }
   ],
-  "selectionNote": "Batch02-08 namespace optimization is excluded. The namespace fixture remains a negative control. Historical mixed-collection gains from the all20 run are not final delivered gains.",
-  "evidencePolicy": "No raw logs, cloud source snapshots, node_modules or attachment documents required. Every new run retains all raw outputs locally; interrupted runs remain historical."
+  "selectionNote": "Latest 92b baseline already contains ten01 and batch02-02; 17 new changes retained, batch02-08 namespace optimization excluded. Namespace fixture remains available as a negative control. Historical 15b all20 mixed-collection gains are not final delivered gains.",
+  "evidencePolicy": "No raw logs, cloud source snapshots, node_modules or attachment documents required. Every new run retains all raw outputs locally; interrupted runs remain historical.",
+  "lineEndingAudit": {
+    "candidateHead": "77a94643306357f14762d3d1e8d6efa7a15b420f",
+    "preRebaseCandidateHead": "19a6fd2",
+    "coreAutocrlf": "true",
+    "scope": "Eight fixtures and two independent oracles; no fixture or oracle logic changed",
+    "allGitBlobsUnchangedFromPreRebase": true,
+    "allWorkingCopiesEqualToGitAfterCrLfNormalization": true,
+    "hashPolicy": "sha256 records the canonical committed LF Git blob. Historical raw working hashes are retained as preGitWorkingSha256 where different. Each execution manifest separately records actual working-tree bytes; hashes from different line-ending forms must not be treated as raw byte equality.",
+    "files": [
+      {
+        "file": "fixtures/arrays.ts",
+        "gitBlobSha256": "5f5a03cb39b89b21c6e58e2ea1b91b8fec4fed8ffad62b3923c50fbdb2319e46",
+        "workingSha256": "86303f57bd6e7c444e0b2d9e2e23c9e410535f085229d548e345a728f9cdbf48",
+        "crlf": 44
+      },
+      {
+        "file": "fixtures/category.ts",
+        "gitBlobSha256": "80a681f96540d112658fa5348aef72fbc6c729fff14dc1d736be87c0ecb86128",
+        "workingSha256": "537fccbd34040c464ef17a5b409d0c7a14ab7399e0c399a8ee9fde5c67990398",
+        "crlf": 46
+      },
+      {
+        "file": "fixtures/collection.mjs",
+        "gitBlobSha256": "79456d82611318ff602d2183b195b329193ade1e644005113aa00bedea57c422",
+        "workingSha256": "18e13c89832b75ecf88a63d5d558cbb2e799361413fbd7b0befef8fd8882cf29",
+        "crlf": 47
+      },
+      {
+        "file": "fixtures/fields.ts",
+        "gitBlobSha256": "e7f68024ca1b880e8678209595b2530e72ac79581560eb80d0f4b9de7119b6f9",
+        "workingSha256": "2355483cd22158b5bc6854d225537f1108722accad25b22e4b9d45125efe1851",
+        "crlf": 33
+      },
+      {
+        "file": "fixtures/literal.mjs",
+        "gitBlobSha256": "8998a34b477421f207a41d3d6eba9903c99c52bcd46de9aad7af3543927b4085",
+        "workingSha256": "8b87ea6d217dedb2b28ccc6549ac6e46ac8956b30a43dfa2430a6905b6595b39",
+        "crlf": 78
+      },
+      {
+        "file": "fixtures/namespace.mjs",
+        "gitBlobSha256": "661fd5c4ef135e73bbf0113b935f8ec9dfc3134645e9b46c17aefe8e3be77318",
+        "workingSha256": "66ad153ff76ff1d7eb9115a449cf5d5a03be6717e2f4dacb1b9a7c1fc81b5a74",
+        "crlf": 17
+      },
+      {
+        "file": "fixtures/sku.mjs",
+        "gitBlobSha256": "51c560280b0c191ea6148bc3ce699e7a6db331f9deaec9c960191325707e95a2",
+        "workingSha256": "b4d8947491224941a002823c3d97d6b12b493acff197a0692680bf875b621b32",
+        "crlf": 52
+      },
+      {
+        "file": "fixtures/unicode.ts",
+        "gitBlobSha256": "f72c3291f6c0acdbfb8ac0e34dd423a455c50c3d75d5af549862aef3cebb6e04",
+        "workingSha256": "766ce0b631f49f2e053ac200063daf2c815582bd9f5eeb46c828df7d913bd071",
+        "crlf": 35
+      },
+      {
+        "file": "literal-oracle.mjs",
+        "gitBlobSha256": "24f9825fb5e3e3911175b288945a365373fe760ee8e8235ac4406eece4688ab0",
+        "workingSha256": "50af04e1797dcc62b16114ec27698cc8630ac16330d2e1d9e328f692c01b6097",
+        "crlf": 35
+      },
+      {
+        "file": "reader-parity.mjs",
+        "gitBlobSha256": "77e4f2f5a54b56f842746480f82672b259819e8651d5b20f8b4055418aff1b51",
+        "workingSha256": "32ba8f9f7cc0c2b688cdbd55856ac6a28a7edde23314f3aa11c2d0d72b7664f8",
+        "crlf": 153
+      }
+    ]
+  }
 }
