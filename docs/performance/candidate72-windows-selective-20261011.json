@@ -1,0 +1,2364 @@
+{
+  "date": "2026-10-11",
+  "baseline": "4e1cd98082a432e2ca89f606927da29eb26ddb67",
+  "archive": "15b07477346f37b7d351e24af3533be7dfb32c3d",
+  "decision": {
+    "acceptedProductionFiles": [
+      "packages/app-hallmark/src/listing-prepare.ts",
+      "packages/component-runtime/src/data-transfer-client.ts",
+      "packages/app-runtime/src/projection.ts",
+      "packages/plugin-apps/client/business-operations.tsx"
+    ],
+    "rejectedTrial": "render-local collected-products formatter reuse: repeated ~200 ms clear-selection tails",
+    "sourceOfMeasurements": "Five-change trial; only four accepted production files are integrated. Do not attribute collected-products gains to the integrated code.",
+    "formalIndependentTimingProcesses": 320
+  },
+  "acceptedFingerprints": [
+    {
+      "path": "packages/app-hallmark/src/listing-prepare.ts",
+      "sha256": "280fc24f75ff2ffd38b127667b742720edd93c312c173c8e0e334b1ca3f32966",
+      "matchesTrial": true
+    },
+    {
+      "path": "packages/component-runtime/src/data-transfer-client.ts",
+      "sha256": "ecbc45bd68f22d7b4038f994f38bfc8dd0b79e28894f70091c75dfd922b2e1b7",
+      "matchesTrial": true
+    },
+    {
+      "path": "packages/app-runtime/src/projection.ts",
+      "sha256": "62dca7448016bfbc2fc73fc2a6d5c055ea356528e247bbdc222e14b36ec56575",
+      "matchesTrial": true
+    },
+    {
+      "path": "packages/plugin-apps/client/business-operations.tsx",
+      "sha256": "c40bd87a1662f1d3d1c13d78bfec193060530ce453e46c0ca80f806a9b28e281",
+      "matchesTrial": true
+    }
+  ],
+  "backend": {
+    "identity": {
+      "mode": "timing",
+      "node": "v24.12.0",
+      "execPath": "C:\\Program Files\\nodejs\\node.exe",
+      "platform": "win32",
+      "roots": {
+        "baseline": "<validation-root>\\baseline",
+        "candidate": "<validation-root>\\candidate"
+      },
+      "rounds": 5,
+      "iterations": 15,
+      "warmup": 5,
+      "startedAt": "2026-10-11T09:49:09.191Z",
+      "sourceHashes": {
+        "baseline": {
+          "packages/app-hallmark/src/listing-prepare.ts": "8191cf1bad60101a063b6f1e7bcccac757c3392202918da15632f4731ba35eb9",
+          "packages/component-runtime/src/data-transfer-client.ts": "b2d2f79d009f01aaf68c7d5177258b856957abf491bc3bc392fe5dda8ecefb06",
+          "packages/app-presentation/src/data-transfers.ts": "b79a477cbd4e2e849da537e748c9231296b988970a2c4b96e9e2f7b63dcec8f2"
+        },
+        "candidate": {
+          "packages/app-hallmark/src/listing-prepare.ts": "280fc24f75ff2ffd38b127667b742720edd93c312c173c8e0e334b1ca3f32966",
+          "packages/component-runtime/src/data-transfer-client.ts": "ecbc45bd68f22d7b4038f994f38bfc8dd0b79e28894f70091c75dfd922b2e1b7",
+          "packages/app-presentation/src/data-transfers.ts": "b79a477cbd4e2e849da537e748c9231296b988970a2c4b96e9e2f7b63dcec8f2"
+        }
+      }
+    },
+    "summaries": [
+      {
+        "kind": "collection",
+        "scenario": "tiny",
+        "processes": 20,
+        "baseline": {
+          "wallMedian": 2.5479,
+          "cpuMedian": 0
+        },
+        "candidate": {
+          "wallMedian": 2.4644500000000003,
+          "cpuMedian": 0
+        },
+        "pairedMedianRatio": {
+          "wallMedian": 0.9338285069575029,
+          "cpuMedian": null
+        },
+        "cycles": [
+          {
+            "round": 1,
+            "wallMedian": 1.0255709979567478,
+            "cpuMedian": null
+          },
+          {
+            "round": 2,
+            "wallMedian": 0.9252886925521198,
+            "cpuMedian": null
+          },
+          {
+            "round": 3,
+            "wallMedian": 0.9338285069575029,
+            "cpuMedian": null
+          },
+          {
+            "round": 4,
+            "wallMedian": 0.9290681239988693,
+            "cpuMedian": null
+          },
+          {
+            "round": 5,
+            "wallMedian": 0.9608230484871007,
+            "cpuMedian": null
+          }
+        ]
+      },
+      {
+        "kind": "collection",
+        "scenario": "medium",
+        "processes": 20,
+        "baseline": {
+          "wallMedian": 46.174,
+          "cpuMedian": 47
+        },
+        "candidate": {
+          "wallMedian": 34.950149999999994,
+          "cpuMedian": 31.5
+        },
+        "pairedMedianRatio": {
+          "wallMedian": 0.759231537736329,
+          "cpuMedian": 0.6595744680851063
+        },
+        "cycles": [
+          {
+            "round": 1,
+            "wallMedian": 0.7912022235120679,
+            "cpuMedian": 0.7247706422018348
+          },
+          {
+            "round": 2,
+            "wallMedian": 0.7644457920698262,
+            "cpuMedian": 0.5765765765765766
+          },
+          {
+            "round": 3,
+            "wallMedian": 0.736621071215837,
+            "cpuMedian": 0.6595744680851063
+          },
+          {
+            "round": 4,
+            "wallMedian": 0.759231537736329,
+            "cpuMedian": 0.5779816513761468
+          },
+          {
+            "round": 5,
+            "wallMedian": 0.7559221414853035,
+            "cpuMedian": 0.6595744680851063
+          }
+        ]
+      },
+      {
+        "kind": "transfer",
+        "scenario": "inline1k",
+        "processes": 20,
+        "baseline": {
+          "wallMedian": 0.13709999999999667,
+          "cpuMedian": 0
+        },
+        "candidate": {
+          "wallMedian": 0.13850000000000406,
+          "cpuMedian": 0
+        },
+        "pairedMedianRatio": {
+          "wallMedian": 0.9987357774967677,
+          "cpuMedian": null
+        },
+        "cycles": [
+          {
+            "round": 1,
+            "wallMedian": 1.2083653108212034,
+            "cpuMedian": null
+          },
+          {
+            "round": 2,
+            "wallMedian": 1.1372776488785485,
+            "cpuMedian": null
+          },
+          {
+            "round": 3,
+            "wallMedian": 0.851259987707457,
+            "cpuMedian": null
+          },
+          {
+            "round": 4,
+            "wallMedian": 0.9340228245363658,
+            "cpuMedian": null
+          },
+          {
+            "round": 5,
+            "wallMedian": 0.9987357774967677,
+            "cpuMedian": null
+          }
+        ]
+      },
+      {
+        "kind": "transfer",
+        "scenario": "chunk333k",
+        "processes": 20,
+        "baseline": {
+          "wallMedian": 35.70954999999992,
+          "cpuMedian": 31
+        },
+        "candidate": {
+          "wallMedian": 6.886099999999999,
+          "cpuMedian": 0
+        },
+        "pairedMedianRatio": {
+          "wallMedian": 0.192881964172731,
+          "cpuMedian": 0.23809523809523808
+        },
+        "cycles": [
+          {
+            "round": 1,
+            "wallMedian": 0.19515537956133566,
+            "cpuMedian": 0
+          },
+          {
+            "round": 2,
+            "wallMedian": 0.192881964172731,
+            "cpuMedian": 0.23809523809523808
+          },
+          {
+            "round": 3,
+            "wallMedian": 0.18382432394574683,
+            "cpuMedian": 0.23809523809523808
+          },
+          {
+            "round": 4,
+            "wallMedian": 0.18874498486661523,
+            "cpuMedian": 0.24193548387096775
+          },
+          {
+            "round": 5,
+            "wallMedian": 0.19927606489561123,
+            "cpuMedian": 0
+          }
+        ]
+      },
+      {
+        "kind": "transfer",
+        "scenario": "chunk2m",
+        "processes": 20,
+        "baseline": {
+          "wallMedian": 223.2772,
+          "cpuMedian": 220
+        },
+        "candidate": {
+          "wallMedian": 43.32645000000005,
+          "cpuMedian": 46.5
+        },
+        "pairedMedianRatio": {
+          "wallMedian": 0.19393874339824088,
+          "cpuMedian": 0.2052980132450331
+        },
+        "cycles": [
+          {
+            "round": 1,
+            "wallMedian": 0.19023921070055555,
+            "cpuMedian": 0.17218543046357615
+          },
+          {
+            "round": 2,
+            "wallMedian": 0.1934529655367726,
+            "cpuMedian": 0.20484581497797358
+          },
+          {
+            "round": 3,
+            "wallMedian": 0.19393874339824088,
+            "cpuMedian": 0.20750551876379691
+          },
+          {
+            "round": 4,
+            "wallMedian": 0.19426434773764462,
+            "cpuMedian": 0.20956719817767655
+          },
+          {
+            "round": 5,
+            "wallMedian": 0.1942742011037155,
+            "cpuMedian": 0.2052980132450331
+          }
+        ]
+      }
+    ]
+  },
+  "reader": {
+    "node": "v24.12.0",
+    "platform": "win32",
+    "release": "10.0.26200",
+    "cpu": "Intel(R) Core(TM) i5-14600KF",
+    "baseline": "<validation-root>\\baseline",
+    "candidate": "<validation-root>\\candidate",
+    "rounds": 5,
+    "scope": "First complete read per independent process after Host setup; includes Host/HTTP/JSON/render hashing/assertions. No read-chain warmup. Synthetic original data, no business network. RSS is process-wide.",
+    "summary": [
+      {
+        "size": "small",
+        "pattern": "mixed",
+        "observationsPerVariant": 10,
+        "inputBytes": 432,
+        "pages": 1,
+        "bytes": 636,
+        "metrics": {
+          "elapsedMs": {
+            "baseline": 4.79695000000001,
+            "candidate": 4.926150000000007,
+            "ratio": 1.0269337808399082,
+            "reductionPct": -2.693378083990816
+          },
+          "cpuMs": {
+            "baseline": 0,
+            "candidate": 0,
+            "ratio": null,
+            "reductionPct": null,
+            "comparison": "unavailable: timing resolution is insufficient"
+          },
+          "maxRssKb": {
+            "baseline": 149124,
+            "candidate": 150240,
+            "ratio": 1.0074837048362437,
+            "reductionPct": -0.7483704836243721
+          }
+        },
+        "roundRatios": [
+          1.0019417270818147,
+          1.0953523141624888,
+          0.954642733862616,
+          0.9526428102429383,
+          1.011783489401726
+        ]
+      },
+      {
+        "size": "moderate",
+        "pattern": "mixed",
+        "observationsPerVariant": 10,
+        "inputBytes": 43002,
+        "pages": 4,
+        "bytes": 44253,
+        "metrics": {
+          "elapsedMs": {
+            "baseline": 18.310749999999985,
+            "candidate": 17.9307,
+            "ratio": 0.9792444329150918,
+            "reductionPct": 2.075556708490822
+          },
+          "cpuMs": {
+            "baseline": 32,
+            "candidate": 46.5,
+            "ratio": 1.453125,
+            "reductionPct": -45.3125
+          },
+          "maxRssKb": {
+            "baseline": 150546,
+            "candidate": 150122,
+            "ratio": 0.9971835850836289,
+            "reductionPct": 0.28164149163710794
+          }
+        },
+        "roundRatios": [
+          0.9641953012883541,
+          0.9629651509374171,
+          0.9079050388293928,
+          1.0213957042475779,
+          0.9728528200099391
+        ]
+      },
+      {
+        "size": "172000",
+        "pattern": "ascii",
+        "observationsPerVariant": 10,
+        "inputBytes": 1720002,
+        "pages": 127,
+        "bytes": 1765334,
+        "metrics": {
+          "elapsedMs": {
+            "baseline": 2577.0656500000005,
+            "candidate": 1561.64405,
+            "ratio": 0.6059775970394855,
+            "reductionPct": 39.40224029605145
+          },
+          "cpuMs": {
+            "baseline": 2696,
+            "candidate": 1727,
+            "ratio": 0.6405786350148368,
+            "reductionPct": 35.94213649851632
+          },
+          "maxRssKb": {
+            "baseline": 380776,
+            "candidate": 241690,
+            "ratio": 0.6347301300502133,
+            "reductionPct": 36.52698699497867
+          }
+        },
+        "roundRatios": [
+          0.6033521885637643,
+          0.6012436266306183,
+          0.6103372331593568,
+          0.6374516730893681,
+          0.6158415567216875
+        ]
+      },
+      {
+        "size": "40000",
+        "pattern": "mixed",
+        "observationsPerVariant": 10,
+        "inputBytes": 1720002,
+        "pages": 127,
+        "bytes": 1764891,
+        "metrics": {
+          "elapsedMs": {
+            "baseline": 3771.0841499999997,
+            "candidate": 3377.98625,
+            "ratio": 0.8957599766104398,
+            "reductionPct": 10.424002338956019
+          },
+          "cpuMs": {
+            "baseline": 3883,
+            "candidate": 3524,
+            "ratio": 0.9075457120782899,
+            "reductionPct": 9.245428792171007
+          },
+          "maxRssKb": {
+            "baseline": 426008,
+            "candidate": 223840,
+            "ratio": 0.5254361420442809,
+            "reductionPct": 47.45638579557191
+          }
+        },
+        "roundRatios": [
+          0.8896920094049423,
+          0.8983817802559804,
+          0.9063838197933693,
+          0.8947928636219767,
+          0.8846187775556912
+        ]
+      },
+      {
+        "size": "80000",
+        "pattern": "emoji",
+        "observationsPerVariant": 10,
+        "inputBytes": 1600002,
+        "pages": 118,
+        "bytes": 1641654,
+        "metrics": {
+          "elapsedMs": {
+            "baseline": 3099.4414500000003,
+            "candidate": 2794.8594999999996,
+            "ratio": 0.9017300520388921,
+            "reductionPct": 9.826994796110789
+          },
+          "cpuMs": {
+            "baseline": 3266,
+            "candidate": 2938,
+            "ratio": 0.8995713410900184,
+            "reductionPct": 10.042865890998165
+          },
+          "maxRssKb": {
+            "baseline": 333634,
+            "candidate": 224424,
+            "ratio": 0.672665255939143,
+            "reductionPct": 32.733474406085705
+          }
+        },
+        "roundRatios": [
+          0.8978001268798745,
+          0.901075622177852,
+          0.9020882578346184,
+          0.9086798088368089,
+          0.9055294046644347
+        ]
+      }
+    ]
+  },
+  "frontendShort": {
+    "mode": "timing",
+    "formal": true,
+    "environment": {
+      "node": "v24.12.0",
+      "execPath": "C:\\Program Files\\nodejs\\node.exe",
+      "platform": "win32",
+      "arch": "x64",
+      "versions": {
+        "node": "24.12.0",
+        "acorn": "8.15.0",
+        "ada": "3.3.0",
+        "amaro": "1.1.5",
+        "ares": "1.34.5",
+        "brotli": "1.1.0",
+        "cjs_module_lexer": "2.1.0",
+        "cldr": "47.0",
+        "icu": "77.1",
+        "llhttp": "9.3.0",
+        "modules": "137",
+        "napi": "10",
+        "nbytes": "0.1.1",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.67.1",
+        "openssl": "3.5.4",
+        "simdjson": "4.1.0",
+        "simdutf": "6.4.0",
+        "sqlite": "3.50.4",
+        "tz": "2025b",
+        "undici": "7.16.0",
+        "unicode": "16.0",
+        "uv": "1.51.0",
+        "uvwasi": "0.0.23",
+        "v8": "13.6.233.17-node.37",
+        "zlib": "1.3.1-470d3a2",
+        "zstd": "1.5.7"
+      },
+      "TZ": "Asia/Shanghai"
+    },
+    "cycles": 5,
+    "summaries": [
+      {
+        "shape": "business-small",
+        "control": "baseline",
+        "arms": {
+          "baseline": {
+            "cycleMedianMs": 2.3836500000000242,
+            "cycleP95Ms": 4.336199999999991,
+            "actionP95Ms": 0.6265999999999963,
+            "coldMountMedianMs": 31.95705,
+            "coldMountP95Ms": 34.335699999999996,
+            "taskCpuMedianUs": 156500,
+            "perAction": [
+              {
+                "name": "0",
+                "medianMs": 0.33415000000000106,
+                "p95Ms": 0.6738
+              },
+              {
+                "name": "1",
+                "medianMs": 0.3525499999999937,
+                "p95Ms": 0.6237999999999886
+              },
+              {
+                "name": "2",
+                "medianMs": 0.35489999999999355,
+                "p95Ms": 0.7034999999999911
+              },
+              {
+                "name": "3",
+                "medianMs": 0.3191500000000076,
+                "p95Ms": 0.6363000000000056
+              },
+              {
+                "name": "4",
+                "medianMs": 0.03730000000000189,
+                "p95Ms": 0.2546000000000106
+              },
+              {
+                "name": "5",
+                "medianMs": 0.03059999999999974,
+                "p95Ms": 0.21999999999999886
+              },
+              {
+                "name": "6",
+                "medianMs": 0.34455000000000524,
+                "p95Ms": 1.493399999999994
+              },
+              {
+                "name": "7",
+                "medianMs": 0.3325499999999906,
+                "p95Ms": 0.5926000000000045
+              }
+            ]
+          },
+          "candidate": {
+            "cycleMedianMs": 2.2235999999999905,
+            "cycleP95Ms": 4.071900000000014,
+            "actionP95Ms": 0.619899999999987,
+            "coldMountMedianMs": 31.62165,
+            "coldMountP95Ms": 32.5034,
+            "taskCpuMedianUs": 155500,
+            "perAction": [
+              {
+                "name": "0",
+                "medianMs": 0.32055000000000433,
+                "p95Ms": 0.6622999999999877
+              },
+              {
+                "name": "1",
+                "medianMs": 0.32159999999999656,
+                "p95Ms": 0.6195000000000022
+              },
+              {
+                "name": "2",
+                "medianMs": 0.33659999999999,
+                "p95Ms": 0.7033999999999878
+              },
+              {
+                "name": "3",
+                "medianMs": 0.30315000000000936,
+                "p95Ms": 0.5901999999999958
+              },
+              {
+                "name": "4",
+                "medianMs": 0.03569999999999851,
+                "p95Ms": 0.5601000000000056
+              },
+              {
+                "name": "5",
+                "medianMs": 0.02729999999999677,
+                "p95Ms": 0.17880000000000962
+              },
+              {
+                "name": "6",
+                "medianMs": 0.3327499999999972,
+                "p95Ms": 1.2914999999999992
+              },
+              {
+                "name": "7",
+                "medianMs": 0.32124999999999204,
+                "p95Ms": 0.6099000000000103
+              }
+            ]
+          }
+        },
+        "cycleReductionPct": 6.714492480021484,
+        "cpuReductionPct": 0.6389776357827448,
+        "pairs": [
+          {
+            "cycle": 0,
+            "control": "baseline",
+            "baselineMs": 2.3481000000000094,
+            "candidateMs": 2.2056499999999986,
+            "reductionPct": 6.066607043993455
+          },
+          {
+            "cycle": 1,
+            "control": "baseline",
+            "baselineMs": 2.4360500000000016,
+            "candidateMs": 2.362150000000014,
+            "reductionPct": 3.0335994745587125
+          },
+          {
+            "cycle": 2,
+            "control": "baseline",
+            "baselineMs": 2.3285000000000053,
+            "candidateMs": 2.2498500000000092,
+            "reductionPct": 3.3777109727290533
+          },
+          {
+            "cycle": 3,
+            "control": "baseline",
+            "baselineMs": 2.4250000000000114,
+            "candidateMs": 2.2703500000000005,
+            "reductionPct": 6.377319587629282
+          },
+          {
+            "cycle": 4,
+            "control": "baseline",
+            "baselineMs": 2.3300500000000213,
+            "candidateMs": 2.2023499999999885,
+            "reductionPct": 5.480569086501652
+          }
+        ]
+      },
+      {
+        "shape": "business-medium",
+        "control": "baseline",
+        "arms": {
+          "baseline": {
+            "cycleMedianMs": 2.8333999999999833,
+            "cycleP95Ms": 5.354299999999981,
+            "actionP95Ms": 0.734499999999997,
+            "coldMountMedianMs": 33.13365,
+            "coldMountP95Ms": 37.9507,
+            "taskCpuMedianUs": 141000,
+            "perAction": [
+              {
+                "name": "0",
+                "medianMs": 0.42150000000000176,
+                "p95Ms": 0.6578000000000088
+              },
+              {
+                "name": "1",
+                "medianMs": 0.44549999999999557,
+                "p95Ms": 0.8847000000000094
+              },
+              {
+                "name": "2",
+                "medianMs": 0.42969999999999686,
+                "p95Ms": 0.734499999999997
+              },
+              {
+                "name": "3",
+                "medianMs": 0.4029000000000025,
+                "p95Ms": 0.5178000000000083
+              },
+              {
+                "name": "4",
+                "medianMs": 0.043099999999995475,
+                "p95Ms": 0.6850000000000023
+              },
+              {
+                "name": "5",
+                "medianMs": 0.03905000000000314,
+                "p95Ms": 0.20430000000000348
+              },
+              {
+                "name": "6",
+                "medianMs": 0.42020000000000124,
+                "p95Ms": 0.7563999999999993
+              },
+              {
+                "name": "7",
+                "medianMs": 0.41040000000000276,
+                "p95Ms": 1.854299999999995
+              }
+            ]
+          },
+          "candidate": {
+            "cycleMedianMs": 2.2224500000000162,
+            "cycleP95Ms": 3.905399999999972,
+            "actionP95Ms": 0.6254000000000133,
+            "coldMountMedianMs": 32.63475,
+            "coldMountP95Ms": 35.8104,
+            "taskCpuMedianUs": 164500,
+            "perAction": [
+              {
+                "name": "0",
+                "medianMs": 0.3362499999999997,
+                "p95Ms": 1.1426000000000016
+              },
+              {
+                "name": "1",
+                "medianMs": 0.3330000000000055,
+                "p95Ms": 0.6755000000000138
+              },
+              {
+                "name": "2",
+                "medianMs": 0.33824999999999505,
+                "p95Ms": 0.5833999999999975
+              },
+              {
+                "name": "3",
+                "medianMs": 0.3310499999999976,
+                "p95Ms": 0.5164999999999935
+              },
+              {
+                "name": "4",
+                "medianMs": 0.03375000000000483,
+                "p95Ms": 0.07570000000001187
+              },
+              {
+                "name": "5",
+                "medianMs": 0.025450000000006412,
+                "p95Ms": 0.08660000000000423
+              },
+              {
+                "name": "6",
+                "medianMs": 0.3401500000000084,
+                "p95Ms": 0.9067000000000007
+              },
+              {
+                "name": "7",
+                "medianMs": 0.3256500000000031,
+                "p95Ms": 0.6472000000000122
+              }
+            ]
+          }
+        },
+        "cycleReductionPct": 21.562433825085435,
+        "cpuReductionPct": -16.666666666666675,
+        "pairs": [
+          {
+            "cycle": 0,
+            "control": "baseline",
+            "baselineMs": 2.789049999999989,
+            "candidateMs": 2.1828999999999894,
+            "reductionPct": 21.73320664742482
+          },
+          {
+            "cycle": 1,
+            "control": "baseline",
+            "baselineMs": 2.949450000000006,
+            "candidateMs": 2.227550000000001,
+            "reductionPct": 24.475749716048878
+          },
+          {
+            "cycle": 2,
+            "control": "baseline",
+            "baselineMs": 2.800149999999981,
+            "candidateMs": 2.230450000000019,
+            "reductionPct": 20.345338642571498
+          },
+          {
+            "cycle": 3,
+            "control": "baseline",
+            "baselineMs": 2.747949999999996,
+            "candidateMs": 2.3652999999999906,
+            "reductionPct": 13.924925853818515
+          },
+          {
+            "cycle": 4,
+            "control": "baseline",
+            "baselineMs": 2.802000000000014,
+            "candidateMs": 2.233150000000002,
+            "reductionPct": 20.301570306923942
+          }
+        ]
+      },
+      {
+        "shape": "collected-48",
+        "control": "baseline",
+        "arms": {
+          "baseline": {
+            "cycleMedianMs": 36.53270000000002,
+            "cycleP95Ms": 69.72630000000026,
+            "actionP95Ms": 5.936700000000087,
+            "coldMountMedianMs": 41.23905,
+            "coldMountP95Ms": 44.100300000000004,
+            "taskCpuMedianUs": 866500,
+            "perAction": [
+              {
+                "name": "search \"Lamp\"",
+                "medianMs": 2.5124000000000137,
+                "p95Ms": 3.441100000000006
+              },
+              {
+                "name": "search \"  lAmP  \"",
+                "medianMs": 2.1718500000000063,
+                "p95Ms": 3.629500000000064
+              },
+              {
+                "name": "source 1688",
+                "medianMs": 1.318000000000012,
+                "p95Ms": 7.320699999999988
+              },
+              {
+                "name": "search \"\"",
+                "medianMs": 2.762100000000032,
+                "p95Ms": 6.263699999999972
+              },
+              {
+                "name": "source all",
+                "medianMs": 4.86669999999998,
+                "p95Ms": 10.913000000000011
+              },
+              {
+                "name": "下一页",
+                "medianMs": 3.0984499999999855,
+                "p95Ms": 5.630800000000022
+              },
+              {
+                "name": "toggle snapshot-key-30",
+                "medianMs": 3.715249999999969,
+                "p95Ms": 7.709100000000035
+              },
+              {
+                "name": "上一页",
+                "medianMs": 3.192700000000002,
+                "p95Ms": 4.2555999999999585
+              },
+              {
+                "name": "toggle page",
+                "medianMs": 3.7348500000000513,
+                "p95Ms": 4.487699999999961
+              },
+              {
+                "name": "toggle page",
+                "medianMs": 3.57000000000005,
+                "p95Ms": 4.7789000000000215
+              },
+              {
+                "name": "clear selection",
+                "medianMs": 3.1596500000000276,
+                "p95Ms": 4.187400000000025
+              }
+            ]
+          },
+          "candidate": {
+            "cycleMedianMs": 15.311724999999967,
+            "cycleP95Ms": 33.04069999999996,
+            "actionP95Ms": 3.2817000000000007,
+            "coldMountMedianMs": 32.787000000000006,
+            "coldMountP95Ms": 36.2374,
+            "taskCpuMedianUs": 477000,
+            "perAction": [
+              {
+                "name": "search \"Lamp\"",
+                "medianMs": 1.3480499999999864,
+                "p95Ms": 5.901600000000002
+              },
+              {
+                "name": "search \"  lAmP  \"",
+                "medianMs": 1.1203500000000304,
+                "p95Ms": 1.7436999999999898
+              },
+              {
+                "name": "source 1688",
+                "medianMs": 0.8683499999999924,
+                "p95Ms": 1.3232000000000426
+              },
+              {
+                "name": "search \"\"",
+                "medianMs": 1.0868000000000109,
+                "p95Ms": 1.6212999999999909
+              },
+              {
+                "name": "source all",
+                "medianMs": 1.611200000000025,
+                "p95Ms": 2.1204999999999927
+              },
+              {
+                "name": "下一页",
+                "medianMs": 0.9558499999999981,
+                "p95Ms": 1.3134999999999764
+              },
+              {
+                "name": "toggle snapshot-key-30",
+                "medianMs": 1.5512999999999977,
+                "p95Ms": 4.116600000000005
+              },
+              {
+                "name": "上一页",
+                "medianMs": 1.0072000000000116,
+                "p95Ms": 6.158399999999972
+              },
+              {
+                "name": "toggle page",
+                "medianMs": 1.502449999999996,
+                "p95Ms": 4.8940000000000055
+              },
+              {
+                "name": "toggle page",
+                "medianMs": 1.3018999999999892,
+                "p95Ms": 5.149699999999996
+              },
+              {
+                "name": "clear selection",
+                "medianMs": 0.9313000000000073,
+                "p95Ms": 1.264599999999973
+              }
+            ]
+          }
+        },
+        "cycleReductionPct": 58.08761739482722,
+        "cpuReductionPct": 44.95095210617427,
+        "pairs": [
+          {
+            "cycle": 0,
+            "control": "baseline",
+            "baselineMs": 37.881750000000025,
+            "candidateMs": 15.813349999999986,
+            "reductionPct": 58.256020379206404
+          },
+          {
+            "cycle": 1,
+            "control": "baseline",
+            "baselineMs": 35.433699999999874,
+            "candidateMs": 15.155874999999995,
+            "reductionPct": 57.22751222706054
+          },
+          {
+            "cycle": 2,
+            "control": "baseline",
+            "baselineMs": 35.48384999999989,
+            "candidateMs": 14.303425000000018,
+            "reductionPct": 59.6903239079185
+          },
+          {
+            "cycle": 3,
+            "control": "baseline",
+            "baselineMs": 36.77245000000009,
+            "candidateMs": 16.43654999999999,
+            "reductionPct": 55.30199918689141
+          },
+          {
+            "cycle": 4,
+            "control": "baseline",
+            "baselineMs": 36.26280000000004,
+            "candidateMs": 15.533699999999982,
+            "reductionPct": 57.16353949501979
+          }
+        ]
+      },
+      {
+        "shape": "collected-500",
+        "control": "baseline",
+        "arms": {
+          "baseline": {
+            "cycleMedianMs": 47.831750000000056,
+            "cycleP95Ms": 90.85479999999995,
+            "actionP95Ms": 7.155399999999986,
+            "coldMountMedianMs": 41.48270000000001,
+            "coldMountP95Ms": 43.23550000000001,
+            "taskCpuMedianUs": 1101500,
+            "perAction": [
+              {
+                "name": "search \"Lamp\"",
+                "medianMs": 4.715050000000019,
+                "p95Ms": 5.890599999999949
+              },
+              {
+                "name": "search \"  lAmP  \"",
+                "medianMs": 4.845050000000072,
+                "p95Ms": 9.878600000000006
+              },
+              {
+                "name": "source 1688",
+                "medianMs": 4.51645000000002,
+                "p95Ms": 7.179899999999975
+              },
+              {
+                "name": "search \"\"",
+                "medianMs": 4.929349999999886,
+                "p95Ms": 9.656800000000032
+              },
+              {
+                "name": "source all",
+                "medianMs": 5.084650000000124,
+                "p95Ms": 12.8506000000001
+              },
+              {
+                "name": "下一页",
+                "medianMs": 3.096150000000023,
+                "p95Ms": 4.55399999999986
+              },
+              {
+                "name": "toggle snapshot-key-283",
+                "medianMs": 3.6816500000000474,
+                "p95Ms": 5.0131999999999834
+              },
+              {
+                "name": "上一页",
+                "medianMs": 3.14285000000001,
+                "p95Ms": 10.658200000000079
+              },
+              {
+                "name": "toggle page",
+                "medianMs": 3.7841499999999826,
+                "p95Ms": 6.543299999999931
+              },
+              {
+                "name": "toggle page",
+                "medianMs": 3.5316500000000133,
+                "p95Ms": 4.918999999999983
+              },
+              {
+                "name": "clear selection",
+                "medianMs": 3.0583499999999617,
+                "p95Ms": 4.149999999999977
+              }
+            ]
+          },
+          "candidate": {
+            "cycleMedianMs": 19.13989999999999,
+            "cycleP95Ms": 36.75100000000003,
+            "actionP95Ms": 4.5090999999999894,
+            "coldMountMedianMs": 33.72555,
+            "coldMountP95Ms": 40.3953,
+            "taskCpuMedianUs": 531000,
+            "perAction": [
+              {
+                "name": "search \"Lamp\"",
+                "medianMs": 1.7494000000000085,
+                "p95Ms": 4.127400000000023
+              },
+              {
+                "name": "search \"  lAmP  \"",
+                "medianMs": 1.8923499999999933,
+                "p95Ms": 4.973600000000005
+              },
+              {
+                "name": "source 1688",
+                "medianMs": 1.6312000000000069,
+                "p95Ms": 2.049600000000055
+              },
+              {
+                "name": "search \"\"",
+                "medianMs": 1.6735500000000059,
+                "p95Ms": 7.7450000000000045
+              },
+              {
+                "name": "source all",
+                "medianMs": 1.9143499999999847,
+                "p95Ms": 4.914299999999969
+              },
+              {
+                "name": "下一页",
+                "medianMs": 0.9530500000000188,
+                "p95Ms": 4.173900000000003
+              },
+              {
+                "name": "toggle snapshot-key-283",
+                "medianMs": 1.5023499999999927,
+                "p95Ms": 12.250599999999963
+              },
+              {
+                "name": "上一页",
+                "medianMs": 0.9779500000000212,
+                "p95Ms": 1.5375000000000227
+              },
+              {
+                "name": "toggle page",
+                "medianMs": 1.4938499999999806,
+                "p95Ms": 8.900100000000009
+              },
+              {
+                "name": "toggle page",
+                "medianMs": 1.2516999999999854,
+                "p95Ms": 1.7287999999999784
+              },
+              {
+                "name": "clear selection",
+                "medianMs": 0.884350000000012,
+                "p95Ms": 1.160699999999963
+              }
+            ]
+          }
+        },
+        "cycleReductionPct": 59.98494723692951,
+        "cpuReductionPct": 51.793009532455734,
+        "pairs": [
+          {
+            "cycle": 0,
+            "control": "baseline",
+            "baselineMs": 48.5010750000001,
+            "candidateMs": 18.71572499999997,
+            "reductionPct": 61.41173159564003
+          },
+          {
+            "cycle": 1,
+            "control": "baseline",
+            "baselineMs": 47.12287500000001,
+            "candidateMs": 18.99212500000003,
+            "reductionPct": 59.696591092967
+          },
+          {
+            "cycle": 2,
+            "control": "baseline",
+            "baselineMs": 47.99557499999992,
+            "candidateMs": 18.811450000000022,
+            "reductionPct": 60.8058659574345
+          },
+          {
+            "cycle": 3,
+            "control": "baseline",
+            "baselineMs": 48.79039999999978,
+            "candidateMs": 19.13989999999999,
+            "reductionPct": 60.77117629697631
+          },
+          {
+            "cycle": 4,
+            "control": "baseline",
+            "baselineMs": 47.4281500000001,
+            "candidateMs": 19.48707500000002,
+            "reductionPct": 58.91242858935046
+          }
+        ]
+      }
+    ],
+    "note": "Independent processes in serial ABBA order. Headless React; includes fixture driver/effect flush, excludes browser DOM/layout/paint and real business I/O. Different workloads cannot be added together."
+  },
+  "frontendSustained": {
+    "supplementConfig": {
+      "version": 1,
+      "description": "Follow-up only; original five-cycle timing evidence is preserved",
+      "business": {
+        "rows": 10,
+        "attributes": 20,
+        "warmupCycles": 30,
+        "measuredCycles": 200
+      },
+      "collected": {
+        "size": 500,
+        "warmupCycles": 30,
+        "measuredCycles": 100
+      },
+      "abbaCycles": 5
+    },
+    "configSha256": "34771460b10484804460f2ff375c1e2908f21e94a25faa5679da95f1405af581",
+    "harnessSha256": [
+      {
+        "kind": "business",
+        "sha256": "a93c3514e5db336af93a9bd8e53b34c537601611d409a90ca28a9f8cc442c638"
+      },
+      {
+        "kind": "collected",
+        "sha256": "60ae4afc83a0d6fc22a9f62996f1a9ce3447f1a20b10b2c697671a0b01cca2af"
+      }
+    ],
+    "selectionTails": {
+      "baseline": {
+        "aggregate": {
+          "count": 1000,
+          "medianMs": 3.48174999999992,
+          "p95Ms": 5.480099999999993,
+          "maxMs": 107.01809999999978,
+          "over8ms": 36,
+          "over16_67ms": 14
+        },
+        "processes": [
+          {
+            "cycle": 0,
+            "position": 0,
+            "count": 100,
+            "medianMs": 3.4587499999997817,
+            "p95Ms": 4.098300000000563,
+            "maxMs": 96.1857,
+            "over8ms": 2,
+            "over16_67ms": 2
+          },
+          {
+            "cycle": 0,
+            "position": 3,
+            "count": 100,
+            "medianMs": 3.591400000000249,
+            "p95Ms": 5.5090999999999894,
+            "maxMs": 95.43080000000009,
+            "over8ms": 4,
+            "over16_67ms": 2
+          },
+          {
+            "cycle": 1,
+            "position": 0,
+            "count": 100,
+            "medianMs": 3.481600000000526,
+            "p95Ms": 4.371399999999994,
+            "maxMs": 102.76479999999992,
+            "over8ms": 4,
+            "over16_67ms": 2
+          },
+          {
+            "cycle": 1,
+            "position": 3,
+            "count": 100,
+            "medianMs": 3.4664000000000215,
+            "p95Ms": 4.172099999999773,
+            "maxMs": 95.86860000000024,
+            "over8ms": 2,
+            "over16_67ms": 2
+          },
+          {
+            "cycle": 2,
+            "position": 0,
+            "count": 100,
+            "medianMs": 3.4897000000000844,
+            "p95Ms": 6.708100000000286,
+            "maxMs": 107.01809999999978,
+            "over8ms": 5,
+            "over16_67ms": 2
+          },
+          {
+            "cycle": 2,
+            "position": 3,
+            "count": 100,
+            "medianMs": 3.4676999999999225,
+            "p95Ms": 4.1870000000001255,
+            "maxMs": 12.464599999999791,
+            "over8ms": 3,
+            "over16_67ms": 0
+          },
+          {
+            "cycle": 3,
+            "position": 0,
+            "count": 100,
+            "medianMs": 3.406999999999698,
+            "p95Ms": 4.0604999999995925,
+            "maxMs": 11.254899999999907,
+            "over8ms": 3,
+            "over16_67ms": 0
+          },
+          {
+            "cycle": 3,
+            "position": 3,
+            "count": 100,
+            "medianMs": 3.4741000000003623,
+            "p95Ms": 4.372299999999996,
+            "maxMs": 95.68159999999989,
+            "over8ms": 4,
+            "over16_67ms": 2
+          },
+          {
+            "cycle": 4,
+            "position": 0,
+            "count": 100,
+            "medianMs": 3.6016500000000633,
+            "p95Ms": 6.923199999999724,
+            "maxMs": 101.08669999999984,
+            "over8ms": 4,
+            "over16_67ms": 2
+          },
+          {
+            "cycle": 4,
+            "position": 3,
+            "count": 100,
+            "medianMs": 3.4126000000001113,
+            "p95Ms": 5.930400000000191,
+            "maxMs": 11.588700000000244,
+            "over8ms": 5,
+            "over16_67ms": 0
+          }
+        ]
+      },
+      "candidate": {
+        "aggregate": {
+          "count": 1000,
+          "medianMs": 1.371049999999741,
+          "p95Ms": 1.9335000000000946,
+          "maxMs": 69.24189999999999,
+          "over8ms": 23,
+          "over16_67ms": 7
+        },
+        "processes": [
+          {
+            "cycle": 0,
+            "position": 1,
+            "count": 100,
+            "medianMs": 1.3969499999998334,
+            "p95Ms": 1.812099999999873,
+            "maxMs": 8.966199999999844,
+            "over8ms": 1,
+            "over16_67ms": 0
+          },
+          {
+            "cycle": 0,
+            "position": 2,
+            "count": 100,
+            "medianMs": 1.3464500000000044,
+            "p95Ms": 1.8168000000000575,
+            "maxMs": 10.028499999999894,
+            "over8ms": 1,
+            "over16_67ms": 0
+          },
+          {
+            "cycle": 1,
+            "position": 1,
+            "count": 100,
+            "medianMs": 1.3698999999999728,
+            "p95Ms": 1.7559999999999718,
+            "maxMs": 69.24189999999999,
+            "over8ms": 2,
+            "over16_67ms": 1
+          },
+          {
+            "cycle": 1,
+            "position": 2,
+            "count": 100,
+            "medianMs": 1.406099999999924,
+            "p95Ms": 1.8868999999999687,
+            "maxMs": 17.03410000000008,
+            "over8ms": 4,
+            "over16_67ms": 1
+          },
+          {
+            "cycle": 2,
+            "position": 1,
+            "count": 100,
+            "medianMs": 1.3503000000000611,
+            "p95Ms": 2.038099999999986,
+            "maxMs": 31.29529999999977,
+            "over8ms": 2,
+            "over16_67ms": 1
+          },
+          {
+            "cycle": 2,
+            "position": 2,
+            "count": 100,
+            "medianMs": 1.3245999999999185,
+            "p95Ms": 1.6476999999999862,
+            "maxMs": 31.81880000000001,
+            "over8ms": 3,
+            "over16_67ms": 1
+          },
+          {
+            "cycle": 3,
+            "position": 1,
+            "count": 100,
+            "medianMs": 1.3868499999999813,
+            "p95Ms": 1.9311999999999898,
+            "maxMs": 31.60050000000001,
+            "over8ms": 2,
+            "over16_67ms": 1
+          },
+          {
+            "cycle": 3,
+            "position": 2,
+            "count": 100,
+            "medianMs": 1.3290499999999383,
+            "p95Ms": 1.8662000000001626,
+            "maxMs": 32.242899999999736,
+            "over8ms": 2,
+            "over16_67ms": 1
+          },
+          {
+            "cycle": 4,
+            "position": 1,
+            "count": 100,
+            "medianMs": 1.4470500000001039,
+            "p95Ms": 2.0183999999999287,
+            "maxMs": 17.50130000000013,
+            "over8ms": 3,
+            "over16_67ms": 1
+          },
+          {
+            "cycle": 4,
+            "position": 2,
+            "count": 100,
+            "medianMs": 1.3662500000002638,
+            "p95Ms": 1.736599999999953,
+            "maxMs": 8.968900000000076,
+            "over8ms": 3,
+            "over16_67ms": 0
+          }
+        ]
+      }
+    },
+    "mode": "timing",
+    "formal": true,
+    "environment": {
+      "node": "v24.12.0",
+      "execPath": "C:\\Program Files\\nodejs\\node.exe",
+      "platform": "win32",
+      "arch": "x64",
+      "versions": {
+        "node": "24.12.0",
+        "acorn": "8.15.0",
+        "ada": "3.3.0",
+        "amaro": "1.1.5",
+        "ares": "1.34.5",
+        "brotli": "1.1.0",
+        "cjs_module_lexer": "2.1.0",
+        "cldr": "47.0",
+        "icu": "77.1",
+        "llhttp": "9.3.0",
+        "modules": "137",
+        "napi": "10",
+        "nbytes": "0.1.1",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.67.1",
+        "openssl": "3.5.4",
+        "simdjson": "4.1.0",
+        "simdutf": "6.4.0",
+        "sqlite": "3.50.4",
+        "tz": "2025b",
+        "undici": "7.16.0",
+        "unicode": "16.0",
+        "uv": "1.51.0",
+        "uvwasi": "0.0.23",
+        "v8": "13.6.233.17-node.37",
+        "zlib": "1.3.1-470d3a2",
+        "zstd": "1.5.7"
+      },
+      "TZ": "Asia/Shanghai"
+    },
+    "cycles": 5,
+    "summaries": [
+      {
+        "shape": "business-medium",
+        "control": "baseline",
+        "arms": {
+          "baseline": {
+            "cycleMedianMs": 2.0599750000000014,
+            "cycleP95Ms": 2.5919000000000096,
+            "actionP95Ms": 0.4874999999999545,
+            "coldMountMedianMs": 31.628550000000004,
+            "coldMountP95Ms": 32.7812,
+            "taskCpuMedianUs": 734500,
+            "perAction": [
+              {
+                "name": "0",
+                "medianMs": 0.3195999999999941,
+                "p95Ms": 0.6077999999999975,
+                "maxMs": 1.3360999999999876
+              },
+              {
+                "name": "1",
+                "medianMs": 0.3207999999999771,
+                "p95Ms": 0.5388000000000375,
+                "maxMs": 1.0704000000000633
+              },
+              {
+                "name": "2",
+                "medianMs": 0.31860000000000355,
+                "p95Ms": 0.4549000000000092,
+                "maxMs": 0.7797999999999661
+              },
+              {
+                "name": "3",
+                "medianMs": 0.304300000000012,
+                "p95Ms": 0.4099999999999966,
+                "maxMs": 1.2448000000000548
+              },
+              {
+                "name": "4",
+                "medianMs": 0.02729999999996835,
+                "p95Ms": 0.041900000000055115,
+                "maxMs": 0.2705999999999449
+              },
+              {
+                "name": "5",
+                "medianMs": 0.024900000000002365,
+                "p95Ms": 0.05150000000000432,
+                "maxMs": 0.3028000000000475
+              },
+              {
+                "name": "6",
+                "medianMs": 0.3221500000000219,
+                "p95Ms": 0.4151999999999134,
+                "maxMs": 1.415300000000002
+              },
+              {
+                "name": "7",
+                "medianMs": 0.3106999999999971,
+                "p95Ms": 0.4298000000000002,
+                "maxMs": 1.112600000000043
+              }
+            ]
+          },
+          "candidate": {
+            "cycleMedianMs": 1.4709000000000216,
+            "cycleP95Ms": 1.9741999999999678,
+            "actionP95Ms": 0.3280000000000314,
+            "coldMountMedianMs": 31.66215,
+            "coldMountP95Ms": 33.929100000000005,
+            "taskCpuMedianUs": 633000,
+            "perAction": [
+              {
+                "name": "0",
+                "medianMs": 0.226750000000024,
+                "p95Ms": 0.4642999999999802,
+                "maxMs": 1.0901999999999816
+              },
+              {
+                "name": "1",
+                "medianMs": 0.22409999999999286,
+                "p95Ms": 0.3318999999999903,
+                "maxMs": 0.8000999999999294
+              },
+              {
+                "name": "2",
+                "medianMs": 0.22630000000003747,
+                "p95Ms": 0.32989999999995234,
+                "maxMs": 0.8029999999999973
+              },
+              {
+                "name": "3",
+                "medianMs": 0.2155999999999949,
+                "p95Ms": 0.2991000000000099,
+                "maxMs": 0.6692999999999927
+              },
+              {
+                "name": "4",
+                "medianMs": 0.017499999999984084,
+                "p95Ms": 0.22800000000006548,
+                "maxMs": 0.7359000000000151
+              },
+              {
+                "name": "5",
+                "medianMs": 0.015300000000024738,
+                "p95Ms": 0.03820000000001755,
+                "maxMs": 0.44710000000000605
+              },
+              {
+                "name": "6",
+                "medianMs": 0.23509999999998854,
+                "p95Ms": 0.3465999999999667,
+                "maxMs": 0.8114999999999668
+              },
+              {
+                "name": "7",
+                "medianMs": 0.22309999999998809,
+                "p95Ms": 0.34480000000002065,
+                "maxMs": 0.7669999999999959
+              }
+            ]
+          }
+        },
+        "cycleReductionPct": 28.59622082792167,
+        "cpuReductionPct": 13.818924438393465,
+        "pairs": [
+          {
+            "cycle": 0,
+            "control": "baseline",
+            "baselineMs": 2.0599750000000014,
+            "candidateMs": 1.4764249999999848,
+            "reductionPct": 28.328013689487307
+          },
+          {
+            "cycle": 1,
+            "control": "baseline",
+            "baselineMs": 2.0736500000001,
+            "candidateMs": 1.4744250000000179,
+            "reductionPct": 28.897113784874662
+          },
+          {
+            "cycle": 2,
+            "control": "baseline",
+            "baselineMs": 2.0359000000000265,
+            "candidateMs": 1.4921249999999588,
+            "reductionPct": 26.709317746454175
+          },
+          {
+            "cycle": 3,
+            "control": "baseline",
+            "baselineMs": 2.0797999999999703,
+            "candidateMs": 1.4945999999999628,
+            "reductionPct": 28.13732089624078
+          },
+          {
+            "cycle": 4,
+            "control": "baseline",
+            "baselineMs": 2.064449999999951,
+            "candidateMs": 1.4585250000000372,
+            "reductionPct": 29.350432318531727
+          }
+        ]
+      },
+      {
+        "shape": "collected-500",
+        "control": "baseline",
+        "arms": {
+          "baseline": {
+            "cycleMedianMs": 43.42024999999961,
+            "cycleP95Ms": 120.79519999999957,
+            "actionP95Ms": 6.163100000000668,
+            "coldMountMedianMs": 41.0322,
+            "coldMountP95Ms": 45.47699999999999,
+            "taskCpuMedianUs": 5719000,
+            "perAction": [
+              {
+                "name": "search \"Lamp\"",
+                "medianMs": 4.378999999999905,
+                "p95Ms": 5.600399999999809,
+                "maxMs": 78.92769999999996
+              },
+              {
+                "name": "search \"  lAmP  \"",
+                "medianMs": 4.453049999999621,
+                "p95Ms": 5.7150000000001455,
+                "maxMs": 100.07999999999993
+              },
+              {
+                "name": "source 1688",
+                "medianMs": 4.229200000000446,
+                "p95Ms": 10.134900000000016,
+                "maxMs": 79.65639999999985
+              },
+              {
+                "name": "search \"\"",
+                "medianMs": 4.625299999999925,
+                "p95Ms": 6.002900000000409,
+                "maxMs": 14.575200000000223
+              },
+              {
+                "name": "source all",
+                "medianMs": 4.779599999999618,
+                "p95Ms": 6.661399999999958,
+                "maxMs": 88.92820000000029
+              },
+              {
+                "name": "下一页",
+                "medianMs": 2.866149999999948,
+                "p95Ms": 8.5604000000003,
+                "maxMs": 81.8698000000004
+              },
+              {
+                "name": "toggle snapshot-key-283",
+                "medianMs": 3.48174999999992,
+                "p95Ms": 5.480099999999993,
+                "maxMs": 107.01809999999978
+              },
+              {
+                "name": "上一页",
+                "medianMs": 2.89754999999991,
+                "p95Ms": 4.497499999999945,
+                "maxMs": 73.64699999999993
+              },
+              {
+                "name": "toggle page",
+                "medianMs": 3.473899999999958,
+                "p95Ms": 4.917700000000195,
+                "maxMs": 101.41570000000002
+              },
+              {
+                "name": "toggle page",
+                "medianMs": 3.291500000000042,
+                "p95Ms": 9.586099999999988,
+                "maxMs": 104.43499999999949
+              },
+              {
+                "name": "clear selection",
+                "medianMs": 2.8687500000005457,
+                "p95Ms": 3.6294999999995525,
+                "maxMs": 85.03920000000016
+              }
+            ]
+          },
+          "candidate": {
+            "cycleMedianMs": 15.509799999999586,
+            "cycleP95Ms": 31.490700000000516,
+            "actionP95Ms": 2.314300000000003,
+            "coldMountMedianMs": 33.3241,
+            "coldMountP95Ms": 40.466800000000006,
+            "taskCpuMedianUs": 2586000,
+            "perAction": [
+              {
+                "name": "search \"Lamp\"",
+                "medianMs": 1.6510000000000673,
+                "p95Ms": 5.54340000000002,
+                "maxMs": 32.569600000000264
+              },
+              {
+                "name": "search \"  lAmP  \"",
+                "medianMs": 1.7461000000001832,
+                "p95Ms": 2.4896000000001095,
+                "maxMs": 43.321699999999964
+              },
+              {
+                "name": "source 1688",
+                "medianMs": 1.4826999999999089,
+                "p95Ms": 2.0213999999996304,
+                "maxMs": 38.02099999999996
+              },
+              {
+                "name": "search \"\"",
+                "medianMs": 1.5054000000001224,
+                "p95Ms": 4.046699999999873,
+                "maxMs": 44.36779999999999
+              },
+              {
+                "name": "source all",
+                "medianMs": 1.7217999999999165,
+                "p95Ms": 5.467099999999846,
+                "maxMs": 38.8578
+              },
+              {
+                "name": "下一页",
+                "medianMs": 0.8120000000000118,
+                "p95Ms": 1.5419999999999163,
+                "maxMs": 10.520100000000184
+              },
+              {
+                "name": "toggle snapshot-key-283",
+                "medianMs": 1.371049999999741,
+                "p95Ms": 1.9335000000000946,
+                "maxMs": 69.24189999999999
+              },
+              {
+                "name": "上一页",
+                "medianMs": 0.8380499999999529,
+                "p95Ms": 1.227100000000064,
+                "maxMs": 35.96030000000019
+              },
+              {
+                "name": "toggle page",
+                "medianMs": 1.3632499999999936,
+                "p95Ms": 2.0914000000000215,
+                "maxMs": 52.07540000000017
+              },
+              {
+                "name": "toggle page",
+                "medianMs": 1.1696500000001606,
+                "p95Ms": 1.7857000000003609,
+                "maxMs": 37.85110000000009
+              },
+              {
+                "name": "clear selection",
+                "medianMs": 0.7905999999999267,
+                "p95Ms": 4.358200000000124,
+                "maxMs": 212.97980000000007
+              }
+            ]
+          }
+        },
+        "cycleReductionPct": 64.27980032358236,
+        "cpuReductionPct": 54.78230459870607,
+        "pairs": [
+          {
+            "cycle": 0,
+            "control": "baseline",
+            "baselineMs": 43.96587499999953,
+            "candidateMs": 15.702650000000062,
+            "reductionPct": 64.28445925390946
+          },
+          {
+            "cycle": 1,
+            "control": "baseline",
+            "baselineMs": 43.73872500000067,
+            "candidateMs": 15.470250000000021,
+            "reductionPct": 64.63031329788468
+          },
+          {
+            "cycle": 2,
+            "control": "baseline",
+            "baselineMs": 43.42637499999887,
+            "candidateMs": 15.082899999999938,
+            "reductionPct": 65.2678815581537
+          },
+          {
+            "cycle": 3,
+            "control": "baseline",
+            "baselineMs": 43.003074999999626,
+            "candidateMs": 15.347324999999898,
+            "reductionPct": 64.31109868305921
+          },
+          {
+            "cycle": 4,
+            "control": "baseline",
+            "baselineMs": 43.8514500000004,
+            "candidateMs": 15.988399999999501,
+            "reductionPct": 63.539632098826026
+          }
+        ]
+      }
+    ],
+    "note": "Independent processes in serial ABBA order. Headless React; includes fixture driver/effect flush, excludes browser DOM/layout/paint and real business I/O. Different workloads cannot be added together."
+  },
+  "functionalFrontend": {
+    "mode": "functional",
+    "environment": {
+      "node": "v24.12.0",
+      "execPath": "C:\\Program Files\\nodejs\\node.exe",
+      "platform": "win32",
+      "arch": "x64",
+      "versions": {
+        "node": "24.12.0",
+        "acorn": "8.15.0",
+        "ada": "3.3.0",
+        "amaro": "1.1.5",
+        "ares": "1.34.5",
+        "brotli": "1.1.0",
+        "cjs_module_lexer": "2.1.0",
+        "cldr": "47.0",
+        "icu": "77.1",
+        "llhttp": "9.3.0",
+        "modules": "137",
+        "napi": "10",
+        "nbytes": "0.1.1",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.67.1",
+        "openssl": "3.5.4",
+        "simdjson": "4.1.0",
+        "simdutf": "6.4.0",
+        "sqlite": "3.50.4",
+        "tz": "2025b",
+        "undici": "7.16.0",
+        "unicode": "16.0",
+        "uv": "1.51.0",
+        "uvwasi": "0.0.23",
+        "v8": "13.6.233.17-node.37",
+        "zlib": "1.3.1-470d3a2",
+        "zstd": "1.5.7"
+      },
+      "TZ": "Asia/Shanghai"
+    },
+    "comparisons": [
+      {
+        "baseline": "business-0-baseline-parity",
+        "candidate": "business-0-candidate-parity",
+        "bytes": 2359689,
+        "sha256": "57923043a2ab5cd90588f094e38f95e8bcd881b616d6e81c038400c0401b168f",
+        "fullFramesEqual": true,
+        "kind": "business",
+        "attributes": 0,
+        "frameCount": 43,
+        "counts": [
+          {
+            "arm": "baseline",
+            "calls": 1003,
+            "chars": 404134
+          },
+          {
+            "arm": "candidate",
+            "calls": 204,
+            "chars": 80861
+          }
+        ]
+      },
+      {
+        "baseline": "business-20-baseline-parity",
+        "candidate": "business-20-candidate-parity",
+        "bytes": 5349745,
+        "sha256": "827c4ae9f1a99ce1a5380cf5f840a23b383e8b90dd56ae5714c09cc2fb722c48",
+        "fullFramesEqual": true,
+        "kind": "business",
+        "attributes": 20,
+        "frameCount": 43,
+        "counts": [
+          {
+            "arm": "baseline",
+            "calls": 1003,
+            "chars": 5263534
+          },
+          {
+            "arm": "candidate",
+            "calls": 204,
+            "chars": 1046797
+          }
+        ]
+      },
+      {
+        "baseline": "collected-48-baseline-oracle",
+        "candidate": "collected-48-candidate-oracle",
+        "bytes": 2775050,
+        "sha256": "8a91e38f374d60d633b9bf38e25d50f1fed38909b7e5d9937a4eae1bfe6a01d7",
+        "fullFramesEqual": true,
+        "kind": "collected",
+        "size": 48
+      },
+      {
+        "baseline": "collected-48-stable-oracle",
+        "candidate": "collected-48-candidate-oracle",
+        "bytes": 2775050,
+        "sha256": "8a91e38f374d60d633b9bf38e25d50f1fed38909b7e5d9937a4eae1bfe6a01d7",
+        "fullFramesEqual": true,
+        "kind": "collected-isolated-formatters",
+        "size": 48
+      },
+      {
+        "baseline": "collected-500-baseline-oracle",
+        "candidate": "collected-500-candidate-oracle",
+        "bytes": 20484895,
+        "sha256": "492f3ed68e8f3255835596f50d8dd3569d38830fddf6247e02ea60af8e300e9b",
+        "fullFramesEqual": true,
+        "kind": "collected",
+        "size": 500
+      },
+      {
+        "baseline": "collected-500-stable-oracle",
+        "candidate": "collected-500-candidate-oracle",
+        "bytes": 20484895,
+        "sha256": "492f3ed68e8f3255835596f50d8dd3569d38830fddf6247e02ea60af8e300e9b",
+        "fullFramesEqual": true,
+        "kind": "collected-isolated-formatters",
+        "size": 500
+      }
+    ],
+    "images": [
+      {
+        "size": 48,
+        "results": [
+          {
+            "arm": "baseline",
+            "key": "snapshot-key-44",
+            "errorHandlerInvoked": true,
+            "fallbackAfterError": true,
+            "imageReappearsAfterSelection": true,
+            "mobileFallbackPersistsAfterSelection": true,
+            "browserNetworkSimulated": false
+          },
+          {
+            "arm": "stable",
+            "key": "snapshot-key-44",
+            "errorHandlerInvoked": true,
+            "fallbackAfterError": true,
+            "imageReappearsAfterSelection": false,
+            "mobileFallbackPersistsAfterSelection": true,
+            "browserNetworkSimulated": false
+          },
+          {
+            "arm": "candidate",
+            "key": "snapshot-key-44",
+            "errorHandlerInvoked": true,
+            "fallbackAfterError": true,
+            "imageReappearsAfterSelection": true,
+            "mobileFallbackPersistsAfterSelection": true,
+            "browserNetworkSimulated": false
+          }
+        ]
+      },
+      {
+        "size": 500,
+        "results": [
+          {
+            "arm": "baseline",
+            "key": "snapshot-key-76",
+            "errorHandlerInvoked": true,
+            "fallbackAfterError": true,
+            "imageReappearsAfterSelection": true,
+            "mobileFallbackPersistsAfterSelection": true,
+            "browserNetworkSimulated": false
+          },
+          {
+            "arm": "stable",
+            "key": "snapshot-key-76",
+            "errorHandlerInvoked": true,
+            "fallbackAfterError": true,
+            "imageReappearsAfterSelection": false,
+            "mobileFallbackPersistsAfterSelection": true,
+            "browserNetworkSimulated": false
+          },
+          {
+            "arm": "candidate",
+            "key": "snapshot-key-76",
+            "errorHandlerInvoked": true,
+            "fallbackAfterError": true,
+            "imageReappearsAfterSelection": true,
+            "mobileFallbackPersistsAfterSelection": true,
+            "browserNetworkSimulated": false
+          }
+        ]
+      }
+    ],
+    "regression": {
+      "files": [
+        "test/source-preview/formatter-sharing.test.ts",
+        "test/source-preview/formatter-sharing-compatibility.test.ts",
+        "test/plugin-apps/business-content-lazy.test.ts"
+      ],
+      "exitCode": 0
+    },
+    "note": "Headless React output/interaction verification; no browser, network or deployment claim."
+  },
+  "trialChecks": {
+    "root": "<validation-root>\\candidate",
+    "node": "v24.12.0",
+    "selected": [
+      "test/app-hallmark/listing-prepare.test.ts",
+      "test/app-hallmark/listing-state-index.test.ts",
+      "test/apps-runtime/result-reader.test.ts",
+      "test/apps-runtime/result-reader-string-equivalence.test.ts",
+      "test/apps-runtime/business-model-projection.test.ts",
+      "test/apps-runtime/business-continuation.test.ts",
+      "test/apps-host/business-inspect-projection.test.ts",
+      "test/authoring/result-reader.test.ts",
+      "test/performance/data-transfer.test.ts",
+      "test/performance/data-transfer-byte-copy.test.ts",
+      "test/performance/transfer-guard-regressions.test.ts",
+      "test/plugin-apps/business-operations.test.ts",
+      "test/plugin-apps/business-content-lazy.test.ts",
+      "test/source-preview/preview.test.ts",
+      "test/source-preview/selection-interaction.test.ts",
+      "test/source-preview/formatter-sharing.test.ts",
+      "test/source-preview/formatter-sharing-compatibility.test.ts",
+      "test/collection/collection.test.ts"
+    ],
+    "results": [
+      {
+        "name": "tests",
+        "args": [
+          "--test",
+          "--test-concurrency=1",
+          "test/app-hallmark/listing-prepare.test.ts",
+          "test/app-hallmark/listing-state-index.test.ts",
+          "test/apps-runtime/result-reader.test.ts",
+          "test/apps-runtime/result-reader-string-equivalence.test.ts",
+          "test/apps-runtime/business-model-projection.test.ts",
+          "test/apps-runtime/business-continuation.test.ts",
+          "test/apps-host/business-inspect-projection.test.ts",
+          "test/authoring/result-reader.test.ts",
+          "test/performance/data-transfer.test.ts",
+          "test/performance/data-transfer-byte-copy.test.ts",
+          "test/performance/transfer-guard-regressions.test.ts",
+          "test/plugin-apps/business-operations.test.ts",
+          "test/plugin-apps/business-content-lazy.test.ts",
+          "test/source-preview/preview.test.ts",
+          "test/source-preview/selection-interaction.test.ts",
+          "test/source-preview/formatter-sharing.test.ts",
+          "test/source-preview/formatter-sharing-compatibility.test.ts",
+          "test/collection/collection.test.ts"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 5166,
+        "tests": 97,
+        "pass": 97,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      {
+        "name": "typecheck",
+        "args": [
+          "node_modules/typescript/bin/tsc",
+          "--noEmit"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 7462
+      },
+      {
+        "name": "component-typecheck",
+        "args": [
+          "node_modules/typescript/bin/tsc",
+          "--noEmit",
+          "-p",
+          "component-workspace/collected-products/tsconfig.json"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 1158
+      },
+      {
+        "name": "component-build",
+        "args": [
+          "component-workspace/collected-products/node_modules/vite/bin/vite.js",
+          "build",
+          "component-workspace/collected-products"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 10769
+      },
+      {
+        "name": "apps-build",
+        "args": [
+          "scripts/build-apps-bundle.mjs"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 13097
+      },
+      {
+        "name": "plugin-build",
+        "args": [
+          "scripts/build-plugin.mjs"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 305
+      },
+      {
+        "name": "packaged-runtime",
+        "args": [
+          "--test",
+          "test/performance/runtime-artifact-isolation.test.ts"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 1018
+      }
+    ]
+  },
+  "mergedChecks": {
+    "root": "<merged-root>",
+    "node": "v24.12.0",
+    "selected": [
+      "test/app-hallmark/listing-prepare.test.ts",
+      "test/app-hallmark/listing-state-index.test.ts",
+      "test/apps-runtime/result-reader.test.ts",
+      "test/apps-runtime/result-reader-string-equivalence.test.ts",
+      "test/apps-runtime/business-model-projection.test.ts",
+      "test/apps-runtime/business-continuation.test.ts",
+      "test/apps-host/business-inspect-projection.test.ts",
+      "test/authoring/result-reader.test.ts",
+      "test/performance/data-transfer.test.ts",
+      "test/performance/data-transfer-byte-copy.test.ts",
+      "test/performance/transfer-guard-regressions.test.ts",
+      "test/plugin-apps/business-operations.test.ts",
+      "test/plugin-apps/business-content-lazy.test.ts",
+      "test/source-preview/preview.test.ts",
+      "test/source-preview/selection-interaction.test.ts",
+      "test/collection/collection.test.ts"
+    ],
+    "results": [
+      {
+        "name": "tests",
+        "args": [
+          "--test",
+          "--test-concurrency=1",
+          "test/app-hallmark/listing-prepare.test.ts",
+          "test/app-hallmark/listing-state-index.test.ts",
+          "test/apps-runtime/result-reader.test.ts",
+          "test/apps-runtime/result-reader-string-equivalence.test.ts",
+          "test/apps-runtime/business-model-projection.test.ts",
+          "test/apps-runtime/business-continuation.test.ts",
+          "test/apps-host/business-inspect-projection.test.ts",
+          "test/authoring/result-reader.test.ts",
+          "test/performance/data-transfer.test.ts",
+          "test/performance/data-transfer-byte-copy.test.ts",
+          "test/performance/transfer-guard-regressions.test.ts",
+          "test/plugin-apps/business-operations.test.ts",
+          "test/plugin-apps/business-content-lazy.test.ts",
+          "test/source-preview/preview.test.ts",
+          "test/source-preview/selection-interaction.test.ts",
+          "test/collection/collection.test.ts"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 4593,
+        "tests": 93,
+        "pass": 93,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      {
+        "name": "typecheck",
+        "args": [
+          "node_modules/typescript/bin/tsc",
+          "--noEmit"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 6803
+      },
+      {
+        "name": "component-typecheck",
+        "args": [
+          "node_modules/typescript/bin/tsc",
+          "--noEmit",
+          "-p",
+          "component-workspace/collected-products/tsconfig.json"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 1000
+      },
+      {
+        "name": "component-build",
+        "args": [
+          "component-workspace/collected-products/node_modules/vite/bin/vite.js",
+          "build",
+          "component-workspace/collected-products"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 5104
+      },
+      {
+        "name": "apps-build",
+        "args": [
+          "scripts/build-apps-bundle.mjs"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 3750
+      },
+      {
+        "name": "plugin-build",
+        "args": [
+          "scripts/build-plugin.mjs"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 260
+      },
+      {
+        "name": "packaged-runtime",
+        "args": [
+          "--test",
+          "test/performance/runtime-artifact-isolation.test.ts"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 954
+      }
+    ]
+  },
+  "reportOnlyInterfaceExperiments": {
+    "literal": {
+      "scope": "Deterministic known-literal recovery, no model success-rate or speed claim",
+      "rows": [
+        {
+          "name": "locate-present-baseline",
+          "toolCalls": 6,
+          "renderedBytes": 77972,
+          "inputBytes": 75468,
+          "inputHash": "0986f38e25d8d7167cfc8ba69a784319f210cc0c71ea38b3adc8636915ad8f3c",
+          "answer": [
+            "条款038：冷藏运输仅适用于封口完好的红色 SKU；运输温度保持 2～8℃。若封条破损，停止交付并登记批次；此要求不适用于蓝色 SKU。",
+            "条款214：蓝色 SKU 不要求冷藏运输，须常温运输且避免暴晒。若与红色 SKU 合箱，分别包装并按各自温度要求处理，不能把蓝色 SKU 也改成冷藏。"
+          ]
+        },
+        {
+          "name": "locate-present-archive",
+          "toolCalls": 3,
+          "renderedBytes": 23964,
+          "inputBytes": 75468,
+          "inputHash": "0986f38e25d8d7167cfc8ba69a784319f210cc0c71ea38b3adc8636915ad8f3c",
+          "answer": [
+            "条款038：冷藏运输仅适用于封口完好的红色 SKU；运输温度保持 2～8℃。若封条破损，停止交付并登记批次；此要求不适用于蓝色 SKU。",
+            "条款214：蓝色 SKU 不要求冷藏运输，须常温运输且避免暴晒。若与红色 SKU 合箱，分别包装并按各自温度要求处理，不能把蓝色 SKU 也改成冷藏。"
+          ]
+        },
+        {
+          "name": "locate-absent-baseline",
+          "toolCalls": 6,
+          "renderedBytes": 77972,
+          "inputBytes": 75468,
+          "inputHash": "0986f38e25d8d7167cfc8ba69a784319f210cc0c71ea38b3adc8636915ad8f3c",
+          "answer": []
+        },
+        {
+          "name": "locate-absent-archive",
+          "toolCalls": 1,
+          "renderedBytes": 529,
+          "inputBytes": 75468,
+          "inputHash": "0986f38e25d8d7167cfc8ba69a784319f210cc0c71ea38b3adc8636915ad8f3c",
+          "answer": []
+        }
+      ]
+    },
+    "describeBaseline": {
+      "scope": "DETERMINISTIC_REGISTERED_TOOL_RENDER",
+      "total": 91,
+      "unusable": [
+        {
+          "capabilityId": "apps.authoring.inspect",
+          "rawBytes": 19842,
+          "modelBytes": 150,
+          "modelStatus": "failed",
+          "error": {
+            "code": "RESULT_SPILL_FAILED",
+            "message": "此发现/说明结果超过预算。请限制能力分页或缩小工作集。"
+          },
+          "hasInputSchema": false,
+          "hasOutputSchema": false,
+          "hasGuidance": false
+        }
+      ],
+      "totalModelBytes": 238424
+    },
+    "describeArchive": {
+      "scope": "DETERMINISTIC_REGISTERED_TOOL_RENDER",
+      "total": 91,
+      "unusable": [],
+      "totalModelBytes": 168116
+    }
+  },
+  "evidence": [
+    {
+      "path": "results/backend-timing/timing-summary.json",
+      "sha256": "cd09fc36cc52a9310c780386b7f0ea70444aa1c50557b5525f1368456dda1376"
+    },
+    {
+      "path": "results/frontend-timing/timing-summary.json",
+      "sha256": "b1d436d98c2b2ba2f5911bf602114381180fcf7cfb521efde07250f85e4c450b"
+    },
+    {
+      "path": "results/reader-timing/timing-summary.json",
+      "sha256": "ebc60615903d8f175b20306041c8e70df1db6739c1a7bc31446c7b719a8c307c"
+    },
+    {
+      "path": "results/frontend-supplement/timing-summary.json",
+      "sha256": "69a33f3d3110e7633633f71a01b71d79ae2dcab4a0a4d60cd25b9028fd99c506"
+    },
+    {
+      "path": "results/backend-parity/parity-summary.json",
+      "sha256": "607d4d69a40a8c8d820a18e724dfd70647717c7eaca48c45c9c68896ba9d8084"
+    },
+    {
+      "path": "frontend-results/functional-summary.json",
+      "sha256": "cbcf35e2cb4a5fed427a5d88fed4088cb3b246749154d023b0a048a433d22d28"
+    },
+    {
+      "path": "results/final-checks/summary.json",
+      "sha256": "d98c1416d9c19678998b76c66759d6b1164a30c1bbd118c527e22ac3c38fd2b7"
+    },
+    {
+      "path": "results/merged-checks/summary.json",
+      "sha256": "7e796f3074cc2ef70cec18b1b2029f8321e478da77cb06a59013a48223df3083"
+    },
+    {
+      "path": "behavior-probes/summary.json",
+      "sha256": "ae0a1d3ecbc0975fdfd5b2371c4d2bfb8d3048edff13b4891ceb67064325c5c9"
+    },
+    {
+      "path": "behavior-probes/describe-baseline.json",
+      "sha256": "6996fc441c060d0f36f7bd0b5ddc1de99488b2d4f72afcae545062fa41db1583"
+    },
+    {
+      "path": "behavior-probes/describe-archive.json",
+      "sha256": "1065ad12cb696f68ef364b0b62498afc40ee0570ee868b705e3992216cb9950f"
+    }
+  ]
+}

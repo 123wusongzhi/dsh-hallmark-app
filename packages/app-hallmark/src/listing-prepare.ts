@@ -34,23 +34,49 @@ const sourceSkuIds=(product:RecordData,itemId:string):string[]=>product.sources.
 export function collectionListingStates(store:CoreStore,storeIds:string[],itemIds:string[],summaries:Array<{id:string;skuCount:number;skuIds?:string[]}>=[]):Record<string,CollectionListingState[]>{
  const result:Record<string,CollectionListingState[]>={},catalogues=new Map(storeIds.map(id=>[id,localBusinessProducts(store,id)])),now=Date.now();
  const plans=store.list<BusinessPlan>('business_plans');
+ // These rows are already request-local snapshots. Index them once without caching
+ // Store reads across items or requests: sync.get below keeps its original order.
+ const requestedItems=new Set(itemIds),requestedStores=new Set(storeIds);
+ // Old persisted records may be malformed. Preserve their original lazy errors
+ // and Store-read ordering instead of eagerly interpreting an unexpected shape.
+ const record=(value:unknown):value is RecordData=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+ const canIndex=itemIds.length>0&&storeIds.length>0&&summaries.every(record)
+  &&[...catalogues.values()].every(catalogue=>catalogue.every(product=>product.sources==null||Array.isArray(product.sources)&&product.sources.every(record)))
+  &&plans.every(plan=>record(plan)&&(!requestedStores.has(plan.storeId)||Array.isArray(plan.rows)&&plan.rows.every(row=>record(row)&&(row.action!=='listing'||row.procurement==null||Array.isArray(row.procurement)&&row.procurement.every(record)))));
+ const summariesById=new Map<string,typeof summaries[number]>();
+ if(canIndex)for(const summary of summaries)if(!summariesById.has(summary.id))summariesById.set(summary.id,summary);
+ const savedByStore=new Map<string,Map<string,number>>();
+ if(canIndex)for(const plan of plans)if(requestedStores.has(plan.storeId))for(const row of plan.rows)if(row.action==='listing'){
+  const items=new Set((row.procurement??[]).map(part=>part.itemId).filter(id=>requestedItems.has(id)));
+  let counts=savedByStore.get(plan.storeId);if(!counts){counts=new Map();savedByStore.set(plan.storeId,counts);}
+  for(const id of items)counts.set(id,(counts.get(id)??0)+1);
+ }
+ const indexed=new Map<string,{linkedByItem:Map<string,Map<string,RecordData>>;allSourcesKnown:boolean;storeName:any}>();
+ if(canIndex)for(const [storeId,catalogue]of catalogues){
+  const linkedByItem=new Map<string,Map<string,RecordData>>();
+  for(const product of catalogue)if(typeof product.offerId==='string'&&product.offerId)for(const source of product.sources??[])if(requestedItems.has(source.productId)){
+   let linked=linkedByItem.get(source.productId);if(!linked){linked=new Map();linkedByItem.set(source.productId,linked);}linked.set(product.offerId,product);
+  }
+  indexed.set(storeId,{linkedByItem,allSourcesKnown:catalogue.every(product=>product.sources?.length&&product.sources.every((source:RecordData)=>source.sourceSkuMatched===true)),storeName:catalogue.find(product=>product.storeName)?.storeName});
+ }
  for(const itemId of itemIds){result[itemId]=[];for(const storeId of storeIds){
-  const catalogue=catalogues.get(storeId)!,sync=store.get<RecordData>('business_catalog_status_sync',storeId);
-  const linked=[...new Map(catalogue.filter(product=>typeof product.offerId==='string'&&product.offerId&&product.sources?.some((source:RecordData)=>source.productId===itemId)).map(product=>[product.offerId,product])).values()];
+  const catalogue=catalogues.get(storeId)!,metadata=indexed.get(storeId),sync=store.get<RecordData>('business_catalog_status_sync',storeId);
+  const linked=metadata?[...(metadata.linkedByItem.get(itemId)?.values()??[])]:[...new Map(catalogue.filter(product=>typeof product.offerId==='string'&&product.offerId&&product.sources?.some((source:RecordData)=>source.productId===itemId)).map(product=>[product.offerId,product])).values()];
   const associatedSkuIds=[...new Set(linked.flatMap(product=>sourceSkuIds(product,itemId)))].sort(),listedSkuIds=[...new Set(linked.filter(successfulListing).flatMap(product=>sourceSkuIds(product,itemId)))].sort();
-  const summary=summaries.find(row=>row.id===itemId),complete=!!summary&&summary.skuCount>0&&(summary.skuIds?summary.skuIds.length===summary.skuCount&&summary.skuIds.every(id=>listedSkuIds.includes(id)):listedSkuIds.length===summary.skuCount);
+  const summary=canIndex?summariesById.get(itemId):summaries.find(row=>row.id===itemId),complete=!!summary&&summary.skuCount>0&&(summary.skuIds?summary.skuIds.length===summary.skuCount&&summary.skuIds.every(id=>listedSkuIds.includes(id)):listedSkuIds.length===summary.skuCount);
   const observations=linked.map(product=>observedSale(product,sync,now)),counts=Object.fromEntries(saleStates.map(state=>[state,observations.filter(row=>row.saleState===state).length])) as Record<CollectionSaleState,number>;
   const completeCatalogue=sync?.state==='fresh'&&Number.isFinite(Date.parse(sync.observedAt??''))&&now-Date.parse(sync.observedAt)<=STATUS_MAX_AGE_MS&&Date.parse(sync.expiresAt??'')>now&&sync.missing===0;
-  const allSourcesKnown=catalogue.every(product=>product.sources?.length&&product.sources.every((source:RecordData)=>source.sourceSkuMatched===true));
+  const allSourcesKnown=metadata?metadata.allSourcesKnown:catalogue.every(product=>product.sources?.length&&product.sources.every((source:RecordData)=>source.sourceSkuMatched===true));
   const association=linked.length?'linked':completeCatalogue&&allSourcesKnown?'none':'unknown';
-  const savedListingCount=plans.filter(plan=>plan.storeId===storeId).reduce((count,plan)=>count+plan.rows.filter(row=>row.action==='listing'&&row.procurement?.some(part=>part.itemId===itemId)).length,0);
+  const savedListingCount=canIndex?(savedByStore.get(storeId)?.get(itemId)??0):plans.filter(plan=>plan.storeId===storeId).reduce((count,plan)=>count+plan.rows.filter(row=>row.action==='listing'&&row.procurement?.some(part=>part.itemId===itemId)).length,0);
   // A complete record lookup need not resolve unrelated old source identities or missing offers.
   const lookupReady=sync?.state==='fresh'&&Number.isFinite(Date.parse(sync.observedAt??''))&&now-Date.parse(sync.observedAt)>=0&&now-Date.parse(sync.observedAt)<=STATUS_MAX_AGE_MS&&Date.parse(sync.expiresAt??'')>now;
   const listingRecord=linked.length||savedListingCount?'found':lookupReady?'not_found':'unavailable';
   const listingRecordReason=linked.length?'EXACT_SALE_LINK':savedListingCount?'SAVED_LISTING':lookupReady?'NO_LOCAL_LISTING_RECORD':sync?.state==='failed'?'RECORD_SYNC_FAILED':sync?'RECORD_SYNC_EXPIRED':'RECORD_SYNC_REQUIRED';
   const freshness=observations.some(row=>row.freshness==='stale')?'stale':observations.some(row=>row.freshness==='unknown')?'unknown':observations.length?'fresh':completeCatalogue?'fresh':sync?.state==='failed'?'stale':'unknown';
   const times=observations.map(row=>row.observedAt).filter((at):at is string=>at!==null).sort();
-  result[itemId].push({storeId,...(catalogue.find(product=>product.storeName)?.storeName?{storeName:catalogue.find(product=>product.storeName)!.storeName}:{}),status:complete?'listed':listedSkuIds.length?'partial':association==='none'?'not_listed':'unknown',listingRecord,listingRecordReason,...(savedListingCount?{savedListingCount}:{}),hasUnlinkedHistory:!allSourcesKnown,listedSkuIds,listedSkuCount:listedSkuIds.length,association,associatedSkuIds,associatedSkuCount:associatedSkuIds.length,offerCount:linked.length,saleStates:counts,countUnit:'offers',observedAt:linked.length?(times[0]??null):(sync?.observedAt??null),freshness});
+  const storeName=metadata?metadata.storeName:catalogue.find(product=>product.storeName)?.storeName;
+  result[itemId].push({storeId,...(storeName?{storeName}:{} ),status:complete?'listed':listedSkuIds.length?'partial':association==='none'?'not_listed':'unknown',listingRecord,listingRecordReason,...(savedListingCount?{savedListingCount}:{}),hasUnlinkedHistory:!allSourcesKnown,listedSkuIds,listedSkuCount:listedSkuIds.length,association,associatedSkuIds,associatedSkuCount:associatedSkuIds.length,offerCount:linked.length,saleStates:counts,countUnit:'offers',observedAt:linked.length?(times[0]??null):(sync?.observedAt??null),freshness});
  }}return result;
 }
 export interface ListingPrepareInput {

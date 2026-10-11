@@ -144,12 +144,23 @@ function boundedResultPage(id:string,result:CapabilityResult,offset:number,limit
     return checked({...page({items:[],returned:0,deferred:[{index:offset,...reference(value[offset],pointerChild(path,offset))}],scanned:1},value.length,1),completeness:'partial'});
   }
   if(typeof value==='string'){
-    const characters=Array.from(value);
-    if(offset>characters.length)throw new Error('INVALID_PAGE');
-    const make=(length:number)=>page({text:characters.slice(offset,offset+length).join(''),returned:length,cursorUnit:'unicode-code-points'},characters.length,length);
-    let low=0,high=Math.min(characters.length-offset,budget);
+    // Count code points without allocating an array for the entire stored string.
+    // Only this page's possible boundaries are retained; cursors keep their existing units.
+    let total=0,start=value.length;
+    const ends:number[]=[];
+    for(let index=0;index<value.length;total++){
+      if(total===offset)start=index;
+      const first=value.charCodeAt(index++);
+      if(first>=0xd800&&first<=0xdbff&&index<value.length){
+        const second=value.charCodeAt(index);if(second>=0xdc00&&second<=0xdfff)index++;
+      }
+      if(total>=offset&&ends.length<budget)ends.push(index);
+    }
+    if(offset>total)throw new Error('INVALID_PAGE');
+    const make=(length:number)=>page({text:value.slice(start,length?ends[length-1]:start),returned:length,cursorUnit:'unicode-code-points'},total,length);
+    let low=0,high=ends.length;
     while(low<high){const middle=Math.ceil((low+high)/2);if(size(make(middle))<=budget)low=middle;else high=middle-1;}
-    if(!low&&offset<characters.length)throw new Error('RESULT_PATH_BUDGET_EXCEEDED');
+    if(!low&&offset<total)throw new Error('RESULT_PATH_BUDGET_EXCEEDED');
     return checked(make(low));
   }
   if(value!==null&&typeof value==='object'){
