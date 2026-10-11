@@ -38,7 +38,18 @@
 - 隔离分支全量：1730/1730，0 失败、0 跳过；随后固定到期的一行修正通过补充权重测试。
 - TypeScript 检查及安装包构建通过。首次新工作树全量检查因尚未构建缺少两处 bundle 文件；补齐构建后全量通过，没有把缺失构建产物算作业务失败。
 
-上述测试集合有重叠，不能相加作为总数。最终本地整合验证另记录在本节末尾。
+上述测试集合有重叠，不能相加作为总数。
+
+### 本地整合验证
+
+- 修复提交 `c8c9aec42d0765203ec1079112f24a550bcc92a4` 已快进合入 `fix/agent-binding-preview`。合入前备份主目录 36 个已有改动文件，合入后逐一 SHA-256 相同，没有提交这些其他任务的改动。
+- 主目录其他任务新增了 `listingAssets`，因此按整合后的 91 个 descriptor 重新生成 SDK、工具定义和能力文档。这 3 份配套生成文件的增量保留为未提交，随其来源改动一起处理，避免只提交生成物而遗漏业务实现。
+- 整合后的 TypeScript 检查、构建通过。全量测试 1759 项：1758 通过、1 失败、0 跳过。唯一失败是测试随机监听 `127.0.0.1:46456` 被 Windows 拒绝，系统排除端口范围为 `46448–46547`；未进入该项业务断言。代码未改，独立重跑 `test/plugin-apps/host.test.ts`，12/12 通过。没有把首次全量结果改称一次性全通过。
+- 独立审查确认行级 `listingAssets`、旧采购 SKU 的省略/null/明确关联、采集多选和续读与本轮契约兼容。
+- 本轮隔离分支构建包 SHA-256：`b8157e5223d131fefef5ce957e541fe2cd91ad4555cb51abdbb6a1bbf39706c9`。
+- 含主目录其他未提交改动的整合构建包 SHA-256：`0b2022f33cc4bbaeade5548bea941ff3f175018f6e7e5be8134ab2d2cbd21275`。该包不能当作只包含本修复提交的产物。
+
+整合证据为 `main-full-tests.log`、`main-host-retry.log`、`main-typecheck.log`、`main-build.log`、`main-premerge-backup/manifest.json`。
 
 证据目录：`E:/project/deepseek_h/output/interface-audit-fixes-20261011`，包括 `full-tests-final.log`、`live-weights-*.json`、`weights/`、`weight-review/`、`sku/`。绑定/SDK 的红绿测试位于 `output/dsh-interface-session-audit-20261011/subagent-boundary-fix/`。
 
