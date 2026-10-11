@@ -186,8 +186,11 @@ export class CollectionService {
     return this.checked(result(), budget);
   }
   private project(product: CollectionProduct, selection: { skuIds?: string[]; cursor?: string }, pageLimit: number, compact = false): any {
-    const selected = selection.skuIds ? product.skus.filter(s => s.id && selection.skuIds!.includes(s.id)) : product.skus;
-    if (selection.skuIds?.some(id => !product.skus.some(s => s.id === id))) return fail('COLLECTION_SKU_NOT_FOUND', `${product.id} 中不存在所选 SKU`);
+    // Index only larger explicit scopes; preserve source order and exact identifier equality.
+    const requestedIds = selection.skuIds && selection.skuIds.length > 8 ? new Set(selection.skuIds) : undefined;
+    const selected = selection.skuIds ? product.skus.filter(s => s.id && (requestedIds ? requestedIds.has(s.id) : selection.skuIds!.includes(s.id))) : product.skus;
+    const knownIds = requestedIds ? new Set(product.skus.map(s => s.id)) : undefined;
+    if (selection.skuIds?.some(id => knownIds ? !knownIds.has(id) : !product.skus.some(s => s.id === id))) return fail('COLLECTION_SKU_NOT_FOUND', `${product.id} 中不存在所选 SKU`);
     const scope = { id: product.id, skuIds: selection.skuIds };
     const offset = decode(selection.cursor, 'skus', product.revision, scope);
     const page = selected.slice(offset, offset + pageLimit);
@@ -212,11 +215,16 @@ export class CollectionService {
       skus: { common: { attributes: common, scope: selection.skuIds ? 'selected_skus' : 'all_skus', ...(commonPrice !== undefined ? { purchaseCost: commonPrice } : {}) }, columns, rows, returned: page.length, total: selected.length, nextCursor: offset + page.length < selected.length ? next('skus', product.revision, scope, offset + page.length) : null },
       assets: { main: mainShown, mainCount: main.length, skuCount, detailCount },
       description: { text: text.slice(0, descriptionLength).join(''), returned: Math.min(text.length, descriptionLength), totalCharacters: text.length, characterUnit: 'Unicode code points', purpose: '来源描述，可能包含公司介绍', nextCursor: text.length > descriptionLength ? next('description', product.revision, { id: product.id }, descriptionLength) : null },
-      unknowns: product.unknowns.filter(u => !selection.skuIds || !u.skuIds || u.skuIds.some(id => selection.skuIds!.includes(id))), available,
+      unknowns: product.unknowns.filter(u => !selection.skuIds || !u.skuIds || u.skuIds.some(id => requestedIds ? requestedIds.has(id) : selection.skuIds!.includes(id))), available,
     };
   }
   async read(input: CollectionReadInput): Promise<any> {
-    let selections = input.selections ?? (input.ids ?? (input.id ? [input.id] : [])).map(id => ({ id, skuIds: input.skuIds, cursor: input.id ? input.cursor : undefined, revision: input.revision }));
+    let selections = input.selections ?? (input.ids ?? (input.id ? [input.id] : [])).map(id => ({
+      id,
+      ...(input.skuIds !== undefined ? { skuIds: input.skuIds } : {}),
+      ...(input.id && input.cursor !== undefined ? { cursor: input.cursor } : {}),
+      ...(input.revision !== undefined ? { revision: input.revision } : {}),
+    }));
     if (!selections.length && input.cursor?.startsWith('batch:')) {
       const saved = this.options.store.get<{ selections: typeof selections }>('collection_read_batches', this.key(input.cursor));
       if (!saved) return fail('COLLECTION_CURSOR_INVALID', '批量续读引用不存在或属于其他采集来源');
@@ -242,7 +250,7 @@ export class CollectionService {
     if (remaining.length) {
       const batch = `batch:${hash(remaining)}`;
       this.options.store.put('collection_read_batches', this.key(batch), { selections: remaining });
-      continuation = { capability: 'collection.read', remaining: remaining.length, input: { cursor: batch, maxBytes } };
+      continuation = { capability: 'hallmark.collection.read', remaining: remaining.length, input: { cursor: batch, maxBytes } };
     }
     const partial = remaining.length || items.some(item => item.omitted || item.skus?.nextCursor || item.description?.nextCursor || item.assets?.mainCount > item.assets?.main?.length);
     return this.checked({ items, returned: items.length, total: selections.length, completeness: partial ? 'partial' : 'complete', continuation, maxBytes }, maxBytes);

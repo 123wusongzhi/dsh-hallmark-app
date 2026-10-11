@@ -1,3 +1,5 @@
+import { normalizeProduct } from '../../collection/src/normalize.ts';
+import { BusinessSourceValidationError } from './operations/types.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { canonicalJson } from '../../app-contracts/src/index.ts';
 import type { CoreClient, CoreBroker, CoreStore, RecordData, AdapterResponse } from '../../core/src/types.ts';
@@ -212,6 +214,7 @@ export class HallmarkBusinessAdapter implements BusinessSourcePort,BusinessTrans
       }
     }
     if(selections.length&&!this.collectionSourceMatches)throw new Error('COLLECTION_SOURCE_CHANGED');
+    const selectionIssues:BusinessIssue[]= [];let invalidSelectionCount=0;
     const procurement:TrustedRowContext['procurement']=[],sourceDetails:RecordData[]=[],collectionProducts:CollectionProduct[]=[],sourceReferenceItems=new Map<string,Set<string>>();
     for(const itemId of [...new Set(selections.map(s=>s.itemId))]){
       if(!this.collection&&!this.client.getCollectedItemDetail)throw new Error('SOURCE_SKU_DETAILS_UNAVAILABLE');
@@ -219,11 +222,42 @@ export class HallmarkBusinessAdapter implements BusinessSourcePort,BusinessTrans
       const product=this.collection?await this.collection.getProduct(itemId):undefined;if(product)collectionProducts.push(product);
       const referenceUrls=product?product.assets.map(asset=>asset.url):[detail.mainImage,...detail.images??[],...detail.descriptionImages??[],...detail.skus.map((sku:RecordData)=>sku.image)];
       for(const url of referenceUrls)if(typeof url==='string'&&url.startsWith('https://')){const itemIds=sourceReferenceItems.get(url)??new Set<string>();itemIds.add(itemId);sourceReferenceItems.set(url,itemIds);}
+      // Finish reading every source first. An unavailable or mismatched source remains fatal.
+      if(row.procurement?.length){
+        const rawLookupCounts=new Map<string,number>();
+        for(const sku of detail.skus){const id=String(sku?.sourceSkuId??sku?.code??sku?.id);rawLookupCounts.set(id,(rawLookupCounts.get(id)??0)+1);}
+        // Successful explicit selections retain the raw lookup, including numeric
+        // and whitespace IDs. Normalize only to suggest replacements for actual errors.
+        const invalidSelections=[...selections.entries()].filter(([,selection])=>selection.itemId===itemId&&rawLookupCounts.get(selection.sourceSkuId)!==1);
+        invalidSelectionCount+=invalidSelections.length;
+        if(invalidSelections.length&&selectionIssues.length<8){
+          const normalizedSkus=product?.skus??normalizeProduct(detail).skus;
+          const byId=new Map<string,RecordData[]>();let sourceIdsComplete=true;
+          for(const [index,sku] of detail.skus.entries()){
+            const rawId=sku?.sourceSkuId??sku?.code??sku?.id,normalizedId=normalizedSkus[index]?.id;
+            // Both collection.read and the unmodified downstream raw lookup must accept the ID.
+            // Never stringify malformed IDs or suggest a trimmed ID that raw lookup cannot resolve.
+            if(typeof rawId!=='string'||!normalizedId||rawId!==normalizedId||rawLookupCounts.get(rawId)!==1){sourceIdsComplete=false;continue;}
+            const matches=byId.get(rawId)??[];matches.push(sku);byId.set(rawId,matches);
+          }
+          const candidates:NonNullable<BusinessIssue['candidates']>=[];
+          for(const [id,matches] of byId){
+            if(matches.length!==1||!id||Buffer.byteLength(id)>160)continue;
+            const spec=typeof matches[0].spec==='string'&&Buffer.byteLength(matches[0].spec)<=160?matches[0].spec:undefined;
+            const candidate={sourceSkuId:id,...(spec?{spec}:{})};
+            if(Buffer.byteLength(JSON.stringify([...candidates,candidate]))>600)continue;
+            candidates.push(candidate);if(candidates.length===4)break;
+          }
+          const candidatesComplete=sourceIdsComplete&&candidates.length===[...byId].filter(([id,matches])=>matches.length===1&&!!id).length;
+          for(const [index] of invalidSelections.slice(0,8-selectionIssues.length))selectionIssues.push({code:'PROCUREMENT_SKU_NOT_UNIQUE',field:`procurement[${index}].sourceSkuId`,message:'该来源商品中采购 SKU 不存在或不唯一。',suggestion:'候选仅供核对，不自动替换；需要更多规格时，用同一 itemId 调用 hallmark.collection.read。',candidates,candidatesComplete,sourceReference:{capabilityId:'hallmark.collection.read',itemIdField:`procurement[${index}].itemId`}});
+        }
+      }
       const chosen=detail.skus.filter((s:RecordData)=>selections.some(selection=>selection.itemId===itemId&&String(s.sourceSkuId??s.code??s.id)===selection.sourceSkuId));
       sourceDetails.push(product?{id:itemId,revision:product.revision,title:product.title,source:product.source,sourceUrl:product.sourceUrl,attributes:product.attributes,description:product.description.slice(0,6000),package:product.package,unit:product.unit,customsCodes:product.customsCodes,skus:product.skus.filter(s=>selections.some(m=>m.itemId===itemId&&m.sourceSkuId===s.id)).map(s=>({sourceSkuId:s.id,spec:s.spec,attributes:s.attributes,goodsPrice:s.purchaseCost?.amount??null,currency:s.purchaseCost?.currency??null,image:product.assets.find(a=>a.id===s.imageRef)?.url??null})),images:product.assets.filter(a=>a.roles.includes('main')).map(a=>a.url),mainImage:product.assets.find(a=>a.roles.includes('main'))?.url}:{id:itemId,title:detail.title,source:detail.source,sourceUrl:detail.sourceUrl,attributes:detail.attributes,description:detail.description,sourceDetails:detail.sourceDetails,delivery:detail.delivery,skus:chosen,images:detail.images??[],descriptionImages:detail.descriptionImages??[],mainImage:detail.mainImage});
       // Taobao price includes freight; Alibaba displayed selling prices are not verified procurement costs.
       for(const sku of chosen){const id=String(sku.sourceSkuId??sku.code??sku.id),cost=product?.skus.find(s=>s.id===id)?.purchaseCost;procurement.push({itemId,sourceSkuId:id,unitPrice:product?decimal(cost?.amount):decimal(sku.goodsPrice??(['taobao_tmall','alibaba_com'].includes(detail.source)?undefined:sku.price)),currency:String(product?cost?.currency??'':sku.currency??detail.currency??''),unit:String(product?cost?.unit??'来源 SKU 销售单位':sku.unit??detail.unit??'来源 SKU 销售单位')});}
     }
+    if(invalidSelectionCount){if(invalidSelectionCount>selectionIssues.length)selectionIssues.push(issue('PROCUREMENT_DIAGNOSTICS_TRUNCATED',`另有 ${invalidSelectionCount-selectionIssues.length} 个采购 SKU 无法唯一匹配；核对所有采购引用后重试。`,'procurement'));throw new BusinessSourceValidationError(selectionIssues);}
     const source:RecordData={items:sourceDetails,existingProduct:prior?{title:prior.title,sources:prior.sources,declaredWeight:prior.declaredWeight}:null};
     if(row.action==='listing'&&selections.length&&this.packaging&&this.collection){
       const prepared=this.gateway?await applyExistingPackaging(collectionProducts,this.store,({storeId,path,body})=>this.gateway!.request(storeId,{path,body},signal),{storeIds:this.gateway.listStores().map(s=>s.id)}):collectionProducts;

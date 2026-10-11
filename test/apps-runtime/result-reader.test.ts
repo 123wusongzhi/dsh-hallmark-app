@@ -90,13 +90,14 @@ test('object directory pages preserve every escaped key and strings resume witho
   }finally{ctx.store.close();}
 });
 
-test('explicit null/empty fields stay exact and invalid or huge pointers fail explicitly',()=>{
+test('explicit null/empty fields stay exact and oversized reference metadata streams without loss',()=>{
   const ctx=fixture({empty:[],zero:0,unknown:null,text:'',huge:{['x'.repeat(2000)]:'y'.repeat(2000)}});
   try{
     assert.deepEqual(ctx.read('/data/empty').items,[]);
     assert.equal(ctx.read('/data/zero').value,0);assert.equal(ctx.read('/data/unknown').value,null);
     assert.equal(ctx.read('/data/text').text,'');assert.equal(ctx.read('/data/text').nextCursor,null);
-    assert.throws(()=>ctx.read('/data/huge','0',100,512),/RESULT_PATH_BUDGET_EXCEEDED/);
+    const huge=ctx.read('/data/huge','0',100,512);
+    assert.equal(huge.kind,'serialized-json');assert.ok(bytes(huge)<=512);
   }finally{ctx.store.close();}
 });
 

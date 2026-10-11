@@ -82,6 +82,7 @@ test('oversized single issue reports an explicit budget failure without truncati
     const view=JSON.parse(projectModelResult(store,original).content);
     assert.equal(view.data.modelProjectionError.code,'ROW_MODEL_BUDGET_EXCEEDED');assert.equal(view.data.planId,'p');assert.equal(view.data.revision,9);
     assert.equal(view.data.modelProjectionError.rowId,'stable-row-0');assert.deepEqual(view.data.modelProjectionError.issues.map((issue:{code:string;field:string})=>[issue.code,issue.field]),[['LONG_PLATFORM_ERROR','attributes']]);
+    assert.equal(view.fullResultRef,'result:huge-issue');assert.deepEqual(view.read,{tool:'apps_inspect',arguments:{resultRef:'result:huge-issue',path:'/data/rows',cursor:'0',limit:100}});assert.deepEqual(store.get<{result:CapabilityResult}>('datasets',view.fullResultRef)?.result,original);
     assert.equal(view.data.completeness,'incomplete');assert.equal(view.data.page.nextCursor,null);assert.equal(view.data.read,undefined);assert.equal(view.data.continuation,undefined);assert.match(view.data.modelProjectionError.message,/Repeating the same get will not fix/);
     assert.ok(Buffer.byteLength(projectModelResult(store,original,512).content)<=512);
   }finally{store.close();}
@@ -177,5 +178,23 @@ test('only an explicit boolean evidence flag on the stored Hallmark read bypasse
     }
     const echoed:CapabilityResult={...original,status:'ok',invocationId:'no-stored-request',data:{...(original as {data:Record<string,JsonValue>}).data,includeEvidence:true}};
     assert.equal(JSON.parse(projectModelResult(store,echoed).content).data.modelView,'business-operation-summary');
+  }finally{store.close();}
+});
+
+test('oversized correction recovery retains a callable read at the minimum budget and on spill failure',()=>{
+  const store=new RuntimeStore(':memory:');
+  try{
+    const original:CapabilityResult={status:'ok',invocationId:randomUUID(),traceId:randomUUID(),data:{planId:'p',revision:9,status:'blocked',rows:[{...row(0),issues:[{code:'LONG_PLATFORM_ERROR',field:'attributes',message:'真实平台返回'.repeat(15000)}]}]}};
+    store.put('invocations',original.invocationId,{request:{appId:'hallmark',connectionId:'C1',capabilityId:'hallmark.plan.create',source:{kind:'agent'},input:{}}});
+    const tiny=projectModelResult(store,original,512),view=JSON.parse(tiny.content);
+    assert.ok(Buffer.byteLength(tiny.content)<=512);assert.equal(view.read.tool,'apps_inspect');assert.equal(view.error.code,'ROW_MODEL_BUDGET_EXCEEDED');assert.match(view.error.message,/do not resubmit/);
+    const put=store.put;store.put=()=>{throw new Error('fixture disk failure');};
+    try{
+      for(const budget of [512,16384]){
+        const failed=projectModelResult(store,original,budget),detail=JSON.parse(failed.content);
+        assert.ok(Buffer.byteLength(failed.content)<=budget);assert.equal(detail.error.code,'RESULT_SPILL_FAILED');assert.equal(detail.error.retryPolicy,'never');assert.match(detail.error.message,/do not resubmit/);
+        assert.equal(detail.read.tool,'apps_invoke');assert.deepEqual(detail.read.arguments.input,{planId:'p',rowIds:['stable-row-0'],includeEvidence:true});assert.equal(detail.read.arguments.capabilityId,'hallmark.plan.get');assert.equal(detail.fullResultRef,undefined);
+      }
+    }finally{store.put=put;}
   }finally{store.close();}
 });

@@ -24,7 +24,7 @@ export interface AppsHostTransport extends RuntimeTransport {
   sessionBindings(sessionId: string, signal?: AbortSignal): Promise<SessionAppBinding[]>;
   bind(binding: SessionAppBinding, signal?: AbortSignal): Promise<SessionAppBinding>;
   projectModelResult?(invocationId: string, signal?: AbortSignal): Promise<ModelProjection>;
-  readModelResult?(input:{resultRef:string;sessionId:string;path:string;cursor?:string;limit?:number},signal?:AbortSignal):Promise<JsonValue>;
+  readModelResult?(input:{resultRef:string;sessionId:string;path:string;cursor?:string;limit?:number;fields?:string[];literal?:string},signal?:AbortSignal):Promise<JsonValue>;
   invokeRouted?(request:InvocationRequest,signal?:AbortSignal):Promise<{result:CapabilityResult;modelProjection?:ModelProjection}>;
   viewsResponse?(sessionId:string,etag?:string|null,signal?:AbortSignal):Promise<Response>;
   diagnostics?(sessionId: string, signal?: AbortSignal): Promise<{invocations: InvocationDiagnostic[]}>;
@@ -78,7 +78,23 @@ export class HttpAppsHostTransport extends HttpRuntimeTransport implements AppsH
   async sessionBindings(sessionId: string, signal?: AbortSignal) {return (await this.request(`/v1/session-bindings?sessionId=${encodeURIComponent(sessionId)}`, undefined, signal) as {bindings: SessionAppBinding[]}).bindings;}
   async bind(binding: SessionAppBinding, signal?: AbortSignal) {return await this.request('/v1/session-bindings', binding, signal) as SessionAppBinding;}
   async projectModelResult(invocationId: string, signal?: AbortSignal) {return await this.request('/v1/model-result', {invocationId}, signal) as ModelProjection;}
-  async readModelResult(input:{resultRef:string;sessionId:string;path:string;cursor?:string;limit?:number},signal?:AbortSignal){const query=new URLSearchParams({sessionId:input.sessionId,path:input.path,...(input.cursor!==undefined?{cursor:input.cursor}:{}),...(input.limit!==undefined?{limit:String(input.limit)}:{})});return await this.request(`/v1/results/${encodeURIComponent(input.resultRef)}?${query}`,undefined,signal) as JsonValue;}
+  async readModelResult(input:{resultRef:string;sessionId:string;path:string;cursor?:string;limit?:number;fields?:string[];literal?:string},signal?:AbortSignal){
+    if(input.fields!==undefined&&input.literal!==undefined)throw new Error('RESULT_SELECTION_CONFLICT');
+    if(input.literal!==undefined){const {resultRef,...body}=input;return await this.request(`/v1/results/${encodeURIComponent(resultRef)}/locate`,body,signal) as JsonValue;}
+    if(input.fields!==undefined){const {resultRef,...body}=input;return await this.request(`/v1/results/${encodeURIComponent(resultRef)}/project`,body,signal) as JsonValue;}
+    const query=new URLSearchParams({sessionId:input.sessionId,path:input.path,...(input.cursor!==undefined?{cursor:input.cursor}:{}),...(input.limit!==undefined?{limit:String(input.limit)}:{})});
+    const route=`/v1/results/${encodeURIComponent(input.resultRef)}`,get=`${route}?${query}`;
+    // Legal Unicode pointers expand in URLs. Leave short legacy GETs byte-identical;
+    // reserve header space below Node's default 16 KiB request-header ceiling.
+    if(Buffer.byteLength(new URL(get,this.url).href)<=8000)return await this.request(get,undefined,signal) as JsonValue;
+    const {resultRef,...body}=input;
+    try{return await this.request(`${route}/read`,body,signal) as JsonValue;}
+    catch(error){
+      const statusCode=(error as {statusCode?:number}).statusCode;
+      if(statusCode!==undefined&&statusCode!==404&&statusCode!==405)throw error;
+      throw Object.assign(new Error('RESULT_READ_POST_UNAVAILABLE: Long result POST could not be read. Older Runtime peers need POST read support; no GET retry was attempted.'),{cause:error,statusCode});
+    }
+  }
   async invokeRouted(request:InvocationRequest,signal?:AbortSignal){return await this.request('/v1/routed-invocations',request,signal,appsInvocationTimeout(request)) as {result:CapabilityResult;modelProjection?:ModelProjection};}
   async viewsResponse(sessionId:string,etag?:string|null,signal?:AbortSignal):Promise<Response> {
     return this.fetcher(new URL(`/v1/views?sessionId=${encodeURIComponent(sessionId)}`,this.url),{headers:{Authorization:`Bearer ${this.token}`,...(etag?{'If-None-Match':etag}:{})},redirect:'error',signal:AbortSignal.any([AbortSignal.timeout(5000),...(signal?[signal]:[])])});

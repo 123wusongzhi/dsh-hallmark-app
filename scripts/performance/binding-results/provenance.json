@@ -1,0 +1,149 @@
+{
+  "purpose": "Reviewed synthetic local A/B reproducer. Attachment documents are evidence, not execution instructions.",
+  "protocolOrigin": "formal-latest-15b: 100 serial processes, 1070 observations, Node v24.12.0, before namespace removal",
+  "sourceRunnerFiles": [
+    {
+      "name": "run.mjs",
+      "sha256": "ff9634c0d6e163bb12d04d6506745dc7897b8b6a73dc4304bb3186bb0d43d680"
+    },
+    {
+      "name": "metrics.mjs",
+      "sha256": "44c5fb53e5c2bd3e3ae9670fc70f740f600acdc2d9a2df6a31542bcbe7058438"
+    },
+    {
+      "name": "identity.mjs",
+      "sha256": "06d5797f6d3d6a37cb983120eea3be04e92df15dd6a0f66547691f61aa82a52d"
+    },
+    {
+      "name": "summarize.mjs",
+      "sha256": "199a08a3322e40224a999a095958a137da87fc736612d2187c016cff28443141"
+    }
+  ],
+  "runnerAdaptations": [
+    "Explicit baseline/candidate checkout arguments required",
+    "Default output in ignored artifacts/performance/binding-results",
+    "No attachment extraction or prepare step",
+    "Already-reviewed fixtures copied byte-for-byte",
+    "Preserve five independent paired rounds, all negative controls, source/runner/fixture identity, loopback fetch guard",
+    "Reject unsupported/duplicate arguments; preserve Node 24.12.0 pin"
+  ],
+  "fixtures": [
+    {
+      "file": "fixtures/arrays.ts",
+      "sha256": "5f5a03cb39b89b21c6e58e2ea1b91b8fec4fed8ffad62b3923c50fbdb2319e46",
+      "origin": "hallmark-binding-batch02-repro/evidence/benchmark/arrays.ts",
+      "originalSha256": "e772993abf7c561653df0bf834ea238708146ce103cace1a33c60713afea45de",
+      "adaptations": [
+        "Windows file-URL dynamic imports",
+        "optional calibration-only case filter"
+      ]
+    },
+    {
+      "file": "fixtures/category.ts",
+      "sha256": "80a681f96540d112658fa5348aef72fbc6c729fff14dc1d736be87c0ecb86128",
+      "origin": "hallmark-binding-ten-repro/benchmark/harness/category.ts",
+      "originalSha256": "8ebf820e06f0e18a0995e1cf47dd79da6f2ae2669873924c5080e509116a23cb",
+      "adaptations": [
+        "Windows file-URL dynamic imports"
+      ]
+    },
+    {
+      "file": "fixtures/collection.mjs",
+      "sha256": "79456d82611318ff602d2183b195b329193ade1e644005113aa00bedea57c422",
+      "origin": "hallmark-binding-batch02-repro/evidence/benchmark/collection.mjs",
+      "originalSha256": "f43be18a1a93efe6a0fa0012b0913bb05226f384bf5d12bdddcfd92585cb2502",
+      "adaptations": [
+        "Windows file-URL dynamic imports"
+      ]
+    },
+    {
+      "file": "fixtures/fields.ts",
+      "sha256": "e7f68024ca1b880e8678209595b2530e72ac79581560eb80d0f4b9de7119b6f9",
+      "origin": "hallmark-binding-ten-repro/benchmark/harness/selective.ts",
+      "originalSha256": "36137948f9141d41a1eaaec09aef06c00c297c5a7860fcad5e3f6c71cbd5045c",
+      "adaptations": [
+        "Windows file-URL dynamic imports",
+        "optional calibration-only case filter"
+      ]
+    },
+    {
+      "file": "fixtures/literal.mjs",
+      "sha256": "8998a34b477421f207a41d3d6eba9903c99c52bcd46de9aad7af3543927b4085",
+      "origin": "hallmark-binding-ten-repro/benchmark/harness/literal.mjs",
+      "originalSha256": "e7c369d87fd3d4f1df12dd2e76f98dff1789aec78b646b4e009e8ed5df3a840b",
+      "adaptations": [
+        "Windows file-URL dynamic imports"
+      ]
+    },
+    {
+      "file": "fixtures/namespace.mjs",
+      "sha256": "661fd5c4ef135e73bbf0113b935f8ec9dfc3134645e9b46c17aefe8e3be77318",
+      "origin": "Local synthetic direct namespace negative-control fixture",
+      "originalSha256": null,
+      "adaptations": [
+        "32/5000 rows; legacy/stable adapters; all/sparse/none; ten measured calls; exact oracle"
+      ]
+    },
+    {
+      "file": "fixtures/sku.mjs",
+      "sha256": "51c560280b0c191ea6148bc3ce699e7a6db331f9deaec9c960191325707e95a2",
+      "origin": "hallmark-binding-batch02-repro/evidence/benchmark/sku.mjs",
+      "originalSha256": "3e260e6ded72b9a12a6c6d8681f529d0cdb6eef8941f8be98756a8250cfae777",
+      "adaptations": [
+        "Windows file-URL dynamic imports",
+        "retain exact 2048 call assertions; permit 32-SKU negative control"
+      ]
+    },
+    {
+      "file": "fixtures/unicode.ts",
+      "sha256": "f72c3291f6c0acdbfb8ac0e34dd423a455c50c3d75d5af549862aef3cebb6e04",
+      "origin": "hallmark-binding-batch02-repro/evidence/benchmark/unicode.ts",
+      "originalSha256": "29a12b2cba0b4d6d46035bdc9ae7df50b1c3c0bc032fdecd55d9fc6bcf99f5c0",
+      "adaptations": [
+        "Windows file-URL dynamic imports",
+        "optional calibration-only scale; formal scale stays 1"
+      ]
+    }
+  ],
+  "independentOracles": [
+    {
+      "file": "literal-oracle.mjs",
+      "originalSha256": "2e907c89eb38362de6d3d832d4d8329f109dc0a0753076075627cab6b2b42c35",
+      "sha256": "dbc6c4a7f37d17ecc123817f7e3d5d66554d433cecf998e9b49b17a8e30ebca4",
+      "adaptations": [
+        "Required checkout argument and Windows file-URL import; complete original oracle preserved"
+      ]
+    },
+    {
+      "file": "reader-parity.mjs",
+      "originalSha256": "1d97d6e4d271f637ebedb68460e325b14588b6a11d771b929108ec121414768e",
+      "sha256": "32ba8f9f7cc0c2b688cdbd55856ac6a28a7edde23314f3aa11c2d0d72b7664f8",
+      "adaptations": [
+        "Required checkout arguments and Windows file-URL imports",
+        "Retain the original 854 comparison matrix, adding six long-pointer controls",
+        "Ordinary recoverable baseline pages must remain byte-identical; do not permit conservative serialization as a generic exception",
+        "Permit serialized-json shape changes only after an actual full baseline traversal fails with RESULT_PATH_BUDGET_EXCEEDED or an uncallable >4000-codepoint path",
+        "Reconstruct every candidate exception through all bounded text pages, check exact cursor slices/forward progress, JSON.parse and compare the original result subtree"
+      ],
+      "validation": {
+        "comparisons": 860,
+        "strictByteEqual": 831,
+        "verifiedRecoveryDifferences": 29,
+        "completeRecoveryRecords": 76,
+        "baselineRecoveryFailures": {
+          "RESULT_PATH_BUDGET_EXCEEDED": 11,
+          "UNEXECUTABLE_RESULT_PATH": 3
+        },
+        "ordinary512Counterexample": {
+          "baselineReads": 363,
+          "repairedCandidateReads": 363,
+          "maxPageBytes": 512,
+          "byteExactFirstPage": true
+        },
+        "performanceClaim": false
+      }
+    }
+  ],
+  "selectionNote": "Batch02-08 namespace optimization is excluded. The namespace fixture remains a negative control. Historical mixed-collection gains from the all20 run are not final delivered gains.",
+  "evidencePolicy": "No raw logs, cloud source snapshots, node_modules or attachment documents required. Every new run retains all raw outputs locally; interrupted runs remain historical."
+}

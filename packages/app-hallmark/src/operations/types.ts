@@ -40,6 +40,15 @@ export interface BusinessIssue {
   suggestion?: string;
   questionId?: string;
   requiresUser?: boolean;
+  /** Exact, bounded source identifiers; never inferred replacements. */
+  candidates?: Array<{ sourceSkuId: string; spec?: string }>;
+  candidatesComplete?: boolean;
+  sourceReference?: { capabilityId: 'hallmark.collection.read'; itemIdField: string };
+}
+/** Trusted read-only source validation, distinct from unavailable source failures. */
+export class BusinessSourceValidationError extends Error {
+  readonly issues: BusinessIssue[];
+  constructor(issues: BusinessIssue[]) { super('PROCUREMENT_SOURCE_INVALID'); this.issues = issues; }
 }
 /** Supplied by application code, never by tool input. Each unit contains exactly its real dependencies. */
 export type ReviewUnit = Omit<SemanticReviewRequest, 'versions'> & { id: string; policyVersion?: string };

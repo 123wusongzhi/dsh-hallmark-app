@@ -1,3 +1,4 @@
+import {categoryToolId} from './category-identities.ts';
 import {createHash} from 'node:crypto';
 import {canonicalJson} from '../../app-contracts/src/index.ts';
 import type {CoreClient,CoreStore,RecordData,AdapterResponse} from '../../core/src/types.ts';
@@ -186,16 +187,27 @@ export function businessConnectedClient(source:CoreClient,gateway:OzonBusinessGa
   return response;
  };
  const category=async(input:CategoryDataInput):Promise<AdapterResponse>=>{
+  if(!owns(input.storeId)&&input.mode==='values'&&input.lastValueId!==undefined)return {status:'failed',error:{code:'CATALOG_PAGINATION_UNSUPPORTED',message:'旧 Source 类目接口不支持字典续页；需要直接店铺连接。',retryable:false}};
   if(!owns(input.storeId))return source.getCategoryData?source.getCategoryData(input):{status:'failed',error:{code:'CATEGORY_UNAVAILABLE',message:'类目读取未配置。',retryable:false}};
   const p=input as any,base={description_category_id:Number(p.descriptionCategoryId),type_id:Number(p.typeId),language:'DEFAULT'};
   if(p.mode==='search'||p.mode==='sync'){
    const response=await gateway.request(input.storeId,{path:'/v1/description-category/tree',body:{language:'DEFAULT'}});if(response.status!=='ok')return response;
-   const found:RecordData[]=[];const visit=(items:RecordData[],parents:string[],parentCategoryId?:number)=>{for(const item of items){const categoryId=item.description_category_id??parentCategoryId,names=[...parents,item.category_name??item.type_name??''].filter(Boolean);if(item.type_id&&categoryId&&(!p.q||names.join(' ').toLowerCase().includes(String(p.q).toLowerCase())))found.push({...item,description_category_id:categoryId,descriptionCategoryId:categoryId,typeId:item.type_id,path:names});visit(item.children??[],names,categoryId);}};visit(payload(response).result??[],[]);
+   const found:RecordData[]=[];const visit=(items:RecordData[],parents:string[],parentCategoryId?:number)=>{for(const item of items){const categoryId=item.description_category_id??parentCategoryId,names=[...parents,item.category_name??item.type_name??''].filter(Boolean);if(item.type_id&&categoryId&&(!p.q||names.join(' ').toLowerCase().includes(String(p.q).toLowerCase())))found.push({...item,description_category_id:categoryId,descriptionCategoryId:categoryToolId(categoryId),typeId:categoryToolId(item.type_id),path:names});visit(item.children??[],names,categoryId);}};visit(payload(response).result??[],[]);
    return ok({storeId:input.storeId,items:p.mode==='search'?found.slice(0,p.limit??10):found,total:found.length,fetchedAt:new Date().toISOString()});
   }
   const path=p.mode==='show'||p.mode==='template'?'/v1/description-category/attribute':p.q?'/v1/description-category/attribute/values/search':'/v1/description-category/attribute/values';
-  const response=await gateway.request(input.storeId,{path,body:{...base,...(p.attributeId?{attribute_id:Number(p.attributeId)}:{}),...(p.mode==='values'||p.mode==='validate_value'?{limit:p.limit??100,...(p.q?{value:p.q}:{}),last_value_id:p.lastValueId??0}:{})}});if(response.status!=='ok')return response;
-  const data=payload(response);return ok({...data,storeId:input.storeId,...(p.mode==='validate_value'?{valueFound:Array.isArray(data.result)&&data.result.some((value:RecordData)=>Number(value.id)===Number(p.valueId)),note:'返回平台实际选项；未出现在本页不等于无效。'}:{}),fetchedAt:new Date().toISOString()});
+  const response=await gateway.request(input.storeId,{path,body:{...base,...(p.attributeId?{attribute_id:Number(p.attributeId)}:{}),...(p.mode==='values'||p.mode==='validate_value'?{limit:p.limit??100,...(p.q?{value:p.q}:{}),last_value_id:p.lastValueId===undefined?0:Number(p.lastValueId)}:{})}});if(response.status!=='ok')return response;
+  const data=payload(response);
+  let pagination:RecordData={};
+  if(p.mode==='values'&&!p.q){
+   const last=Array.isArray(data.result)?data.result.at(-1)?.id:undefined;
+   const nextId=typeof last==='number'&&Number.isSafeInteger(last)&&last>0?String(last):typeof last==='string'&&/^[1-9]\d*$/.test(last)&&Number.isSafeInteger(Number(last))?last:undefined;
+   const advances=nextId!==undefined&&Number(nextId)>Number(p.lastValueId??0);
+   pagination={completeness:data.has_next===false?'complete':'partial',continuation:null};
+   if(data.has_next===true&&advances)pagination.continuation={capability:'hallmark.categories.read',input:{storeId:input.storeId,mode:'values',descriptionCategoryId:p.descriptionCategoryId,typeId:p.typeId,attributeId:p.attributeId,limit:p.limit??100,lastValueId:nextId}};
+   else if(data.has_next!==false)pagination.paginationError={code:data.has_next===true?'CATEGORY_PAGINATION_INVALID':'CATEGORY_PAGINATION_MISSING',message:'字典响应不完整且未提供可安全前进的续页证据；不能当作全部允许值。'};
+  }
+  return ok({...data,...pagination,storeId:input.storeId,...(p.mode==='validate_value'?{valueFound:Array.isArray(data.result)&&data.result.some((value:RecordData)=>Number(value.id)===Number(p.valueId)),note:'返回平台实际选项；未出现在本页不等于无效。'}:{}),fetchedAt:new Date().toISOString()});
  };
  const overrides:Record<string,unknown>={readOrderWeights,getStoreProducts:catalogue,syncStoreProducts:catalogue,ensureBusinessCatalog,syncBusinessProductStates,storeDataRead:directRead,getCategoryData:category,getStores:async()=>{let legacy:AdapterResponse|undefined;try{if(!stores().length)legacy=await source.getStores();}catch{}const direct=stores(),ids=new Set(direct.flatMap(item=>[item.id,item.legacyStoreId].filter(Boolean)));return ok([...(Array.isArray(legacy?.raw)?legacy!.raw.filter((item:RecordData)=>!ids.has(String(item.id??item.storeId))):[]),...direct]);}};
  return new Proxy(source,{get(target,key){if(typeof key==='string'&&Object.hasOwn(overrides,key))return overrides[key];const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value;}}) as ReturnType<typeof businessConnectedClient>;

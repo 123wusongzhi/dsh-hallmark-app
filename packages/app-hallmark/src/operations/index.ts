@@ -3,6 +3,7 @@ import { canonicalJson } from '../../../app-contracts/src/index.ts';
 import type { SemanticReviewRequest, SemanticReviewResult } from '../../../app-contracts/src/business-review.ts';
 import type { BusinessExecutionInput, BusinessIssue, BusinessOperationsOptions, BusinessPlan, BusinessRow, BusinessRowInput, BusinessTransportResult, PurchaseBinding, ReviewUnit, TrustedRowContext } from './types.ts';
 export type * from './types.ts';
+import { BusinessSourceValidationError } from './types.ts';
 
 const PLANS = 'business_plans', EXECUTIONS = 'business_executions', LOCKS = 'business_target_locks', REVIEWS = 'business_review_cache';
 const unresolved = new Set(['dispatching', 'pending', 'unknown']);
@@ -75,7 +76,7 @@ export class BusinessOperations {
       row.issues = rules(storeId, row, context);
     } catch (error) {
       aborted(signal);
-      row.issues = [problem('SOURCE_UNAVAILABLE', error instanceof Error ? error.message : String(error))];
+      row.issues = error instanceof BusinessSourceValidationError ? clone(error.issues) : [problem('SOURCE_UNAVAILABLE', error instanceof Error ? error.message : String(error))];
     }
     return row;
   }
@@ -158,7 +159,7 @@ export class BusinessOperations {
           context = await this.options.source.load({ storeId: plan.storeId, row: inputOf(row), fresh: true, signal, ...(row.listingRepairExecutionId ? { listingRepairExecutionId: row.listingRepairExecutionId } : {}) });
           aborted(signal);
         } catch (error) {
-          aborted(signal); row.status = 'blocked'; row.issues = [problem('SOURCE_UNAVAILABLE', error instanceof Error ? error.message : String(error))]; this.putRow(planId, row); continue;
+          aborted(signal); row.status = 'blocked'; row.issues = error instanceof BusinessSourceValidationError ? clone(error.issues) : [problem('SOURCE_UNAVAILABLE', error instanceof Error ? error.message : String(error))]; this.putRow(planId, row); continue;
         }
         row.context = clone(context);
         if (context.normalizedProcurement) row.procurement = clone(context.normalizedProcurement);
@@ -181,7 +182,7 @@ export class BusinessOperations {
         // while keeping unrelated semantic decisions valid across logistics/price policy changes.
         let latest:TrustedRowContext;
         try { latest=await this.options.source.load({storeId:plan.storeId,row:inputOf(row),fresh:true,signal,...(row.listingRepairExecutionId?{listingRepairExecutionId:row.listingRepairExecutionId}:{})}); }
-        catch(error){aborted(signal);row.status='blocked';row.issues=[problem('SOURCE_UNAVAILABLE',error instanceof Error?error.message:String(error))];this.putRow(planId,row);continue;}
+        catch(error){aborted(signal);row.status='blocked';row.issues=error instanceof BusinessSourceValidationError?clone(error.issues):[problem('SOURCE_UNAVAILABLE',error instanceof Error?error.message:String(error))];this.putRow(planId,row);continue;}
         const semantic=(value:TrustedRowContext)=>reviewUnits(row,value).map(unit=>({source:unit.source,draft:unit.draft,questions:unit.questions,images:unit.images??[],assets:value.assets??[]}));
         if(businessHash(semantic(context))!==businessHash(semantic(latest))){row.status='blocked';row.issues=[problem('CONTENT_CHANGED_DURING_REVIEW','审核期间来源或实际内容变化，请重新提交此行以审核变化部分。')];this.putRow(planId,row);continue;}
         if(latest.normalizedPayload)row.payload=clone(latest.normalizedPayload);

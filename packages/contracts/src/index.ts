@@ -26,7 +26,7 @@ export const TOOL_DEFINITIONS: ToolDescriptor[] = [
   define('get_platform_data', 'read', '仅对白名单只读平台端点调用，自动关联内部任务', {...store, path: string(), method: {type: 'string', enum: ['GET','POST']}, body: object}, ['path']),
   define('search_collected_items', 'read', '搜索浏览器扩展已有采集摘要，不触发采集。返回items、分页cursor及可直接绑定组件的datasetKey；保留源返回顺序，不保证按采集时间排序；没有时间证据不声称最近。已保存组件可按同一查询与分页范围只读刷新', {...paging}),
   define('get_collected_item', 'read', '获取单个采集商品完整原始字段', {itemId: string()}, ['itemId']),
-  define('get_category_data', 'read', '读取明确店铺的类目。search必填q，limit默认10且不超过20；show/template必填descriptionCategoryId+typeId；values另需attributeId，limit默认50且不超过100，可选q至少2字；validate_value另需attributeId+valueId+dictionaryId；sync只传店铺和mode，同步只读类目缓存。禁止模式外字段。返回datasetKey和raw（过大则spill），快照payload为原文；ok仅代表读取成功，须保留partial/stale与未核实候选，不将候选当允许值', {...store, mode: {type: 'string', enum: ['search','show','template','values','validate_value','sync']}, q: string('search必填；values可选；最多200个Unicode字符，不允许*'), descriptionCategoryId: string('规范正整数类目ID'), typeId: string('规范正整数typeId'), attributeId: string('规范正整数属性ID'), valueId: string('规范正整数字典值ID'), dictionaryId: string('规范正整数字典ID'), aspects: {type: 'array', items: string(), maxItems: 10}, requireAspects: boolean, limit: {type: 'integer', minimum: 1, maximum: 100}}, ['mode']),
+  define('get_category_data', 'read', '读取明确店铺的类目。search必填q，limit默认10且不超过20；show/template必填descriptionCategoryId+typeId；values另需attributeId，limit默认50且不超过100，可选q至少2字；无q的direct字典分页可传规范正整数字符串lastValueId，按返回continuation原样续读，legacy不支持续页；validate_value另需attributeId+valueId+dictionaryId；sync只传店铺和mode，同步只读类目缓存。禁止模式外字段。返回datasetKey和raw（过大则spill），快照payload为原文；ok仅代表读取成功，须保留partial/stale与未核实候选，不将候选当允许值', {...store, mode: {type: 'string', enum: ['search','show','template','values','validate_value','sync']}, q: string('search必填；values可选；最多200个Unicode字符，不允许*'), descriptionCategoryId: string('规范正整数类目ID'), typeId: string('规范正整数typeId'), attributeId: string('规范正整数属性ID'), valueId: string('规范正整数字典值ID'), dictionaryId: string('规范正整数字典ID'), lastValueId: string('仅values无q：direct字典续页末项ID，规范正整数安全范围字符串；首请求省略'), aspects: {type: 'array', items: string(), maxItems: 10}, requireAspects: boolean, limit: {type: 'integer', minimum: 1, maximum: 100}}, ['mode']),
   define('get_data_status', 'read', '查询数据集上次成功时间、刷新状态与错误', {datasetKey: string(), ...store}),
   define('compute_profit', 'compute', '调用 Hallmark 参考利润计算；并非实际结算，缺成本单列', {...store, offerIds: ids, productIds: ids}),
   define('filter_products', 'compute', '按参考利润率/价格/库存筛选，缺成本无法判断；结果集保留 24h', {...store, minMargin: number, maxMargin: number, minPrice: number, maxPrice: number, minStock: number, maxStock: number, status: string(), resultSetId: string()}),
@@ -58,7 +58,13 @@ export function validate(schema: JsonSchema, value: unknown, path = '$'): string
     if (!fits) return [`${path}: expected ${types.join('|')}`];
   }
   if (schema.enum && !schema.enum.some(x => x === value)) errors.push(`${path}: unsupported value`);
-  if (typeof value === 'string') {if (schema.minLength !== undefined && value.length < schema.minLength) errors.push(`${path}: too short`); if (schema.maxLength !== undefined && value.length > schema.maxLength) errors.push(`${path}: too long`);}
+  if (typeof value === 'string' && (schema.minLength !== undefined || schema.maxLength !== undefined)) {
+    // JSON Schema counts Unicode code points, not JavaScript UTF-16 code units.
+    let length = 0;
+    for (const _ of value) length++;
+    if (schema.minLength !== undefined && length < schema.minLength) errors.push(`${path}: too short`);
+    if (schema.maxLength !== undefined && length > schema.maxLength) errors.push(`${path}: too long`);
+  }
   if (typeof value === 'number') {if (schema.minimum !== undefined && value < schema.minimum) errors.push(`${path}: below minimum`); if (schema.maximum !== undefined && value > schema.maximum) errors.push(`${path}: above maximum`);}
   if (Array.isArray(value)) {if (schema.minItems !== undefined && value.length < schema.minItems) errors.push(`${path}: too few items`); if (schema.maxItems !== undefined && value.length > schema.maxItems) errors.push(`${path}: too many items`); if (schema.items) value.forEach((v,i) => errors.push(...validate(schema.items!,v,`${path}[${i}]`)));}
   if (value !== null && typeof value === 'object' && !Array.isArray(value)) {

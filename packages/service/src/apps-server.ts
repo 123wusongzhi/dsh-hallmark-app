@@ -7,7 +7,7 @@ import type { ToolResult } from '../../contracts/src/index.ts';
 import type { BridgeIdentity, CapabilityResult, InvocationRequest, InvocationSource, JsonValue, SessionAppBinding } from '../../app-contracts/src/index.ts';
 import { canonicalJson,validateInvocation } from '../../app-contracts/src/index.ts';
 import type { AppsRuntime, AppConnection, InvocationRecord, RuntimeOperation } from '../../app-runtime/src/index.ts';
-import { projectModelResult, readResultPage } from '../../app-runtime/src/projection.ts';
+import { projectModelResult, readResultPage, readStoredResultPage } from '../../app-runtime/src/projection.ts';
 import type { AppsComponent, AppsPresentationService, AppsView } from '../../app-presentation/src/index.ts';
 import type { Operation } from '../../core/src/types.ts';
 import { createLegacyPresentationAdapter, normalizeLegacyPresentationInput, projectLegacyPresentationResult, projectLegacySpec } from './apps-legacy-presentation.ts';
@@ -349,17 +349,28 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
         return send(res,200,current);
       }if(req.method==='POST'&&viewRoute[2]==='/refresh'){const input=await body(req);strict(input,['sessionId','bindingIds','forceRefresh'],['sessionId']);if(input.forceRefresh!==undefined&&typeof input.forceRefresh!=='boolean')throw new Error('INVALID_FORCE_REFRESH');return send(res,200,await presentation.refreshView(String(input.sessionId),viewId,source(String(input.sessionId)),input.bindingIds as string[]|undefined,controller.signal,{forceRefresh:input.forceRefresh!==false}));}}
       if(path==='/v1/components'){if(req.method==='GET')return send(res,200,{components:runtime.store.list('components')});if(req.method==='POST'){const input=await body(req);strict(input,['sessionId','viewId','userRequest','mode','componentId','expectedRevision'],['sessionId','viewId','userRequest','mode']);return send(res,200,presentation.saveComponent(String(input.sessionId),String(input.viewId),String(input.userRequest),input as never));}}
-      const resultRoute=path.match(/^\/v1\/results\/(.+)$/);if(req.method==='GET'&&resultRoute){
-        const id=decodeURIComponent(resultRoute[1]),bounded=url.searchParams.has('path');
-        if(bounded){
-          const sessionId=url.searchParams.get('sessionId'),stored=runtime.store.get<{result:CapabilityResult}>('datasets',id);
-          const invocation=stored?.result&&runtime.store.get<InvocationRecord>('invocations',stored.result.invocationId);
-          // An inherited result may be read by a fork only after the same application
-          // connection is enabled there. A binding to another connection is insufficient.
-          if(!sessionId||!invocation||'status' in runtime.resolveConnection(invocation.request.appId,sessionId,invocation.request.connectionId))
-            return send(res,403,{status:'failed',error:{code:'RESULT_ACCESS_DENIED',message:'Enable the original application connection in this session to read this result.',retryPolicy:'never'}});
+      const locateRoute=path.match(/^\/v1\/results\/(.+)\/locate$/),projectRoute=path.match(/^\/v1\/results\/(.+)\/project$/),readRoute=path.match(/^\/v1\/results\/(.+)\/read$/),resultRoute=path.match(/^\/v1\/results\/(.+)$/);
+      if(req.method==='GET'&&resultRoute||req.method==='POST'&&(projectRoute||readRoute||locateRoute)){
+        const post=req.method==='POST',project=post&&!!projectRoute,locate=post&&!!locateRoute,input=post?await body(req):undefined;
+        if(input){
+          if(input.fields!==undefined&&input.literal!==undefined)throw new Error('RESULT_SELECTION_CONFLICT');
+          strict(input,project?['sessionId','path','fields','cursor','limit']:locate?['sessionId','path','literal','cursor','limit']:['sessionId','path','cursor','limit'],project?['sessionId','path','fields']:locate?['sessionId','path','literal']:['sessionId','path']);
+          if(typeof input.sessionId!=='string'||!input.sessionId||typeof input.path!=='string'||Array.from(input.path).length>4000||project&&!Array.isArray(input.fields)||locate&&typeof input.literal!=='string'
+            ||input.cursor!==undefined&&(typeof input.cursor!=='string'||!/^\d+$/.test(input.cursor)||!Number.isSafeInteger(Number(input.cursor)))
+            ||input.limit!==undefined&&(typeof input.limit!=='number'||!Number.isSafeInteger(input.limit)||input.limit<1||input.limit>200))throw new Error('INVALID_INPUT');
         }
-        return send(res,200,readResultPage(runtime.store,id,url.searchParams.get('cursor')??'0',Number(url.searchParams.get('limit')??100),bounded?{path:url.searchParams.get('path')!}:undefined));
+        const id=decodeURIComponent((post?(project?projectRoute:locate?locateRoute:readRoute):resultRoute)![1]),bounded=post||url.searchParams.has('path');
+        let authorizedResult:CapabilityResult|undefined;
+        if(bounded){
+          const sessionId=post?input!.sessionId:url.searchParams.get('sessionId'),stored=runtime.store.get<{result:CapabilityResult}>('datasets',id);
+          const invocation=stored?.result&&runtime.store.get<InvocationRecord>('invocations',stored.result.invocationId);
+          // Every bounded read uses the original enabled connection, including forks.
+          if(typeof sessionId!=='string'||!sessionId||!invocation||'status' in runtime.resolveConnection(invocation.request.appId,sessionId,invocation.request.connectionId))
+            return send(res,403,{status:'failed',error:{code:'RESULT_ACCESS_DENIED',message:'Enable the original application connection in this session to read this result.',retryPolicy:'never'}});
+          authorizedResult=stored!.result;
+        }
+        if(post)return send(res,200,readStoredResultPage(id,authorizedResult!,input!.cursor as string??'0',input!.limit as number??100,{path:input!.path as string,...(project?{fields:input!.fields as string[]}:locate?{literal:input!.literal as string}:{})}));
+        return send(res,200,bounded?readStoredResultPage(id,authorizedResult!,url.searchParams.get('cursor')??'0',Number(url.searchParams.get('limit')??100),{path:url.searchParams.get('path')!}):readResultPage(runtime.store,id,url.searchParams.get('cursor')??'0',Number(url.searchParams.get('limit')??100)));
       }
       if(req.method==='POST'&&path==='/v1/model-result'){const input=await body(req);strict(input,['invocationId'],['invocationId']);const record=runtime.store.get<InvocationRecord>('invocations',String(input.invocationId));if(!record?.result)return send(res,404,{error:'INVOCATION_NOT_FOUND'});return send(res,200,projectModelResult(runtime.store,record.result));}
       if(req.method==='POST'&&path==='/v1/legacy-invocations')return send(res,200,await legacyInvoke(await body(req),controller.signal));

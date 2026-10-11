@@ -309,3 +309,32 @@ test('small complete product remains one call with no new deferred facts or cont
   const { service, calls } = setup([detail]); const response = await service.read({ id: detail.id, maxBytes: 65536 });
   assertBudget(response); assert.equal(response.items.length, 1); assert.equal(response.items[0].skus.returned, 1); assert.equal(response.items[0].omitted, undefined); assert.equal(response.items[0].skus.nextCursor, null); assert.equal(response.continuation, null); assert.equal(response.completeness, 'complete'); assert.equal(calls.detail, 1); assert.equal(calls.raw, 0);
 });
+
+test('large explicit SKU scopes preserve source order, duplicate requests, unknowns and cursor scope', async () => {
+  const detail = fixture('selection', 80);
+  detail.description = ''; delete detail.package;
+  detail.skus[2].sourceSkuId = 'sku-1'; // Both ambiguous source identities stay null.
+  delete detail.skus[3].sourceSkuId;
+  const { service } = setup([detail]);
+  const requested = Array.from({ length: 30 }, (_, i) => `sku-${49 - i}`);
+  requested.push('sku-25');
+  const expected = Array.from({ length: 30 }, (_, i) => `sku-${20 + i}`), seen: string[] = [];
+  let cursor: string | undefined, revision: string | undefined;
+  do {
+    const result = await service.read({ selections: [{ id: 'selection', skuIds: requested, cursor, revision }], limit: 9 });
+    const item = result.items[0];
+    assert.equal(item.skus.total, 30);
+    assert.equal(item.skus.common.scope, 'selected_skus');
+    assert(item.unknowns.some((u: any) => u.field === 'package.weightGrams'));
+    assert(item.unknowns.some((u: any) => u.field === 'sku.id'));
+    seen.push(...item.skus.rows.map((row: any[]) => row[0]));
+    cursor = item.skus.nextCursor ?? undefined; revision = item.revision;
+  } while (cursor);
+  assert.deepEqual(seen, expected);
+  for (const unknown of ['sku-1', 'sku-3', 'SKU-20', 'unknown']) {
+    await assert.rejects(service.read({ selections: [{ id: 'selection', skuIds: [...requested, unknown] }] }), (e: any) => e.code === 'COLLECTION_SKU_NOT_FOUND');
+  }
+  const first = await service.read({ selections: [{ id: 'selection', skuIds: requested }], limit: 9 });
+  await assert.rejects(service.read({ selections: [{ id: 'selection', skuIds: requested.slice().reverse(), cursor: first.items[0].skus.nextCursor }] }), (e: any) => e.code === 'COLLECTION_CURSOR_INVALID');
+  await assert.rejects(service.read({ selections: [{ id: 'selection', skuIds: requested, revision: 'stale' }] }), (e: any) => e.code === 'COLLECTION_REVISION_CHANGED');
+});

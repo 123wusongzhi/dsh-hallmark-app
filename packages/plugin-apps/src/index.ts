@@ -1,3 +1,4 @@
+import {descriptorView} from './descriptor-view.ts';
 import {createHash,randomUUID} from 'node:crypto';
 import {canonicalJson, compileSchema, validateResult} from '../../app-contracts/src/index.ts';
 import type {BridgeRequest, CapabilityDescriptor, CapabilityResult, ComponentAgentIntent, FailureInfo, InvocationRequest, InvocationSource, JsonSchema, JsonValue, SessionAppBinding, HostProjectionState} from '../../app-contracts/src/index.ts';
@@ -44,11 +45,11 @@ const text: JsonSchema = {type: 'string', minLength: 1, maxLength: 4000};
 const schema = (properties: Record<string,JsonSchema>, required: string[] = []): JsonSchema => ({type: 'object', properties, required, additionalProperties: false});
 const gatewaySchemas: Record<string, JsonSchema> = {
   apps_list: schema({appId: text, query: text, cursor: text, limit: {type: 'integer', minimum: 1, maximum: 100}}),
-  apps_describe: schema({capabilityId: text, version: text}, ['capabilityId']),
+  apps_describe: schema({capabilityId: text, version: text, section:{enum:['full','inputSchema','outputSchema']},representationId:{type:'string',pattern:'^[a-f0-9]{64}$'},cursor:{type:'string',pattern:'^(0|[1-9][0-9]*)$'}}, ['capabilityId']),
   apps_invoke: schema({appId: text, connectionId: text, capabilityId: text, capabilityVersion: text, input: {}, idempotencyKey: text, expectedResourceRevision: text, invocationId: text, traceId: text, deadlineAt: text}, ['appId', 'capabilityId', 'capabilityVersion', 'input']),
-  apps_inspect: {...schema({operationId:text,resultRef:text,path:{type:'string',maxLength:4000},cursor:{type:'string',pattern:'^[0-9]+$'},limit:{type:'integer',minimum:1,maximum:200}}),oneOf:[{required:['operationId'],not:{anyOf:[{required:['resultRef']},{required:['path']},{required:['cursor']},{required:['limit']}]}},{required:['resultRef'],not:{required:['operationId']}}]},
+  apps_inspect: {allOf:[{anyOf:[{not:{required:['fields']}},{required:['resultRef','path']}]},{anyOf:[{not:{required:['literal']}},{required:['resultRef','path']}]},{not:{required:['fields','literal']}}],...schema({operationId:text,resultRef:text,literal:{type:'string',minLength:1,maxLength:256},fields:{type:'array',minItems:1,maxItems:16,uniqueItems:true,items:{type:'string',minLength:1,maxLength:256}},path:{type:'string',maxLength:4000},cursor:{type:'string',pattern:'^[0-9]+$'},limit:{type:'integer',minimum:1,maximum:200}}),oneOf:[{required:['operationId'],not:{anyOf:[{required:['resultRef']},{required:['fields']},{required:['literal']},{required:['path']},{required:['cursor']},{required:['limit']}]}},{required:['resultRef'],not:{required:['operationId']}}]},
 };
-const gatewayDescriptions:Record<string,string>={apps_list:'发现应用与能力摘要；按需apps_describe获取精确Schema，当前采用固定发现网关。',apps_describe:'读取Runtime唯一目录中的精确能力说明、输入输出与版本。',apps_invoke:'用明确应用/连接/能力版本调用Runtime统一实现；unknown先查操作，不自动重新写入。',apps_inspect:'只读回查已有操作或续读结果。操作使用返回的 operation.operationId，不能使用 invocationId；结果续读使用 resultRef。不重发业务修改。'};
+const gatewayDescriptions:Record<string,string>={apps_list:'发现应用与能力摘要；按需apps_describe获取精确Schema，当前采用固定发现网关。',apps_describe:'读取精确能力版本和完整输入约束；输出Schema按需读取。跟随返回的 deferred/next 调用；分页 text 拼接后 JSON.parse，输入约束被延迟时，读完后才可调用。',apps_invoke:'用明确应用/连接/能力版本调用Runtime统一实现；unknown先查操作，不自动重新写入。',apps_inspect:'只读回查已有操作或续读结果。操作使用返回的 operation.operationId，不能使用 invocationId；结果续读使用 resultRef。不重发业务修改。fields仅显式选择对象数组各行的精确自有键；缺失与null不同，投影不代表完整原行。按continuation保留字段选择；省略fields读取原结果。明确字符串path可选literal精确定位；按continuation查全，再省略literal按readCursor读取原文上下文。fields与literal不能同时使用，位置不是完整业务上下文。'};
 const businessUiOperations=new Set(['create','revise','get','list','submit','inspect','restore']);
 const fail = (code: string,message: string,invocationId = 'host',traceId = 'host',details?: JsonValue): CapabilityResult => ({invocationId, traceId, status: 'failed', error: {code, message, retryPolicy: 'never',...(details === undefined ? {} : {details})}});
 function jsonResponse(value: unknown, status = 200) {return new Response(JSON.stringify(value), {status, headers: {'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'}});}
@@ -235,11 +236,24 @@ export class AppsHost {
           limit=Math.max(1,Math.floor(capabilities.items.length/2));
         }
       }
-      if (name === 'apps_describe') {const descriptor = await this.describe(String(input.capabilityId), typeof input.version === 'string' ? input.version : undefined);return descriptor ? {status: 'ok', descriptor,...(descriptor.capabilityId==='apps.authoring.begin'&&this.authoringGuidance?{authoringGuidance:authoringInstructions(this.authoringGuidance,sessionId)}:{})} : fail('CAPABILITY_NOT_FOUND', '精确能力未登记。');}
+      if (name === 'apps_describe') {const descriptor = await this.describe(String(input.capabilityId), typeof input.version === 'string' ? input.version : undefined);return descriptor ? descriptorView(descriptor,descriptor.capabilityId==='apps.authoring.begin'&&this.authoringGuidance?authoringInstructions(this.authoringGuidance,sessionId):undefined,input) : fail('CAPABILITY_NOT_FOUND', '精确能力未登记。');}
       if (name === 'apps_inspect') {
         if(typeof input.resultRef==='string') {
+          if(input.fields!==undefined&&input.literal!==undefined)return fail('RESULT_SELECTION_CONFLICT','fields 与 literal 不能同时使用。');
+          if(input.literal!==undefined&&typeof input.path!=='string')return fail('INVALID_INPUT','literal 定位需要明确字符串 path。');
           if(!this.transport.readModelResult)return fail('RESULT_READER_UNAVAILABLE','当前 Runtime 不支持结果续读。');
-          return await this.transport.readModelResult({resultRef:input.resultRef,sessionId,path:typeof input.path==='string'?input.path:'',...(typeof input.cursor==='string'?{cursor:input.cursor}:{}),...(typeof input.limit==='number'?{limit:input.limit}:{})},signal);
+          const request={resultRef:input.resultRef,sessionId,path:typeof input.path==='string'?input.path:'',...(input.fields!==undefined?{fields:input.fields as string[]}:{}),...(typeof input.literal==='string'?{literal:input.literal}:{}),...(typeof input.cursor==='string'?{cursor:input.cursor}:{}),...(typeof input.limit==='number'?{limit:input.limit}:{})};
+          const unavailable=()=>fail('RESULT_PROJECTION_UNAVAILABLE','Runtime 不支持明确字段投影；省略 fields 读取原结果。',invocationId,traceId);
+          const locatorUnavailable=()=>{const read={tool:'apps_inspect',arguments:{resultRef:input.resultRef,path:request.path,cursor:'0',limit:100}};return fail('RESULT_LOCATOR_UNAVAILABLE','当前 Runtime 不支持精确定位；省略 literal，从原文起点完整读取。',invocationId,traceId,Buffer.byteLength(JSON.stringify(read))<12000?{read}:undefined);};
+          let page:JsonValue;
+          try{page=await this.transport.readModelResult(request,signal);}catch(error){const failure=error as {statusCode?:number;details?:{error?:unknown}};if(input.fields!==undefined&&failure.statusCode===404&&failure.details?.error==='ROUTE_NOT_FOUND')return unavailable();if(input.literal!==undefined&&failure.statusCode===404&&failure.details?.error==='ROUTE_NOT_FOUND')return locatorUnavailable();throw error;}
+          if(page&&typeof page==='object'&&!Array.isArray(page)&&page.status==='failed')return page;
+          if(input.literal!==undefined&&(!page||typeof page!=='object'||Array.isArray(page)||page.kind!=='literal-locations'||page.resultRef!==request.resultRef||page.path!==request.path||page.literalLength!==Array.from(String(input.literal)).length))return locatorUnavailable();
+          if(input.fields!==undefined){
+            if(page&&typeof page==='object'&&!Array.isArray(page)&&page.status==='failed')return page;
+            if(!page||typeof page!=='object'||Array.isArray(page)||page.kind!=='array-projection'||JSON.stringify(page.fields)!==JSON.stringify(input.fields))return unavailable();
+          }
+          return page;
         }
         const result=await this.transport.inspect(String(input.operationId), signal);
         // A missing operation returns before Runtime creates an invocation record.

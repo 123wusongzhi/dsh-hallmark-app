@@ -1,3 +1,4 @@
+import {categoryToolId} from './category-identities.ts';
 import {createHash} from 'node:crypto';
 import type {CoreClient,CoreStore,RecordData} from '../../core/src/types.ts';
 import type {CollectionService,CollectionProduct,CollectionPackage,CollectionListingState,CollectionSaleState} from '../../collection/src/index.ts';
@@ -115,7 +116,7 @@ async function categoryParts(product:CollectionProduct,input:ListingPrepareInput
  }
  if(cached.status!=='ok')return [{kind:'category',id:product.id,data:{status:'unavailable',error:cached.error}}];
  const raw=cached.data?.response??cached.data??{},revision=hash(raw);
- if(!specified){const values=raw.items??raw.result?.items??raw.result??[],items=Array.isArray(values)?values.slice(0,8).map((value:any)=>({descriptionCategoryId:value.descriptionCategoryId??value.description_category_id,typeId:value.typeId??value.type_id,name:value.type_name??value.category_name??value.name,path:value.path})):[];return [{kind:'category',id:product.id,data:{status:'candidates',revision,items,total:raw.total??items.length,query:request}}];}
+ if(!specified){const values=raw.items??raw.result?.items??raw.result??[],items=Array.isArray(values)?values.slice(0,8).map((value:any)=>({descriptionCategoryId:categoryToolId(value.descriptionCategoryId??value.description_category_id),typeId:categoryToolId(value.typeId??value.type_id),name:value.type_name??value.category_name??value.name,path:value.path})):[];return [{kind:'category',id:product.id,data:{status:'candidates',revision,items,total:raw.total??items.length,query:request}}];}
  const values=raw.result??raw.attributes??raw.items??[],attributes=Array.isArray(values)?values:[],required=(value:any)=>value.is_required===true||value.required===true;
  const base={status:'selected',revision,selection:specified,...(hint&&!input.categories?.[product.id]?{basis:'exact-platform-binding'}:{}),totalAttributes:attributes.length,requiredAttributes:attributes.filter(required).length,optionalAttributes:attributes.filter(value=>!required(value)).length,scope:input.includeOptionalAttributes?'all':'required',available:{capability:'hallmark.categories.read',input:request}};
  const parts:Part[]=[{kind:'category',id:product.id,data:{...base,attributes:[]}}];
@@ -123,7 +124,9 @@ async function categoryParts(product:CollectionProduct,input:ListingPrepareInput
   // Platform constraints stay intact. Full choice dictionaries are fetched only for a chosen field.
   const omitted=['values','dictionary_values','options'].filter(field=>Array.isArray(attribute[field]));
   const value:Record<string,unknown>=Object.fromEntries(Object.entries(attribute).filter(([field])=>!omitted.includes(field)));
-  if(omitted.length)value.available={capability:'hallmark.categories.read',input:{storeId:input.storeId,mode:'values',...specified,attributeId:String(attribute.id??attribute.attribute_id),limit:100}};
+  const dictionaryId=attribute.dictionary_id??attribute.dictionaryId;
+  const hasDictionary=(typeof dictionaryId==='number'&&Number.isSafeInteger(dictionaryId)&&dictionaryId>0)||(typeof dictionaryId==='string'&&/^[1-9]\d*$/.test(dictionaryId)&&Number.isSafeInteger(Number(dictionaryId)));
+  if(omitted.length||hasDictionary)value.available={capability:'hallmark.categories.read',input:{storeId:input.storeId,mode:'values',...specified,attributeId:String(attribute.id??attribute.attribute_id),limit:100}};
   parts.push({kind:'category',id:product.id,data:{...base,attributes:[value]}});
  }
  return parts;

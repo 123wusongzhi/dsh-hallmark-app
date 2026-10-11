@@ -82,7 +82,7 @@ export type CategoryDataInput =
   | { mode: 'search'; storeId: string; q: string; aspects?: string[]; requireAspects?: boolean; limit?: number }
   | { mode: 'show'; storeId: string; descriptionCategoryId: string; typeId: string }
   | { mode: 'template'; storeId: string; descriptionCategoryId: string; typeId: string }
-  | { mode: 'values'; storeId: string; descriptionCategoryId: string; typeId: string; attributeId: string; q?: string; limit?: number }
+  | { mode: 'values'; storeId: string; descriptionCategoryId: string; typeId: string; attributeId: string; q?: string; limit?: number; lastValueId?: string }
   | { mode: 'validate_value'; storeId: string; descriptionCategoryId: string; typeId: string; attributeId: string; valueId: string; dictionaryId: string }
   | { mode: 'sync'; storeId: string };
 /** Source DTOs differ by mode; all fields, partial/stale markers and unverified search candidates remain raw. */

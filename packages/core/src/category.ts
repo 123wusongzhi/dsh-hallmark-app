@@ -24,13 +24,13 @@ export function prepareCategory(args: RecordData, resolvedStoreId?: string): Cat
  const {store, ...params}=args;
  // A name is resolved by Core before execution. This placeholder only validates non-store fields.
  const input={...params,storeId:resolvedStoreId??args.storeId??'pending-store-resolution'} as CategoryDataInput;
- const route=categoryRequest(input);if('status' in route)return {result:wrapped(route)};
+ const route=categoryRequest(input,{directPagination:true});if('status' in route)return {result:wrapped(route)};
  if(input.mode==='search'){
   input.q=input.q.trim();input.limit??=10;input.requireAspects??=false;
   if(input.aspects?.length)input.aspects=input.aspects.map(value=>value.trim());else delete input.aspects;
  }else if(input.mode==='values'){input.limit??=50;if(input.q!==undefined)input.q=input.q.trim();}
- // Hash the exact canonical Source request, including all scope and bounded-query parameters.
- const identity=JSON.stringify({method:route.method,endpoint:route.endpoint,body:route.body??null});
+ // Preserve legacy identities; direct page identity additionally includes its exact cursor.
+ const identity=JSON.stringify({method:route.method,endpoint:route.endpoint,body:route.body??null,...(input.mode==='values'&&input.lastValueId!==undefined?{lastValueId:input.lastValueId}:{})});
  return {input,datasetKey:`category:${createHash('sha256').update(identity).digest('hex')}`};
 }
 

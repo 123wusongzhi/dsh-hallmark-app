@@ -12511,7 +12511,7 @@ export const catalog = [
     "capabilityId": "hallmark.categories.read",
     "version": "1.0.0",
     "title": "hallmark_get_category_data",
-    "description": "读取明确店铺的类目。search必填q，limit默认10且不超过20；show/template必填descriptionCategoryId+typeId；values另需attributeId，limit默认50且不超过100，可选q至少2字；validate_value另需attributeId+valueId+dictionaryId；sync只传店铺和mode，同步只读类目缓存。禁止模式外字段。返回datasetKey和raw（过大则spill），快照payload为原文；ok仅代表读取成功，须保留partial/stale与未核实候选，不将候选当允许值",
+    "description": "读取明确店铺的类目。search必填q，limit默认10且不超过20；show/template必填descriptionCategoryId+typeId；values另需attributeId，limit默认50且不超过100，可选q至少2字；无q的direct字典分页可传规范正整数字符串lastValueId，按返回continuation原样续读，legacy不支持续页；validate_value另需attributeId+valueId+dictionaryId；sync只传店铺和mode，同步只读类目缓存。禁止模式外字段。返回datasetKey和raw（过大则spill），快照payload为原文；ok仅代表读取成功，须保留partial/stale与未核实候选，不将候选当允许值",
     "effect": "query",
     "inputSchema": {
       "type": "object",
