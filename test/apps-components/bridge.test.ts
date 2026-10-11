@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createAppsClient,COMPONENT_CHANNEL} from '../../packages/component-runtime/src/apps-client.ts';
 import {ComponentHost} from '../../packages/component-runtime/src/host.ts';
+import {APPS_BUSINESS_REQUEST_TIMEOUT_MS} from '../../packages/app-sdk/src/deadlines.ts';
 import type {BridgeIdentity,JsonValue} from '../../packages/app-contracts/src/index.ts';
 
 const identity:BridgeIdentity={protocolVersion:'2.0',sessionId:'session-a',viewId:'view-a',buildId:'build-a',frameInstanceId:'frame-a'};
@@ -86,7 +87,9 @@ test('business component submission survives 150 seconds and retains explicit sh
   const host=new ComponentHost(identity,{getData:()=>({}),getContext:()=>({}),invokeCapability:()=>new Promise(()=>{})}),f=browser(host),client=createAppsClient({window:f.win});await client.hello();
   const request={appId:'hallmark',capabilityId:'hallmark.plan.submit',input:{}};
   let settled=false;const pending=client.invokeCapability(request);void pending.then(()=>{settled=true;},()=>{settled=true;});const rejected=assert.rejects(pending,error=>{assert.equal((error as any).failure.retryPolicy,'inspect_only');return true;});
-  await Promise.resolve();t.mock.timers.tick(150001);await Promise.resolve();assert.equal(settled,false);t.mock.timers.tick(150000);await rejected;
+  await Promise.resolve();t.mock.timers.tick(150001);await Promise.resolve();assert.equal(settled,false);
+  t.mock.timers.tick(APPS_BUSINESS_REQUEST_TIMEOUT_MS-150002);await Promise.resolve();assert.equal(settled,false,'the request stays pending immediately before its configured business deadline');
+  t.mock.timers.tick(1);await rejected;
   const shorter=client.invokeCapability({...request,deadlineAt:new Date(Date.now()+1000).toISOString()}),shortRejected=assert.rejects(shorter,{code:'BRIDGE_TIMEOUT'});await Promise.resolve();t.mock.timers.tick(1001);await shortRejected;
   client.dispose();host.dispose();
 });

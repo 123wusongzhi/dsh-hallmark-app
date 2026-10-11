@@ -54,13 +54,14 @@ test('persisted nextRun survives SQLite restart and missed days coalesce to one 
   }finally{await f.close();rmSync(directory,{recursive:true,force:true});}
 });
 
-test('same-dataset plans and overlapping manual refresh are single-flight; disabled plans/connections stop new reads',async()=>{
+test('same-dataset plans coalesce within one scheduled run while an independent refresh retains its own admission',async()=>{
   const f=fixture();let release:()=>void=()=>{};try{
     f.scheduler.start();await f.scheduler.idle();f.scheduler.create(plan('hallmark','one'));f.scheduler.create({...plan('hallmark','two'),binding:binding('hallmark','another-binding')});
     f.time('2026-10-07T01:00:00.000Z');let started:()=>void=()=>{};const start=new Promise<void>(resolve=>{started=resolve;}),barrier=new Promise<void>(resolve=>{release=resolve;});f.hold(async()=>{started();await barrier;});
-    const manual=f.service.refreshBinding(binding('hallmark'),{kind:'scheduler',scheduleId:'manual-fixture',runId:'manual'});await start;const first=f.scheduler.tick(),overlap=f.scheduler.tick();release();await Promise.all([manual,first,overlap]);assert.equal(f.requests.length,1);assert.equal(f.scheduler.get('one')?.lastRunId,f.scheduler.get('two')?.lastRunId);
-    f.hold(undefined);f.scheduler.delete('one',1);f.scheduler.delete('two',1);f.scheduler.create(plan('notes'));await f.runtime.updateConnection({appId:'notes',connectionId:'local',expectedConfigRevision:1,enabled:false});f.time('2026-10-07T13:00:00.000Z');await f.scheduler.tick();assert.equal(f.requests.length,1);assert.equal(f.scheduler.get('notes')?.lastResult?.code,'CONNECTION_DISABLED');await f.scheduler.stop();assert.throws(()=>f.scheduler.requireSchedule('notes',binding('notes')),/SCHEDULER_UNAVAILABLE/);
-    evidence('single-flight-disable',{physicalReads:f.requests.length,overlappingManualAndTwoPlans:1,disabledPlansAdditionalReads:0,disabledConnectionResult:f.scheduler.get('notes')?.lastResult,workerState:f.scheduler.status().state,absentWorkerRejectsExecution:true});
+    const manual=f.service.refreshBinding(binding('hallmark'),{kind:'scheduler',scheduleId:'manual-fixture',runId:'manual'});await start;const first=f.scheduler.tick(),overlap=f.scheduler.tick();release();await Promise.all([manual,first,overlap]);assert.equal(f.requests.length,2);const scheduledRunId=f.scheduler.get('one')?.lastRunId;assert.ok(scheduledRunId);assert.equal(scheduledRunId,f.scheduler.get('two')?.lastRunId);assert.notEqual(scheduledRunId,'manual');
+    assert.deepEqual(f.requests.map(request=>request.source),[{kind:'scheduler',scheduleId:'manual-fixture',runId:'manual'},{kind:'scheduler',scheduleId:'one',runId:scheduledRunId}],'two plans share one scheduler-owned read; an independent run must not borrow its admission');
+    f.hold(undefined);f.scheduler.delete('one',1);f.scheduler.delete('two',1);f.scheduler.create(plan('notes'));await f.runtime.updateConnection({appId:'notes',connectionId:'local',expectedConfigRevision:1,enabled:false});f.time('2026-10-07T13:00:00.000Z');await f.scheduler.tick();assert.equal(f.requests.length,2);assert.equal(f.scheduler.get('notes')?.lastResult?.code,'CONNECTION_DISABLED');await f.scheduler.stop();assert.throws(()=>f.scheduler.requireSchedule('notes',binding('notes')),/SCHEDULER_UNAVAILABLE/);
+    evidence('single-flight-disable',{physicalReads:f.requests.length,schedulerReadsForTwoPlans:1,independentRefreshReads:1,distinctRunIds:true,overlappingTickAdditionalReads:0,disabledPlansAdditionalReads:0,disabledConnectionResult:f.scheduler.get('notes')?.lastResult,workerState:f.scheduler.status().state,absentWorkerRejectsExecution:true});
   }finally{release();await f.close();}
 });
 

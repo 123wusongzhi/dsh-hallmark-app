@@ -246,10 +246,11 @@ export class AppsRuntime {
     const queuedAt=performance.now();
     let release: (()=>void) | undefined, releaseConnection:(()=>void)|undefined, providerWork: Promise<CapabilityResult> | undefined;
     try {
-      // A provider may declare a local snapshot query safe during a long write/review.
+      // Providers may explicitly declare reads/local computations safe during a long write/review.
+      // Mutations always retain the connection queue, regardless of a declared-safe flag.
       // Admission and connection-generation lifetime checks below still apply.
-      const snapshotQuery=entry.descriptor.effect==='query'&&entry.descriptor.execution.concurrency==='declared_safe'&&entry.descriptor.execution.lockScope==='resources';
-      if(!snapshotQuery)release=await queue.acquire(mutation||entry.descriptor.execution.concurrency==='exclusive',controller.signal);
+      const independentRead=!mutation&&entry.descriptor.execution.concurrency==='declared_safe'&&entry.descriptor.execution.lockScope==='resources';
+      if(!independentRead)release=await queue.acquire(mutation||entry.descriptor.execution.concurrency==='exclusive',controller.signal);
       if(controller.signal.aborted)throw new Error('ABORTED');
       this.assertAdmission();
       if(this.getConnection(request.appId,request.connectionId)?.configRevision!==connection.configRevision)throw new Error('CONNECTION_REVISION_CHANGED');

@@ -67,6 +67,27 @@ function displayFrame(publication:ViewPublication,display:{displayId:string;gene
  return {publicationId:publication.publicationId,attemptId:publication.attemptId,attemptEpoch:publication.attemptEpoch,viewId:publication.viewId,buildId:publication.candidateBuildId,displayId:display.displayId,displayGeneration:display.generation,frameInstanceId:'display-frame-'+suffix,documentNonce:'display-nonce-'+suffix};
 }
 
+test('UI state validates selections against the current iframe page and prunes stale pages',async t=>{
+ const f=setup(t);f.presentation.authoring=f.authoring;
+ f.runtime.describe=()=>({...descriptor,inputSchema:{type:'object',properties:{limit:{type:'integer'},cursor:{type:'string'}},additionalProperties:false}});
+ f.runtime.invoke=async request=>({status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{resources:[{appId:'notes',connectionId:'notes-test',resourceType:'note',resourceId:String((request.input as {cursor?:string}).cursor??'first')}]}});
+ const begin=f.authoring.begin(session,{mode:'new',bindings:[{...binding,input:{limit:20}},{...binding,bindingId:'sibling',input:{limit:10}}]}),candidate=await prepared(f,begin,'Paged UI',false);
+ await f.presentation.refreshView(session,begin.view.viewId,{kind:'agent',sessionId:session,nativeCallId:'initial'});
+ const opened=f.authoring.openDisplay(session,{...openInput(candidate.publication),displayId:'paged-ui'}),frame=displayFrame(candidate.publication,opened.display,'paged-ui');
+ f.authoring.authorizeDisplayFrame(session,frame);f.authoring.confirmDisplayReady(session,{...candidate.ready,...frame});
+ const identity={protocolVersion:'2.0' as const,sessionId:session,viewId:frame.viewId,buildId:frame.buildId,frameInstanceId:frame.frameInstanceId},host=f.presentation.createHost(identity,{candidate:{...frame,...identity},clientFeatures:['bindingPagesV1','uiStateV1'],attachSelection:()=>({status:'validated'})});t.after(()=>host.dispose());
+ let id=0;const extension=(feature:string,action:string,params:unknown)=>host.handle({...identity,channel:'dsh.apps.component.v2',requestId:String(++id),type:'extension',feature,action,params}) as Promise<any>;
+ const page=(await extension('bindingPagesV1','read',{bindingId:'notes',cursor:'second'})).result.bindings[0],selection={bindingId:'notes',datasetId:page.datasetId,datasetRevision:page.revision,resources:page.resources};
+ const attached=await host.handle({...identity,channel:'dsh.apps.component.v2',requestId:String(++id),method:'attachSelection',params:{bindingId:selection.bindingId,datasetRevision:selection.datasetRevision,resources:selection.resources}}) as any;assert.equal(attached.result.status,'validated');
+ const written=await extension('uiStateV1','write',{uiStateSchemaVersion:1,expectedStateRevision:0,value:{selected:'second'},selectionEvidence:[selection]});assert.equal(written.error,undefined);assert.equal(written.result.stateRevision,1);
+ const restored=await extension('uiStateV1','read',{uiStateSchemaVersion:1});assert.deepEqual(restored.result.snapshot.selectionEvidence,[selection]);assert.deepEqual(restored.result.removedSelections,[]);
+ const refreshed=await host.handle({...identity,channel:'dsh.apps.component.v2',requestId:String(++id),method:'refresh',params:{bindingIds:['sibling']}}) as any;assert.equal(refreshed.error,undefined);
+ const savedAfterSiblingRefresh=await extension('uiStateV1','write',{uiStateSchemaVersion:1,expectedStateRevision:1,value:{selected:'second'},selectionEvidence:[selection]});assert.equal(savedAfterSiblingRefresh.error,undefined);assert.equal(savedAfterSiblingRefresh.result.stateRevision,2);
+ await extension('bindingPagesV1','read',{bindingId:'notes',cursor:'third'});
+ const stale=await extension('uiStateV1','write',{uiStateSchemaVersion:1,expectedStateRevision:2,value:{selected:'second'},selectionEvidence:[selection]});assert.equal(stale.error.code,'SELECTION_STALE');
+ const pruned=await extension('uiStateV1','read',{uiStateSchemaVersion:1});assert.equal(pruned.result.removedSelections.length,1);assert.deepEqual(pruned.result.snapshot.selectionEvidence,[]);assert.deepEqual(pruned.result.snapshot.value,{selected:'second'});
+});
+
 test('independent display retries preserve one verified build and retire old documents without advancing authoring',async t=>{
  let now=new Date('2026-10-07T00:00:00.000Z');const f=setup(t,{clock:()=>now}),candidate=await prepared(f,undefined,'Reopen',false),target=openInput(candidate.publication);
  now=new Date(now.getTime()+120000);

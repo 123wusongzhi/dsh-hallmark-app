@@ -50,7 +50,7 @@ async function prepareStageRetry(input){
  if(attempt.attemptId!==saved.attemptId||view.viewId!==saved.viewId||draft.workspacePath!==saved.workspacePath)throw new Error('RETRY_IDENTITY_MISMATCH');
  const build={...original,attemptId:attempt.attemptId,epoch:attempt.epoch,sourceRevision:attempt.sourceRevision,workspacePath:draft.workspacePath,viewId:view.viewId,...(input.retryStage==='preview'?{reuseBuildReportRef:saved.previousBuildReportRef}:{})};
  const retry={retryStage:input.retryStage,retryId:input.retryId,previousAttemptId:saved.previousAttemptId,attemptId:attempt.attemptId,epoch:attempt.epoch,previousBuildReportRef:saved.previousBuildReportRef,previousPreviewReportRef:saved.previousPreviewReportRef};
- const requestPath=join(build.evidenceRoot,`${attempt.attemptId}-${attempt.epoch}-retry-request.json`);writeFileSync(requestPath,JSON.stringify({build,preview:input.preview??{}},null,2)+'\n');
+ const requestPath=join(build.evidenceRoot,`${attempt.attemptId}-${attempt.epoch}-retry-request.json`);writeFileSync(requestPath,JSON.stringify({...(input.launcher?{launcher:input.launcher}:{}),build,preview:input.preview??{}},null,2)+'\n');
  return {...input,build,retry,retryRequestPath:requestPath};
 }
 
@@ -63,7 +63,7 @@ export async function prepareAuthoringCheck(input){
  const preview={...(input.preview?.assertions===undefined?{planPath:join(draft.workspacePath,'.preview','plan.json')}:{}),...input.preview};
  mkdirSync(build.evidenceRoot,{recursive:true});
  const requestPath=join(build.evidenceRoot,`${attempt.attemptId}-${attempt.epoch}-check-request.json`);
- writeFileSync(requestPath,JSON.stringify({build,preview},null,2)+'\n');
+ writeFileSync(requestPath,JSON.stringify({...(input.launcher?{launcher:input.launcher}:{}),build,preview},null,2)+'\n');
  return {verdict:'PASS',stage:'prepared',requestPath,attemptId:attempt.attemptId,epoch:attempt.epoch,sourceRevision:attempt.sourceRevision};
 }
 

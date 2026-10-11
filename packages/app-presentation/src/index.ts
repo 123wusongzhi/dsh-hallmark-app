@@ -29,6 +29,7 @@ const storeLocalParams=new Set(['storeId','store','productId','productIds','sku'
 const clearLocalParams=(params:Record<string,JsonValue>)=>Object.fromEntries(Object.entries(params).filter(([key])=>!storeLocalParams.has(key)));
 const recordInput=(value:JsonValue):Record<string,JsonValue>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value:{};
 type RefreshOptions={forceRefresh?:boolean};
+const refreshAdmissionErrors=new Set(['APP_NOT_ACTIVE','CONNECTION_NOT_FOUND','WORKBENCH_BINDING_REQUIRED','WORKBENCH_STORE_MISMATCH']);
 const cacheExpired=(payload:JsonValue):boolean=>{const cache=recordInput(recordInput(payload).cache??null),expires=typeof cache.expiresAt==='string'?Date.parse(cache.expiresAt):NaN;return cache.stale===true||Number.isFinite(expires)&&expires<=Date.now();};
 
 export class AppsPresentationError extends Error {
@@ -67,10 +68,14 @@ export class AppsPresentationService {
   authoring?:AppsAuthoringService;
   private options:AppsPresentationOptions;
   private refreshes=new Map<string,{work:Promise<DatasetSnapshot>;forceRefresh:boolean}>();
+  private refreshSignalIds=new WeakMap<AbortSignal,string>();
   private pages=new Map<string,Map<string,{token:string;data?:AppsBindingData}>>();
   private dataTransfers=new DataTransfers();
   /** A page belongs to one iframe/preview, never to the shared saved binding. */
-  clearBindingPages(scope:string):void {this.pages.delete(scope);}
+  clearBindingPages(scope:string,bindingIds?:string[]):void {
+    if(!bindingIds){this.pages.delete(scope);return;}
+    const pages=this.pages.get(scope);for(const id of bindingIds)pages?.delete(id);if(!pages?.size)this.pages.delete(scope);
+  }
   clearDataTransfers(scope:string):void {this.dataTransfers.clearOwner(scope);}
   scopedData(view:AppsView,scope:string):AppsViewData {
     const data=this.dataForView(view),pages=this.pages.get(scope);
@@ -231,6 +236,7 @@ export class AppsPresentationService {
     if(selected&&[...selected].some(id=>!view.bindings.some(binding=>binding.bindingId===id)))fail('BINDING_NOT_FOUND','Requested binding is not part of this view.');
     await Promise.all(view.bindings.filter(binding=>!selected||selected.has(binding.bindingId)).map(async binding=>{
       try{await this.refreshBinding(binding,source,signal,options);}catch(error){
+        if(refreshAdmissionErrors.has((error as AppsPresentationError).code))throw error;
         const id=binding.datasetId??datasetId(binding),previous=this.store.get<DatasetSnapshot>('datasets',id);
         const snapshot:DatasetSnapshot={datasetId:id,canonicalBinding:json(canonicalBinding(binding)),revision:previous?.revision??'0',payload:previous?.payload??null,resources:previous?.resources??[],fetchedAt:previous?.fetchedAt??new Date().toISOString(),sourceDataTime:previous?.sourceDataTime??null,lastSuccessAt:previous?.lastSuccessAt??'',provenance:previous?.provenance??[],state:'unavailable',freshness:previous?'stale':'unknown',error:problem((error as AppsPresentationError).code??'REFRESH_FAILED',error instanceof Error?error.message:String(error))};
         this.store.put('datasets',id,snapshot);
@@ -240,23 +246,36 @@ export class AppsPresentationService {
   }
   async refreshBinding(raw:DatasetBinding,source:InvocationSource,signal?:AbortSignal,options:RefreshOptions={}):Promise<DatasetSnapshot> {
     const binding=this.binding(raw),id=binding.datasetId!;
-    const active=this.refreshes.get(id);if(active){if(!options.forceRefresh||active.forceRefresh)return active.work;await active.work.catch(()=>{});return this.refreshBinding(raw,source,signal,options);}
-    const current={work:this.load(binding,source,signal,options),forceRefresh:options.forceRefresh===true};this.refreshes.set(id,current);
-    try{return await current.work;}finally{if(this.refreshes.get(id)===current)this.refreshes.delete(id);}
+    this.assertRefreshAccess(binding,source);
+    if(signal&&!this.refreshSignalIds.has(signal))this.refreshSignalIds.set(signal,randomUUID());
+    // A shared dataset is a cache identity, not permission to share another caller's
+    // admission or cancellation. Only an identical invocation owner can coalesce.
+    const key=canonicalJson([id,source,signal?this.refreshSignalIds.get(signal):null,this.runtime.getConnection?.(binding.appId,binding.connectionId)?.configRevision??null]);
+    const active=this.refreshes.get(key);if(active){if(!options.forceRefresh||active.forceRefresh){const result=await active.work;this.assertRefreshAccess(binding,source);return clone(result);}await active.work.catch(()=>{});return this.refreshBinding(raw,source,signal,options);}
+    const current={work:this.load(binding,source,signal,options),forceRefresh:options.forceRefresh===true};this.refreshes.set(key,current);
+    try{const result=await current.work;this.assertRefreshAccess(binding,source);return result;}finally{if(this.refreshes.get(key)===current)this.refreshes.delete(key);}
+  }
+  private assertRefreshAccess(binding:DatasetBinding,source:InvocationSource):void {
+    if(this.runtime.getConnection&&!this.runtime.getConnection(binding.appId,binding.connectionId)?.enabled)fail('CONNECTION_NOT_FOUND','An explicit enabled connection is required.');
+    if('sessionId' in source&&this.runtime.sessionBindings&&!this.runtime.sessionBindings(source.sessionId).some(row=>row.appId===binding.appId&&row.connectionId===binding.connectionId&&row.enabled))fail('APP_NOT_ACTIVE','This connection is not enabled in the source session.');
   }
   private async load(binding:DatasetBinding,source:InvocationSource,signal?:AbortSignal,options:RefreshOptions={}):Promise<DatasetSnapshot> {
-    const id=binding.datasetId!,descriptor=this.runtime.describe(binding.capabilityId)!;
+    const id=binding.datasetId!,descriptor=this.runtime.describe(binding.capabilityId)!,startedRevision=this.store.get<DatasetSnapshot>('datasets',id)?.revision;
     const input=clone(binding.input);
     if(options.forceRefresh&&recordInput(recordInput(descriptor.inputSchema.properties??null).forceRefresh??null).type==='boolean'&&input!==null&&typeof input==='object'&&!Array.isArray(input))input.forceRefresh=true;
     const request:InvocationRequest={protocolVersion:'1.0',appId:binding.appId,connectionId:binding.connectionId,invocationId:randomUUID(),traceId:randomUUID(),capabilityId:binding.capabilityId,capabilityVersion:descriptor.version,input,source:clone(source),deadlineAt:new Date(Date.now()+descriptor.execution.timeoutMs).toISOString()};
     let result:CapabilityResult;
     try{result=await this.runtime.invoke(request,signal);}catch(error){result={status:'unavailable',invocationId:request.invocationId,traceId:request.traceId,error:problem('REFRESH_FAILED',error instanceof Error?error.message:String(error))};}
+    if('error' in result&&refreshAdmissionErrors.has(result.error.code))fail(result.error.code,result.error.message);
     return this.store.transaction(()=>{
       const previous=this.store.get<DatasetSnapshot>('datasets',id),now=new Date().toISOString(),canonical=json(canonicalBinding(binding));
       if(previous&&canonicalJson(previous.canonicalBinding)!==canonicalJson(canonical))fail('DATASET_HASH_CONFLICT','Stored dataset has a different canonical binding.');
       if(result.status!=='ok'&&result.status!=='partial'){
         const error='error' in result?result.error:problem('DATASET_NOT_READY',`Query returned ${result.status}.`);
         const failed:DatasetSnapshot={datasetId:id,canonicalBinding:canonical,revision:previous?.revision??'0',payload:previous?.payload??null,resources:previous?.resources??[],fetchedAt:previous?.fetchedAt??now,sourceDataTime:previous?.sourceDataTime??null,lastSuccessAt:previous?.lastSuccessAt??'',freshness:previous?'stale':'unknown',state:result.status==='unavailable'?'unavailable':'failed',provenance:previous?.provenance??[],error};
+        // This caller still receives its failure, but cannot invalidate data another
+        // authorized reader successfully refreshed while this request was pending.
+        if(previous?.state==='ready'&&previous.revision!==startedRevision)return clone(failed);
         return clone(this.store.put('datasets',id,failed));
       }
       const resources=this.options.resources?this.options.resources(binding,result):declaredResources(result);
@@ -421,7 +440,7 @@ export class AppsPresentationService {
     const contextInfo=()=>{const view=current();return {...contexts.get({...identity,buildId:view.source?.buildId??identity.buildId}),...identity};};
     const source:InvocationSource={kind:'component',sessionId:identity.sessionId,viewId:identity.viewId,frameInstanceId:identity.frameInstanceId};
     const refreshData=async(params:{bindingIds?:string[];forceRefresh?:boolean}|null):Promise<JsonValue>=>{
-      this.clearBindingPages(pageScope);const view=current(),bindingIds=params?.bindingIds,refreshOptions={forceRefresh:params?.forceRefresh??true};
+      const view=current(),bindingIds=params?.bindingIds,refreshOptions={forceRefresh:params?.forceRefresh??true};this.clearBindingPages(pageScope,bindingIds);
       if(!displayIdentity)return this.refreshView(identity.sessionId,identity.viewId,source,bindingIds,options.signal,refreshOptions).then(json);
       if(bindingIds?.some(id=>!view.bindings.some(binding=>binding.bindingId===id)))fail('BINDING_NOT_FOUND','Requested binding is not part of this fixed display.');
       await Promise.all(view.bindings.filter(binding=>!bindingIds||bindingIds.includes(binding.bindingId)).map(binding=>this.refreshBinding(binding,source,options.signal,refreshOptions)));return json(this.dataForView(current()));
@@ -456,13 +475,13 @@ export class AppsPresentationService {
         if(params.method==='getData')value=json(data());
         else if(params.method==='refresh'){
           if(params.options&&(typeof params.options!=='object'||Array.isArray(params.options)||Object.keys(params.options).some(key=>!['bindingIds','forceRefresh'].includes(key))||(params.options.forceRefresh!==undefined&&typeof params.options.forceRefresh!=='boolean')||params.options.bindingIds!==undefined&&(!Array.isArray(params.options.bindingIds)||params.options.bindingIds.some(id=>typeof id!=='string'||!id))))fail('INVALID_INPUT','Invalid refresh options.');
-          value=await refreshData(params.options??null);
+          try{value=await refreshData(params.options??null);}catch(error){guard();throw error;}
         }else if(params.method==='readBindingPage')value=json(await this.readBindingPage(current(),pageScope,{bindingId:String(params.bindingId),cursor:params.cursor},source,current,options.signal,DATA_TRANSFER_MAX_BYTES));
         else fail('INVALID_INPUT','Only snapshot reads and refreshes use data transfers.');
         current();if(guard()!==initialGuard)fail('BRIDGE_IDENTITY_STALE','The binding changed while preparing data. Read it again.');return this.dataTransfers.prepare(pageScope,value,params.knownRevision,initialGuard);
       },bindingPagesV1:async request=>{if(request.action!=='read')fail('INVALID_INPUT','Unknown binding page action.');return json(await this.readBindingPage(current(),pageScope,request.params as unknown as {bindingId:string;cursor?:string|null},source,current,options.signal));},...(this.authoring?{
       renderReadyV1:request=>{if(request.action!=='ready'||!options.candidate)fail('FRAME_NOT_READY','No authorized candidate publication.');const params=request.params as unknown as {checks:Parameters<AppsAuthoringService['confirmReady']>[1]['checks']};return json(displayIdentity?this.authoring!.confirmDisplayReady(identity.sessionId,{...displayIdentity,...identity,checks:params.checks}):this.authoring!.confirmReady(identity.sessionId,{...options.candidate,...identity,checks:params.checks}));},
-      uiStateV1:request=>{const params=request.params as unknown as {uiStateSchemaVersion:number;expectedStateRevision?:number;value?:JsonValue;state?:JsonValue;selectionEvidence?:Parameters<AppsAuthoringService['exportUiState']>[1]['selectionEvidence']};current();if(request.action==='read')return json(this.authoring!.restoreUiState(identity.sessionId,{viewId:identity.viewId,targetBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion},options.candidate));if(request.action==='write')return json(this.authoring!.exportUiState(identity.sessionId,{viewId:identity.viewId,sourceBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion,expectedStateRevision:params.expectedStateRevision??0,value:params.value??params.state??null,selectionEvidence:params.selectionEvidence??[]},displayIdentity));fail('INVALID_INPUT','Unknown UI state action.');},
+      uiStateV1:request=>{const params=request.params as unknown as {uiStateSchemaVersion:number;expectedStateRevision?:number;value?:JsonValue;state?:JsonValue;selectionEvidence?:Parameters<AppsAuthoringService['exportUiState']>[1]['selectionEvidence']};current();const validateFrameSelection=(selection:SelectionEnvelope)=>{validateDataSelection(data(),selection);};if(request.action==='read')return json(this.authoring!.restoreUiState(identity.sessionId,{viewId:identity.viewId,targetBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion},options.candidate,validateFrameSelection));if(request.action==='write')return json(this.authoring!.exportUiState(identity.sessionId,{viewId:identity.viewId,sourceBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion,expectedStateRevision:params.expectedStateRevision??0,value:params.value??params.state??null,selectionEvidence:params.selectionEvidence??[]},displayIdentity,validateFrameSelection));fail('INVALID_INPUT','Unknown UI state action.');},
     }:{})}});
   }
   /** Runtime registration adapter. The shared provider has no application-domain imports. */

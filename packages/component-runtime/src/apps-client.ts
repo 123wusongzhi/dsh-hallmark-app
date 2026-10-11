@@ -89,18 +89,21 @@ export function createAppsClient(options:{window?:Window;timeoutMs?:number;clien
   if(current.parent===current){clearTimeout(helloTimer);rejectHello(new ComponentBridgeError(failure('BRIDGE_UNAVAILABLE','Open this component in an Apps component host.')));}
   else current.parent.postMessage({channel:COMPONENT_CHANNEL,type:'hello',protocolVersion:'2.0',requestId:helloRequestId,documentNonce,clientFeatures:options.clientFeatures??['renderReadyV1']},origin);
   const call=async<T>(method:BridgeRequest['method'],params:JsonValue=null):Promise<T>=>{
-    if(disposed)throw new ComponentBridgeError(failure('BRIDGE_CLOSED','Component is closed.'));
-    await ready;
-    if(disposed)throw new ComponentBridgeError(failure('BRIDGE_CLOSED','Component is closed.'));
-    if(!visible&&method!=='resize')throw new ComponentBridgeError(failure('BRIDGE_PAUSED','Component is hidden; resume it before requesting data or actions.'));
-    if(!identity!.supportedMethods.includes(method))throw new ComponentBridgeError(failure('UNSUPPORTED_HOST_CAPABILITY',`Host does not support ${method}.`));
+    const preflight=(source:FailureInfo)=>new ComponentBridgeError(method==='requestAgent'?{...source,details:{...((source.details&&typeof source.details==='object'&&!Array.isArray(source.details))?source.details:{}),submitted:false}}:source);
+    if(disposed)throw preflight(failure('BRIDGE_CLOSED','Component is closed.'));
+    try{await ready;}catch(error){if(method==='requestAgent'&&error instanceof ComponentBridgeError)throw preflight(error.failure);throw error;}
+    if(disposed)throw preflight(failure('BRIDGE_CLOSED','Component is closed.'));
+    if(!visible&&method!=='resize')throw preflight(failure('BRIDGE_PAUSED','Component is hidden; resume it before requesting data or actions.'));
+    if(!identity!.supportedMethods.includes(method))throw preflight(failure('UNSUPPORTED_HOST_CAPABILITY',`Host does not support ${method}.`));
     const {protocolVersion,sessionId,viewId,buildId,frameInstanceId}=identity!;
     const request={channel:COMPONENT_CHANNEL,protocolVersion,sessionId,viewId,buildId,frameInstanceId,requestId:`${clientNonce}-${++sequence}`,method,params};
-    if(new TextEncoder().encode(JSON.stringify(request)).length>identity!.maxMessageBytes)throw new ComponentBridgeError(failure('BRIDGE_MESSAGE_TOO_LARGE','Component request exceeds the negotiated byte limit.'));
+    if(new TextEncoder().encode(JSON.stringify(request)).length>identity!.maxMessageBytes)throw preflight(failure('BRIDGE_MESSAGE_TOO_LARGE','Component request exceeds the negotiated byte limit.'));
     return new Promise<T>((resolve,reject)=>{
       const withInspection=(error:Error,submissionUncertain=false)=>{
         const source=error instanceof ComponentBridgeError?error.failure:failure('BRIDGE_SUBMISSION_UNKNOWN',error.message);
-        if(method==='requestAgent')return new ComponentBridgeError({...source,retryPolicy:'inspect_only',details:{...((source.details&&typeof source.details==='object'&&!Array.isArray(source.details))?source.details:{}),sessionId,viewId,buildId,frameInstanceId,requestId:request.requestId}});
+        // An explicit host rejection can prove that admission never happened.
+        // Only a lost response makes the original Agent request uncertain.
+        if(method==='requestAgent')return submissionUncertain?new ComponentBridgeError({...source,retryPolicy:'inspect_only',details:{...((source.details&&typeof source.details==='object'&&!Array.isArray(source.details))?source.details:{}),sessionId,viewId,buildId,frameInstanceId,requestId:request.requestId}}):error;
         if(method!=='invokeCapability'||!submissionUncertain)return error;
         const input=params!==null&&typeof params==='object'&&!Array.isArray(params)?params:{},mutation=typeof input.idempotencyKey==='string'&&input.idempotencyKey.length>0||isBusinessSubmission(input.appId,input.capabilityId);
         const details:Record<string,JsonValue>={sessionId,viewId,buildId,frameInstanceId,requestId:request.requestId};
@@ -112,7 +115,7 @@ export function createAppsClient(options:{window?:Window;timeoutMs?:number;clien
       const budget=method==='invokeCapability'?Math.min(options.timeoutMs??Infinity,appsInvocationTimeout(invocation)):options.timeoutMs??(method==='refresh'?150000:30000);
       const timer=setTimeout(()=>{pending.delete(request.requestId);reject(withInspection(new ComponentBridgeError(failure('BRIDGE_TIMEOUT','Host response timed out.')),true));},budget);
       pending.set(request.requestId,{resolve:value=>resolve(value as T),reject:(error,submissionUncertain)=>reject(withInspection(error,submissionUncertain)),timer});
-      try{current.parent.postMessage(request,origin);}catch(error){clearTimeout(timer);pending.delete(request.requestId);reject(withInspection(error instanceof Error?error:new Error(String(error))));}
+      try{current.parent.postMessage(request,origin);}catch(error){clearTimeout(timer);pending.delete(request.requestId);reject(method==='requestAgent'?preflight(failure('BRIDGE_SEND_FAILED',error instanceof Error?error.message:String(error))):withInspection(error instanceof Error?error:new Error(String(error))));}
     });
   };
   const extension=async(feature:ComponentFeature,action:string,params:JsonValue):Promise<JsonValue>=>{

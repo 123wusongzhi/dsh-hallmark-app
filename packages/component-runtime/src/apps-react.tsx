@@ -16,11 +16,30 @@ export function useApps(options:AppsHookOptions={}){
   const currentData=useRef(data);currentData.current=data;
   const [hostVisible,setHostVisible]=useState(true),visibleHost=useRef(true);
   const dataRequests=useRef(0),autoRetryAt=useRef(0),[readEpoch,setReadEpoch]=useState(0);
-  const acceptData=useCallback((next:JsonValue,completedRead=false,pageBindings?:string[]|true)=>{const problem=boundDataError(next);setData(previous=>preserveFailedData(previous,next,pageBindings));setError(problem);autoRetryAt.current=problem||completedRead&&cacheDeadlines(next).some(binding=>binding.at<=Date.now())?Date.now()+5000:0;},[]);
+  const dataSequence=useRef(0),fullDataSequence=useRef(0),bindingSequences=useRef(new Map<string,number>());
+  const beginDataRead=(bindingIds?:string[])=>{const sequence=++dataSequence.current;if(bindingIds)for(const id of bindingIds)bindingSequences.current.set(id,sequence);else fullDataSequence.current=sequence;return sequence;};
+  const currentBindings=(sequence:number,bindingIds?:string[])=>bindingIds?.filter(id=>sequence>=Math.max(fullDataSequence.current,bindingSequences.current.get(id)??0));
+  const acceptData=useCallback((next:JsonValue,sequence:number,completedRead=false,pageBindings?:string[]|true)=>{
+    const ids=Array.isArray(pageBindings)?currentBindings(sequence,pageBindings):undefined;
+    if(ids?!ids.length:sequence<fullDataSequence.current)return;
+    const nextBindings=object(next).bindings,oldBindings=object(currentData.current).bindings;
+    // A page response contains the whole view. Only its requested bindings are
+    // authoritative; siblings may be snapshots taken before their own reads.
+    if(Array.isArray(nextBindings)){
+      const old=Array.isArray(oldBindings)?oldBindings:[],selected=ids?new Set(ids):undefined,accepted=(id:string)=>selected?selected.has(id):sequence>=(bindingSequences.current.get(id)??0);
+      const oldById=new Map(old.map(value=>[String(object(value).bindingId),value])),nextIds=new Set(nextBindings.map(value=>String(object(value).bindingId)));
+      const bindings=ids?old.filter(value=>{const id=String(object(value).bindingId);return !accepted(id)||nextIds.has(id);}):nextBindings.flatMap(value=>{const id=String(object(value).bindingId);return accepted(id)?[value]:oldById.has(id)?[oldById.get(id)]:[];});
+      if(ids){const positions=new Map(bindings.map((value,index)=>[String(object(value).bindingId),index]));for(const value of nextBindings){const id=String(object(value).bindingId);if(!accepted(id))continue;const index=positions.get(id);if(index===undefined){positions.set(id,bindings.length);bindings.push(value);}else bindings[index]=value;}}
+      else for(const value of old){const id=String(object(value).bindingId);if(!nextIds.has(id)&&!accepted(id))bindings.push(value);}
+      next={...object(next),...(ids?object(currentData.current):{}),bindings} as JsonValue;
+    }else if(sequence!==dataSequence.current)return;
+    const merged=preserveFailedData(currentData.current,next,pageBindings),problem=boundDataError(merged);currentData.current=merged;setData(merged);setError(problem);autoRetryAt.current=problem||completedRead&&cacheDeadlines(merged).some(binding=>binding.at<=Date.now())?Date.now()+5000:0;
+  },[]);
   const [uiStateNotice,setUiStateNotice]=useState(''),[contextNotice,setContextNotice]=useState(''),[stateSettled,setStateSettled]=useState(false),stateRevision=useRef(0),stateSaver=useRef<ReturnType<typeof createLatestStateSaver>>(),stateReadiness=useRef<{resolve:()=>void;reject:(reason:unknown)=>void}>(),readyPublication=useRef<string>(),pageErrors=useRef<string[]>([]),migratedState=useRef(false);
   const saveUiState=useCallback(async()=>{if(!liveOptions.current.uiState)return;if(!stateSaver.current)throw new Error('UI状态连接尚未准备好。');return stateSaver.current.save();},[]);
   useEffect(()=>{
     const connection=createAppsClient({clientFeatures:liveOptions.current.uiState?['renderReadyV1','uiStateV1','bindingPagesV1','dataTransferV1']:['renderReadyV1','bindingPagesV1','dataTransferV1']});client.current=connection;let active=true,unsubscribeState=()=>{},localStateChanges=0,importing=false,lastSaved:string|undefined;
+    const initialSequence=beginDataRead();dataRequests.current++;
     const visibility=connection.subscribeVisibility(visible=>{visibleHost.current=visible;if(active)setHostVisible(visible);});visibleHost.current=connection.isVisible();setHostVisible(visibleHost.current);
     const pendingVisibility=new Set<()=>void>();
     const waitVisible=(afterPause=false)=>new Promise<void>((resolve,reject)=>{
@@ -44,9 +63,9 @@ export function useApps(options:AppsHookOptions={}){
     });stateSaver.current=saver;
     const capture=(event:Event)=>{const item=event as ErrorEvent&PromiseRejectionEvent;if(item.reason instanceof ComponentBridgeError)return;const message=String(item.message??item.reason??'Unhandled component error').slice(0,512);if(pageErrors.current.length<20)pageErrors.current.push(message);if(active)connection.reportFrameError({phase:'script',code:event.type==='error'?'COMPONENT_SCRIPT_ERROR':'COMPONENT_UNHANDLED_REJECTION',message});};
     window.addEventListener('error',capture);window.addEventListener('unhandledrejection',capture);
-    const unsubscribe=connection.subscribe(event=>{if(active){if(event.event==='data')acceptData(event.data);else setContext(event.data);}});
+    const unsubscribe=connection.subscribe(event=>{if(active){if(event.event==='data')acceptData(event.data,beginDataRead());else setContext(event.data);}});
     const initial=<T,>(phase:string,promise:Promise<T>)=>promise.catch(reason=>{if(active)connection.reportFrameError({phase,code:String(object(reason).code??'COMPONENT_INITIALIZATION_FAILED'),message:reason instanceof Error?reason.message:String(reason)});throw reason;});
-    const handshake=initial('handshake',connection.hello());
+    const handshake=initial('handshake',connection.hello()).then(identity=>{if(active){setHello(identity);if(!identity.features?.includes('renderReadyV1'))stateReadiness.current?.resolve();}return identity;});
     const restoreState=handshake.then(async identity=>{
       const contract=liveOptions.current.uiState;
       if(!contract)return;
@@ -73,7 +92,7 @@ export function useApps(options:AppsHookOptions={}){
     void restoreState.then(()=>resolveState!(),reason=>{rejectState!(reason);if(active)setUiStateNotice(`界面状态恢复失败，当前数据仍可查看：${reason instanceof Error?reason.message:String(reason)}`);}).finally(()=>{if(active)setStateSettled(true);});
     // Context is optional for display, but readiness still requires its publication identity.
     void readInitially(()=>connection.getContext()).then(next=>{if(active){setContext(next);if(typeof object(object(next).publication).publicationId!=='string')stateReadiness.current?.resolve();}},reason=>{if(active){stateReadiness.current?.reject(reason);setContextNotice(`组件上下文暂不可用：${reason instanceof Error?reason.message:String(reason)}`);}});
-    Promise.all([handshake,initial('data',readInitially(()=>connection.getData()))]).then(([identity,nextData])=>{if(active){setHello(identity);acceptData(nextData);if(!identity.features?.includes('renderReadyV1'))stateReadiness.current?.resolve();}}).catch(reason=>{rejectState!(reason);stateReadiness.current?.reject(reason);if(active)setError(reason instanceof Error?reason:new Error(String(reason)));}).finally(()=>{if(active)setLoading(false);});
+    Promise.all([handshake,readInitially(()=>connection.getData())]).then(([,nextData])=>{if(active)acceptData(nextData,initialSequence);}).catch(reason=>{if(active&&initialSequence===dataSequence.current){rejectState!(reason);stateReadiness.current?.reject(reason);connection.reportFrameError({phase:'data',code:String(object(reason).code??'COMPONENT_INITIALIZATION_FAILED'),message:reason instanceof Error?reason.message:String(reason)});setError(reason instanceof Error?reason:new Error(String(reason)));}}).finally(()=>{dataRequests.current--;if(active)setLoading(dataRequests.current>0);});
     return()=>{active=false;for(const cancel of [...pendingVisibility])cancel();unsubscribe();visibility();unsubscribeState();saver.dispose();rejectState!(new Error('UI状态连接已关闭。'));stateReadiness.current?.reject(new Error('UI状态连接已关闭。'));stateReadiness.current=undefined;window.removeEventListener('error',capture);window.removeEventListener('unhandledrejection',capture);connection.dispose();if(client.current===connection)client.current=undefined;if(stateSaver.current===saver)stateSaver.current=undefined;};
   },[]);
   // This effect runs after the React root committed data/context, never from iframe onLoad.
@@ -87,9 +106,9 @@ export function useApps(options:AppsHookOptions={}){
     }).catch(reason=>{if(client.current===owner){stateReadiness.current?.reject(reason);owner.reportFrameError({phase:'readiness',code:String(object(reason).code??'COMPONENT_READY_FAILED'),message:reason instanceof Error?reason.message:String(reason)});setError(reason instanceof Error?reason:new Error(String(reason)));}});
   },[loading,stateSettled,error,data,context,hello]);
   const connection=()=>{if(!client.current)throw new Error('Component host is not connected.');return client.current;};
-  const pageSequence=useRef(0);
-  const readBindingPage=useCallback(async(bindingId:string,cursor?:string|null)=>{const owner=connection(),sequence=++pageSequence.current;dataRequests.current++;setLoading(true);try{const next=await owner.readBindingPage(bindingId,cursor);if(client.current===owner&&sequence===pageSequence.current){acceptData(next,true,[bindingId]);}return next;}catch(reason){if(client.current===owner&&sequence===pageSequence.current){autoRetryAt.current=retryDeadline(reason,5000);setError(reason instanceof Error?reason:new Error(String(reason)));setData(previous=>invalidateFailedData(previous,reason,[bindingId]));}throw reason;}finally{dataRequests.current--;if(client.current===owner){setReadEpoch(value=>value+1);if(sequence===pageSequence.current)setLoading(false);}}},[]);
-  const refresh=useCallback(async(bindingIds?:string[],refreshOptions:AppsRefreshOptions={})=>{if((refreshOptions.forceRefresh??true)&&currentData.current!==undefined&&snapshotRefreshing(currentData.current,bindingIds))return currentData.current;const owner=connection(),sequence=++pageSequence.current;dataRequests.current++;setLoading(true);try{const next=await owner.refresh(bindingIds,{forceRefresh:refreshOptions.forceRefresh??true});if(client.current===owner&&sequence===pageSequence.current){acceptData(next,true,bindingIds??true);}return next;}catch(reason){if(client.current===owner&&sequence===pageSequence.current){autoRetryAt.current=retryDeadline(reason,5000);setError(reason instanceof Error?reason:new Error(String(reason)));setData(previous=>invalidateFailedData(previous,reason,bindingIds));}throw reason;}finally{dataRequests.current--;if(client.current===owner){setReadEpoch(value=>value+1);if(sequence===pageSequence.current)setLoading(false);}}},[]);
+  const rejectData=(reason:unknown,sequence:number,bindingIds?:string[])=>{const bindings=object(currentData.current).bindings,ids=currentBindings(sequence,bindingIds??(Array.isArray(bindings)?bindings.map(value=>String(object(value).bindingId)):undefined));if(sequence<fullDataSequence.current||(ids?!ids.length:sequence!==dataSequence.current))return;autoRetryAt.current=retryDeadline(reason,5000);setError(reason instanceof Error?reason:new Error(String(reason)));const next=invalidateFailedData(currentData.current,reason,ids);currentData.current=next;setData(next);};
+  const readBindingPage=useCallback(async(bindingId:string,cursor?:string|null)=>{const owner=connection(),sequence=beginDataRead([bindingId]);dataRequests.current++;setLoading(true);try{const next=await owner.readBindingPage(bindingId,cursor);if(client.current===owner)acceptData(next,sequence,true,[bindingId]);return next;}catch(reason){if(client.current===owner)rejectData(reason,sequence,[bindingId]);throw reason;}finally{dataRequests.current--;if(client.current===owner){setReadEpoch(value=>value+1);setLoading(dataRequests.current>0);}}},[]);
+  const refresh=useCallback(async(bindingIds?:string[],refreshOptions:AppsRefreshOptions={})=>{if((refreshOptions.forceRefresh??true)&&currentData.current!==undefined&&snapshotRefreshing(currentData.current,bindingIds))return currentData.current;const owner=connection(),sequence=beginDataRead(bindingIds);dataRequests.current++;setLoading(true);try{const next=await owner.refresh(bindingIds,{forceRefresh:refreshOptions.forceRefresh??true});if(client.current===owner)acceptData(next,sequence,true,bindingIds??true);return next;}catch(reason){if(client.current===owner)rejectData(reason,sequence,bindingIds);throw reason;}finally{dataRequests.current--;if(client.current===owner){setReadEpoch(value=>value+1);setLoading(dataRequests.current>0);}}},[]);
   // The Provider owns cache lifetimes. Hidden documents do not poll; a visible
   // document rechecks the advertised deadline and never overlaps a pending read.
   useEffect(()=>{
@@ -157,6 +176,13 @@ function preserveFailedData(previous:JsonValue|undefined,next:JsonValue,pageBind
     return {...binding,datasetId:kept.datasetId,payload:retained,resources:kept.resources??binding.resources,revision:kept.revision??binding.revision,...(kept.query?{query:kept.query}:{}),lastSuccessAt:kept.lastSuccessAt??binding.lastSuccessAt,sourceDataTime:kept.sourceDataTime??binding.sourceDataTime,provenance:kept.provenance??binding.provenance,freshness:'stale'};
   })} as JsonValue;
 }
+function agentRequestNotSubmitted(error:unknown):boolean {
+  const failure=object(object(error).failure),details=object(failure.details);
+  if(failure.retryPolicy==='inspect_only'||details.doNotResubmitMutation===true)return false;
+  // `never` alone does not prove non-admission: an oversized or malformed
+  // response may arrive after execution. Only known preflight failures qualify.
+  return details.submitted===false||failure.retryPolicy==='never'&&['INVALID_INPUT','CONTEXT_REVISION_CONFLICT','CONTEXT_NOT_OWNED','CONTEXT_BUDGET_EXCEEDED','APPS_CONTEXT_BUDGET_EXCEEDED','UNSUPPORTED_HOST_CAPABILITY','CANCELLED_BEFORE_DISPATCH','APPS_HOST_CLOSED'].includes(String(failure.code));
+}
 /** Opt-in controls keep local selection, context publication and explicit agent submission separate. */
 export function AppsAgentActions({apps,selections,summary='',onInspectRequest}:{apps:Pick<ReturnType<typeof useApps>,'hello'|'context'|'updateContext'|'requestAgent'>;selections:SelectionEnvelope[];summary?:string;onInspectRequest?:(requestId:string)=>void}) {
   const fingerprint=JSON.stringify({selections,summary}),[published,setPublished]=useState<string>(),[revision,setRevision]=useState<number>(),[text,setText]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[receipt,setReceipt]=useState<ComponentAgentReceipt>(),[inspectRequestId,setInspectRequestId]=useState<string>(),locked=useRef(false),inFlight=useRef(false);
@@ -172,7 +198,7 @@ export function AppsAgentActions({apps,selections,summary='',onInspectRequest}:{
     // A submission can outlive the iframe response. Never repeat an uncertain request automatically.
     locked.current=true;inFlight.current=true;setBusy(true);setNotice('');
     try{const value=await apps.requestAgent({text:text.trim(),expectedContextRevision:revision});setReceipt(value);setInspectRequestId(value.requestId);setNotice(value.status==='accepted'?'请求已提交，等待代理处理。':`请求状态：${value.status}。请检查原请求。`);}
-    catch(error){const requestId=object(object(object(error).failure).details).requestId;if(typeof requestId==='string')setInspectRequestId(requestId);setNotice(`${error instanceof Error?error.message:String(error)} 请检查原请求，勿重复提交。`);}finally{inFlight.current=false;setBusy(false);}
+    catch(error){if(agentRequestNotSubmitted(error)){locked.current=false;setReceipt(undefined);setInspectRequestId(undefined);setPublished(undefined);setRevision(undefined);setNotice(`${error instanceof Error?error.message:String(error)} 请求未提交；修正后请更新上下文，再显式请求代理。`);}else{const requestId=object(object(object(error).failure).details).requestId;if(typeof requestId==='string')setInspectRequestId(requestId);setNotice(`${error instanceof Error?error.message:String(error)} 请检查原请求，勿重复提交。`);}}finally{inFlight.current=false;setBusy(false);}
   };
   return <section aria-label="组件代理操作" data-context-state={dirty?'dirty':'published'}><p role="status">{notice||(dirty?'选择尚未发布。':'选择已发布。')}</p><button type="button" onClick={publish} disabled={busy||!canUpdate||locked.current}>更新上下文</button><label>代理任务 <input value={text} onChange={event=>setText(event.target.value)} disabled={busy||locked.current}/></label><button type="button" onClick={request} disabled={busy||dirty||!canRequest||!text.trim()||locked.current}>请求代理</button>{inspectRequestId&&onInspectRequest?<button type="button" onClick={()=>onInspectRequest(inspectRequestId)}>检查原请求</button>:null}{receipt?.status==='accepted'?<button type="button" disabled={busy} onClick={()=>{locked.current=false;setReceipt(undefined);setInspectRequestId(undefined);setText('');setNotice('请输入新任务后显式提交。');}}>准备新任务</button>:null}{!canUpdate||!canRequest?<p>此宿主尚未启用正式代理路径；可添加选择附件后手动发送。</p>:null}</section>;
 }

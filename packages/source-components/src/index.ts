@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type { SourceArtifact, SourcePreview } from '../../presentation/src/types.ts';
 import {regularFileIdentity} from './file-verification-cache.ts';
@@ -9,13 +9,15 @@ export class SourceComponentError extends Error {
   constructor(code:string,message:string){super(message);this.name='SourceComponentError';this.code=code;}
 }
 export interface SourceBuildManifest { buildId:string; entry:string; files:string[]; projectFiles:string[]; createdAt:string; manifestVersion?:2; fileManifest?:{path:string;size:number;sha256:string}[] }
-const ignored=new Set(['node_modules','.git','.preview']);
+const ignored=new Set(['node_modules','.git']);
 function walk(root:string,current=root):string[]{
   return readdirSync(current,{withFileTypes:true}).flatMap(item=>{
     if(ignored.has(item.name))return [];
     const path=join(current,item.name);
     // Symlinked dependencies are represented by the package manifest and lockfile, not duplicate vendored trees.
     if(item.isSymbolicLink())return [];
+    // The editable preview contract belongs to saved source; screenshots and reports do not.
+    if(item.name==='.preview')return current===root&&item.isDirectory()&&lstatSync(join(path,'plan.json'),{throwIfNoEntry:false})?.isFile()?['.preview/plan.json']:[];
     return item.isDirectory()?walk(root,path):item.isFile()?[relative(root,path).split(sep).join('/')]:[];
   }).sort();
 }

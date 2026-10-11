@@ -8,14 +8,37 @@ $logBase = Join-Path $logDirectory ("check-process-" + [guid]::NewGuid().ToStrin
 $entry = Join-Path $PSScriptRoot 'apps-authoring-check.js'
 if (!(Test-Path -LiteralPath $entry)) { $entry = Join-Path $PSScriptRoot 'apps-authoring-check.mjs' }
 # ArgumentList preserves spaces without constructing another shell command.
+$launcher = $request.launcher
+$nodeArgs = @()
+if ($null -ne $launcher) {
+    if ($launcher.executable -isnot [string] -or [string]::IsNullOrWhiteSpace($launcher.executable) -or $launcher.nodeArgs -isnot [array] -or @($launcher.nodeArgs | Where-Object { $_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_) }).Count) {
+        throw 'launcher requires an executable string and a nodeArgs string array; copy launcher from authoring guidance.'
+    }
+    $nodeExecutable = $launcher.executable
+    $nodeArgs = $launcher.nodeArgs
+} else {
+    # Compatibility for existing generated Node/Electron + build.mjs requests only.
+    # Custom build argv (for example --eval or npm run) must never become runner argv.
+    $buildCommand = @($request.build.command)
+    $legacyArgs = @($buildCommand | Select-Object -Skip 1 | Select-Object -SkipLast 1)
+    $safeLegacyArgs = @($legacyArgs | Where-Object { $_ -notmatch '^--(no-warnings|expose-internals|experimental-strip-types|experimental-transform-types|disable-warning=ExperimentalWarning)$' }).Count -eq 0
+    if ($buildCommand.Count -ge 2 -and [System.IO.Path]::GetFileName($buildCommand[-1]) -eq 'build.mjs' -and $safeLegacyArgs) {
+        $nodeExecutable = $buildCommand[0]
+        $nodeArgs = $legacyArgs
+    } elseif ($buildCommand.Count -gt 0 -and [System.IO.Path]::GetFileNameWithoutExtension($buildCommand[0]) -in @('node','nodejs')) {
+        $nodeExecutable = $buildCommand[0]
+    } else {
+        $nodeExecutable = (Get-Command node -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+    }
+}
 $start = [System.Diagnostics.ProcessStartInfo]::new()
-$start.FileName = $request.build.command[0]
+$start.FileName = $nodeExecutable
 $start.UseShellExecute = $false
 $start.CreateNoWindow = $true
 $start.RedirectStandardOutput = $true
 $start.RedirectStandardError = $true
 $start.Environment['ELECTRON_RUN_AS_NODE'] = '1'
-for ($i = 1; $i -lt $request.build.command.Count - 1; $i++) { $start.ArgumentList.Add($request.build.command[$i]) }
+foreach ($argument in $nodeArgs) { $start.ArgumentList.Add($argument) }
 $start.ArgumentList.Add($entry)
 $start.ArgumentList.Add($requestFile)
 $process = [System.Diagnostics.Process]::new()

@@ -26,7 +26,7 @@ function fixture(t:{after:(fn:()=>void)=>void},capabilityId=source.capabilityId)
 }
 
 test('new procurement sources declare full loading and local operations without a user-editable technical switch',()=>{
-  assert.deepEqual(source.input,{loadAll:true,planMode:'delivery'});
+  assert.deepEqual(source.input,{loadAll:true,planMode:'application'});
   assert.equal(source.parameters.find(item=>item.name==='loadAll')?.editable,false);
   assert.deepEqual(source.operations,{search:{scope:'loaded'},sort:{scope:'loaded'}});
   assert.deepEqual(dataSourceDefinitionIssues(source,PROCUREMENT_DESCRIPTOR),[]);

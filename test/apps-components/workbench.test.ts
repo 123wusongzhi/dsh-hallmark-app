@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
+import {AppsRuntime} from '../../packages/app-runtime/src/index.ts';
 import {APP_PRESENTATION_DESCRIPTORS,AppsPresentationService} from '../../packages/app-presentation/src/index.ts';
 import {compileSchema} from '../../packages/app-contracts/src/index.ts';
 import {assessRollback,rollbackBaseline} from '../../packages/app-migration/src/maintenance.ts';
@@ -37,12 +38,30 @@ test('registration calls the real runtime, rejects missing paths and currency, a
  const validation=await f.dataSources.validate({definition:missingCurrency},source);assert.equal(validation.status,'failed');assert.match(validation.issues.join(' '),/币种/);
  f.setPayload({items:[]});assert.equal((await f.dataSources.validate({definition},source)).status,'failed');
 });
-test('workbench CAS persists explicit bindings and identical instances share a runtime read',async t=>{
+test('workbench CAS persists explicit bindings and identical datasets retain per-instance Runtime admission',async t=>{
  const f=fixture(t);await f.dataSources.register({definition},source);f.calls.length=0;
  const board=f.workbench.save('shop',{expectedRevision:0,instances:[instance('a'),instance('b')]});assert.equal(board.workbenchId,'workbench:shop');assert.equal(board.instances[0].bindings?.[0].connectionId,'shop-1');
  assert.throws(()=>f.workbench.save('shop',{expectedRevision:0,instances:[]}),{code:'WORKBENCH_CONFLICT'});
- const [a,b]=await Promise.all([f.workbench.read('shop','a'),f.workbench.read('shop','b')]);assert.equal(f.calls.length,1);assert.deepEqual(f.calls[0].source,{kind:'workbench',workbenchId:'workbench:shop',instanceId:'a'});assert.equal(a.data.bindings[0].datasetId,b.data.bindings[0].datasetId);assert.equal(a.pages.products.nextCursor,'next');assert.equal(a.pages.products.total,3);
+ const [a,b]=await Promise.all([f.workbench.read('shop','a'),f.workbench.read('shop','b')]);assert.equal(f.calls.length,2);assert.deepEqual(f.calls.map(call=>call.source),[{kind:'workbench',workbenchId:'workbench:shop',instanceId:'a'},{kind:'workbench',workbenchId:'workbench:shop',instanceId:'b'}]);assert.equal(a.data.bindings[0].datasetId,b.data.bindings[0].datasetId);assert.equal(a.data.bindings[0].state,'ready');assert.equal(b.data.bindings[0].state,'ready');assert.equal(a.pages.products.nextCursor,'next');assert.equal(a.pages.products.total,3);
  const reopened=new WorkbenchLibrary({store:f.store,runtime:f.runtime,dataSources:f.dataSources,refreshBinding:(...args)=>f.presentation.refreshBinding(...args)});assert.equal(reopened.get('shop').instances.length,2);
+});
+
+test('an unbound workbench instance cannot join an authorized instance read of the same dataset',async t=>{
+ const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),providerCalls:InvocationRequest[]=[];
+ let release:()=>void=()=>{},entered:()=>void=()=>{};
+ const started=new Promise<void>(resolve=>{entered=resolve;}),barrier=new Promise<void>(resolve=>{release=resolve;});
+ t.after(async()=>{release();await runtime.dispose();store.close();});
+ runtime.register({manifest:{manifestVersion:1,appId:'shop',displayName:'Shop fixture',providerPackage:'fixture',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:[]},descriptors:[{...descriptor,execution:{...descriptor.execution,timeoutMs:10000}}],execute:async context=>{
+  providerCalls.push(context.request);if(context.request.source.kind==='workbench'){entered();await barrier;}
+  return {status:'ok',invocationId:context.request.invocationId,traceId:context.request.traceId,data:{items:[{id:'p1',name:'商品一',price:1999,sku:'sku1',spec:'蓝色'}],total:1}};
+ },dispose:async()=>{}});
+ runtime.addConnection({appId:'shop',connectionId:'shop-1',displayName:'Shop fixture',config:{},configRevision:1,enabled:true});runtime.bind({sessionId:'s',appId:'shop',connectionId:'shop-1',enabled:true,boundAt:new Date().toISOString()});
+ const presentation=new AppsPresentationService({store,runtime}),dataSources=new DataSourceLibrary({store,runtime}),workbench=new WorkbenchLibrary({store,runtime,dataSources,refreshBinding:(...args)=>presentation.refreshBinding(...args)});
+ await dataSources.register({definition},source);providerCalls.length=0;
+ const board=workbench.save('shop',{expectedRevision:0,instances:[instance('authorized')]}),allowed=workbench.read('shop','authorized');await started;
+ await assert.rejects(presentation.refreshBinding(board.instances[0].bindings![0],{kind:'workbench',workbenchId:board.workbenchId,instanceId:'unbound'}),{code:'WORKBENCH_BINDING_REQUIRED'});
+ release();const ready=await allowed;assert.equal(ready.data.bindings[0].state,'ready');assert.equal(providerCalls.length,1);assert.deepEqual(providerCalls[0].source,{kind:'workbench',workbenchId:board.workbenchId,instanceId:'authorized'});
+ assert.equal(store.get<{state:string}>('datasets',ready.data.bindings[0].datasetId)?.state,'ready','rejected admission must not poison the authorized cache');
 });
 
 test('saved component pins persist without queries or work copies and survive store and instance saves',async t=>{

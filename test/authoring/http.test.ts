@@ -301,6 +301,8 @@ test('packed check CLI completes four steps and repeats without new execution',{
 test('prepared product template checks its single plan, pages without attachments and resumes after refresh',{skip:!existsSync(browser),timeout:60000},async()=>{
  const f=await setup();try{
   // Real presentation/HTTP/SDK/browser; only the external business provider is a fixture.
+ f.runtime.addConnection({appId:'hallmark',connectionId:'fixture-products',displayName:'Fixture products',enabled:true,configRevision:1,config:{baseUrl:'http://127.0.0.1:1'}});
+ f.runtime.bind({sessionId:'original',appId:'hallmark',connectionId:'fixture-products',enabled:true,boundAt:new Date().toISOString()});
   const invoke=f.runtime.invoke.bind(f.runtime);
   f.runtime.invoke=async request=>{if(request.capabilityId!=='hallmark.products.list')return invoke(request);const input=request.input as {cursor?:string;limit:number},offset=Number(input.cursor??0);return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{total:5,cursor:offset+2<5?String(offset+2):null,products:Array.from({length:Math.min(2,5-offset)},(_,index)=>({storeId:'store',productId:String(offset+index),offerId:'offer-'+(offset+index),title:'Product '+(offset+index),sku:'sku-'+(offset+index),currency:'CNY',pricing:{sellerMinor:4497},profit:{purchaseMinor:2663,actualMargin:0.05}}))}};};
   const begin=await f.begin({mode:'new',bindings:[{bindingId:'products',appId:'hallmark',connectionId:'fixture-products',capabilityId:'hallmark.products.list',capabilityMajor:1,input:{storeId:'store',limit:2},projection:[],refresh:{mode:'manual'}}]});

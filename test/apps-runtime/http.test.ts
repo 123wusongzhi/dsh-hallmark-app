@@ -51,11 +51,11 @@ test('HTTP response loss returns original result without repeating a Notes mutat
     const result=await client.invoke({appId:'notes',connectionId:'n'},descriptor,{title:'Once',content:'Evidence'},{idempotencyKey:'one'});assert.equal(result.status,'ok');assert.equal(posts,1);assert.equal(ctx.store.list<{namespace:string}>('provider_records').filter(row=>row.namespace==='notes').length,1);
   }finally{await ctx.cleanup();}
 });
-test('multi-application view keeps one offline dataset and rejects unowned sessions',async()=>{
+test('multi-application view rejects revoked access without returning shared cached data',async()=>{
   const ctx=await setup();try{await ctx.bind();
     const response=await ctx.call('/v1/views/open',{sessionId:'s',title:'Stores and notes',design:{kind:'table'},bindings:[{bindingId:'stores',appId:'hallmark',connectionId:'h',capabilityId:'hallmark.stores.list',capabilityMajor:1,input:{},projection:[],refresh:{mode:'manual'}},{bindingId:'notes',appId:'notes',connectionId:'n',capabilityId:'notes.notes.list',capabilityMajor:1,input:{},projection:[],refresh:{mode:'manual'}}]});assert.equal(response.status,200);const view=await response.json();
     const first=await(await ctx.call(`/v1/views/${view.viewId}/refresh`,{sessionId:'s'})).json();assert.equal(first.bindings.every((row:{state:string})=>row.state==='ready'),true);
-    ctx.runtime.bind({sessionId:'s',appId:'hallmark',connectionId:'h',enabled:false,boundAt:new Date().toISOString()});const second=await(await ctx.call(`/v1/views/${view.viewId}/refresh`,{sessionId:'s'})).json();assert.equal(second.bindings[0].freshness,'stale');assert.deepEqual(second.bindings[0].payload,first.bindings[0].payload);assert.equal(second.bindings[1].state,'ready');
+    ctx.runtime.bind({sessionId:'s',appId:'hallmark',connectionId:'h',enabled:false,boundAt:new Date().toISOString()});const revoked=await ctx.call(`/v1/views/${view.viewId}/refresh`,{sessionId:'s'});assert.equal(revoked.status,400);const rejected=await revoked.json();assert.equal(rejected.error.code,'APP_NOT_ACTIVE');assert.equal(rejected.bindings,undefined);assert.equal(ctx.presentation.getData('s',view.viewId).bindings[0].state,'ready','authorization failure must not poison the shared successful cache');
     assert.equal((await ctx.call(`/v1/views/${view.viewId}?sessionId=other`)).status,400);
   }finally{await ctx.cleanup();}
 });

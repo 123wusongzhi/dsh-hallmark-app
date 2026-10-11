@@ -18,6 +18,29 @@ function bridge(handlers:Partial<ComponentHostHandlers>,timeoutMs=30){
 }
 async function rejected(action:Promise<unknown>):Promise<ComponentBridgeError>{try{await action;assert.fail('Expected a bridge failure');}catch(error){assert.ok(error instanceof ComponentBridgeError);return error;}}
 
+test('an authoritative Agent pre-admission failure keeps its recovery policy and evidence',async()=>{
+  const failure:FailureInfo={code:'CONTEXT_REVISION_CONFLICT',message:'Publish the current context before requesting.',retryPolicy:'never',details:{submitted:false,expectedRevision:1,currentRevision:2}};
+  const f=bridge({requestAgent:()=>{throw new ComponentBridgeError(failure);}});try{
+    await f.client.hello();const error=await rejected(f.client.requestAgent({text:'Analyze this',expectedContextRevision:1}));
+    assert.deepEqual(error.failure,failure);assert.equal(f.requests.length,1);
+  }finally{f.close();}
+});
+
+test('a locally oversized Agent request proves that no request was submitted',async()=>{
+  const f=bridge({requestAgent:()=>assert.fail('Local validation must not dispatch')});try{
+    const hello=await f.client.hello();const error=await rejected(f.client.requestAgent({text:'x'.repeat(hello.maxMessageBytes),expectedContextRevision:1}));
+    assert.equal(error.code,'BRIDGE_MESSAGE_TOO_LARGE');assert.equal(error.failure.retryPolicy,'never');assert.equal((error.failure.details as any).submitted,false);assert.equal(f.requests.length,0);
+  }finally{f.close();}
+});
+
+for(const mode of ['timeout','dispose'] as const)test(`an unanswered Agent request remains inspect-only after ${mode}`,async()=>{
+  const f=bridge({requestAgent:()=>new Promise(()=>{})},mode==='dispose'?1000:30);try{
+    await f.client.hello();const promise=rejected(f.client.requestAgent({text:'Analyze this',expectedContextRevision:1}));
+    if(mode==='dispose'){await new Promise(resolve=>setImmediate(resolve));f.client.dispose();}
+    const error=await promise;assert.equal(error.failure.retryPolicy,'inspect_only');assert.equal((error.failure.details as any).requestId,f.requests[0].requestId);assert.equal(f.requests.length,1);
+  }finally{f.close();}
+});
+
 test('an unanswered submitted read bridge request permits a read retry',async()=>{
   const f=bridge({invokeCapability:()=>new Promise(()=>{})});try{
     await f.client.hello();const error=await rejected(f.client.invokeCapability(invocation()));
