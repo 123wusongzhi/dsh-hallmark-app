@@ -53,4 +53,4 @@
 
 证据目录：`E:/project/deepseek_h/output/interface-audit-fixes-20261011`，包括 `full-tests-final.log`、`live-weights-*.json`、`weights/`、`weight-review/`、`sku/`。绑定/SDK 的红绿测试位于 `output/dsh-interface-session-audit-20261011/subagent-boundary-fix/`。
 
-本轮只合入本地代码并构建，未安装到正在运行的 DSH，未推送 GitHub。安装包仍沿用仓库 candidate72 版本；部署核验需比对构建 hash，不能只看版本号。
+上述修复验证完成时仅合入本地并构建。随后用户授权安装与推送，现已完成正式 DSH 安装和运行核验，详见[安装记录](interface-audit-installation-20261011.md)。安装包仍沿用仓库 candidate72 版本；部署核验需比对构建 hash，不能只看版本号。
