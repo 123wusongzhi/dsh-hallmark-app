@@ -1,5 +1,5 @@
 {
-  "reportStatus": "ready_for_install",
+  "reportStatus": "deployed_verified",
   "selection": {
     "listed": 20,
     "alreadyInBaseline": [
@@ -10,14 +10,14 @@
       "batch02-08"
     ],
     "newRetainedCount": 17,
-    "merged": false,
-    "installed": false,
-    "pushed": false,
+    "merged": true,
+    "installed": true,
+    "pushed": true,
     "collectionOriginalGainsExcluded": true,
-    "finalSourceIdentity": "Measured f132b7d production candidate plus recorded working-tree test/documentation corrections; formal-latest-92b manifests are authoritative. Ready for installation; merge/install/push pending.",
+    "finalSourceIdentity": "Measured f132b7d production, followed by verification-only 6c04799. Production unchanged; 6c04799 merged locally, installed, verified, and pushed to fix/agent-binding-preview. Formal manifests and separate deployment evidence remain authoritative.",
     "namespaceRemoved": true,
     "baselineCategoryReuse": "Request-local exact category responses include returned failure/429; persistent cache stores success only; next invocation can retry/refresh",
-    "latestKnownMain": "92b289023d2ebd286116b3d3eebabeeb8ced38d3"
+    "latestKnownMain": "6c0479988d5685d42367958f8a0cb8c7c2bbeaae"
   },
   "evidence": {
     "runName": "formal-latest-15b",
@@ -2715,7 +2715,7 @@
   "latest92b": {
     "baseCommit": "92b289023d2ebd286116b3d3eebabeeb8ced38d3",
     "candidateCommitAtRebase": "77a94643306357f14762d3d1e8d6efa7a15b420f",
-    "status": "ready_for_install",
+    "status": "deployed_verified",
     "readerParity": {
       "baselineCommit": "92b289023d2ebd286116b3d3eebabeeb8ced38d3",
       "candidateCommit": "77a94643306357f14762d3d1e8d6efa7a15b420f",
@@ -2833,7 +2833,7 @@
         "exitCode": 0,
         "evidence": "baseline-92b-build-result.json"
       },
-      "candidateFinalGate": "Ready for installation based on recorded full run plus unchanged original excluded-port recheck, strict parity, independent baseline contract proof, targeted corrections, current typecheck/build, combined main-business snapshot, and formal-latest-92b. Not a new all-green complete test run; merge/install/push pending.",
+      "candidateFinalGate": "Ready for installation based on recorded full run plus unchanged original excluded-port recheck, strict parity, independent baseline contract proof, targeted corrections, current typecheck/build, combined main-business snapshot, and formal-latest-92b. Not a new all-green complete test run. Subsequent merge/install/push verified in deployment20261012.",
       "latestBaselineInputContractEvidence": {
         "file": "latest-tests-contract-fix.baseline.log",
         "baselineCommit": "92b289023d2ebd286116b3d3eebabeeb8ced38d3",
@@ -33166,5 +33166,54 @@
     {"suite":"namespace","size":5000,"scenario":"stable-all","applicability":"historical_all20_selection_evidence_only_excluded_from_final_gains","wallMs":{"A":[379.24009999999953,390.07230000000027,385.13989999999967,353.9044000000008,380.51419999999916],"B":[467.06149999999957,500.1163999999999,448.04719999999907,493.9524999999994,485.01350000000093],"medianA":380.51419999999916,"medianB":485.01350000000093,"changePct":27.4626544817518,"improvedPairs":0,"pairChangePct":[23.157203048939223,28.21120597386677,16.333623184717936,39.57229692538389,27.4626544817518]},"cpuMs":{"A":[376,374,437,408,374],"B":[517,501,516,500,469]},"maxRssKB":{"A":[372260,378768,378880,365780,397312],"B":[365576,365500,390708,391024,365516]},"calls":{"unit":"direct adapter calls","A":[10,10,10,10,10],"B":[10,10,10,10,10]},"httpCalls":{"A":null,"B":null},"sourceReads":{"A":null,"B":null},"requestBytes":{"A":null,"B":null},"modelBytes":{"A":null,"B":null},"completeTaskBytes":{"A":{"value":null,"basis":"no tool payload bytes at this direct store boundary"},"B":{"value":null,"basis":"no tool payload bytes at this direct store boundary"}},"oracleEqual":true,"oracleSha256":"6b31af487220bd44e14f87c71a1843ee113f737184390b7fa9f4fb331dbc8d13","validatedAdditiveCategoryHints":0},
     {"suite":"namespace","size":5000,"scenario":"stable-sparse","applicability":"historical_all20_selection_evidence_only_excluded_from_final_gains","wallMs":{"A":[400.4743000000017,374.57640000000083,463.38720000000103,390.2667000000006,375.1212000000005],"B":[112.38130000000001,107.87540000000035,108.50490000000082,108.9096999999997,108.00839999999926],"medianA":390.2667000000006,"medianB":108.50490000000082,"changePct":-72.19724357727661,"improvedPairs":5,"pairChangePct":[-71.93794957629002,-71.20069497170667,-76.58439853323516,-72.09351963669984,-71.207065876309]},"cpuMs":{"A":[359,360,438,390,375],"B":[125,110,110,110,110]},"maxRssKB":{"A":[422040,409448,409532,415832,443944],"B":[419156,407116,435276,435184,407840]},"calls":{"unit":"direct adapter calls","A":[10,10,10,10,10],"B":[10,10,10,10,10]},"httpCalls":{"A":null,"B":null},"sourceReads":{"A":null,"B":null},"requestBytes":{"A":null,"B":null},"modelBytes":{"A":null,"B":null},"completeTaskBytes":{"A":{"value":null,"basis":"no tool payload bytes at this direct store boundary"},"B":{"value":null,"basis":"no tool payload bytes at this direct store boundary"}},"oracleEqual":true,"oracleSha256":"7d1fc32fde3a4a473a85b79f67f553048782b28ad6cc6c840ee48fe0d1b2ef84","validatedAdditiveCategoryHints":0},
     {"suite":"namespace","size":5000,"scenario":"stable-none","applicability":"historical_all20_selection_evidence_only_excluded_from_final_gains","wallMs":{"A":[396.7684999999997,340.6391999999996,473.06010000000015,397.2368999999994,429.5738000000001],"B":[95.69220000000087,96.61510000000044,96.10480000000052,96.91249999999991,96.13930000000028],"medianA":397.2368999999994,"medianB":96.13930000000028,"changePct":-75.79799359022276,"improvedPairs":5,"pairChangePct":[-75.88210757658409,-71.6371163389297,-79.68444178657205,-75.60334903429161,-77.61984087483914]},"cpuMs":{"A":[391,390,452,407,422],"B":[110,94,110,78,93]},"maxRssKB":{"A":[433564,413776,413496,426788,459296],"B":[428588,422868,447412,447920,423380]},"calls":{"unit":"direct adapter calls","A":[10,10,10,10,10],"B":[10,10,10,10,10]},"httpCalls":{"A":null,"B":null},"sourceReads":{"A":null,"B":null},"requestBytes":{"A":null,"B":null},"modelBytes":{"A":null,"B":null},"completeTaskBytes":{"A":{"value":null,"basis":"no tool payload bytes at this direct store boundary"},"B":{"value":null,"basis":"no tool payload bytes at this direct store boundary"}},"oracleEqual":true,"oracleSha256":"f3b2526b86f3339df1c41df7c1e0b26c1e1830d2ab3da39391374ab0d7d3ec07","validatedAdditiveCategoryHints":0}
-  ]
+  ],
+  "deployment20261012": {
+    "status": "passed",
+    "dateLocal": "2026-10-12",
+    "timezone": "Asia/Shanghai",
+    "sourceCommit": "6c0479988d5685d42367958f8a0cb8c7c2bbeaae",
+    "branch": "fix/agent-binding-preview",
+    "sourceMerged": true,
+    "installed": true,
+    "remoteExactCommitVerified": true,
+    "bundleVersion": "1.0.0-candidate.72",
+    "archiveSha256": "b5ada4a9b303e04d987e5a520e1508b4452bc970a5ca3a1fecaab6dab4047d0a",
+    "installedArtifacts": 143,
+    "matchedSourceInputs": 342,
+    "preservedSessions": 232,
+    "preservedSkillFiles": 86,
+    "preservedComponents": 6,
+    "preservedBusinessRows": 1326,
+    "otherDirectDependenciesUnchanged": 4,
+    "configurationPreserved": true,
+    "pendingOtherTaskChangesPreserved": true,
+    "report": "binding-results-deployment-20261012.md",
+    "evidenceHashes": {
+      "deployment/installed-validation-result.json": "4ac0b35c19d34894a6f7757b819864285aedfc2a4e9b65b7c89a621538057d29",
+      "deployment/preserved-data-result.json": "8c636cfa195f43df50f04558bb48357f25367c29a713d08bf136ece7324d65fc",
+      "deployment/source-profile-verification.json": "ab3607fc53634090c195d88b44a6e817e48af275d4b6b14e8b3b6be8c5912800",
+      "compat/collection-gc-diagnostic/summary.json": "01da88702252de6504b4977e52083f967ae436efb87738754b0129284fd82053"
+    },
+    "collectionDiagnostic": {
+      "pairs": 1,
+      "instrumented": true,
+      "formalSamplesReplaced": false,
+      "oraclesEqual": true,
+      "refreshWallMs": {
+        "A": 4476.31,
+        "B": 4334.31
+      },
+      "refreshGcPauseMs": {
+        "A": 701.1,
+        "B": 708.2
+      },
+      "providerRecordLists": {
+        "A": 7,
+        "B": 7
+      },
+      "formalNegativePreserved": true,
+      "formalDelayCause": "not established",
+      "newCandidateMandatoryFixFound": false
+    }
+  }
 }
