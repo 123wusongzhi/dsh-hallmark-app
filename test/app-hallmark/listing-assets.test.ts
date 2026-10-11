@@ -75,6 +75,39 @@ test('same bytes reuse verified content cache; later source file changes create 
   assert.notEqual(changed.files[0].assetId, initial.files[0].assetId); assert.equal(changed.files[0].reused, false);
 });
 
+test('one batch delivers identical bytes once while retaining every file and SKU association',async t=>{
+ const {publisher,first,second,calls}=await fixture(t);await writeFile(second,png);
+ const files=Array.from({length:20},(_,i)=>({path:i%2?first:second,skuIds:[`sku-${i}`,`sku-${i}`]}));
+ const result=await publisher.publish({files});assert.equal(result.status,'ready');assert.equal(result.successCount,20);
+ assert.deepEqual(result.files.map((file:any)=>file.path),files.map(file=>file.path));
+ assert.deepEqual(result.files.map((file:any)=>file.skuIds),files.map((_,i)=>[`sku-${i}`]));
+ assert.equal(new Set(result.files.map((file:any)=>file.assetId)).size,1);
+ assert.equal(calls.filter(c=>c.path==='/api/images/import/local').length,1);assert.equal(calls.filter(c=>c.path==='/api/images/publish').length,1);assert.equal(calls.filter(c=>c.path.startsWith('/images/')).length,1);
+ const again=await publisher.publish({files:[{path:first,skuIds:['later']}]});assert.equal(again.files[0].reused,true);assert.deepEqual(again.files[0].skuIds,['later']);assert.equal(calls.filter(c=>c.path==='/api/images/import/local').length,1);
+});
+
+test('identical content import failure maps to every binding and is retried by a new invocation',async t=>{
+ const options:{importFailure?:string}={importFailure:hash(png)},f=await fixture(t,options);
+ const files=[{path:f.first,skuIds:['one']},{path:f.first,skuIds:['two']}];
+ const failed=await f.publisher.publish({files});assert.equal(failed.failureCount,2);assert.equal(f.calls.filter(c=>c.path==='/api/images/import/local').length,1);
+ assert.deepEqual(failed.files.map((file:any)=>file.skuIds),[['one'],['two']]);assert.ok(failed.files.every((file:any)=>file.error.code==='LISTING_ASSET_PROVIDER_FAILED'));
+ options.importFailure=undefined;const retried=await f.publisher.publish({files});assert.equal(retried.successCount,2);assert.equal(f.calls.filter(c=>c.path==='/api/images/import/local').length,2);assert.equal(f.calls.filter(c=>c.path==='/api/images/publish').length,1);
+});
+
+test('duplicate public verification failure remains uncached and new invocation retries the content',async t=>{
+ const options={publicWrongHash:true},f=await fixture(t,options),files=[{path:f.first,skuIds:['a']},{path:f.first,skuIds:['b']}];
+ const failed=await f.publisher.publish({files});assert.equal(failed.failureCount,2);assert.equal(f.records.size,0);assert.equal(f.calls.filter(c=>c.path.startsWith('/images/')).length,1);
+ assert.ok(failed.files.every((file:any)=>file.error.code==='LISTING_ASSET_PUBLIC_MISMATCH'));
+ options.publicWrongHash=false;const retried=await f.publisher.publish({files});assert.equal(retried.successCount,2);assert.equal(f.calls.filter(c=>c.path.startsWith('/images/')).length,2);assert.equal(f.records.size,1);
+});
+
+test('shared duplicate failure does not affect another content in the same image batch',async t=>{
+ const f=await fixture(t,{importFailure:hash(png)});
+ const result=await f.publisher.publish({files:[{path:f.first,skuIds:['failed-one']},{path:f.first,skuIds:['failed-two']},{path:f.second,skuIds:['ready']}]});
+ assert.equal(result.status,'partial');assert.equal(result.failureCount,2);assert.equal(result.successCount,1);assert.equal(result.files[2].status,'ready');assert.deepEqual(result.files[2].skuIds,['ready']);
+ assert.equal(f.calls.filter(c=>c.path==='/api/images/import/local').length,2);assert.equal(f.calls.filter(c=>c.path==='/api/images/publish').length,1);
+});
+
 test('one bad local file does not discard other successfully published files', async t => {
   const { publisher, first, imports } = await fixture(t);
   const r = await publisher.publish({ files: [{ path: imports }, { path: first, skuIds: ['good'] }] });

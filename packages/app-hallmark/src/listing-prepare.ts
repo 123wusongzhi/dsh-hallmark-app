@@ -85,7 +85,8 @@ export interface ListingPrepareInput {
  knownRevisions?:Record<string,string>;categoryQuery?:string;categories?:Record<string,{descriptionCategoryId:string;typeId:string}>;
  maxBytes?:number;salesLimit?:number;cursor?:string;refresh?:boolean;includeOptionalAttributes?:boolean;
 }
-interface PrepareOptions {collection:CollectionService;packaging:BusinessPackagingRepository;pricing?:Pick<BusinessPricingRepository,'read'|'quote'>;client:CoreClient;store:CoreStore;listingStates?:(ids:string[])=>Record<string,CollectionListingState[]>;prepareProducts?:(products:CollectionProduct[])=>Promise<CollectionProduct[]>}
+interface PrepareOptions {collection:CollectionService;packaging:BusinessPackagingRepository;pricing?:Pick<BusinessPricingRepository,'read'|'quote'>;client:CoreClient;store:CoreStore;signal?:AbortSignal;listingStates?:(ids:string[])=>Record<string,CollectionListingState[]>;prepareProducts?:(products:CollectionProduct[])=>Promise<CollectionProduct[]>}
+const checkCancelled=(signal?:AbortSignal)=>{if(signal?.aborted)throw Object.assign(new Error('上品资料准备已取消。'),{name:'AbortError',code:'ABORTED'});};
 type Part={kind:'material'|'sale'|'reused'|'existingLinks'|'listingRecord';data:any}|{kind:'category';id:string;data:any};
 interface Preparation {storeId:string;revision:string;createdAt:string;parts:Part[];totals:{materials:number;sales:number;categories:number};rules:any;sourceRevisions:Record<string,string>}
 const NEXT='按已返回资料制作标题、属性和图片；草稿只填写原生 Ozon 字段及 procurement 引用，包装和自动售价由程序填入。缺失值为 null 时补充具体事实。';
@@ -99,12 +100,19 @@ function scope(input:ListingPrepareInput){
 function compactRules(config:ReturnType<BusinessPricingRepository['read']>){if(!config)return null;return {revision:config.revision,currency:config.currency,logisticsSelection:config.logisticsSelection??'fixed',listingTargetMarginPpm:config.listingTargetMarginPpm,minimumMarginPpm:config.minimumMarginPpm,minPriceMinor:config.minPriceMinor,maxPriceMinor:config.maxPriceMinor,maxAutoPriceMinor:config.maxAutoPriceMinor,logisticsPlans:config.plans.length,available:{capability:'hallmark.pricing.read',input:{storeId:config.storeId}}};}
 function compactQuote(quote:ReturnType<BusinessPricingRepository['quote']>|null){if(!quote)return null;return {status:quote.status,configRevision:quote.configRevision,planId:quote.planId,planName:quote.planName,currency:quote.currency,suggestedPriceMinor:quote.suggestedPriceMinor,minimumAllowedPriceMinor:quote.minimumAllowedPriceMinor,targetMarginPpm:quote.targetMarginPpm,breakdown:quote.breakdown,issues:quote.issues,warnings:quote.warnings};}
 
-async function categoryParts(product:CollectionProduct,input:ListingPrepareInput,options:PrepareOptions):Promise<Part[]>{
+async function categoryParts(product:CollectionProduct,input:ListingPrepareInput,options:PrepareOptions,requestCache:Map<string,RecordData>):Promise<Part[]>{
+ checkCancelled(options.signal);
  const hint=readExistingCategoryHint(options.store,product.id),specified=input.categories?.[product.id]??(hint?{descriptionCategoryId:String(hint.descriptionCategoryId),typeId:String(hint.typeId)}:undefined),query=input.categoryQuery??product.category.path.at(-1)??product.originalTitle??product.title;
- const request=specified?{mode:'template' as const,storeId:input.storeId,...specified}:{mode:'search' as const,storeId:input.storeId,q:query.slice(0,190),limit:8};
+ const request=specified?{mode:'template' as const,storeId:input.storeId,descriptionCategoryId:specified.descriptionCategoryId,typeId:specified.typeId}:{mode:'search' as const,storeId:input.storeId,q:query.slice(0,190),limit:8};
  if(!options.client.getCategoryData)return [{kind:'category',id:product.id,data:{status:'unavailable'}}];
- const key=hash(request);let cached=options.store.get<RecordData>('business_category_preparation',key);
- if(input.refresh||!cached||Date.now()-Date.parse(cached.at)>24*60*60*1000){const response=await options.client.getCategoryData(request);cached={at:new Date().toISOString(),status:response.status,data:response.raw??null,error:response.error??null};if(response.status==='ok')options.store.put('business_category_preparation',key,cached);}
+ const key=hash(request);let cached=requestCache.get(key);
+ if(!cached){
+  cached=options.store.get<RecordData>('business_category_preparation',key);
+  if(input.refresh||!cached||Date.now()-Date.parse(cached.at)>24*60*60*1000){const response=await options.client.getCategoryData(request);checkCancelled(options.signal);cached={at:new Date().toISOString(),status:response.status,data:response.raw??null,error:response.error??null};if(response.status==='ok')options.store.put('business_category_preparation',key,cached);}
+  // A forced refresh applies once per exact request, including transient failures.
+  // This map belongs to one preparation; the next invocation can retry or refresh.
+  requestCache.set(key,cached);
+ }
  if(cached.status!=='ok')return [{kind:'category',id:product.id,data:{status:'unavailable',error:cached.error}}];
  const raw=cached.data?.response??cached.data??{},revision=hash(raw);
  if(!specified){const values=raw.items??raw.result?.items??raw.result??[],items=Array.isArray(values)?values.slice(0,8).map((value:any)=>({descriptionCategoryId:value.descriptionCategoryId??value.description_category_id,typeId:value.typeId??value.type_id,name:value.type_name??value.category_name??value.name,path:value.path})):[];return [{kind:'category',id:product.id,data:{status:'candidates',revision,items,total:raw.total??items.length,query:request}}];}
@@ -138,7 +146,8 @@ function page(preparation:Preparation,offset:number,input:ListingPrepareInput){
 }
 export async function prepareListing(input:ListingPrepareInput,options:PrepareOptions){
  const {collection,packaging,client,store,pricing}=options;
- const stores=await client.getStores();if(stores.status!=='ok'||!Array.isArray(stores.raw)||!stores.raw.some(value=>String(value.id??value.storeId)===input.storeId))fail('STORE_NOT_FOUND','目标店铺不在当前经营连接中。');
+ checkCancelled(options.signal);
+ const stores=await client.getStores();checkCancelled(options.signal);if(stores.status!=='ok'||!Array.isArray(stores.raw)||!stores.raw.some(value=>String(value.id??value.storeId)===input.storeId))fail('STORE_NOT_FOUND','目标店铺不在当前经营连接中。');
  if(input.cursor){
   if(input.selections||input.compositions||input.categories||input.knownRevisions||input.refresh||input.categoryQuery||input.includeOptionalAttributes)fail('PREPARE_CURSOR_SCOPE','续页只传原店铺、cursor 与分页大小；更改商品范围时重新准备。');
   let value:any;try{value=JSON.parse(Buffer.from(input.cursor,'base64url').toString('utf8'));}catch{return fail('PREPARE_CURSOR_INVALID','准备资料续页无效。');}
@@ -146,8 +155,9 @@ export async function prepareListing(input:ListingPrepareInput,options:PrepareOp
   if(!saved||saved.storeId!==input.storeId||!Number.isInteger(value.offset)||value.offset<0||value.offset>=saved.parts.length)fail('PREPARE_CURSOR_INVALID','准备资料续页与当前店铺不匹配或已不存在。');
   return page(saved!,value.offset,input);
  }
- const selections=scope(input);await (client as CoreClient&{ensureBusinessCatalog?:(id:string)=>Promise<void>}).ensureBusinessCatalog?.(input.storeId);
- const originals=await Promise.all(selections.map(selection=>collection.getProduct(selection.id,{refresh:input.refresh}))),products=options.prepareProducts?await options.prepareProducts(originals):originals;
+ const selections=scope(input);await (client as CoreClient&{ensureBusinessCatalog?:(id:string)=>Promise<void>}).ensureBusinessCatalog?.(input.storeId);checkCancelled(options.signal);
+ const originals=await Promise.all(selections.map(selection=>{checkCancelled(options.signal);return collection.getProduct(selection.id,{refresh:input.refresh});}));checkCancelled(options.signal);
+ const products=options.prepareProducts?await options.prepareProducts(originals):originals;checkCancelled(options.signal);
  const allowed=new Map(selections.map(selection=>[selection.id,new Set(selection.skuIds??products.find(product=>product.id===selection.id)!.skus.map(sku=>sku.id).filter((id):id is string=>!!id))]));
  for(const selection of selections){const product=products.find(product=>product.id===selection.id)!;if(selection.revision&&selection.revision!==product.revision)fail('COLLECTION_REVISION_CHANGED','所选采集资料已更新，请采用当前版本。');for(const id of selection.skuIds??[])if(!product.skus.some(sku=>sku.id===id))fail('SOURCE_SKU_NOT_FOUND','选中的 SKU 不属于对应商品。');if(!allowed.get(selection.id)!.size)fail('SOURCE_SKU_NOT_FOUND','所选商品没有可稳定关联的 SKU。');}
  const compositions=input.compositions??selections.flatMap(selection=>[...allowed.get(selection.id)!].map(id=>({id:`${selection.id}:${id}`,members:[{itemId:selection.id,sourceSkuId:id,quantity:1}]})));
@@ -156,9 +166,11 @@ export async function prepareListing(input:ListingPrepareInput,options:PrepareOp
  const recordStates=options.listingStates?options.listingStates(products.map(p=>p.id)):collectionListingStates(store,[input.storeId],products.map(p=>p.id));
  for(const product of products){const state=recordStates[product.id]?.find(state=>state.storeId===input.storeId);parts.push({kind:'listingRecord',data:{itemId:product.id,listingRecord:state?.listingRecord??'unavailable',reason:state?.listingRecordReason??'RECORD_SOURCE_UNAVAILABLE',savedListingCount:state?.savedListingCount??0,...(state?.savedListingCount?{available:{capability:'hallmark.plan.list',input:{storeId:input.storeId}}}:{})}});}
  for(const product of reused)parts.push({kind:'reused',data:{id:product.id,revision:product.revision,skuIds:[...allowed.get(product.id)!],available:{capability:'hallmark.collection.read',input:{id:product.id,skuIds:[...allowed.get(product.id)!],revision:product.revision}}}});
- if(toRead.length){let materials=await collection.read({selections:toRead,maxBytes:11000});for(;;){for(const item of materials.items)parts.push({kind:'material',data:item});if(!materials.continuation)break;materials=await collection.read(materials.continuation.input);}}
- for(const product of products)parts.push(...await categoryParts(product,input,options));
+ if(toRead.length){let materials=await collection.read({selections:toRead,maxBytes:11000});for(;;){checkCancelled(options.signal);for(const item of materials.items)parts.push({kind:'material',data:item});if(!materials.continuation)break;materials=await collection.read(materials.continuation.input);}}
+ const categoryRequests=new Map<string,RecordData>();
+ for(const product of products){checkCancelled(options.signal);parts.push(...await categoryParts(product,input,options,categoryRequests));}
  for(const composition of compositions){
+  checkCancelled(options.signal);
   const resolved=packaging.resolve({members:packagingMembers(products,composition.members),...(composition.members.length>1||composition.members[0].quantity!==1?{combinationId:composition.id}:{})});let purchase=0,known=true;
   for(const member of composition.members){const cost=products.find(product=>product.id===member.itemId)!.skus.find(sku=>sku.id===member.sourceSkuId)!.purchaseCost,amount=cost?Number(cost.amount):NaN;if(!cost||cost.currency!=='CNY'||!Number.isFinite(amount)||amount<0)known=false;else purchase+=amount*member.quantity;}
   const purchaseMinor=known&&Number.isSafeInteger(Math.round(purchase*100))?Math.round(purchase*100):null,quote=config&&pricing?pricing.quote({storeId:input.storeId,action:'listing',purchaseMinor,weightGrams:resolved.weightGrams,priceMinor:null,pricingMode:'automatic'}):null;
@@ -167,5 +179,5 @@ export async function prepareListing(input:ListingPrepareInput,options:PrepareOp
   for(let offset=10;offset<links.length;offset+=10)parts.push({kind:'existingLinks',data:{saleId:composition.id,offset,total:links.length,links:links.slice(offset,offset+10)}});
  }
  const snapshot={storeId:input.storeId,createdAt:new Date().toISOString(),parts:clean(parts),rules:compactRules(config),sourceRevisions:Object.fromEntries(originals.map(product=>[product.id,product.revision])),totals:{materials:originals.length,sales:compositions.length,categories:products.length}},preparation:Preparation={...snapshot,revision:hash(snapshot)};
- store.put('business_listing_preparations',preparation.revision,preparation);return page(preparation,0,input);
+ checkCancelled(options.signal);store.put('business_listing_preparations',preparation.revision,preparation);return page(preparation,0,input);
 }

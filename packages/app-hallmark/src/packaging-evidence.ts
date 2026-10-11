@@ -5,7 +5,8 @@ import { localBusinessProducts } from './operations-client.ts';
 
 export interface PackagingEvidenceReadInput { storeId: string; path: string; body: Record<string, unknown> }
 export type PackagingEvidenceReader = (input: PackagingEvidenceReadInput) => Promise<AdapterResponse>;
-export interface PackagingEvidenceOptions { storeIds?: string[]; now?: () => number; cacheTtlMs?: number }
+export interface PackagingEvidenceOptions { storeIds?: string[]; now?: () => number; cacheTtlMs?: number; signal?: AbortSignal }
+const checkCancelled=(signal?:AbortSignal)=>{if(signal?.aborted)throw Object.assign(new Error('包装资料读取已取消。'),{name:'AbortError',code:'ABORTED'});};
 type Binding = { storeId: string; offerId: string; productId: string; itemId: string; sourceSkuId: string; stamp: string };
 export interface ExistingCategoryHint { descriptionCategoryId: number; typeId: number; observedAt: string; source: 'exact-platform-binding' }
 type Evidence = { binding: Binding; observedAt: string; weightGrams: number | null; dimensionsMm: CollectionPackage['dimensionsMm']; category: Pick<ExistingCategoryHint, 'descriptionCategoryId' | 'typeId'> | null };
@@ -69,6 +70,7 @@ export function readExistingCategoryHint(store: CoreStore, itemId: string): Exis
  * Multiple conflicting platform declarations remain unknown for that field.
  */
 export async function applyExistingPackaging(products: CollectionProduct[], store: CoreStore, read: PackagingEvidenceReader, options: PackagingEvidenceOptions = {}): Promise<CollectionProduct[]> {
+  checkCancelled(options.signal);
   const copies = structuredClone(products);
   const needed = new Set(copies.flatMap(product => product.skus.filter(sku => sku.id && ((sku.package?.weightGrams == null && product.package.weightGrams == null) || (sku.package?.dimensionsMm == null && product.package.dimensionsMm == null))).map(sku => key(product.id, sku.id!))));
   if (!needed.size) return copies;
@@ -87,10 +89,11 @@ export async function applyExistingPackaging(products: CollectionProduct[], stor
     else pending.set(binding.storeId, [...pending.get(binding.storeId) ?? [], binding]);
   }
   for (const [storeId, group] of pending) for (let offset = 0; offset < group.length; offset += 100) {
+    checkCancelled(options.signal);
     const batch = group.slice(offset, offset + 100);
     let rows: RecordData[];
-    try { rows = responseRows(await read({ storeId, path: '/v4/product/info/attributes', body: { filter: { offer_id: batch.map(binding => binding.offerId), visibility: 'ALL' }, limit: 100 } })); }
-    catch { continue; }
+    try { rows = responseRows(await read({ storeId, path: '/v4/product/info/attributes', body: { filter: { offer_id: batch.map(binding => binding.offerId), visibility: 'ALL' }, limit: 100 } }));checkCancelled(options.signal); }
+    catch(error) { checkCancelled(options.signal);if(error instanceof Error&&error.name==='AbortError')throw error;continue; }
     for (const binding of batch) {
       const matches = rows.filter(row => safeString(row.offer_id) === binding.offerId && safeString(row.id ?? row.product_id) === binding.productId);
       if (matches.length !== 1) continue;
@@ -100,6 +103,7 @@ export async function applyExistingPackaging(products: CollectionProduct[], stor
     }
   }
   for (const product of copies) {
+    checkCancelled(options.signal);
     if (bindings.some(binding => binding.itemId === product.id)) {
       const productEvidence = evidence.filter(item => item.binding.itemId === product.id);
       const category = unique(productEvidence.map(item => item.category ?? null));

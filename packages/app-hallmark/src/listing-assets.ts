@@ -46,6 +46,7 @@ export class ListingAssetPublisher {
   async publish(input: { files: ListingAssetFile[] }, signal?: AbortSignal): Promise<any> {
     if (!Array.isArray(input.files) || input.files.length < 1 || input.files.length > 20) throw new AssetError('LISTING_ASSET_FILES_REQUIRED', '每次请选择 1–20 个图片文件');
     const results: any[] = Array(input.files.length), pending: ReadyFile[] = [];
+    const contentOwners = new Map<string, number>(), duplicates: Array<{ index: number; owner: number; path: string; skuIds: string[] }> = [];
     let access: any, importRoot: string, publicBase: URL;
     try {
       access = await this.request('/api/images/access', undefined, signal);
@@ -71,6 +72,11 @@ export class ListingAssetPublisher {
         const kind = imageType(data), contentHash = sha256(data), key = sha256(Buffer.from(`${publicBase!.href}\n${contentHash}`));
         const skuIds = [...new Set(file.skuIds ?? [])];
         if (skuIds.some(id => typeof id !== 'string' || !id.trim())) throw new AssetError('LISTING_ASSET_SKU_ID', '图片关联需使用有效 SKU ID');
+        // Still read and validate each selected file: paths may change during a call.
+        // Only the transfer of the exact observed bytes is shared, never its bindings.
+        const owner = contentOwners.get(key);
+        if (owner !== undefined) { duplicates.push({ index, owner, path, skuIds }); continue; }
+        contentOwners.set(key, index);
         const saved = this.options.store.get<PublishedAsset>('business_listing_assets', key);
         if (saved?.contentHash === contentHash && saved.url && saved.verifiedAt && Date.now() - Date.parse(saved.verifiedAt) < 60 * 60 * 1000) {
           results[index] = { path, skuIds, status: 'ready', ...saved, reused: true }; continue;
@@ -123,6 +129,7 @@ export class ListingAssetPublisher {
         }));
       }
     }
+    for (const file of duplicates) results[file.index] = { ...structuredClone(results[file.owner]), path: file.path, skuIds: file.skuIds };
     const successCount = results.filter(file => file.status === 'ready').length;
     return { status: successCount === results.length ? 'ready' : successCount ? 'partial' : 'failed', successCount, failureCount: results.length - successCount, files: results };
   }

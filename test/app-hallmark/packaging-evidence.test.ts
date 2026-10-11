@@ -139,6 +139,20 @@ test('reads across stores are batched to at most 100 offers', async () => {
   assert.deepEqual(gateway.calls.map(call => call.body.filter.offer_id.length), [100, 1]);
 });
 
+test('packaging abort stops subsequent batches and leaves evidence and category cache untouched',async()=>{
+ for(const rejects of [false,true]){
+  const store=memory(),controller=new AbortController();for(let i=0;i<201;i++)catalog(store,{offerId:`offer-${i}`,productId:String(i+1)});
+  let reads=0;const read:PackagingEvidenceReader=async()=>{reads++;controller.abort();if(rejects)throw new DOMException('cancelled','AbortError');return {status:'ok',raw:{result:[attr({offer_id:'offer-0',id:1})]}};};
+  await assert.rejects(applyExistingPackaging([product()],store,read,{signal:controller.signal} as any),{name:'AbortError'});
+  assert.equal(reads,1);assert.equal(store.list('business_package_evidence').length,0);assert.equal(store.list('business_listing_category_hints').length,0);
+ }
+});
+
+test('packaging propagates reader AbortError even when no caller signal was supplied',async()=>{
+ const store=memory();for(let i=0;i<201;i++)catalog(store,{offerId:`offer-${i}`,productId:String(i+1)});
+ let reads=0;await assert.rejects(applyExistingPackaging([product()],store,async()=>{reads++;throw new DOMException('cancelled','AbortError');}),{name:'AbortError'});assert.equal(reads,1);
+});
+
 test('category hint comes from the same exact attribute read, without another request', async () => {
   const store = memory(); catalog(store);
   const gateway = reader([attr({ description_category_id: 1234, type_id: 5678 })]);

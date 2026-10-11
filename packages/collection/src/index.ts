@@ -1,7 +1,7 @@
 import { mkdir, writeFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { hash, normalizeProduct, object } from './normalize.ts';
 import type { CollectionAsset, CollectionOptions, CollectionProduct, CollectionReadInput, CollectionResourceInput, CollectionSearchInput } from './types.ts';
 export * from './types.ts';
@@ -29,7 +29,8 @@ function decode(value: string | undefined, kind: string, revision: string, scope
 }
 const next = (kind: string, revision: string, scope: unknown, offset: number) => cursor({ kind, revision, scope: hash(scope), offset });
 const clean = <T>(value: T): T => JSON.parse(JSON.stringify(value));
-interface CachedProduct { product: CollectionProduct; detail: Record<string, any>; fetchedAtMs: number }
+interface CachedProduct { product: CollectionProduct; detail: Record<string, any>; fetchedAtMs: number; generation?: string }
+interface CachedRaw { value: any; generation: string; fetchedAtMs: number }
 
 function commonAttributes(skus: CollectionProduct['skus']): Record<string, string> {
   if (!skus.length) return {};
@@ -40,6 +41,8 @@ function commonAttributes(skus: CollectionProduct['skus']): Record<string, strin
 export class CollectionService {
   readonly options: CollectionOptions;
   private inflight = new Map<string, Promise<CachedProduct>>();
+  private rawInflight = new Map<string, Promise<CachedRaw>>();
+  private indexInflight?: Promise<Record<string, any>[]>;
   private indexCache?: { rows: Record<string, any>[]; fetchedAtMs: number };
   constructor(options: CollectionOptions) { this.options = options; }
   private key(id: string): string { return `${this.options.sourceId ?? 'legacy-collection'}:${id}`; }
@@ -57,7 +60,11 @@ export class CollectionService {
     if (!id || typeof id !== 'string') return fail('COLLECTION_ID_REQUIRED', '需要稳定的采集商品 ID');
     const key = this.key(id);
     const saved = this.options.store.get<CachedProduct>('collection_products', key);
-    if (!refresh && saved && this.fresh(saved.fetchedAtMs)) return saved;
+    if (!refresh && saved && this.fresh(saved.fetchedAtMs)) {
+      // Old persisted entries predate raw generations; upgrade once without re-fetching their facts.
+      if (!saved.generation) return this.options.store.put('collection_products', key, { ...saved, generation: randomUUID() });
+      return saved;
+    }
     const running = this.inflight.get(key); if (running) return running;
     const promise = (async () => {
       if (!this.options.client.getCollectedItemDetail) return fail('COLLECTION_DETAIL_UNAVAILABLE', '当前采集提供者不支持规范商品详情');
@@ -65,7 +72,8 @@ export class CollectionService {
       if (response.status !== 'ok' || !response.raw) return fail(response.error?.code ?? 'COLLECTION_READ_FAILED', response.error?.message ?? '采集商品读取失败');
       const detail = object(response.raw);
       if (String(detail.id) !== id) return fail('COLLECTION_ID_MISMATCH', '来源返回商品身份与请求不一致');
-      const entry = { detail: clean(detail), product: normalizeProduct(detail, this.options.sourceId), fetchedAtMs: Date.now() };
+      // The original document can change without changing the selected normalized facts.
+      const entry = { detail: clean(detail), product: normalizeProduct(detail, this.options.sourceId), fetchedAtMs: Date.now(), generation: randomUUID() };
       this.options.store.put('collection_products', key, entry);
       return entry;
     })();
@@ -90,17 +98,32 @@ export class CollectionService {
   }
   private async index(refresh = false): Promise<Record<string, any>[]> {
     if (!refresh && this.indexCache && this.fresh(this.indexCache.fetchedAtMs)) return this.indexCache.rows;
-    // Empty query avoids the legacy client's JSON/task-text search.
-    const response = await this.options.client.searchCollectedItems('');
-    const rows = Array.isArray(response.raw) ? response.raw : response.raw?.items;
-    if (response.status !== 'ok' || !Array.isArray(rows)) return fail(response.error?.code ?? 'COLLECTION_SEARCH_FAILED', response.error?.message ?? '采集商品目录读取失败');
-    this.indexCache = { rows, fetchedAtMs: Date.now() };
-    return rows;
+    if (this.indexInflight) return this.indexInflight;
+    const promise = (async () => {
+      // Empty query avoids the legacy client's JSON/task-text search.
+      const response = await this.options.client.searchCollectedItems('');
+      const rows = Array.isArray(response.raw) ? response.raw : response.raw?.items;
+      if (response.status !== 'ok' || !Array.isArray(rows)) return fail(response.error?.code ?? 'COLLECTION_SEARCH_FAILED', response.error?.message ?? '采集商品目录读取失败');
+      this.indexCache = { rows, fetchedAtMs: Date.now() };
+      return rows;
+    })();
+    this.indexInflight = promise;
+    try { return await promise; } finally { this.indexInflight = undefined; }
   }
   async search(input: CollectionSearchInput = {}): Promise<any> {
     let rows = await this.index(input.refresh);
     if (input.source) rows = rows.filter(r => r.source === input.source);
     if (input.category) rows = rows.filter(r => String(r.categoryId ?? '') === input.category || r.categoryPath?.includes(input.category));
+    function range(r: any): any {
+      if (r.goodsMinPrice !== undefined && r.goodsMaxPrice !== undefined && r.currency) return { meaning: 'purchase_cost', min: String(r.goodsMinPrice), max: String(r.goodsMaxPrice), currency: r.currency, unit: r.unit ?? null };
+      const d = r.sourceSellingPrice;
+      if (d?.currency && (d.amount !== undefined || d.min !== undefined)) return { meaning: 'source_display_price', min: String(d.amount ?? d.min), max: String(d.amount ?? d.max ?? d.min), currency: d.currency, unit: r.unit ?? null };
+      return null;
+    }
+    if (input.price) rows = rows.filter(r => {
+      const p = range(r), f = input.price!;
+      return p && p.meaning === f.meaning && p.currency === f.currency && (f.min === undefined || Number(p.max) >= f.min) && (f.max === undefined || Number(p.min) <= f.max);
+    });
     const query = (input.query ?? '').trim().toLocaleLowerCase();
     if (query) {
       const matches = new Set<string>();
@@ -117,16 +140,6 @@ export class CollectionService {
       rows = rows.filter(r => matches.has(String(r.id)));
     }
     const states = this.options.listingStates ? await this.options.listingStates(rows.map(r => String(r.id)), rows.map(r => ({ id: String(r.id), skuCount: Number(r.skuCount ?? 0) })), { refresh: input.refresh }) : {};
-    function range(r: any): any {
-      if (r.goodsMinPrice !== undefined && r.goodsMaxPrice !== undefined && r.currency) return { meaning: 'purchase_cost', min: String(r.goodsMinPrice), max: String(r.goodsMaxPrice), currency: r.currency, unit: r.unit ?? null };
-      const d = r.sourceSellingPrice;
-      if (d?.currency && (d.amount !== undefined || d.min !== undefined)) return { meaning: 'source_display_price', min: String(d.amount ?? d.min), max: String(d.amount ?? d.max ?? d.min), currency: d.currency, unit: r.unit ?? null };
-      return null;
-    }
-    if (input.price) rows = rows.filter(r => {
-      const p = range(r), f = input.price!;
-      return p && p.meaning === f.meaning && p.currency === f.currency && (f.min === undefined || Number(p.max) >= f.min) && (f.max === undefined || Number(p.min) <= f.max);
-    });
     const recordStates = input.store ? rows.map(r => states[r.id]?.find(s => s.storeId === input.store!.id)) : [];
     const unavailableRecords = recordStates.filter(s => !s?.listingRecord || s.listingRecord === 'unavailable').length;
     const incompleteRecordFilter = !!input.store?.listingRecord && input.store.listingRecord !== 'unavailable' && unavailableRecords > 0;
@@ -234,6 +247,30 @@ export class CollectionService {
     const partial = remaining.length || items.some(item => item.omitted || item.skus?.nextCursor || item.description?.nextCursor || item.assets?.mainCount > item.assets?.main?.length);
     return this.checked({ items, returned: items.length, total: selections.length, completeness: partial ? 'partial' : 'complete', continuation, maxBytes }, maxBytes);
   }
+  private async original(entry: CachedProduct): Promise<CachedRaw> {
+    const p = entry.product, generation = entry.generation!;
+    const rawKey = `${this.key(p.id)}:${p.revision}`;
+    const saved = this.options.store.get<CachedRaw>('collection_raw', rawKey);
+    if (saved?.generation === generation && this.fresh(saved.fetchedAtMs)) return saved;
+    // Both authorization/source scope and client ownership are fixed by this service instance.
+    const flightKey = `${rawKey}:${generation}`;
+    const running = this.rawInflight.get(flightKey); if (running) return running;
+    const promise = (async () => {
+      const response = await this.options.client.getCollectedItem(p.id);
+      if (response.status !== 'ok' || response.raw?.truncated) return fail('COLLECTION_RAW_UNAVAILABLE', response.error?.message ?? '无法读取完整原始依据');
+      const envelope = object(response.raw);
+      if (Object.hasOwn(envelope, 'id') && String(envelope.id) !== p.id) return fail('COLLECTION_ID_MISMATCH', '来源返回原始资料商品身份与请求不一致');
+      const content = response.raw?.content;
+      let value = response.raw;
+      if (typeof content === 'string') { try { value = JSON.parse(content); } catch { value = content; } }
+      const raw = { value, generation, fetchedAtMs: Date.now() };
+      // A refresh can finish while this request is pending; do not restore its older raw cache.
+      if (this.options.store.get<CachedProduct>('collection_products', this.key(p.id))?.generation === generation) this.options.store.put('collection_raw', rawKey, raw);
+      return raw;
+    })();
+    this.rawInflight.set(flightKey, promise);
+    try { return await promise; } finally { this.rawInflight.delete(flightKey); }
+  }
   async resourceRead(input: CollectionResourceInput): Promise<any> {
     const entry = await this.cached(input.id);
     const p = entry.product;
@@ -273,17 +310,7 @@ export class CollectionService {
       root.response = { [token]: saved.value };
     }
     if (!input.path || input.path === '/source' || input.path.startsWith('/source/')) {
-      const rawKey = `${this.key(p.id)}:${p.revision}`;
-      let raw = this.options.store.get<any>('collection_raw', rawKey);
-      if (!raw) {
-        const response = await this.options.client.getCollectedItem(p.id);
-        if (response.status !== 'ok' || response.raw?.truncated) return fail('COLLECTION_RAW_UNAVAILABLE', response.error?.message ?? '无法读取完整原始依据');
-        const content = response.raw?.content;
-        let value = response.raw;
-        if (typeof content === 'string') { try { value = JSON.parse(content); } catch { value = content; } }
-        raw = { value }; this.options.store.put('collection_raw', rawKey, raw);
-      }
-      root.source = raw.value;
+      root.source = (await this.original(entry)).value;
     }
     const path = input.path ?? '/source';
     if (!path.startsWith('/')) return fail('COLLECTION_PATH_INVALID', '依据路径使用 JSON Pointer，例如 /detail/attributes');

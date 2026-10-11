@@ -9,6 +9,7 @@ import {prepareListing,collectionListingStates} from '../../packages/app-hallmar
 import {HallmarkBusinessAdapter} from '../../packages/app-hallmark/src/operations-adapter.ts';
 import type {CoreClient} from '../../packages/core/src/types.ts';
 import {projectModelResult} from '../../packages/app-runtime/src/projection.ts';
+import {HallmarkProvider} from '../../packages/app-hallmark/src/index.ts';
 
 function fixture(count=6,productCount=1){
  const database=new RuntimeStore(':memory:'),store=new HallmarkStorePort(database,'source');let detailReads=0,categoryReads=0;
@@ -17,6 +18,72 @@ function fixture(count=6,productCount=1){
  const collection=new CollectionService({client,store}),packaging=new BusinessPackagingRepository(store),pricing=new BusinessPricingRepository(store);pricing.save('bill',dynamicReferenceDraft(),0);
  return {database,store,client,collection,packaging,pricing,details,counts:()=>({detailReads,categoryReads}),options:{client,store,collection,packaging,pricing}};
 }
+
+test('one preparation refreshes each distinct category once and later preparations can refresh again',async()=>{
+ const f=fixture(1,3);try{
+  const input={storeId:'bill',selections:[{id:'p1'},{id:'p2'},{id:'p3'}],categories:Object.fromEntries(['p1','p2','p3'].map(id=>[id,id==='p2'?{typeId:'2',descriptionCategoryId:'1'}:{descriptionCategoryId:'1',typeId:'2'}])),refresh:true};
+  const first=await prepareListing(input,f.options);
+  assert.equal(f.counts().categoryReads,1);
+  for(const id of ['p1','p2','p3'])assert.deepEqual(first.categories[id].attributes,first.categories.p1.attributes);
+  await prepareListing({...input,refresh:false},f.options);assert.equal(f.counts().categoryReads,1);
+  await prepareListing(input,f.options);assert.equal(f.counts().categoryReads,2);
+  await prepareListing({...input,categories:{...input.categories,p3:{descriptionCategoryId:'3',typeId:'4'}}},f.options);assert.equal(f.counts().categoryReads,4);
+ }finally{f.database.close();}
+});
+
+test('failed category response is shared only within one preparation and next request retries',async()=>{
+ const f=fixture(1,2);try{
+  let attempts=0;f.client.getCategoryData=async()=>{attempts++;return attempts===1?{status:'unavailable',error:{code:'TEMPORARY',message:'retry',retryable:true}}:{status:'ok',raw:{result:[{id:1,is_required:true,name:'restored'}]}};};
+  const input={storeId:'bill',selections:[{id:'p1'},{id:'p2'}],categories:{p1:{descriptionCategoryId:'1',typeId:'2'},p2:{descriptionCategoryId:'1',typeId:'2'}},refresh:true};
+  const failed=await prepareListing(input,f.options);assert.equal(attempts,1);assert.equal(failed.categories.p1.status,'unavailable');assert.equal(failed.categories.p2.status,'unavailable');
+  const retried=await prepareListing(input,f.options);assert.equal(attempts,2);assert.equal(retried.categories.p1.status,'selected');assert.equal(retried.categories.p2.status,'selected');
+ }finally{f.database.close();}
+});
+
+test('actual preparation provider stops after cancellation without more category reads or a saved result',async()=>{
+ const f=fixture(1,3),controller=new AbortController();try{
+  let reads=0;const prior=f.client.getCategoryData!;
+  f.client.getCategoryData=async input=>{reads++;const result=await prior(input);controller.abort();return result;};
+  const provider=new HallmarkProvider({...f.options,broker:{} as any});
+  const result=await provider.execute({request:{appId:'hallmark',connectionId:'c',capabilityId:'hallmark.listing.prepare',capabilityVersion:'1.0.0',input:{storeId:'bill',selections:[{id:'p1'},{id:'p2'},{id:'p3'}]},invocationId:'cancel-prepare',traceId:'cancel-prepare',source:{kind:'agent',sessionId:'s'}},signal:controller.signal,configRevision:1} as any);
+  assert.equal(reads,1);assert.equal(result.status,'failed');assert.equal((result as any).error.code,'ABORTED');
+  assert.equal(f.store.list('business_listing_preparations').length,0);assert.equal(f.store.list('business_category_preparation').length,0);
+ }finally{f.database.close();}
+});
+
+test('pre-aborted preparation performs no reads; cancellation after stores prevents source reads',async()=>{
+ for(const abortBefore of [true,false]){
+  const f=fixture(),controller=new AbortController();try{
+   let stores=0;f.client.getStores=async()=>{stores++;controller.abort();return {status:'ok',raw:[{id:'bill'}]};};
+   if(abortBefore)controller.abort();
+   await assert.rejects(prepareListing({storeId:'bill',selections:[{id:'p1'}]},{...f.options,signal:controller.signal} as any),{name:'AbortError'});
+   assert.equal(stores,abortBefore?0:1);assert.equal(f.counts().detailReads,0);assert.equal(f.store.list('business_listing_preparations').length,0);
+  }finally{f.database.close();}
+ }
+});
+
+test('cancellation between material pages prevents continuation reads, quotes and persistence',async()=>{
+ const f=fixture(),controller=new AbortController();try{
+  let pages=0,quotes=0;f.collection.read=async()=>{pages++;controller.abort();return {items:[],continuation:pages===1?{input:{id:'p1',cursor:'unused'}}:null} as any;};
+  const pricing={read:f.pricing.read.bind(f.pricing),quote:()=>{quotes++;throw Error('quote after abort');}};
+  await assert.rejects(prepareListing({storeId:'bill',selections:[{id:'p1'}]},{...f.options,pricing,signal:controller.signal} as any),{name:'AbortError'});
+  assert.equal(pages,1);assert.equal(quotes,0);assert.equal(f.counts().categoryReads,0);assert.equal(f.store.list('business_listing_preparations').length,0);
+ }finally{f.database.close();}
+});
+
+test('provider cancellation before or during history import never starts the following status sync',async()=>{
+ for(const when of ['before','during','throw']){
+  const f=fixture(),controller=new AbortController();try{
+   let historyReads=0,statusReads=0;const entry={id:'bill',legacyStoreId:'old-bill',sourceConnectionId:'c'};
+   f.client.getStoreProducts=async()=>{historyReads++;controller.abort();if(when==='throw')throw new DOMException('cancelled','AbortError');return {status:'ok',raw:{products:[]}};};
+   const businessGateway={listStores:()=>[entry],getStore:()=>entry,getProducts:async()=>{statusReads++;return {status:'ok',raw:{items:[]}};}} as any;
+   const provider=new HallmarkProvider({...f.options,businessGateway,broker:{} as any});if(when==='before')controller.abort();
+   const result=await provider.execute({request:{appId:'hallmark',connectionId:'c',capabilityId:'hallmark.listing.prepare',capabilityVersion:'1.0.0',input:{storeId:'bill',selections:[{id:'p1'}]},invocationId:'cancel-history',traceId:'cancel-history',source:{kind:'agent',sessionId:'s'}},signal:controller.signal,configRevision:1} as any);
+   assert.equal(result.status,'failed');assert.equal((result as any).error.code,'ABORTED');assert.equal(historyReads,when==='before'?0:1);assert.equal(statusReads,0);assert.equal(f.counts().detailReads,0);
+   assert.equal(f.store.list('business_catalog_status_sync').length,0);assert.equal(f.store.list('business_listing_preparations').length,0);
+  }finally{f.database.close();}
+ }
+});
 test('prepare provides content facts, package and cost once, then draft uses the same normalized source without extra source calls',async()=>{
  const f=fixture();try{
   const ready=await prepareListing({storeId:'bill',selections:[{id:'p1'}],categories:{p1:{descriptionCategoryId:'1',typeId:'2'}}},f.options);

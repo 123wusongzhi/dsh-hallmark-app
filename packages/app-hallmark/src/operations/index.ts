@@ -219,13 +219,14 @@ export class BusinessOperations {
         row.review.push(result);
         // Preserve each completed review even if a later question or the caller times out.
         this.putRow(planId, row);
-        aborted(signal);
         const answer = result.questions?.find(q => q.id === question.id && q.version === question.version);
-        if (!answer || businessHash(result.evidence?.versions ?? {}) !== businessHash(versions) || result.status === 'pending' || answer.status === 'pending' || result.status !== answer.status) {
+        const complete = !!answer && businessHash(result.evidence?.versions ?? {}) === businessHash(versions) && ['passed', 'rejected'].includes(result.status) && result.status === answer.status;
+        if (complete) this.options.store.put(REVIEWS, cacheKey, clone(result));
+        aborted(signal);
+        if (!answer || !complete) {
           row.issues.push({ ...problem('REVIEW_PENDING', answer?.message ?? '审核尚未得到明确结论。', answer?.field), questionId: question.id });
           continue;
         }
-        this.options.store.put(REVIEWS, cacheKey, clone(result));
         const key = `${unit.id}:${question.id}:${question.version}`;
         if (answer.status === 'passed') { delete row.repairHistory[key]; continue; }
         {
@@ -270,7 +271,18 @@ export class BusinessOperations {
     let result: BusinessTransportResult;
     try { aborted(signal); result = await this.options.transport.execute({ ...request, signal }); }
     catch (error) { result = { status: 'unknown', issues: [problem('REQUEST_OUTCOME_UNKNOWN', error instanceof Error ? error.message : String(error))] }; }
-    this.options.store.transaction(() => { this.options.store.put<ExecutionRecord>(EXECUTIONS, executionId, { executionId, planId, rowId: row.rowId, rowRevision: row.revision, request, status: result.status, result, updatedAt: this.now() }); this.applyResult(planId, row, result); });
+    this.completeExecution(planId, row, result);
+  }
+  private completeExecution(planId: string, observed: BusinessRow, result: BusinessTransportResult): void {
+    this.options.store.transaction(() => {
+      const current = this.get(planId).rows.find(row => row.rowId === observed.rowId);
+      // A concurrent inspection may have completed this request, or an explicit retry may own a newer attempt.
+      if (!current || current.revision !== observed.revision || current.executionId !== observed.executionId || !unresolved.has(current.status)) return;
+      const record = this.options.store.get<ExecutionRecord>(EXECUTIONS, observed.executionId!);
+      if (!record || record.rowRevision !== observed.revision || !unresolved.has(record.status)) return;
+      this.options.store.put(EXECUTIONS, record.executionId, { ...record, status: result.status, result, updatedAt: this.now() });
+      this.applyResult(planId, current, result);
+    });
   }
   private applyResult(planId: string, row: BusinessRow, result: BusinessTransportResult): void {
     row.status = result.status; row.issues = result.issues ?? [];
@@ -298,7 +310,7 @@ export class BusinessOperations {
       let result: BusinessTransportResult;
       try { result = await this.options.transport.inspect({ ...record.request, receipt: record.result?.receipt, signal }); }
       catch (error) { aborted(signal); result = { status: row.status === 'pending' ? 'pending' : 'unknown', issues: [problem('INSPECTION_UNAVAILABLE', error instanceof Error ? error.message : String(error))] }; }
-      this.options.store.transaction(() => { this.options.store.put(EXECUTIONS, record.executionId, { ...record, status: result.status, result, updatedAt: this.now() }); this.applyResult(planId, row, result); });
+      this.completeExecution(planId, row, result);
     }
     return this.finish(planId);
   }

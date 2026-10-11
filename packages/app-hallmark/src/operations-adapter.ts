@@ -18,6 +18,10 @@ const hash=(value:unknown)=>createHash('sha256').update(canonicalJson(value)).di
 const object=(value:unknown):RecordData=>value&&typeof value==='object'&&!Array.isArray(value)?value as RecordData:{};
 const clean=<T>(value:T):T=>JSON.parse(JSON.stringify(value));
 const issue=(code:string,message:string,field?:string):BusinessIssue=>({code,message,...(field?{field}:{})});
+const notDispatched=(reason:BusinessIssue,receipt?:Receipt):BusinessTransportResult=>({status:'rejected',...(receipt?{receipt}:{}),issues:[reason,...(reason.code==='REQUEST_NOT_DISPATCHED'?[]:[issue('REQUEST_NOT_DISPATCHED','平台请求尚未发送；修正原因后可显式重新提交此行。')])]});
+// These gateway errors are emitted before fetch. A platform response or an unfamiliar failure never proves non-dispatch.
+const preDispatchCodes=new Set(['OZON_ENDPOINT_UNSUPPORTED','OZON_REQUEST_INVALID','OZON_REQUEST_CANCELLED','STORE_DIRECTORY_UNAVAILABLE','OZON_STORE_NOT_FOUND','OZON_STORE_DISABLED','OZON_CREDENTIAL_UNAVAILABLE','OZON_CREDENTIAL_REVISION_CHANGED','OZON_CREDENTIAL_REVISION_UNAVAILABLE','OZON_REQUEST_CONTAINS_CREDENTIAL','STORE_CONNECTION_MISMATCH']);
+const gatewayNotDispatched=(response:AdapterResponse|undefined):boolean=>!!response&&['failed','unavailable'].includes(response.status)&&response.raw==null&&preDispatchCodes.has(response.error?.code??'');
 const payload=(response:AdapterResponse):RecordData=>object(response.raw?.response??response.raw);
 const uncertainReceipt=(receipt:Receipt):boolean=>!receipt.response||receipt.response.status!=='ok'||['outcome_unknown','pending'].includes(receipt.response.raw?.outcome)||Number(receipt.response.raw?.httpStatus??200)>=500||receipt.response.raw?.httpStatus===408;
 function requireResponse(response:AdapterResponse):RecordData {
@@ -326,15 +330,15 @@ export class HallmarkBusinessAdapter implements BusinessSourcePort,BusinessTrans
   async execute(input:BusinessExecutionInput):Promise<BusinessTransportResult>{
     const existing=this.store.get<Receipt>('business_transport_receipts',input.executionId);if(existing)return this.inspect({...input,receipt:existing});
     const {row,context,storeId,executionId}=input,a=object(row.payload),productId=Number(context.identity.productId),configured=this.gateway?.getStore(storeId);
-    if(!configured?.enabled||!configured.hasCredentials)return {status:'rejected',issues:[issue('DIRECT_STORE_CONFIGURATION_REQUIRED','请在经营设置中配置此店铺的 Ozon 连接；经营写入不会退回旧任务通道。','storeId')]};
-    if(context.credentialRevision!==undefined&&context.credentialRevision!==configured.credentialRevision)return {status:'rejected',issues:[issue('STORE_CONNECTION_CHANGED','店铺连接在审核期间变化，请重新提交以读取当前连接。')]};
+    if(!configured?.enabled||!configured.hasCredentials)return notDispatched(issue('DIRECT_STORE_CONFIGURATION_REQUIRED','请在经营设置中配置此店铺的 Ozon 连接；经营写入不会退回旧任务通道。','storeId'));
+    if(context.credentialRevision!==undefined&&context.credentialRevision!==configured.credentialRevision)return notDispatched(issue('STORE_CONNECTION_CHANGED','店铺连接在审核期间变化，请重新提交以读取当前连接。'));
     let path:string,body:RecordData;
     if(row.action==='listing'){path='/v3/product/import';body={items:[a]};}
     else if(row.action==='price'){path='/v1/product/import/prices';body={prices:[{...a,offer_id:row.target.offerId}]};}
     else if(row.action==='stock'){path='/v2/products/stocks';body={stocks:[{...a,offer_id:row.target.offerId,warehouse_id:Number(a.warehouse_id)}]};}
     else if(row.action==='archive'){path=a.archived===false?'/v1/product/unarchive':'/v1/product/archive';body={product_id:[productId]};}
     else if(row.action==='promotion.exit'){path='/v2/actions/products/deactivate';body={action_id:Number(a.action_id),product_ids:[productId]};}
-    else{const currency=a.currency_code??a.currency??configured.currency;if(typeof currency!=='string'||!currency)return {status:'rejected',issues:[issue('PROMOTION_CURRENCY_REQUIRED','活动价需要明确币种，未发送平台请求。','currency_code')]};path='/v1/actions/products/update';body={action_id:Number(a.action_id),products:[{product_id:productId,action_price:{amount:String(a.price),currency},stock:String(a.stock)}]};}
+    else{const currency=a.currency_code??a.currency??configured.currency;if(typeof currency!=='string'||!currency)return notDispatched(issue('PROMOTION_CURRENCY_REQUIRED','活动价需要明确币种，未发送平台请求。','currency_code'));path='/v1/actions/products/update';body={action_id:Number(a.action_id),products:[{product_id:productId,action_price:{amount:String(a.price),currency},stock:String(a.stock)}]};}
     const receipt:Receipt={transport:'ozon-direct',credentialRevision:configured.credentialRevision,executionId,storeId,requestId:executionId,path,body,dispatchStarted:false};
     this.store.put('business_transport_receipts',executionId,clean(receipt));
     if(input.signal?.aborted)return {status:'rejected',receipt,issues:[issue('REQUEST_NOT_DISPATCHED','请求在发送前已取消，可继续本行。')]};
@@ -348,8 +352,7 @@ export class HallmarkBusinessAdapter implements BusinessSourcePort,BusinessTrans
     if(httpStatus>=500||httpStatus===408)return {status:'unknown',receipt,issues:[issue('REQUEST_OUTCOME_UNKNOWN','平台发生服务错误，先核查原请求是否已生效。')]};
     if(explicit&&httpStatus===429)return {status:'rejected',receipt,retryAfterMs:receipt.response?.error?.retryAfterMs??5000,issues:[issue('OZON_RATE_LIMIT','平台明确限流，退避后可继续此行。')]};
     if(explicit&&(errors.length||httpStatus>=400))return {status:'rejected',receipt,issues:errors.length?platformIssues(errors):[issue(receipt.response.error?.code??'OZON_REJECTED',receipt.response.error?.message??'平台明确拒绝请求')]};
-    // Gateway rejections before sending (configuration changed or path denied) are definite, never unknown.
-    if(receipt.response.status==='failed'&&!httpStatus)return {status:'rejected',receipt,issues:[issue(receipt.response.error?.code??'REQUEST_NOT_DISPATCHED',receipt.response.error?.message??'连接检查未通过，平台请求未发送。')]};
+    if(gatewayNotDispatched(receipt.response)){receipt.dispatchStarted=false;this.store.put('business_transport_receipts',executionId,clean(receipt));return notDispatched(issue(receipt.response.error!.code,receipt.response.error!.message),receipt);}
     return this.inspect({...input,receipt});
   }
   private async observe(input:BusinessExecutionInput,receipt:Receipt):Promise<{current:RecordData;identity:TrustedRowContext['identity']}>{
@@ -372,6 +375,7 @@ export class HallmarkBusinessAdapter implements BusinessSourcePort,BusinessTrans
   }
   async inspect(input:BusinessExecutionInput&{receipt?:unknown}):Promise<BusinessTransportResult>{
     const receipt=this.store.get<Receipt>('business_transport_receipts',input.executionId)??input.receipt as Receipt|undefined;if(!receipt)return {status:'unknown',issues:[issue('RECEIPT_MISSING','缺少原请求记录，不能重新发送。')]};
+    if(gatewayNotDispatched(receipt.response)){receipt.dispatchStarted=false;this.store.put('business_transport_receipts',input.executionId,clean(receipt));return notDispatched(issue(receipt.response!.error!.code,receipt.response!.error!.message),receipt);}
     if(receipt.transport==='ozon-direct'&&!this.gateway?.hasStore(receipt.storeId))return {status:'unknown',receipt,issues:[issue('ORIGINAL_STORE_CONNECTION_REQUIRED','原直接请求的店铺连接暂不可用；保留原记录，仅核查，不转旧平台重发。')]};
     if(receipt.dispatchStarted===false)return {status:'rejected',receipt,issues:[issue('REQUEST_NOT_DISPATCHED','记录确认请求尚未发送，可继续此行。')]};
     try{
