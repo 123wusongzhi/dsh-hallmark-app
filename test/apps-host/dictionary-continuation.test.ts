@@ -48,7 +48,7 @@ test('required dictionary metadata gives executable read and continuation retrie
   const prepared=await f.call('hallmark.listing.prepare',{storeId:'shop',selections:[{id:'cup-a'}],categories:{'cup-a':{descriptionCategoryId:'123',typeId:'456'}}});
   assert.equal(prepared.status,'ok',JSON.stringify(prepared));
   const available=prepared.data.categories['cup-a'].attributes[0].available;assert.ok(available);
-  const schema=await f.describe(available.capability);assert.equal(schema.status,'ok');assert.equal(schema.descriptor.inputSchema.properties.lastValueId.type,'string');reports.push({case:'model-visible-complete-schema',schema});
+  const schema=await f.describe(available.capability);assert.equal(schema.status,'ok');const valuesSchema=schema.descriptor.inputSchema.oneOf.find((branch:any)=>branch.properties.mode.const==='values');assert.equal(valuesSchema.properties.lastValueId.type,'string');reports.push({case:'model-visible-complete-schema',schema});
   assert.equal(compileCapability(HALLMARK_DESCRIPTORS.find(d=>d.capabilityId===available.capability)!).input(available.input).length,0);
   const first=await f.call(available.capability,available.input),firstRaw=raw(first),next=firstRaw.continuation;assert.ok(next);assert.equal(firstRaw.completeness,'partial');
   assert.equal(compileCapability(HALLMARK_DESCRIPTORS.find(d=>d.capabilityId===next.capability)!).input(next.input).length,0);
@@ -77,6 +77,30 @@ test('cursor rejects lossy noncanonical and mode-extraneous inputs before any up
   for(const lastValueId of [0,11,'0','-1','01','1.0','1e3','9007199254740992',' 11','11 ',null,{},''])assert.notEqual((await f.call('hallmark.categories.read',{...input,lastValueId})).status,'ok');
   for(const changed of [{q:'blue',lastValueId:'11'},{mode:'template',lastValueId:'11'},{mode:'show',lastValueId:'11'},{language:'EN'}])assert.notEqual((await f.call('hallmark.categories.read',{...input,...changed} as any)).status,'ok');
   assert.equal(f.categoryCalls.length,0);reports.push({case:'invalid-inputs-no-upstream',events:f.events});
+ }finally{await f.close();}
+});
+test('strict modern category modes accept executable values cursors only and reject search cursors before dispatch',async()=>{
+ const f=await fixture();try{
+  const modes:Record<string,JsonValue>[]=[
+   {storeId:'shop',mode:'search',q:'cup'},
+   {storeId:'shop',mode:'show',descriptionCategoryId:'123',typeId:'456'},
+   {storeId:'shop',mode:'template',descriptionCategoryId:'123',typeId:'456'},
+   {storeId:'shop',mode:'validate_value',descriptionCategoryId:'123',typeId:'456',attributeId:'85',valueId:'11',dictionaryId:'9'},
+   {storeId:'shop',mode:'sync'},
+   {...input,q:'blue'},
+  ];
+  for(const capabilityId of ['hallmark.categories.read','hallmark.api.category.read']){
+   const described=await f.describe(capabilityId),validate=compileSchema(described.descriptor.inputSchema);
+   assert.deepEqual(validate({...input,lastValueId:'11'}),[]);
+   for(const mode of modes){
+    assert.deepEqual(validate(mode),[],`valid ${mode.mode} input remains accepted`);
+    const selected={...mode,lastValueId:'11'};
+    assert.ok(validate(selected).length,`${mode.mode} must not accept a listing cursor`);
+    const rejected=await f.call(capabilityId,selected);
+    assert.equal(rejected.error.code,'INPUT_SCHEMA_INVALID');
+   }
+  }
+  assert.equal(f.providerCalls(),0);assert.equal(f.categoryCalls.length,0);assert.equal(f.legacyCalls.length,0);
  }finally{await f.close();}
 });
 test('scoped cursors are emitted with exact category type attribute store limit and defaults',async()=>{

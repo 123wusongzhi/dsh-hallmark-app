@@ -10580,6 +10580,12 @@
               "minimum": 1,
               "maximum": 100
             },
+            "lastValueId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000,
+              "description": "仅values无q：direct字典续页末项ID，规范正整数安全范围字符串；首请求省略"
+            },
             "mode": {
               "const": "values"
             }
@@ -10602,6 +10608,12 @@
               ]
             }
           ],
+          "not": {
+            "required": [
+              "q",
+              "lastValueId"
+            ]
+          },
           "additionalProperties": false
         },
         {
@@ -11940,6 +11952,12 @@
               "minimum": 1,
               "maximum": 100
             },
+            "lastValueId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000,
+              "description": "仅values无q：direct字典续页末项ID，规范正整数安全范围字符串；首请求省略"
+            },
             "mode": {
               "const": "values"
             }
@@ -11962,6 +11980,12 @@
               ]
             }
           ],
+          "not": {
+            "required": [
+              "q",
+              "lastValueId"
+            ]
+          },
           "additionalProperties": false
         },
         {

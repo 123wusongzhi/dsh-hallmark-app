@@ -6,7 +6,7 @@ const modes:Record<string,{required:string[];optional?:string[]}>={
  search:{required:['q'],optional:['aspects','requireAspects','limit']},
  show:{required:['descriptionCategoryId','typeId']},
  template:{required:['descriptionCategoryId','typeId']},
- values:{required:['descriptionCategoryId','typeId','attributeId'],optional:['q','limit']},
+ values:{required:['descriptionCategoryId','typeId','attributeId'],optional:['q','limit','lastValueId']},
  validate_value:{required:['descriptionCategoryId','typeId','attributeId','valueId','dictionaryId']},
  sync:{required:[]},
 };
@@ -17,7 +17,7 @@ export function refineInput(suffix:string,schema:JsonSchema):JsonSchema {
   const properties=schema.properties as Record<string,JsonSchema>;
   return {type:'object',oneOf:Object.entries(modes).map(([mode,fields])=>({
    type:'object',properties:{...Object.fromEntries(['storeId','store',...fields.required,...fields.optional??[]].map(key=>[key,properties[key]])),mode:{const:mode},...(fields.optional?.includes('limit')?{limit:{type:'integer',minimum:1,maximum:mode==='search'?20:100}}:{})},
-   required:['mode',...fields.required],anyOf:[{required:['storeId']},{required:['store']}],additionalProperties:false,
+   required:['mode',...fields.required],anyOf:[{required:['storeId']},{required:['store']}],...(mode==='values'?{not:{required:['q','lastValueId']}}:{}),additionalProperties:false,
   }))};
  }
  if(suffix==='update_price'||suffix==='update_stock')return {...schema,...selectedTargets};

@@ -24,7 +24,9 @@ for(const scenario of ['immediate','pending-completes','pending-running','failed
  const call=async(name:string,args:any)=>{calls++;const tool=tools.get(name)!;const raw:any=await tool.execute(args,execution);const rendered=tool.output.render(args,raw);const value=JSON.parse(rendered[0].text);model.push({name,args,value,rawResult:raw.result??raw});return value;};
  const start=performance.now();
  if(scenario==='missing-operation-large'){const missing=await call('apps_inspect',{operationId:'missing'});assert.equal(missing.error.code,'RESULT_SPILL_FAILED');assert.ok(Buffer.byteLength(JSON.stringify(missing))<=16384);assert.equal(writes,0);assert.equal(inspections,0);}
- else if(scenario==='missing-operation'){const missing=await call('apps_inspect',{operationId:'missing'});assert.equal(missing.error.code,process.env.ASYNC_BASELINE?'RESULT_SPILL_FAILED':'OPERATION_NOT_FOUND');assert.equal(requests.filter(x=>x==='POST /v1/model-result').length,process.env.ASYNC_BASELINE?1:0);assert.equal(model.at(-1).rawResult.error.code,'OPERATION_NOT_FOUND');assert.equal(writes,0);assert.equal(inspections,0);}
+ // Both the current baseline (c8c9aec) and the candidate preserve this diagnostic.
+ // Older ASYNC_BASELINE observations belong to the archived pre-fix comparison.
+ else if(scenario==='missing-operation'){const missing=await call('apps_inspect',{operationId:'missing'});assert.equal(missing.error.code,'OPERATION_NOT_FOUND');assert.equal(requests.filter(x=>x==='POST /v1/model-result').length,0);assert.equal(model.at(-1).rawResult.error.code,'OPERATION_NOT_FOUND');assert.equal(writes,0);assert.equal(inspections,0);}
  else{
  const submitted=await call('apps_invoke',{appId:'hallmark',connectionId:'C1',capabilityId:'hallmark.plan.submit',capabilityVersion:'1.0.0',input:{planId:'synthetic',expectedRevision:1}});
  if(scenario==='projection-unavailable'){assert.equal(submitted.status,'pending');const next=await call('apps_inspect',{operationId:submitted.operation.operationId});assert.equal(next.error.code,'RESULT_SPILL_FAILED');assert.equal(writes,1);assert.equal(inspections,1);}else{assert.ok(submitted.operation.operationId);

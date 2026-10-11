@@ -11080,6 +11080,12 @@ export const catalog = [
               "minimum": 1,
               "maximum": 100
             },
+            "lastValueId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000,
+              "description": "仅values无q：direct字典续页末项ID，规范正整数安全范围字符串；首请求省略"
+            },
             "mode": {
               "const": "values"
             }
@@ -11102,6 +11108,12 @@ export const catalog = [
               ]
             }
           ],
+          "not": {
+            "required": [
+              "q",
+              "lastValueId"
+            ]
+          },
           "additionalProperties": false
         },
         {
@@ -12720,6 +12732,12 @@ export const catalog = [
               "minimum": 1,
               "maximum": 100
             },
+            "lastValueId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000,
+              "description": "仅values无q：direct字典续页末项ID，规范正整数安全范围字符串；首请求省略"
+            },
             "mode": {
               "const": "values"
             }
@@ -12742,6 +12760,12 @@ export const catalog = [
               ]
             }
           ],
+          "not": {
+            "required": [
+              "q",
+              "lastValueId"
+            ]
+          },
           "additionalProperties": false
         },
         {
@@ -21574,7 +21598,7 @@ export type Input23 = { "storeId"?: string; "store"?: string; "body"?: ({  } & {
 export type Output23 = (({ "response"?: JsonValue; "httpStatus"?: number; "outcome"?: "pending" | "response_received" | "outcome_unknown"; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "response": JsonValue } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call23(client: AppsClient, ref: AppRef, input: Input23, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output23>> { return client.invoke(ref, catalog[23], input as JsonValue, options) as Promise<CapabilityResult<Output23>>; }
 
-export type Input24 = (object) & ((({ "mode": "search"; "q": string; "storeId"?: string; "store"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "show"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "template"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "values"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "storeId"?: string; "store"?: string; "q"?: string; "limit"?: number }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "validate_value"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "valueId": string; "dictionaryId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "sync"; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))));
+export type Input24 = (object) & ((({ "mode": "search"; "q": string; "storeId"?: string; "store"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "show"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "template"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "values"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "storeId"?: string; "store"?: string; "q"?: string; "limit"?: number; "lastValueId"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "validate_value"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "valueId": string; "dictionaryId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "sync"; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))));
 export type Output24 = (({ "datasetKey": string; "query": { "tool": "hallmark_get_category_data"; "params": ({  } & { [key: string]: JsonValue }) }; "raw"?: ({  } & { [key: string]: JsonValue }); "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "raw": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call24(client: AppsClient, ref: AppRef, input: Input24, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output24>> { return client.invoke(ref, catalog[24], input as JsonValue, options) as Promise<CapabilityResult<Output24>>; }
 
@@ -21630,7 +21654,7 @@ export type Input37 = {  };
 export type Output37 = ({ "appId": "hallmark"; "instructions": string; "tools": Array<{ "name": string; "kind": string }>; "boundaries": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
 export function call37(client: AppsClient, ref: AppRef, input: Input37, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output37>> { return client.invoke(ref, catalog[37], input as JsonValue, options) as Promise<CapabilityResult<Output37>>; }
 
-export type Input38 = (object) & ((({ "mode": "search"; "q": string; "storeId"?: string; "store"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "show"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "template"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "values"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "storeId"?: string; "store"?: string; "q"?: string; "limit"?: number }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "validate_value"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "valueId": string; "dictionaryId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "sync"; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))));
+export type Input38 = (object) & ((({ "mode": "search"; "q": string; "storeId"?: string; "store"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "show"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "template"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "values"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "storeId"?: string; "store"?: string; "q"?: string; "limit"?: number; "lastValueId"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "validate_value"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "valueId": string; "dictionaryId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "sync"; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))));
 export type Output38 = (({ "datasetKey": string; "query": { "tool": "hallmark_get_category_data"; "params": ({  } & { [key: string]: JsonValue }) }; "raw"?: ({  } & { [key: string]: JsonValue }); "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "raw": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call38(client: AppsClient, ref: AppRef, input: Input38, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output38>> { return client.invoke(ref, catalog[38], input as JsonValue, options) as Promise<CapabilityResult<Output38>>; }
 
