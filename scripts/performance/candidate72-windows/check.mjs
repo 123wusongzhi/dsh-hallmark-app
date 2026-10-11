@@ -13,6 +13,7 @@ const selected=[
  'test/performance/data-transfer.test.ts','test/performance/data-transfer-byte-copy.test.ts','test/performance/transfer-guard-regressions.test.ts',
  'test/plugin-apps/business-operations.test.ts','test/plugin-apps/business-content-lazy.test.ts',
  'test/source-preview/preview.test.ts','test/source-preview/selection-interaction.test.ts',
+ 'test/source-preview/formatter-sharing.test.ts','test/source-preview/formatter-sharing-compatibility.test.ts',
  ...readdirSync(join(root,'test/collection')).filter(name=>name.endsWith('.test.ts')).map(name=>'test/collection/'+name)
 ];
 const steps=[
