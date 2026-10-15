@@ -162,7 +162,8 @@
     "test/store/store.test.ts",
     "test/acceptance/component-display/run-recovery.mjs",
     "test/apps-runtime/association-overview.test.ts",
-    "test/plugin-apps/association-overview-ui.test.ts"
+    "test/plugin-apps/association-overview-ui.test.ts",
+    "test/apps-host/collection-column-fidelity.test.ts"
   ],
   "infrastructureFiles": [
     "test/authoring/failed-build-http-recovery.test.ts",
