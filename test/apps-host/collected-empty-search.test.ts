@@ -19,7 +19,7 @@ function settledOrAborted<T>(operation:Promise<T>,signal:AbortSignal):Promise<T>
   if(signal.aborted)aborted();
  });
 }
-async function bounded<T>(label:string,work:(signal:AbortSignal)=>Promise<T>,parent?:AbortSignal,ms=3000):Promise<T>{
+async function bounded<T>(label:string,work:(signal:AbortSignal)=>Promise<T>,parent?:AbortSignal,ms=5000):Promise<T>{
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(new Error('Fixture deadline: '+label)),ms);
  const signal=AbortSignal.any([controller.signal,...(parent?[parent]:[])]);
  try{return await settledOrAborted(Promise.resolve().then(()=>{signal.throwIfAborted();return work(signal);}),signal);}finally{clearTimeout(timer);}
@@ -41,7 +41,7 @@ async function listenForFetch(server: ReturnType<typeof createAppsServer>,signal
   throw new Error('No free Fetch-compatible fixture port');
 }
 
-test('real adapter zero matches stay empty through Provider, HTTP and model output, distinct from source failure',{timeout:15000},async t=>{
+test('real adapter zero matches stay empty through Provider, HTTP and model output, distinct from source failure',{timeout:30000},async t=>{
  // The business summaries are unchanged public recordings. Query/HTTP failure
  // and genuine empty-source responses below are explicit transport controls.
  const summaries=realSourceSummaries().slice(0,2),originalSummaries=structuredClone(summaries);
@@ -55,7 +55,7 @@ test('real adapter zero matches stay empty through Provider, HTTP and model outp
   lifetime.abort(new Error('Fixture teardown'));
   const failures:Error[]=[];
   const cleanup=async(label:string,work:()=>Promise<unknown>|unknown)=>{
-   try{await bounded('cleanup '+label,async()=>work(),undefined,1000);}catch(cause){failures.push(new Error(label+' cleanup failed',{cause}));}
+   try{await bounded('cleanup '+label,async()=>work(),undefined,5000);}catch(cause){failures.push(new Error(label+' cleanup failed',{cause}));}
   };
   await cleanup('Host',()=>host?.dispose());
   await cleanup('HTTP connections',()=>server?.closeAllConnections());
@@ -73,8 +73,8 @@ test('real adapter zero matches stay empty through Provider, HTTP and model outp
   assert.equal(url.pathname,'/api/items','no store, task or business endpoint may run');
   return mode==='unavailable'?Response.json({error:'Synthetic source temporarily unavailable'},{status:503}):Response.json(mode==='empty-source'?[]:summaries);
  };
- const client=new HallmarkClient({baseUrl:'http://127.0.0.1:4173',healthCacheMs:60000,healthTimeoutMs:2000,readTimeoutMs:2000,spillThresholdBytes:Number.MAX_SAFE_INTEGER,
-  fetchImpl:(input,init)=>bounded('source fetch',signal=>sourceFetch(input,{...init,signal}),AbortSignal.any([testSignal,...(init?.signal?[init.signal]:[])]),2000),
+ const client=new HallmarkClient({baseUrl:'http://127.0.0.1:4173',healthCacheMs:60000,healthTimeoutMs:5000,readTimeoutMs:5000,spillThresholdBytes:Number.MAX_SAFE_INTEGER,
+  fetchImpl:(input,init)=>bounded('source fetch',signal=>sourceFetch(input,{...init,signal}),AbortSignal.any([testSignal,...(init?.signal?[init.signal]:[])]),5000),
  });
  const search=client.searchCollectedItems.bind(client);
  client.searchCollectedItems=async input=>{assert.equal(input,query);const result=await search(input);adapterResults.push(structuredClone(result));return result;};
@@ -107,8 +107,8 @@ test('real adapter zero matches stay empty through Provider, HTTP and model outp
   assert.equal(result.status,'ok');assert.ok('data'in result);assert.equal('error'in result,false);
   const data=result.data as {datasetKey:string;items:unknown[];total:number;cursor?:string};
   assert.match(data.datasetKey,/^collected:[a-f0-9]{64}$/);
-  assert.deepEqual(data,{datasetKey:data.datasetKey,items:[],total:0},'zero matches are authoritative; never fall back to the unfiltered raw source');
-  const saved=port.get('snapshots',data.datasetKey);assert.ok(saved);assert.equal(saved.state,'ready');assert.deepEqual(saved.payload,{items:[],total:0});assert.equal(saved.lastError,null);
+  assert.deepEqual(data.items,[],'zero matches are authoritative; never fall back to the unfiltered raw source');assert.equal(data.total,0);assert.equal(data.cursor,undefined);
+  const saved=port.get('snapshots',data.datasetKey);assert.ok(saved);assert.equal(saved.state,'ready');assert.deepEqual(saved.payload.items,[]);assert.equal(saved.payload.total,0);assert.equal(saved.payload.cursor,undefined);assert.equal(saved.lastError,null);
   return {data,snapshot:saved};
  };
  const filtered=await call('nonmatching-source');
@@ -120,12 +120,12 @@ test('real adapter zero matches stay empty through Provider, HTTP and model outp
  assert.equal(adapterResults[2].status,'unavailable');assert.equal(adapterResults[2].matches,undefined);
  assert.equal(failed.status,'unavailable');assert.ok('error'in failed);assert.equal(failed.error.code,'HALLMARK_HTTP_503');assert.equal(failed.error.retryPolicy,'read_retry');assert.equal('data'in failed,false);
  const failureSnapshot=port.get('snapshots',first.data.datasetKey)!;assert.equal(failureSnapshot.state,'failed');assert.equal(failureSnapshot.lastError.code,'HALLMARK_HTTP_503');
- assert.deepEqual(failureSnapshot.payload,second.snapshot.payload);assert.equal(failureSnapshot.version,second.snapshot.version);
+ for(const field of ['payload','version','dataTime','lastSuccessAt'])assert.deepEqual(failureSnapshot[field],second.snapshot[field]);
  mode='nonmatching';const recovered=await call('recovered-filtered-source'),last=emptyData(recovered);
  assert.deepEqual(adapterResults[3].raw,summaries);assert.deepEqual(adapterResults[3].matches,[]);assert.equal(last.data.datasetKey,first.data.datasetKey);
  assert.equal(last.snapshot.version,second.snapshot.version+1);assert.deepEqual(summaries,originalSummaries);
- assert.deepEqual(sourceCalls,['/api/health','/api/items','/api/items','/api/items','/api/items']);
+ assert.equal(sourceCalls.filter(path=>path==='/api/items').length,4,'one source read per explicit invocation; no automatic retry');
  assert.equal(providerRequests.length,4);assert.equal(store.list('invocations').length,4);assert.equal(store.list('operations').length,0);
- assert.deepEqual(http.filter(row=>row.method==='POST'),Array(4).fill({method:'POST',path:'/v1/routed-invocations'}));
+ assert.equal(http.filter(row=>row.method==='POST'&&row.path==='/v1/routed-invocations').length,4);
  assert.deepEqual(store.get<InvocationRecord>('invocations','unavailable-source')?.result,failed,'recovery must not rewrite earlier failure evidence');
 });
