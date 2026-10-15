@@ -165,6 +165,7 @@
     "test/plugin-apps/association-overview-ui.test.ts"
   ],
   "infrastructureFiles": [
+    "test/authoring/failed-build-http-recovery.test.ts",
     "test/source-preview/vite-asset-paths.test.ts",
     "test/apps-host/read-cancellation-recovery.test.ts",
     "test/apps-host/business-partial-status.test.ts",
@@ -323,9 +324,10 @@
     "test/apps-host/connection-status.test.ts",
     "test/apps-runtime/runtime-restart-http.test.ts",
     "test/plugin-apps/connection-status-ui.test.ts",
-    "test/authoring/failed-build-http-recovery.test.ts"
+    "test/apps-host/explicit-intent-retry.test.ts"
   ],
   "infrastructureReasons": {
+    "test/authoring/failed-build-http-recovery.test.ts": "Explicit exit-7 subprocess, real signed authoring evidence, SQLite receipt and actual committed HTTP response loss exercise failure-checkpoint recovery without any browser, commodity data, merchant action or publishable build.",
     "test/source-preview/vite-asset-paths.test.ts": "Actual installed Vite builds an isolated copy of the unchanged source template; real preview HTTP serves emitted entry JavaScript and CSS with exact manifest membership, MIME and bytes; no business data or browser execution.",
     "test/apps-host/read-cancellation-recovery.test.ts": "Synthetic exclusive read-only Provider controls through real Host, complete HTTP request, response-close cancellation and Runtime execution settlement; explicit subsequent read proves connection recovery without merchant facts or writes.",
     "test/apps-host/business-partial-status.test.ts": "Explicit local succeeded/rejected terminal state controls through real HallmarkProvider, BusinessOperations, Runtime HTTP and Host invoke/inspect model summaries; all merchant and reviewer boundaries throw and are asserted uncalled, with no commodity facts or platform execution.",
@@ -484,7 +486,7 @@
     "test/apps-host/connection-status.test.ts": "Connection probe state transitions and restart eligibility; no business facts.",
     "test/apps-runtime/runtime-restart-http.test.ts": "Restart authentication, busy refusal and response ordering; no business facts.",
     "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts.",
-    "test/authoring/failed-build-http-recovery.test.ts": "Explicit failing Node subprocess and synthetic authoring identities; real signed evidence, SQLite and HTTP response-loss recovery, with no business facts or browser claim."
+    "test/apps-host/explicit-intent-retry.test.ts": "Synthetic in-memory mutation counter verifies an explicit stable intent through real Host, HTTP response loss, readonly recovery and Runtime deduplication; no business facts, merchant writes, automatic mutation retry, or access-policy controls."
   },
   "fileModes": {
     "test/apps-host/collected-empty-search.test.ts": "Two unchanged hash-checked recorded summaries through the real HallmarkClient adapter, Core, HallmarkProvider, Runtime HTTP and Host renderer; explicit query, empty-source subset and failed-read controls distinguish authoritative empty matches from retained raw evidence.",

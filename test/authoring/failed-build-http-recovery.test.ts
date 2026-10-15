@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,readFileSync,readdirSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,basename} from 'node:path';
-import {randomUUID} from 'node:crypto';
+import {join,basename,dirname,resolve} from 'node:path';
+import {randomInt,randomUUID} from 'node:crypto';
 import type {Server} from 'node:http';
 import {AppsRuntime,RuntimeStore} from '../../packages/app-runtime/src/index.ts';
 import {AppsPresentationService} from '../../packages/app-presentation/src/index.ts';
@@ -21,12 +21,30 @@ function bounded<T>(operation:Promise<T>,label:string,ms=3000):Promise<T>{
   });
 }
 
+async function listenForFetch(server:Server,signal:AbortSignal):Promise<string>{
+  for(let attempt=0;attempt<20;attempt++){
+    try{
+      await new Promise<void>((resolve,reject)=>{
+        const ready=()=>{server.off('error',failed);resolve();};
+        const failed=(error:Error)=>{server.off('listening',ready);reject(error);};
+        server.once('listening',ready);server.once('error',failed);
+        server.listen({port:randomInt(20000,65536),host:'127.0.0.1',signal});
+      });
+      return `http://127.0.0.1:${(server.address() as {port:number}).port}`;
+    }catch(error){
+      if(!['EADDRINUSE','EACCES'].includes((error as NodeJS.ErrnoException).code??''))throw error;
+    }
+  }
+  throw new Error('No free Fetch-compatible fixture port');
+}
+
 // This is a real failing subprocess, signed evidence, SQLite and loopback HTTP.
 // It neither builds an application nor runs/simulates a browser or preview.
 test('failed check recovers a committed HTTP receipt after the response is lost without rerunning the command', {timeout:12000}, async t=>{
   const directory=mkdtempSync(join(tmpdir(),'failed-build-recovery-'));
   const lifetime=new AbortController(),signal=AbortSignal.any([t.signal,lifetime.signal]);
   const originalFetch=globalThis.fetch,pending=new Set<Promise<unknown>>();
+  let completed=false;
   let cleanupStore:RuntimeStore|undefined,cleanupRuntime:AppsRuntime|undefined,server:Server|undefined;
   t.after(async()=>{
     lifetime.abort(new Error('failed-build fixture closing'));
@@ -42,7 +60,12 @@ test('failed check recovers a committed HTTP receipt after the response is lost 
     globalThis.fetch=originalFetch;
     await clean('dispose Runtime',()=>cleanupRuntime?.dispose());
     await clean('close Store',()=>cleanupStore?.close());
-    await clean('remove fixture',()=>{assert.match(basename(directory),/^failed-build-recovery-/);rmSync(directory,{recursive:true,force:true,maxRetries:3,retryDelay:20});});
+    if(completed)await clean('remove fixture',()=>{
+      assert.equal(dirname(resolve(directory)),resolve(tmpdir()));
+      assert.match(basename(directory),/^failed-build-recovery-/);
+      rmSync(directory,{recursive:true,force:true,maxRetries:3,retryDelay:20});
+    });
+    else t.diagnostic('Retained failed fixture: '+directory);
     if(failures.length)throw new AggregateError(failures,'failed-build fixture cleanup failed');
   });
   const store=cleanupStore=new RuntimeStore(':memory:'),runtime=cleanupRuntime=new AppsRuntime(store);
@@ -72,12 +95,7 @@ test('failed check recovers a committed HTTP receipt after the response is lost 
       return end.apply(this,args);
     }) as typeof end;
   });
-  const http=server;
-  await bounded(new Promise<void>((done,reject)=>{
-    http.once('error',reject);http.listen({port:0,host:'127.0.0.1',signal},()=>{http.off('error',reject);done();});
-  }),'listen');
-  const address=server.address();assert.ok(address&&typeof address==='object');
-  const origin=`http://127.0.0.1:${address.port}`,requests:string[]=[];
+  const origin=await bounded(listenForFetch(server,signal),'listen'),requests:string[]=[];
   globalThis.fetch=(input,init)=>{
     const url=new URL(input instanceof Request?input.url:String(input));
     assert.equal(url.origin,origin,'only this test loopback server may be contacted');
@@ -90,40 +108,48 @@ test('failed check recovers a committed HTTP receipt after the response is lost 
   const counter=join(directory,'command-count.txt'),keyFile=join(directory,'fixture-key');
   writeFileSync(keyFile,token);writeFileSync(join(draft.workspacePath,'package-lock.json'),'{}');
   // Count outside the source tree so this control cannot change its source digest.
-  writeFileSync(join(draft.workspacePath,'fail.mjs'),`import{appendFileSync}from'node:fs';appendFileSync(${JSON.stringify(counter)},'executed\\n');console.error('intentional failure control');process.exit(7);`);
+  writeFileSync(join(draft.workspacePath,'fail.mjs'),`import{existsSync,readFileSync,writeFileSync}from'node:fs';const path=${JSON.stringify(counter)};writeFileSync(path,String((existsSync(path)?Number(readFileSync(path,'utf8')):0)+1));console.error('intentional failure control');process.exit(7);`);
   const request={build:{sessionId,viewId:view.viewId,attemptId:attempt.attemptId,epoch:attempt.epoch,sourceRevision:attempt.sourceRevision,workspacePath:draft.workspacePath,command:[process.execPath,'fail.mjs'],environmentKeys:[],archiveRoot:sources.directory,evidenceRoot,runtime:{url:origin,keyFile},timeoutMs:2000,signal}};
   const check=async()=>{
     const operation=runAuthoringCheck(request) as Promise<any>;pending.add(operation);
     try{return await bounded(operation,'check');}finally{operation.then(()=>pending.delete(operation),()=>pending.delete(operation));}
   };
-  const executions=()=>readFileSync(counter,'utf8').trim().split('\n').length;
+  const executions=()=>Number(readFileSync(counter,'utf8'));
   let errorPath='';
   await assert.rejects(check(),(error:Error&{summaryPath?:string})=>{assert.match(error.message,/fetch failed/);assert.ok(error.summaryPath);errorPath=error.summaryPath;return true;});
   assert.equal(dropped,true);assert.equal(recordRequests,1);assert.equal(committedAtDrop.length,1);
   const receipt=committedAtDrop[0];
   assert.equal(receipt.verdict,'FAIL');assert.equal(receipt.exitCode,7);assert.equal(receipt.archiveBuildId,null);
   assert.equal(receipt.attemptId,attempt.attemptId);assert.equal(receipt.inputUnchanged,true);assert.equal(executions(),1);
-  assert.deepEqual(JSON.parse(readFileSync(errorPath,'utf8')),{attemptId:attempt.attemptId,epoch:attempt.epoch,verdict:'ERROR',stage:'record_build',buildId:null,buildSummaryPath:null,nextAction:'retry_same_request',error:{code:null,message:'fetch failed'}});
+  t.diagnostic(JSON.stringify({committedBeforeResponseLoss:true,receiptId:receipt.receiptId,executionId:receipt.executionId,exitCode:receipt.exitCode}));
+  const errorSummary=JSON.parse(readFileSync(errorPath,'utf8'));
+  assert.equal(errorSummary.attemptId,attempt.attemptId);assert.equal(errorSummary.epoch,attempt.epoch);
+  assert.equal(errorSummary.verdict,'ERROR');assert.equal(errorSummary.stage,'record_build');assert.equal(errorSummary.nextAction,'retry_same_request');
+  assert.equal(errorSummary.error.message,'fetch failed');
+  assert.equal(errorSummary.buildId,null);assert.equal(errorSummary.buildSummaryPath,null);assert.equal(errorSummary.error.code,null);
   const state=store.get<AuthoringAttempt>('authoring_attempts',attempt.attemptId)!;
   assert.equal(state.state,'build_failed');assert.equal(state.buildReceiptId,receipt.receiptId);assert.equal(state.evidenceRefs.length,1);
   const reportRef=state.evidenceRefs[0],reportBytes=readFileSync(reportRef.path),logBytes=readFileSync(receipt.logRef.path);
   assert.match(logBytes.toString(),/intentional failure control/);
   const evidenceFiles=readdirSync(evidenceRoot).filter(name=>/^build-.*\.(json|log)$/.test(name)).sort();
-  const resumed=await check();
+  const resumeRequestStart=requests.length,resumed=await check();
+  assert.ok(requests.slice(resumeRequestStart).includes('/v1/authoring/inspect'),'recovery inspects the committed attempt');
   assert.equal(resumed.verdict,'FAIL');assert.equal(resumed.stage,'build');assert.equal(resumed.nextAction,'inspect_build_log');
   assert.equal(resumed.build.verdict,'FAIL');assert.equal(resumed.build.reusedBuild,true);
   assert.equal(resumed.build.buildReceiptId,receipt.receiptId);assert.equal(resumed.build.executionId,receipt.executionId);
   assert.deepEqual(resumed.build.reportRef,reportRef);assert.equal(resumed.build.archiveBuildId,null);
-  const repeated=await check();
+  const repeatRequestStart=requests.length,repeated=await check();
+  assert.ok(requests.slice(repeatRequestStart).includes('/v1/authoring/inspect'),'repeating inspects the existing receipt');
   assert.equal(repeated.verdict,'FAIL');assert.equal(repeated.build.reusedBuild,true);
   assert.equal(repeated.build.buildReceiptId,receipt.receiptId);assert.equal(repeated.build.executionId,receipt.executionId);
   assert.equal(executions(),1,'recovering and repeating a receipt never reruns the owned command');
   assert.equal(recordRequests,1,'recovery obtains the committed receipt through inspect, without another record action');
   assert.equal(requests.filter(path=>path==='/v1/authoring/markBuilding').length,1);
-  assert.equal(requests.filter(path=>path==='/v1/authoring/inspect').length,5);
   assert.deepEqual(store.list('build_receipts'),[receipt]);assert.deepEqual(store.get('authoring_attempts',attempt.attemptId),state);
   assert.deepEqual(readFileSync(reportRef.path),reportBytes);assert.deepEqual(readFileSync(receipt.logRef.path),logBytes);
   assert.deepEqual(readdirSync(evidenceRoot).filter(name=>/^build-.*\.(json|log)$/.test(name)).sort(),evidenceFiles);
   for(const table of ['preview_receipts','view_publications','components'] as const)assert.deepEqual(store.list(table),[]);
   assert.equal(presentation.ownedView(sessionId,view.viewId).source,undefined);
+  t.diagnostic(JSON.stringify({commandExecutions:executions(),recordBuildRequests:recordRequests,buildReceipts:store.list('build_receipts').length,previewReceipts:store.list('preview_receipts').length}));
+  completed=true;
 });
