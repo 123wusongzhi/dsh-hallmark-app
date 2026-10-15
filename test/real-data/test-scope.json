@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "policy": "All tests consuming commodity, SKU, collected source, shop, sale, logistics, activity or dictionary facts use recorded snapshots. Original records remain immutable. Alias, omission, failure, numeric boundary and scale modifications are explicit derived cases.",
   "requiredFiles": [
+    "test/source-preview/selection-bulk-chain.test.ts",
     "test/source-preview/selection-retry-chain.test.ts",
     "test/plugin-client/snapshot-refresh-lifecycle.test.ts",
     "test/app-hallmark/listing-detail-recovery.test.ts",
@@ -161,10 +162,10 @@
     "test/acceptance/component-display/run-recovery.mjs",
     "test/apps-runtime/association-overview.test.ts",
     "test/plugin-apps/association-overview-ui.test.ts",
-    "test/source-preview/selection-bulk-chain.test.ts"
+    "test/apps-host/collected-empty-search.test.ts"
   ],
   "infrastructureFiles": [
-    "test/source-preview/vite-asset-paths.test.ts",
+    "test/authoring/result-reader-runtime.test.ts",
     "test/apps-host/catalog-refresh-http.test.ts",
     "test/apps-host/rate-limit-recovery.test.ts",
     "test/apps-host/inspection-race.test.ts",
@@ -319,10 +320,12 @@
     "test/apps-host/connection-status.test.ts",
     "test/apps-runtime/runtime-restart-http.test.ts",
     "test/plugin-apps/connection-status-ui.test.ts",
-    "test/authoring/result-reader-runtime.test.ts"
+    "test/source-preview/vite-asset-paths.test.ts",
+    "test/apps-host/read-cancellation-recovery.test.ts",
+    "test/apps-host/business-partial-status.test.ts"
   ],
   "infrastructureReasons": {
-    "test/source-preview/vite-asset-paths.test.ts": "Real installed Vite build of an unchanged component copy and exact emitted JS/CSS through the production preview asset handler; no business data, browser execution, installation or external requests.",
+    "test/authoring/result-reader-runtime.test.ts": "Synthetic non-business transport values exercise actual Host model spill references, Runtime HTTP, the result-reader CLI subprocess and exact paginated JSON files; no commodity facts or external requests.",
     "test/apps-host/catalog-refresh-http.test.ts": "Protocol-only versioned capability controls through two real Runtime HTTP generations and one warm Host; persisted binding, descriptor invalidation and truthful recovery are checked without commodity facts or external services.",
     "test/apps-host/rate-limit-recovery.test.ts": "Explicit offline 429, Date and legal empty-items protocol controls through the real Adapter, Provider, Runtime HTTP and Host model JSON; retryAfterMs recovery has no merchant facts or automatic requests.",
     "test/apps-host/inspection-race.test.ts": "Non-business asynchronous Provider controls through real Runtime, loopback HTTP, Host tools and model-result JSON; promise gates order late inspection without browser or merchant actions.",
@@ -477,9 +480,12 @@
     "test/apps-host/connection-status.test.ts": "Connection probe state transitions and restart eligibility; no business facts.",
     "test/apps-runtime/runtime-restart-http.test.ts": "Restart authentication, busy refusal and response ordering; no business facts.",
     "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts.",
-    "test/authoring/result-reader-runtime.test.ts": "Synthetic result transport values verify model spill reference to real Runtime HTTP and file-reader subprocess pagination, Unicode/null fidelity and metadata; no product or merchant facts are fabricated."
+    "test/source-preview/vite-asset-paths.test.ts": "Real installed Vite build of an unchanged component copy and exact emitted JS/CSS through the production preview asset handler; no business data, browser execution, installation or external requests.",
+    "test/apps-host/read-cancellation-recovery.test.ts": "Synthetic read-only Provider control verifies actual Host HTTP disconnect cancellation, Runtime execution drain and next-read recovery; no merchant, product, permission or identity facts are simulated.",
+    "test/apps-host/business-partial-status.test.ts": "Synthetic terminal outcome controls exercise executeBusiness, real Runtime, loopback HTTP, Host tool execution and model JSON status fidelity; no commodity facts or merchant operations."
   },
   "fileModes": {
+    "test/source-preview/selection-bulk-chain.test.ts": "25 unchanged hash-checked recorded summaries through the actual source component, original SDK, host selection and native File bridge; page-local select and deselect controls preserve another page's exact recorded attachment identities.",
     "test/source-preview/selection-retry-chain.test.ts": "Two unchanged hash-checked recorded product summaries through the actual collected-products component, original SDK, sourceSelection and native File boundary; explicit native refusal and user retry controls preserve exact recorded selection payloads.",
     "test/plugin-client/snapshot-refresh-lifecycle.test.ts": "Four unchanged recorded product summaries through SnapshotView, HallmarkBridge and SourceFrame iframe packets; explicit response-order controls verify retired refreshes cannot overwrite a newer reread while current refresh outcomes remain visible.",
     "test/app-hallmark/listing-detail-recovery.test.ts": "Integrity-checked source, SKU and store facts through Provider-owned CollectionService and preparation; transient detail failure, retained ordinary cache, explicit refresh recovery and actual continuation; no publication.",

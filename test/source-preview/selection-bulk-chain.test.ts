@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdirSync,mkdtempSync,rmSync} from 'node:fs';
+import {mkdirSync,mkdtempSync,rmSync,writeFileSync} from 'node:fs';
 import {join,relative,resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
@@ -10,8 +10,9 @@ import {realSourceSummaries} from '../real-data/corpus.ts';
 const repoRoot=fileURLToPath(new URL('../../',import.meta.url));
 
 // The checked-in component, SDK hook/client, host dispatch and selection bridge are not replaced.
-test('page bulk deselection preserves other-page choices through the real SDK and native selection attachment',async()=>{
- const samples=realSourceSummaries().sort((a,b)=>Date.parse(b.importedAt)-Date.parse(a.importedAt)).slice(0,25);
+test('page bulk deselection preserves other-page choices through the real SDK and native selection attachment',{timeout:30000},async()=>{
+ const samples=realSourceSummaries().sort((a,b)=>Date.parse(b.importedAt??'')-Date.parse(a.importedAt??'')).slice(0,25);
+ assert.equal(samples.length,25);assert.equal(new Set(samples.map(row=>row.id)).size,25);
  const root=resolve(repoRoot,'test/source-preview/artifacts');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'selection-bulk-chain-'));
  try{
   const entry=join(directory,'fixture.mjs');
@@ -37,6 +38,7 @@ const page=label=>tree.root.findAll(node=>node.type==='button'&&node.props['aria
 const expected=indices=>({type:'hallmark.product-selection',version:1,sessionId:'selection-session',viewId:'selection-bulk-view',widgetId:'source',bindingId:'collected',datasetKey:'collected:replay',dataTime:'2026-10-15T10:00:00Z',lastSuccessAt:'2026-10-15T10:00:00Z',source:{endpoint:'/api/items',kind:'collected_items'},products:indices.map(index=>({kind:'collected_item',itemId:samples[index].id}))});
 try{
  await act(async()=>{tree=create(<Component/>);});
+ assert.equal(tree.root.findByType('main').props['data-ready'],'ready');assert.equal(listeners.size,1);
  assert.equal(box('选择本页商品').props.disabled,false);
  await act(async()=>rowBox(0).props.onChange());
  assert.equal(page('下一页').props.disabled,false);await act(async()=>page('下一页').props.onClick());
@@ -54,13 +56,21 @@ try{
  for(let index=21;index<25;index++)assert.equal(rowBox(index).props.checked,false);
  assert.equal(button().props.disabled,false);await act(async()=>button().props.onClick());
  assert.equal(files.length,2);assert.deepEqual(JSON.parse(await files[1].text()),expected([20]));
+ for(const [index,file]of files.entries()){assert.ok(file instanceof File);assert.equal(file.type,'application/json');assert.equal(file.name,['Hallmark-已选产品-21项.json','Hallmark-已选产品-1项.json'][index]);}
  assert.deepEqual(addCalls,[['draft-1'],['draft-2']]);assert.deepEqual(released,[]);assert.deepEqual([...registered.keys()],['draft-1','draft-2']);assert.deepEqual(attachmentIds,['existing-attachment','draft-1','draft-2']);
- const attachments=requests.filter(request=>request.method==='attachSelection');assert.equal(attachments.length,2);assert.equal(attachments[0].params.keys.length,21);assert.equal(new Set(attachments[0].params.keys).size,21);assert.deepEqual(attachments[1].params,{bindingId:'collected',keys:[JSON.stringify(['collected_item',samples[20].id])],revision:'current-snapshot'});
+ const attachments=requests.filter(request=>request.method==='attachSelection');assert.equal(attachments.length,2);assert.equal(attachments[0].params.keys.length,21);assert.equal(new Set(attachments[0].params.keys).size,21);assert.equal(attachments[0].params.revision,'current-snapshot');assert.deepEqual(attachments[1].params,{bindingId:'collected',keys:[JSON.stringify(['collected_item',samples[20].id])],revision:'current-snapshot'});
  assert.deepEqual(requests.map(request=>request.method),['getData','getContext','attachSelection','attachSelection']);
  console.log('SELECTION_BULK_CHAIN_PASS');
-}finally{if(tree)await act(async()=>tree.unmount());unbind();bridge.attachmentRuntime(undefined);bridge.observeSession(undefined);}
-assert.equal(listeners.size,0);
+}finally{try{if(tree)await act(async()=>tree.unmount());}finally{unbind();bridge.attachmentRuntime(undefined);bridge.observeSession(undefined);assert.equal(listeners.size,0,'the actual SDK must remove its listener, including failed checks');}}
 `},outfile:entry,bundle:true,platform:'node',format:'esm',jsx:'automatic',banner:{js:"import {createRequire} from 'node:module'; const require=createRequire(import.meta.url);"},external:['react','react/jsx-runtime','react-test-renderer']});
-  const result=spawnSync(process.execPath,[entry],{cwd:repoRoot,encoding:'utf8',timeout:15000});assert.equal(result.status,0,result.error?.message??result.stderr);assert.match(result.stdout,/SELECTION_BULK_CHAIN_PASS/);
- }finally{const within=relative(root,directory);assert.ok(/^selection-bulk-chain-[^/\\]+$/.test(within)&&resolve(root,within)===directory);rmSync(directory,{recursive:true,force:true});}
+  const result=spawnSync(process.execPath,[entry],{cwd:repoRoot,encoding:'utf8',timeout:15000,maxBuffer:1024*1024,windowsHide:true});
+  let diagnostic='';
+  if(result.status!==0||!result.stdout?.includes('SELECTION_BULK_CHAIN_PASS')){
+    // Keep bounded failure logs under ignored artifacts while always removing the bundled fixture.
+    const diagnostics=join(root,'selection-bulk-diagnostics');mkdirSync(diagnostics,{recursive:true});diagnostic=mkdtempSync(join(diagnostics,'failure-'));
+    writeFileSync(join(diagnostic,'stdout.txt'),Buffer.from(result.stdout??'').subarray(0,1024*1024));
+    writeFileSync(join(diagnostic,'stderr.txt'),Buffer.from(result.stderr??'').subarray(0,1024*1024));
+  }
+  assert.equal(result.status,0,[result.error?.message,result.stderr,result.stdout,diagnostic&&'logs: '+diagnostic].filter(Boolean).join('\n'));assert.match(result.stdout,/SELECTION_BULK_CHAIN_PASS/,'Missing success marker; logs: '+diagnostic);
+ }finally{const within=relative(root,directory);assert.ok(/^selection-bulk-chain-[^/\\]+$/.test(within)&&resolve(root,within)===directory);rmSync(directory,{recursive:true,force:true,maxRetries:3});}
 });
