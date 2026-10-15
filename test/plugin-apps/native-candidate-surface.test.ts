@@ -237,10 +237,10 @@ const reads=http.filter(row=>row.resource==='viewData'&&row.path.includes('displ
 
 test('a display whose data cannot be read is reported with the Runtime evidence, and a report the Runtime missed is retried from the outbox',()=>fixture('data-failure-outbox',setup+`
 const docEvents=new Map();globalThis.document={hidden:false,addEventListener(type,fn){const rows=docEvents.get(type)??new Set();rows.add(fn);docEvents.set(type,rows);},removeEventListener(type,fn){docEvents.get(type)?.delete(fn);}};
-let reportAttempts=0;
+let reportAttempts=0,releaseFirstReport,firstReportReleased=false;
 interceptRequest=({query,body,resource,reply})=>{
  if(resource==='viewData'&&query.has('displayId')){reply(503,{status:'failed',error:{code:'RUNTIME_STORE_BUSY',message:'数据库繁忙',retryPolicy:'read_retry',details:{requestId:'srv-req',cause:'database is locked'}}});return true;}
- if(body?.operation==='reportDisplayError'){reportAttempts++;if(reportAttempts===1){reply(503,{status:'failed',error:{code:'RUNTIME_UNAVAILABLE',message:'runtime down',retryPolicy:'read_retry'}});return true;}}
+ if(body?.operation==='reportDisplayError'){reportAttempts++;if(reportAttempts===1){releaseFirstReport=()=>{if(firstReportReleased)return;firstReportReleased=true;reply(503,{status:'failed',error:{code:'RUNTIME_UNAVAILABLE',message:'runtime down',retryPolicy:'read_retry'}});};releases.push(releaseFirstReport);return true;}}
  return false;};
 const reports=()=>http.filter(row=>row.body?.operation==='reportDisplayError'),viewDataReads=()=>http.filter(row=>row.resource==='viewData'&&row.path.includes('displayId='));
 const waitFor=async(predicate,message)=>{for(let n=0;n<400&&!predicate();n++)await settle(15);assert.ok(predicate(),message);};
@@ -251,6 +251,11 @@ const first=reports()[0].body.params;
 assert.equal(first.displayId,displays[0].displayId);assert.equal(first.displayGeneration,displays[0].generation);
 assert.deepEqual(first.error,{phase:'data',code:'RUNTIME_STORE_BUSY',message:'数据库繁忙',requestId:'srv-req',retryPolicy:'read_retry',cause:'database is locked',attempts:3});
 assert.equal(displays[0].state,'opening','a missed report leaves the Runtime display unreported');
+assert.doesNotMatch(JSON.stringify(tree.toJSON()),/加载错误尚未同步给 Runtime/,'request receipt alone does not complete the report or update the notice');
+await act(async()=>{releaseFirstReport();});
+// Server receipt precedes fetch rejection and the React notice update. Wait for
+// that observable failed-report state before asking the outbox to retry it.
+await waitFor(()=>JSON.stringify(tree.toJSON()).includes('加载错误尚未同步给 Runtime'),'a failed report must render the unsynchronized Runtime notice before retry');
 assert.equal(reportAttempts,1);assert.match(JSON.stringify(tree.toJSON()),/加载错误尚未同步给 Runtime/);
 for(const listener of [...(docEvents.get('visibilitychange')??[])])listener();
 await waitFor(()=>reports().length===2,'the outbox sends the missed report again once the document is visible');

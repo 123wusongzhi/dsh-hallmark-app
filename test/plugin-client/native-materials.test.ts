@@ -89,7 +89,28 @@ test('activity material reuses table and resolves provider row paths and date al
   spec.bindings[0].fieldMap={'activity.name':'name','activity.status':'status','activity.startsAt':'from','activity.endsAt':'to'};
   spec.widgets[0].options={...spec.widgets[0].options,rowsPath:'result.activities',fieldMeta:{'activity.name':{label:'活动名称'}},example:false};validateViewSpec(spec);
   const data:BindingData={bindingId:'activities',datasetKey:'fixture',state:'ready',payload:{result:{activities:[uiActivity({status:'active',from:'2026-10-08T00:00:00Z',to:'2026-10-12T00:00:00Z'})]}},provenance:{source:'real_corpus_derived_scenario'}};
-  const html=renderToStaticMarkup(React.createElement(ViewRenderer,{spec,data:[data]}));assert.match(html,uiText(uiActivity().title));assert.match(html,/2026\/10\/08/);assert.doesNotMatch(html,/报名|修改活动|示例<\/span>/);
+  // ISO instants render in the host's local timezone. Check that contract with
+  // independent expected dates, rather than assuming the test machine uses UTC.
+  const originalTZ=process.env.TZ;
+  try {
+    for(const [timeZone,startsOn,endsOn,localTime] of [
+      ['UTC','2026/10/08','2026/10/12','00:00:00'],
+      ['America/Los_Angeles','2026/10/07','2026/10/11','17:00:00'],
+      ['Asia/Shanghai','2026/10/08','2026/10/12','08:00:00'],
+    ] as const){
+      process.env.TZ=timeZone;
+      const html=renderToStaticMarkup(React.createElement(ViewRenderer,{spec,data:[data]}));
+      assert.match(html,uiText(uiActivity().title));assert.doesNotMatch(html,/报名|修改活动|示例<\/span>/);
+      let tree:any;
+      try {
+        act(()=>{tree=create(React.createElement(ViewRenderer,{spec,data:[data]}));});
+        const times=tree.root.findAllByType('td').flatMap((cell:any)=>cell.findAllByType('time'));
+        assert.equal(times.length,2,`${timeZone}: both mapped activity dates must render`);
+        assert.deepEqual(times.map((node:any)=>node.props.dateTime),['2026-10-08T00:00:00Z','2026-10-12T00:00:00Z'],`${timeZone}: source instants stay unchanged`);
+        assert.deepEqual(times.map((node:any)=>node.findAllByType('span').map((span:any)=>span.children.join(''))),[[startsOn,localTime],[endsOn,localTime]],`${timeZone}: visible dates and times use the host timezone`);
+      } finally {if(tree)act(()=>tree.unmount());}
+    }
+  } finally {if(originalTZ===undefined)delete process.env.TZ;else process.env.TZ=originalTZ;}
   const example=createMaterialView('activity-list'),preview=renderToStaticMarkup(React.createElement(ViewRenderer,{spec:example,data:recordedMaterialData(example)}));assert.match(preview,uiText(uiActivity().title));assert.match(preview,/hm-material-example/);
 });
 

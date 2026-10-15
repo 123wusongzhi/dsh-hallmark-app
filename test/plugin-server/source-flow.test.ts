@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
 import {join,dirname} from 'node:path';
-import {realSourceSummaries,realCorpusPath} from '../real-data/corpus.ts';
+import {realCorpus,realCorpusPath} from '../real-data/corpus.ts';
 import {tmpdir} from 'node:os';
 import {AppStore} from '../../packages/store/index.ts';
 import {PresentationManager} from '../../packages/presentation/src/index.ts';
@@ -15,7 +15,8 @@ test('actual Host + HTTP service source flow preserves exact dist, refreshes dra
  const directory=mkdtempSync(join(tmpdir(),'hallmark-source-flow-')),project=join(directory,'project'),db=join(directory,'app.db'),sources=join(directory,'sources'),token='b'.repeat(64);
  mkdirSync(join(project,'dist','assets'),{recursive:true});mkdirSync(join(project,'src'));
  writeFileSync(join(directory,'service-key'),token);writeFileSync(join(project,'package.json'),JSON.stringify({name:'source-fixture'}));writeFileSync(join(project,'package-lock.json'),'{}');writeFileSync(join(project,'component.json'),JSON.stringify({title:'彩色采集商品'}));
- const source=realSourceSummaries()[0],recordedImage=JSON.parse(readFileSync(join(dirname(realCorpusPath),'image-assets.json'),'utf8')).assets.find((row:any)=>row.productId===source.id);
+ const corpus=realCorpus(),source=corpus.records[0].summary,recordedImage=corpus.imageAssets.find(row=>row.productId===source.id&&row.status==='captured');
+ assert.ok(recordedImage?.file&&recordedImage.mimeType,`Captured image required for source ${source.id}`);
  const imageName=`图.${recordedImage.mimeType.split('/')[1]}`;
  const initialHtml='<html><body><script type="module" src="./assets/app.js"></script></body></html>',image=readFileSync(join(dirname(realCorpusPath),recordedImage.file));
  writeFileSync(join(project,'dist','index.html'),initialHtml);writeFileSync(join(project,'dist','assets','app.js'),'document.body.dataset.version="one";');writeFileSync(join(project,'dist','assets',imageName),image);writeFileSync(join(project,'src','Component.tsx'),'export const title="one";');

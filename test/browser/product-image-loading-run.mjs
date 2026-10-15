@@ -4,22 +4,21 @@ import {build} from 'esbuild';
 import {existsSync} from 'node:fs';
 import {mkdir,mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
-import {realCorpus} from '../real-data/corpus.ts';
+import {realCorpus,realCorpusPath} from '../real-data/corpus.ts';
 import {createServer} from 'node:http';
 import {tmpdir} from 'node:os';
-import {join,relative,resolve} from 'node:path';
+import {dirname,join,relative,resolve} from 'node:path';
 import {spawn} from 'node:child_process';
 
 const directory=resolve('artifacts/performance/ui/product-image-browser');
 await mkdir(directory,{recursive:true});
 const chrome=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(existsSync);
 assert.ok(chrome,'An installed Chrome or Edge is required; this runner installs nothing.');
-const corpus=realCorpus(),assetRoot=resolve('artifacts/real-source-tests-20261013');
-const imageManifest=JSON.parse(await readFile(join(assetRoot,'image-assets.json'),'utf8'));
+const corpus=realCorpus(),assetRoot=dirname(realCorpusPath);
 const recordedProducts=corpus.records.map(row=>row.detail);
 const images=new Map();
 for(const [group,offset] of [['first',0],['second',20]])for(let index=0;index<20;index++){
-  const product=recordedProducts[offset+index],asset=imageManifest.assets.find(row=>row.productId===product.id&&row.status==='captured');
+  const product=recordedProducts[offset+index],asset=corpus.imageAssets.find(row=>row.productId===product.id&&row.status==='captured');
   assert.ok(asset,`Authentic source image unavailable for ${product.id}; recapture instead of substituting pixels`);
   const bytes=await readFile(join(assetRoot,asset.file));
   assert.equal(createHash('sha256').update(bytes).digest('hex'),asset.sha256,'Recorded source image bytes must match capture hash');

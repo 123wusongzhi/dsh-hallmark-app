@@ -10,7 +10,7 @@
     "service": "node packages/service/src/main.ts",
     "capture:test-data": "node scripts/capture-real-source-corpus.mjs",
     "pretest": "node scripts/audit-real-test-data.mjs",
-    "test": "node --test --test-concurrency=1 test/**/*.test.ts",
+    "test": "node --test --test-concurrency=1 \"test/**/*.test.ts\"",
     "test:real": "node scripts/audit-real-test-data.mjs && node --test test/collection/real-corpus.test.ts",
     "test:live-real": "node test/collection/live-benchmark.mjs && node test/collection/live-preparation.mjs",
     "typecheck": "tsc --noEmit",

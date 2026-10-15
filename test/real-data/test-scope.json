@@ -2,6 +2,10 @@
   "schemaVersion": 1,
   "policy": "All tests consuming commodity, SKU, collected source, shop, sale, logistics, activity or dictionary facts use recorded snapshots. Original records remain immutable. Alias, omission, failure, numeric boundary and scale modifications are explicit derived cases.",
   "requiredFiles": [
+    "test/adapter/ozon-store-read.test.ts",
+    "test/app-hallmark/listing-reuse-hint.test.ts",
+    "test/apps-runtime/business-payload-continuation.test.ts",
+    "test/app-hallmark/listing-material-description.test.ts",
     "scripts/performance/candidate72-browser/fixture-data.ts",
     "scripts/performance/six-batch/client/workload-fixture.ts",
     "test/acceptance/api-sdk-contracts-a2.mjs",
@@ -152,10 +156,11 @@
     "test/plugin-apps/association-overview-ui.test.ts"
   ],
   "infrastructureFiles": [
+    "test/plugin-client/application-surfaces.test.ts",
+    "test/apps-runtime/sdk-generated-call-contract.test.ts",
     "test/acceptance/release-evidence-gate.test.ts",
     "test/adapter/assignment-route.test.ts",
     "test/adapter/health.test.ts",
-    "test/adapter/ozon-store-read.test.ts",
     "test/app-hallmark/business-generation.test.ts",
     "test/app-hallmark/cancellation.test.ts",
     "test/app-hallmark/listing-assets.test.ts",
@@ -304,10 +309,11 @@
     "test/plugin-apps/connection-status-ui.test.ts"
   ],
   "infrastructureReasons": {
+    "test/plugin-client/application-surfaces.test.ts": "Production React catalog initial state, non-hidden rail and native sidebar navigation with local control fixtures; no commodity payload, remote service or browser.",
+    "test/apps-runtime/sdk-generated-call-contract.test.ts": "Generated SDK wrapper execution with a non-business descriptor, local transport controls and AbortController; no commodity payload or external action.",
     "test/acceptance/release-evidence-gate.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/adapter/assignment-route.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/adapter/health.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
-    "test/adapter/ozon-store-read.test.ts": "Endpoint allowlist/auth/route isolation and empty/error receipt tests; the price submission body is a controlled transport intent, no commodity facts.",
     "test/app-hallmark/business-generation.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/app-hallmark/cancellation.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/app-hallmark/listing-assets.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
@@ -456,6 +462,10 @@
     "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts."
   },
   "fileModes": {
+    "test/adapter/ozon-store-read.test.ts": "Recorded sales product fields in an isolated price-request route regression; authorization and empty/error receipts are explicit protocol controls.",
+    "test/app-hallmark/listing-reuse-hint.test.ts": "Integrity-checked recorded product, SKU and store facts; selected SKU and invocation identity are local read-scope controls; the emitted reuse hint executes through the real provider.",
+    "test/apps-runtime/business-payload-continuation.test.ts": "Unchanged recorded names and images in local draft rows; real Runtime, provider and model projection follow emitted payload-mode continuations.",
+    "test/app-hallmark/listing-material-description.test.ts": "Integrity-checked long source description, product and store facts; preparation preview and real provider resource-read cursors reconstruct original text exactly.",
     "test/collection/real-corpus.test.ts": "all 41 pristine source snapshots and full raw reconstruction",
     "test/performance/runtime-artifact-isolation.test.ts": "recorded corpus copied into isolated packaged runtime; controlled quote boundaries",
     "test/app-hallmark/listing-handoff.test.ts": "recorded source and own SKUs/images; separately captured purchase override and explicit handoff controls",

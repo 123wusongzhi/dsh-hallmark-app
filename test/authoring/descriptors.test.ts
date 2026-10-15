@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {resolve} from 'node:path';
 import {APP_AUTHORING_DESCRIPTORS,AUTHORING_BUILD_RECEIPT_SCHEMA,AUTHORING_PREVIEW_RECEIPT_SCHEMA,AUTHORING_PUBLICATION_SCHEMA} from '../../packages/app-presentation/src/authoring-descriptors.ts';
 import {compileSchema,validateDescriptor} from '../../packages/app-contracts/src/index.ts';
 import type {JsonSchema} from '../../packages/app-contracts/src/index.ts';
@@ -24,9 +23,9 @@ test('publication contracts expose waiting state and nullable deadline while ret
 });
 
 test('receipt required/base fields retain A.2 compatibility with explicit optional execution and performance evidence',()=>{
-  const templateRoot=resolve('../audit-inputs/A2-30f8a9809dd4/dsh_apps_A2/templates');
+  const templateRoot=new URL('../../docs/requirements/A2/templates/',import.meta.url);
   for(const [name,actual] of [['build-receipt.schema.json',AUTHORING_BUILD_RECEIPT_SCHEMA],['preview-receipt.schema.json',AUTHORING_PREVIEW_RECEIPT_SCHEMA]] as const){
-    const template=JSON.parse(readFileSync(resolve(templateRoot,name),'utf8')) as JsonSchema;
+    const template=JSON.parse(readFileSync(new URL(name,templateRoot),'utf8')) as JsonSchema;
     const additions=name==='build-receipt.schema.json'?['executionKind','executionId','reusedFrom','reuseVerifiedAt']:['performance'];
     for(const branch of actual.oneOf as JsonSchema[]){const keys=Object.keys(branch.properties as object);assert.deepEqual(keys.filter(key=>!additions.includes(key)).sort(),Object.keys(template.properties as object).sort());assert.deepEqual(keys.filter(key=>additions.includes(key)).sort(),[...additions].sort());assert.deepEqual([...branch.required as string[]].sort(),[...template.required as string[]].sort());assert.equal(branch.additionalProperties,false);}
   }
