@@ -11,12 +11,12 @@ const size=(value:unknown)=>typeof value==='string'&&!/["\\\u0000-\u001f]/.test(
 
 /** Only the Agent's view changes; the provider result and its UI representation stay intact. */
 function businessRow(row:JsonRecord):JsonRecord {
-  const result=pick(row,['rowId','revision','action','target','status','issues','corrections','dependsOn','executionId','retryAt','completedAt']);
+  const result=pick(row,['rowId','revision','saleId','preparationRevision','action','target','status','issues','corrections','dependsOn','executionId','retryAt','completedAt']);
   const values=pick(object(row.payload),['price','old_price','currency_code','stock','warehouse_id','archived','action_id','weight','weight_unit','depth','width','height','dimension_unit']);
   if(Object.keys(values).length)result.values=values;
   const binding=object(row.binding);if(binding)result.binding=pick(binding,['amount','currency','missing']);
   const quote=object(row.pricingQuote)??object(object(row.context)?.pricingQuote);
-  if(quote)result.pricingQuote=pick(quote,['status','configRevision','currency','planId','planName','selectionMode','targetMarginPpm','minimumMarginPpm','suggestedPriceMinor','minimumAllowedPriceMinor','evaluatedPriceMinor','breakdown','issues','warnings']);
+  if(quote)result.pricingQuote=pick(quote,row.action==='listing'?['status','configRevision','issues','warnings']:['status','configRevision','currency','planId','planName','selectionMode','targetMarginPpm','minimumMarginPpm','suggestedPriceMinor','minimumAllowedPriceMinor','evaluatedPriceMinor','breakdown','issues','warnings']);
   const receipt=object(row.receipt);
   if(receipt){
     result.receipt=pick(receipt,['executionId','requestId','taskId','importTaskId','transport','completion','observed']);
@@ -34,7 +34,7 @@ function businessProjection(store:RuntimeStore,result:CapabilityResult,budget:nu
   // Explicit evidence reads use the ordinary full result / bounded spill path below.
   // Trust the persisted invocation, not a flag echoed inside the provider's result.
   if(request?.appId==='hallmark'&&['hallmark.plan.get','hallmark.listing.draft.get'].includes(request.capabilityId)
-    &&object(request.input)?.includeEvidence===true)return;
+    &&(object(request.input)?.includeEvidence===true||object(request.input)?.view==='payload'))return;
   const rows=plan.rows.map(row=>businessRow(row as JsonRecord));
   const suppliedPage=object(plan.page),offset=typeof suppliedPage?.offset==='number'?suppliedPage.offset:0;
   const total=typeof suppliedPage?.total==='number'?suppliedPage.total:rows.length;
@@ -51,11 +51,12 @@ function businessProjection(store:RuntimeStore,result:CapabilityResult,budget:nu
   }
   // Page offsets are relative to the original selection, not the whole plan.
   const rowIds=request?.appId==='hallmark'&&['hallmark.plan.get','hallmark.listing.draft.get'].includes(request.capabilityId)?object(request.input)?.rowIds:undefined;
+  const payloadRead=read({view:'payload',...(Array.isArray(rowIds)?{rowIds}:{}),cursor:String(offset),limit:20});
   const make=(count:number):JsonRecord=>{
     const next=count<rows.length?String(offset+count):suppliedPage?.nextCursor??null;
     return {...envelope,data:{...metadata,rows:rows.slice(0,count),page:{offset,total,returned:count,nextCursor:next},
       modelView:'business-operation-summary',rowStatusCounts:counts,countsScope:'input page',
-      omitted:['payload content','review objects','source context'],
+      omitted:['payload content','review objects','source context'],...(size(payloadRead)<budget/4?{payloadRead}:{}),
       ...(next!==null?{continuation:read({...(Array.isArray(rowIds)?{rowIds}:{}),cursor:next,limit:20})}:{})}};
   };
   let count=rows.length,projected=make(count);

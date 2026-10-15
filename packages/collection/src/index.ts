@@ -2,10 +2,10 @@ import { mkdir, writeFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
-import { hash, normalizeProduct, object } from './normalize.ts';
+import { COLLECTION_MAPPING_VERSION, hash, normalizeProduct, object } from './normalize.ts';
 import type { CollectionAsset, CollectionOptions, CollectionProduct, CollectionReadInput, CollectionResourceInput, CollectionSearchInput } from './types.ts';
 export * from './types.ts';
-export { normalizePackage, normalizeProduct } from './normalize.ts';
+export { normalizePackage, normalizeProduct, normalizePurchaseCost } from './normalize.ts';
 
 export class CollectionError extends Error {
   code: string;
@@ -61,6 +61,10 @@ export class CollectionService {
     const key = this.key(id);
     const saved = this.options.store.get<CachedProduct>('collection_products', key);
     if (!refresh && saved && this.fresh(saved.fetchedAtMs)) {
+      if (saved.product.mapping.version !== COLLECTION_MAPPING_VERSION) {
+        saved.product = normalizeProduct(saved.detail, this.options.sourceId, saved.product.fetchedAt);
+        this.options.store.put('collection_products', key, saved);
+      }
       // Old persisted entries predate raw generations; upgrade once without re-fetching their facts.
       if (!saved.generation) return this.options.store.put('collection_products', key, { ...saved, generation: randomUUID() });
       return saved;
@@ -172,7 +176,7 @@ export class CollectionService {
     let facets: any = { sources: sourceCounts, categories: Object.fromEntries(categories), categoryCount: categories.length, categoriesOmitted: 0 };
     if (bytes(facets) > Math.floor(budget / 3)) facets = { sources: {}, categories: {}, categoryCount: categories.length, categoriesOmitted: categories.length, completeness: 'partial', available: [this.reference(cards[0].id, facets)] };
     const page: any[] = [];
-    const result = () => ({ revision, items: page, returned: page.length, total: incompleteRecordFilter?null:cards.length, nextCursor: start + page.length < cards.length ? next('search', revision, scope, start + page.length) : null, completeness: incompleteRecordFilter || start + page.length < cards.length || page.some(c => c.deferred) || facets.completeness === 'partial' ? 'partial' : 'complete', facets,...(recordLookup?{recordLookup}:{}), listingState: this.options.listingStates ? 'operating_records' : 'unknown' });
+    const result = () => ({ revision, items: page, returned: page.length, total: incompleteRecordFilter?null:cards.length, nextCursor: start + page.length < cards.length ? next('search', revision, scope, start + page.length) : null, completeness: incompleteRecordFilter || start + page.length < cards.length || page.some(c => c.deferred) || facets.completeness === 'partial' ? 'partial' : 'complete', facets,...(recordLookup?{recordLookup}:{}), associationLookup: {capabilityId:'hallmark.collection.associations', ...(input.store?{storeId:input.store.id}:{}), instruction:'查是否上过或在售：使用本页选定商品的 id 和目标 storeId 查询精确关联，不再换关键词搜索店铺商品。未关联历史不能判断从未上架。'}, listingState: this.options.listingStates ? 'operating_records' : 'unknown' });
     for (const card of cards.slice(start, start + limit(input.limit, 30, 100))) {
       let shown: any = card;
       if (bytes(shown) > budget / 2) {

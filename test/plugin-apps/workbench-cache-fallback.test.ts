@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiOzonProduct,uiStore,uiListingPayload,uiFixturePrelude,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdirSync,mkdtempSync,rmSync} from 'node:fs';
@@ -9,7 +10,8 @@ test('cache UI preserves only matching binding snapshots, partial results, page 
  const root=resolve('artifacts');mkdirSync(root,{recursive:true});const dir=mkdtempSync(join(root,'cache-fallback-ui-')),entry=join(dir,'fixture.mjs');
  try{
   await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
-import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
+import React from 'react';
+${uiFixturePrelude()}import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
 import {WorkbenchInstanceView} from './packages/plugin-apps/client/workbench-board.tsx';
 import {AppsNativeView} from './packages/plugin-apps/client/view.tsx';
 import {ViewRenderer} from './packages/dsh-plugin/client/renderer.tsx';
@@ -27,7 +29,7 @@ design.widgets=['main','other'].map(id=>({...design.widgets[0],id,bindingId:id,f
 const instance={instanceId:'test',title:'缓存测试',materialId:'data-table',materialVersion:1,design,dataSources:{main:{id:'source',revision:1,params:{}},other:{id:'other',revision:1,params:{}}},position:{order:0}};
 const source={id:'source',revision:1,appId:'hallmark',connectionId:'connection',capabilityId:'hallmark.ozon.compose',capabilityMajor:1,fields:[],parameters:[],rowsPath:'items',operations:{pagination:{cursorParam:'cursor'},search:{scope:'server',param:'search'},sort:{scope:'loaded'}}};
 const query=input=>({appId:'hallmark',connectionId:'connection',capabilityId:'hallmark.ozon.compose',capabilityVersion:'1.0.0',projection:['title','quantity'],input:{storeId:'store',search:'old',dateFrom:'2026-10-01',limit:100,...input}});
-const success=(id,input={})=>({bindingId:id,appId:'hallmark',connectionId:'connection',datasetId:datasetId(query(input)),query:query(input),payload:{items:[{title:id+'商品'+version,quantity:5}],cache:{ttlMs:180000,fetchedAt:new Date(now).toISOString(),expiresAt:new Date(now+180000).toISOString(),nextRefreshAt:new Date(now+180000).toISOString(),stale:false}},state:'ready',lastSuccessAt:new Date(now).toISOString(),sourceDataTime:null,freshness:'fresh',provenance:[]});
+const success=(id,input={})=>({bindingId:id,appId:'hallmark',connectionId:'connection',datasetId:datasetId(query(input)),query:query(input),payload:{items:[uiProduct({quantity:5},(id==='main'?3:20)+version)],cache:{ttlMs:180000,fetchedAt:new Date(now).toISOString(),expiresAt:new Date(now+180000).toISOString(),nextRefreshAt:new Date(now+180000).toISOString(),stale:false}},state:'ready',lastSuccessAt:new Date(now).toISOString(),sourceDataTime:null,freshness:'fresh',provenance:[]});
 let tree,mode='board',scenario='normal',version=0,requests=[],snapshot,ready;
 const responseData=(input={})=>{const data={viewId:'A',bindings:['main','other'].map(id=>success(id,id==='main'?input:{}))},main=data.bindings[0];
  if(['failed','wrong-dataset','connection','forbidden'].includes(scenario)){Object.assign(main,{state:'failed',payload:null,error:scenario==='connection'?{...limited,code:'CONNECTION_CONFIG_CHANGED'}:scenario==='forbidden'?{...limited,code:'HALLMARK_HTTP_403'}:limited,lastSuccessAt:null});if(scenario==='wrong-dataset'){main.query=query({storeId:'another-store'});main.datasetId=datasetId(main.query);}}
@@ -44,13 +46,13 @@ const mount=async()=>{await act(async()=>{tree=create(mode==='board'?<WorkbenchI
 const unmount=async()=>{await act(async()=>tree.unmount());tree=undefined;assert.equal(timers.size,0);};
 for(mode of ['board','native']){
  scenario='normal';version=0;await mount();const firstTime=renderer().props.data[0].payload.cache.fetchedAt;
- scenario='failed';version=1;await update();assert.match(rendered(),/main商品0/);assert.match(rendered(),/other商品1/);assert.equal(renderer().props.data[0].payload.cache.fetchedAt,firstTime);assert.equal(renderer().props.data[0].payload.cache.stale,true);assert.equal([...timers.values()][0].delay,233000);assert.equal(tree.root.findAll(node=>node.props.role==='alert').length,0,'cached failure is non-blocking');
+ scenario='failed';version=1;await update();assert.match(rendered(),uiText(uiProduct({},3).title));assert.match(rendered(),uiText(uiProduct({},21).title));assert.equal(renderer().props.data[0].payload.cache.fetchedAt,firstTime);assert.equal(renderer().props.data[0].payload.cache.stale,true);assert.equal([...timers.values()][0].delay,233000);assert.equal(tree.root.findAll(node=>node.props.role==='alert').length,0,'cached failure is non-blocking');
  if(mode==='board')assert.equal(ready,false,'cached preview cannot validate a new definition');
- scenario='normal';await update();scenario='http-rate';await update();assert.match(rendered(),/main商品1/);assert.equal([...timers.values()][0].delay,233000);assert.equal(tree.root.findAll(node=>node.props.role==='alert').length,0);
- scenario='wrong-dataset';await update();assert.doesNotMatch(rendered(),/main商品1/);assert.match(rendered(),/other商品1/);
- for(const denied of ['connection','forbidden']){scenario='normal';await update();scenario=denied;await update();assert.doesNotMatch(rendered(),/main商品1/,'authorization and connection failures discard cached contents');assert.match(rendered(),/other商品1/);}
+ scenario='normal';await update();scenario='http-rate';await update();assert.match(rendered(),uiText(uiProduct({},4).title));assert.equal([...timers.values()][0].delay,233000);assert.equal(tree.root.findAll(node=>node.props.role==='alert').length,0);
+ scenario='wrong-dataset';await update();assert.doesNotMatch(rendered(),uiText(uiProduct({},4).title));assert.match(rendered(),uiText(uiProduct({},21).title));
+ for(const denied of ['connection','forbidden']){scenario='normal';await update();scenario=denied;await update();assert.doesNotMatch(rendered(),uiText(uiProduct({},4).title),'authorization and connection failures discard cached contents');assert.match(rendered(),uiText(uiProduct({},21).title));}
  scenario='normal';await update();scenario='missing';await update();assert.match(rendered(),/部分信息待更新，其余可继续查看/);assert.equal(renderer().props.data[0].payload.items[0].quantity,null);assert.equal(renderer().props.data[0].payload.sourceStates[1].fetchedAt,null);if(mode==='board'){assert.match(rendered(),/库存.*待更新/);assert.equal(ready,false);}
- scenario='normal';await update();scenario='http-forbidden';await update();assert.doesNotMatch(rendered(),/main商品1|other商品1/);assert.equal(timers.size,0,'denied read must not schedule background retries');await unmount();
+ scenario='normal';await update();scenario='http-forbidden';await update();assert.doesNotMatch(rendered(),new RegExp([4,21].map(index=>uiText(uiProduct({},index).title).source).join('|')));assert.equal(timers.size,0,'denied read must not schedule background retries');await unmount();
 }
 mode='board';scenario='normal';version=2;await mount();const initialTime=snapshot.data.bindings[0].payload.cache.fetchedAt,firstDataset=snapshot.data.bindings[0].datasetId;assert.equal(renderer().props.interactions.bindings.main.appliedSearch,'old','reopened workbench passes its actual persisted search to the widget');
 await act(async()=>{renderer().props.interactions.onSelect({widgetId:'main',field:'title',value:'picked'});await flush();});

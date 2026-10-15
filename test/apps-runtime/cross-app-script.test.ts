@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiOzonProduct,uiStore,uiListingPayload,uiFixturePrelude,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
@@ -29,9 +30,9 @@ async function setup(t:{after:(callback:()=>unknown)=>void}) {
     if(req.method==='GET'&&req.url==='/api/health'){
       upstreamCalls.health++;res.end(JSON.stringify({service:'hallmark-control'}));
     }else if(req.method==='GET'&&req.url==='/api/stores'){
-      upstreamCalls.stores++;res.end(JSON.stringify([{id:'store-a',shopName:'Mock business store'}]));
+      upstreamCalls.stores++;res.end(JSON.stringify([uiStore({id:'store-a'})]));
     }else if(req.method==='GET'&&req.url==='/api/store-products'){
-      upstreamCalls.products++;res.end(JSON.stringify({products:[{storeId:'store-a',productId:'product-a',offerId:'offer-a',title:'Mock business product',price:100}],stores:[{id:'store-a',lastSuccessAt:'2026-10-01T00:00:00.000Z'}]}));
+      upstreamCalls.products++;res.end(JSON.stringify({products:[uiProduct({storeId:'store-a',productId:'product-a',offerId:'offer-a',price:100},16)],stores:[{id:'store-a',lastSuccessAt:'2026-10-01T00:00:00.000Z'}]}));
     }else{upstreamCalls.other++;res.statusCode=404;res.end('{}');}
   });
   const baseUrl=await listening(upstream),store=new RuntimeStore(join(directory,'apps.db')),runtime=new AppsRuntime(store);

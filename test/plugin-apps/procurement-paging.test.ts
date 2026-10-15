@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiFixturePrelude,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdirSync,mkdtempSync,rmSync} from 'node:fs';
@@ -9,14 +10,15 @@ test('workbench restores full-store local searches and retains them when applyin
   const root=resolve('artifacts');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'procurement-paging-')),entry=join(directory,'fixture.mjs');
   try{
     await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
-import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
+import React from 'react';
+${uiFixturePrelude()}import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
 import {WorkbenchInstanceView} from './packages/plugin-apps/client/workbench-board.tsx';
 import {createMaterialView} from './packages/app-presentation/src/materials/catalog.ts';
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const design=createMaterialView('product-procurement');design.widgets[0].fields={'product.id':'productId','product.name':'title','price.current':'sellerMinor','metric.margin':'referenceProfit.margin'};design.widgets[0].options.rowsPath='products';
 let instance={instanceId:'test',title:'采购表',materialId:'product-procurement',materialVersion:1,design,dataSources:{products:{id:'source',revision:1,params:{planMode:'platform',query:'SKU-65'}}},position:{order:0}};
 const source={kind:'data_source',id:'source',revision:1,title:'采购',appId:'hallmark',connectionId:'connection',capabilityId:'hallmark.products.procurement',capabilityMajor:1,input:{loadAll:true},storeScoped:true,parameters:[],rowsPath:'products',fields:[],operations:{search:{scope:'loaded'},sort:{scope:'loaded'}}};
-const rows=Array.from({length:76},(_,index)=>({productId:String(index),title:'商品 '+index,sku:'SKU-'+index,offerId:'CODE-'+index,sellerMinor:1000,currency:'CNY',referenceProfit:{margin:index%2===0?0:null}}));
+const rows=Array.from({length:76},(_,index)=>uiProduct({productId:String(index),sku:'SKU-'+index,offerId:'CODE-'+index,sellerMinor:1000,currency:'CNY',referenceProfit:{margin:index%2===0?0:null}},index%41));
 let tree,readCount=0,applied,shop='A',partial=false,refreshKey=0;
 const settle=async()=>{for(let i=0;i<10;i++)await new Promise(resolve=>setImmediate(resolve));};
 globalThis.fetch=async(url,options)=>{readCount++;const body=JSON.parse(options.body);assert.equal(body.operation,'read');assert.equal(body.params.params,undefined,'local search must not make a backend query');return Response.json({instanceId:'test',view:{viewId:'view',design},dataSources:{products:source},pages:{products:{hasMore:false,loadedCount:partial?10:76,total:76}},data:{viewId:'view',bindings:[{bindingId:'products',query:{appId:'hallmark',capabilityId:'hallmark.products.procurement',input:{loadAll:true,storeId:shop}},datasetId:'same-data-'+readCount,payload:{products:partial?rows.slice(0,10):rows,total:76,plan:{mode:instance.dataSources.products.params.planMode,label:'统一试算',fixedFeeYuan:3,logisticsYuanPerKg:12,commissionPercent:15}},state:'ready',lastSuccessAt:'2026-10-09T00:00:00Z',freshness:'fresh',provenance:[]}]}});};

@@ -1,3 +1,5 @@
+import { recordedPlatformProduct, recordedDetail, recordedSku, recordedProduct } from '../adapter/real-scenarios.ts';
+import { realDetail, realRawContent, realSourceSummaries, realStoreProducts, realStores } from '../real-data/corpus.ts';
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'node:http';
 import { once } from 'node:events';
 import { randomUUID, randomInt } from 'node:crypto';
@@ -12,7 +14,9 @@ import { PresentationManager } from '../../packages/presentation/src/index.ts';
 import { createAppServer } from '../../packages/service/src/server.ts';
 
 export const TOKEN = 'e'.repeat(64);
-export const SOURCE_IMAGE = 'https://example.invalid/collected-image.jpg';
+export const SOURCE_IMAGE = realDetail().images[0];
+export const SOURCE_TITLE = realDetail().title;
+const REAL_SALES_COUNT = realStoreProducts().products.length;
 export const SOURCE_TIME = '2026-10-05T00:00:00.000Z';
 export interface HttpEvent { method: string; path: string; body?: any }
 export interface FakeState {
@@ -35,7 +39,7 @@ async function listening(server: Server): Promise<string> {
 }
 async function closeServer(server: Server): Promise<void> { if (!server.listening) return; server.closeAllConnections(); await new Promise<void>(done => server.close(() => done())); }
 
-/** A synthetic source with its own ephemeral loopback socket; no original project code is imported. */
+/** Loopback replay of recorded goods; aliases, scale and transport outcomes are explicit local scenarios. */
 function fakeHallmark(state: FakeState): Server {
   const replay = new Map<string, { input: string; result: any }>();
   const snapshot = () => ({ stores: [{ id: 'store-A', name: 'Alpha', platform: 'ozon', ...(state.sourceTime ? { lastSuccessAt: state.sourceTime } : {}), ...(state.syncError ? { error: 'synthetic sync failed' } : {}) }], products: state.products });
@@ -44,14 +48,14 @@ function fakeHallmark(state: FakeState): Server {
       const url = new URL(req.url ?? '/', 'http://127.0.0.1'); const path = url.pathname;
       const body = await readBody(req); state.events.push({ method: req.method!, path, ...(body !== undefined ? { body } : {}) });
       if (path === '/api/health') return send(res, { service: 'hallmark-control', capabilities: ['assignment-v1'] });
-      if (path === '/api/stores') return send(res, [{ id: 'store-A', shopName: 'Alpha', platform: 'ozon', authStatus: 'authorized', hasCredential: true }, { id: 'store-B', shopName: 'Alpine', platform: 'ozon', authStatus: 'authorized', hasCredential: true }]);
+      if (path === '/api/stores') return send(res, [{ ...realStores()[0], id: 'store-A', shopName: 'Alpha' }, { ...realStores()[1], id: 'store-B', shopName: 'Alpine' }]);
       if (path === '/api/store-products' || path === '/api/store-products/sync') return send(res, snapshot());
       if (path === '/api/items') return send(res, state.summaries);
       if (path === '/api/items/item-A/raw') {
         assert.equal(url.searchParams.get('full'), '1', 'raw access must be complete');
         return send(res, { id: 'item-A', content: state.rawContent, truncated: false });
       }
-      if (path === '/api/items/item-A') return send(res, { id: 'item-A', title: 'Source A', skus: [{ sourceSkuId: 'sku-A', code: 'sku-A', image: SOURCE_IMAGE }], images: [SOURCE_IMAGE], descriptionImages: [], attributes: { sourceFeature: '真实源特征' }, sourceUrl: 'https://example.invalid/source-A' });
+      if (path === '/api/items/item-A') return send(res, recordedDetail({ id: 'item-A', skus: [recordedSku({ sourceSkuId: 'sku-A', code: 'sku-A', image: SOURCE_IMAGE }, 0)], images: [SOURCE_IMAGE] }, 0));
       if (path === '/api/tasks') return send(res, state.tasks);
       if (path === '/api/assignments') {
         assert.equal(req.headers.authorization, 'Bearer synthetic-operator');
@@ -72,11 +76,11 @@ function fakeHallmark(state: FakeState): Server {
         let payload: any = { result: [] };
         if (body.path === '/v1/product/import/prices') { if (!state.writeUnknown || state.applyUnknownWrite) state.price = Number(body.body.prices[0].price); payload = { result: [{ offer_id: body.body.prices[0].offer_id, updated: true, errors: [] }] }; }
         else if (body.path === '/v2/products/stocks') { if (!state.writeUnknown || state.applyUnknownWrite) state.stock = Number(body.body.stocks[0].stock); payload = { result: [{ updated: true, errors: [] }] }; }
-        else if (body.path === '/v5/product/info/prices') payload = { result: { items: [{ offer_id: 'offer-A', product_id: 1, price: { price: String(state.price), ...(state.currency ? { currency_code: state.currency } : {}) } }] } };
-        else if (body.path === '/v3/product/info/list') payload = { items: [{ id: 1, offer_id: 'offer-A', sku: 33, price: String(state.price), stock: state.stock }] };
+        else if (body.path === '/v5/product/info/prices') payload = { result: { items: [recordedPlatformProduct({ offer_id: 'offer-A', product_id: 1, price: { price: String(state.price), ...(state.currency ? { currency_code: state.currency } : {}) } })] } };
+        else if (body.path === '/v3/product/info/list') payload = { items: [recordedPlatformProduct({ id: 1, offer_id: 'offer-A', sku: 33, price: String(state.price), stock: state.stock })] };
         else if (body.path === '/v2/product/info/stocks-by-warehouse/fbs') { assert.deepEqual(body.body, { sku: [33], limit: 100 }); payload = { result: [{ offer_id: 'offer-A', sku: 33, warehouse_id: 12, present: state.stock }] }; }
         else if (body.path === '/v3/product/import') payload = { result: { task_id: 987 } };
-        else if (body.path === '/v1/product/import/info') { assert.equal(body.body.task_id, 987); payload = { result: { items: [{ offer_id: 'listed-A', product_id: 22, status: state.importStatus, errors: [] }] } }; }
+        else if (body.path === '/v1/product/import/info') { assert.equal(body.body.task_id, 987); payload = { result: { items: [recordedPlatformProduct({ offer_id: 'listed-A', product_id: 22, status: state.importStatus, errors: [] })] } }; }
         else if (body.path === '/v1/actions') payload = { result: [] };
         else assert.fail(`Unknown synthetic endpoint ${body.path}`);
         const result = { ...body, taskId, storeId: task.storeId, requestHash: 'synthetic-hash', startedAt: SOURCE_TIME, finishedAt: SOURCE_TIME,
@@ -95,10 +99,10 @@ export async function setup(options: { spillThresholdBytes?: number; sourceTime?
   const state: FakeState = {
     events: [], fixtureErrors: [], platformWrites: [], platformReads: [], assignments: 0, price: 50, stock: 5, currency: 'RUB', writeUnknown: false, applyUnknownWrite: false,
     importStatus: 'imported', sourceTime: options.sourceTime === undefined ? SOURCE_TIME : options.sourceTime, syncError: false,
-    rawContent: JSON.stringify({ title: '原始采集', nested: { futureField: '全字段原样' }, skus: [{ id: 'sku-A', image: SOURCE_IMAGE }] }),
-    summaries: [{ id: 'item-A', title: 'Source A', skuCount: 1, mainImage: SOURCE_IMAGE }, { id: 'item-B', title: 'Completely different B', skuCount: 1 }],
+    rawContent: JSON.stringify({ ...realRawContent(), nested: { futureField: '全字段原样' } }),
+    summaries: [{ ...realSourceSummaries()[0], id: 'item-A', skuCount: 1 }, { ...realSourceSummaries()[1], id: 'item-B' }],
     tasks: [{ id: 'task-existing', kind: 'listing', status: 'listed', storeId: 'store-A', productId: 'existing-item' }],
-    products: Array.from({ length: 260 }, (_, i) => ({ storeId: 'store-A', offerId: i === 0 ? 'offer-A' : `offer-${i}`, productId: i + 1, title: `产品-${i}`, price: '50', stock: 5, profit: { actualMargin: i === 1 ? null : 0.1, costMinor: i === 1 ? null : 4500, profitMinor: i === 1 ? null : 500, reason: i === 1 ? '缺采购价' : null }, untouchedFuture: { index: i } })),
+    products: Array.from({ length: 260 }, (_, i) => (recordedProduct({ storeId: 'store-A', offerId: i === 0 ? 'offer-A' : `offer-${i}`, productId: i + 1, price: '50', stock: 5, profit: { actualMargin: i === 1 ? null : 0.1, costMinor: i === 1 ? null : 4500, profitMinor: i === 1 ? null : 500, reason: i === 1 ? '缺采购价' : null }, untouchedFuture: { index: i } }, i % REAL_SALES_COUNT))),
   };
   state.products.push({ storeId: 'store-B', offerId: 'other-offer', untouchedFuture: true });
   const sourceServer = fakeHallmark(state); const sourceBase = await listening(sourceServer);

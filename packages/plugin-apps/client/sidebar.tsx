@@ -12,6 +12,7 @@ import {CurrentComponentWorkbenchAction} from './workbench-component-actions.tsx
 import {AppsSessionHub,AppsFavoritesHub} from './session-hub.tsx';
 import {CurrentComponentFavoriteAction} from './component-favorites.tsx';
 import {SidebarPreparing,SIDEBAR_STATUS_STYLES} from './sidebar-status.tsx';
+import {RuntimeRecoveryNotice} from './runtime-status.tsx';
 import {SIDEBAR_SHELL_STYLES} from './sidebar-shell-styles.ts';
 import {closeComponentTab,initialSidebarTabs,openComponentTab} from './sidebar-tabs.ts';
 import type {ComponentSidebarTabs} from './sidebar-tabs.ts';
@@ -59,7 +60,7 @@ function AppsSidebarSession(props:SidebarProps) {
   }}}}:undefined,[info?.tab.signal,info?.tab.visible,info?.tab.navigation.revision,selected,views]);
   const renderTab=(tab:{id:string;title:string;icon?:string})=><div className="apps-sidebar-tab" key={tab.id} ref={state.active===tab.id?activeTab:undefined} data-active={state.active===tab.id}><button type="button" role="tab" aria-selected={state.active===tab.id} aria-controls="apps-sidebar-panel" id={`apps-sidebar-${encodeURIComponent(tab.id)}`} onClick={()=>setState(current=>({...current,active:tab.id}))}>{tab.icon?<span aria-hidden="true">{tab.icon}</span>:null}<span>{tab.title}</span></button>{tab.id.startsWith('view:')?<button className="apps-sidebar-tab-close" type="button" aria-label={`关闭 ${tab.title}`} title={`关闭 ${tab.title}`} onClick={()=>setState(current=>closeComponentTab(current,tab.id))}>×</button>:null}</div>;
   if(!visible)return null;
-  return <section className="apps-sidebar-shell" aria-label="组件侧边栏"><style>{APPS_WORKSPACE_STYLES}{SIDEBAR_SHELL_STYLES}{SIDEBAR_STATUS_STYLES}</style>
+  return <section className="apps-sidebar-shell" aria-label="组件侧边栏"><style>{APPS_WORKSPACE_STYLES}{SIDEBAR_SHELL_STYLES}{SIDEBAR_STATUS_STYLES}</style><RuntimeRecoveryNotice active={visible}/>
     <nav className="apps-sidebar-tabs" role="tablist" aria-label="组件页面" onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)||(event.target as HTMLElement).getAttribute('role')!=='tab')return;const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role=tab]')),index=tabs.indexOf(event.target as HTMLButtonElement),next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[next]?.focus();tabs[next]?.click();}}>
       {renderTab({id:'session',title:'本次会话',icon:'▱'})}{renderTab({id:'favorites',title:'我的收藏',icon:'☆'})}
       <div className="apps-sidebar-component-tabs">{state.tabs.map(renderTab)}</div>

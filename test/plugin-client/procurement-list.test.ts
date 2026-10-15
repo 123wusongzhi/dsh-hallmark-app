@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiText,uiTask} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
@@ -16,8 +17,8 @@ const {ProductList}=compiled.exports;
 const fields={'product.id':'productId','product.name':'title','product.image':'imageUrl','product.url':'productUrl','purchase.url':'purchaseLinks','sku.specification':'salesSpecification','purchase.specification':'purchaseSpecification','purchase.price':'purchaseMinor','price.current':'sellerMinor','price.currency':'currency','metric.margin':'referenceProfit.margin'};
 function fixture(){
   const widget:WidgetSpec={id:'procurement',type:'product_list',bindingId:'products',fields,options:{materialId:'product-procurement',rowsPath:'products',pageSize:20,columns:['product.name','sku.specification','purchase.specification','product.url','purchase.url','purchase.price','price.current','metric.margin'].map(field=>({field,label:field})),fieldMeta:{'purchase.price':{format:'currency',currency:'CNY',numericScale:.01},'price.current':{format:'currency',numericScale:.01},'metric.margin':{format:'percent',percentScale:'fraction'}}}};
-  const row={productId:'p-1',offerId:'CUP-BLUE',sku:'12345',title:'蓝色陶瓷杯',imageUrl:'https://images.example.com/cup.png',productUrl:'https://example.com/product/cup',salesSpecification:'蓝色 / 350ml',purchaseSpecification:'蓝釉 / 单只',purchaseLinks:[{url:'https://supplier.example.com/cup',label:'单只装'},{url:'https://supplier.example.com/box',label:'整箱装'}],currency:'CNY',purchaseMinor:1000,sellerMinor:2000,packageGrams:350,referenceProfit:{margin:.3,profitMinor:600,logisticsMinor:200,commissionMinor:200,fixedMinor:0,metricBasis:'当前物流方案参考试算，非实际结算利润。'}};
-  const data:BindingData={bindingId:'products',datasetKey:'same-shop-query',state:'ready',payload:{products:[row]},provenance:{source:'synthetic_fixture'}};
+  const row={...uiProduct({productId:'p-1',offerId:'CUP-BLUE',sku:'12345',currency:'CNY',purchaseMinor:1000,sellerMinor:2000,packageGrams:350},2),purchaseLinks:[uiProduct({},2).purchaseLinks[0],uiProduct({},40).purchaseLinks[0]],referenceProfit:{margin:.3,profitMinor:600,logisticsMinor:200,commissionMinor:200,fixedMinor:0,metricBasis:'当前物流方案参考试算，非实际结算利润。'}};
+  const data:BindingData={bindingId:'products',datasetKey:'same-shop-query',state:'ready',payload:{products:[row]},provenance:{source:'real_corpus_derived_scenario'}};
   return {widget,row,data};
 }
 function html(widget:WidgetSpec,data:BindingData){return renderToStaticMarkup(React.createElement(ProductList,{widget,data}));}
@@ -27,10 +28,10 @@ test('procurement submits search to the source and leaves current rows visible w
   const interactions:ViewInteractions={bindings:{products:{operations:{search:'server',sort:'server'},onQueryChange:query=>queries.push(query)}}};
   act(()=>{tree=create(React.createElement(ProductList,{widget,data,interactions}));});
   const input=tree.root.findByType('input');assert.equal(input.props.placeholder,'搜索名称 / SKU / 货号 / 规格');
-  act(()=>input.props.onChange({target:{value:'另一个 SKU'}}));assert.equal(queries.length,0);assert.match(JSON.stringify(tree.toJSON()),/蓝色陶瓷杯/);
+  act(()=>input.props.onChange({target:{value:'另一个 SKU'}}));assert.equal(queries.length,0);assert.match(JSON.stringify(tree.toJSON()),uiText(uiProduct({},2).title));
   act(()=>tree.root.findByType('form').props.onSubmit({preventDefault(){}}));assert.deepEqual(queries,[{search:'另一个 SKU'}]);
   act(()=>tree.update(React.createElement(ProductList,{widget,data,interactions:{bindings:{products:{...interactions.bindings!.products,pagination:{loading:true}}}}})));
-  assert.equal(tree.root.findAllByType('button').find((button:any)=>button.children.includes('搜索')).props.disabled,true);assert.match(JSON.stringify(tree.toJSON()),/蓝色陶瓷杯/);
+  assert.equal(tree.root.findAllByType('button').find((button:any)=>button.children.includes('搜索')).props.disabled,true);assert.match(JSON.stringify(tree.toJSON()),uiText(uiProduct({},2).title));
   act(()=>tree.unmount());
 });
 
@@ -60,8 +61,8 @@ test('procurement shows each purchase link and only opens explicit web URLs with
   const {widget,row,data}=fixture();
   row.purchaseLinks.push({url:'javascript:alert(1)',label:'不安全协议'},{url:'https://account:secret@supplier.example.com/private',label:'带凭据'},{url:'//supplier.example.com/relative',label:'非绝对地址'},{url:'https://supplier.example.com/\ncup',label:'控制字符'});
   let tree:any;act(()=>{tree=create(React.createElement(ProductList,{widget,data}));});
-  const links=tree.root.findAllByType('a');assert.equal(links.length,3);assert.deepEqual(links.map((link:any)=>link.props.href),['https://example.com/product/cup','https://supplier.example.com/cup','https://supplier.example.com/box']);
-  assert.deepEqual(links.map((link:any)=>link.props['aria-label']),['商品页','采购页 1：单只装','采购页 2：整箱装']);
+  const links=tree.root.findAllByType('a');assert.equal(links.length,3);assert.deepEqual(links.map((link:any)=>link.props.href),[row.productUrl,...row.purchaseLinks.slice(0,2).map((link:{url:string;label:string})=>link.url)]);
+  assert.deepEqual(links.map((link:any)=>link.props['aria-label']),['商品页',...row.purchaseLinks.slice(0,2).map((link:{url:string;label:string},index:number)=>`采购页 ${index+1}：${link.label}`)]);
   for(const link of links){assert.equal(link.props.target,'_blank');assert.equal(link.props.rel,'noopener noreferrer');let stopped=false;link.props.onClick({stopPropagation(){stopped=true;}});assert.equal(stopped,true);}
   assert.match(JSON.stringify(tree.toJSON()),/链接不可用/);assert.doesNotMatch(JSON.stringify(tree.toJSON()),/account:secret|javascript:alert/);
   act(()=>tree.unmount());
@@ -96,7 +97,7 @@ test('procurement keeps configured columns and uses one image while ordinary pro
   const {widget,data}=fixture(),original=structuredClone(widget.options!.columns);let tree:any;
   act(()=>{tree=create(React.createElement(ProductList,{widget,data}));});
   assert.deepEqual(tree.root.findAllByType('td').map((node:any)=>node.props['data-field']),(original as {field:string}[]).map(column=>column.field));
-  assert.equal(tree.root.findAllByType('img').length,1);assert.match(JSON.stringify(tree.toJSON()),/SKU |货号 |CUP-BLUE|12345|蓝釉/);assert.deepEqual(widget.options!.columns,original);
+  assert.equal(tree.root.findAllByType('img').length,1);assert.match(JSON.stringify(tree.toJSON()),/SKU |货号 |CUP-BLUE|12345/);assert.deepEqual(widget.options!.columns,original);
   const explicitImage={...widget,options:{...widget.options,columns:[{field:'product.image'},...(original as object[])]}};
   act(()=>tree.update(React.createElement(ProductList,{widget:explicitImage,data})));assert.equal(tree.root.findAllByType('img').length,1);
   const restricted={...widget,options:{...widget.options,columns:[{field:'product.name'},{field:'purchase.price'}]}};
@@ -109,7 +110,7 @@ test('procurement keeps configured columns and uses one image while ordinary pro
 test('full procurement data has ordinary pages, full-store search and profit sorting without remote page reads',()=>{
   const {widget,row,data}=fixture(),queries:unknown[]=[];let remotePages=0,tree:any;
   widget.options={...widget.options,pageSize:10,columns:[{field:'product.name'},{field:'metric.margin'}]};
-  const products=Array.from({length:267},(_,index)=>({...row,productId:`p-${index}`,title:`商品 ${index}`,sku:`SKU-${100000+index}`,offerId:`OFFER-${100000+index}`,salesSpecification:`销售规格-${index}`,purchaseSpecification:`采购规格-${index}`,referenceProfit:{...row.referenceProfit,margin:index===0?null:index===1?0:index===2?-.4:index===266?10:index/1000}}));
+  const products=Array.from({length:267},(_,index)=>({...uiProduct({},index%41),...row,productId:`p-${index}`,title:uiProduct({},index%41).title,sku:`SKU-${100000+index}`,offerId:`OFFER-${100000+index}`,salesSpecification:`${uiProduct({},index%41).salesSpecification??''} [sales row ${index}]`,purchaseSpecification:`${uiProduct({},index%41).purchaseSpecification??''} [purchase row ${index}]`,referenceProfit:{...row.referenceProfit,margin:index===0?null:index===1?0:index===2?-.4:index===266?10:index/1000}}));
   let currentData={...data,payload:{products,total:products.length}};
   const interactions:ViewInteractions={bindings:{products:{fullDataset:true,operations:{search:'loaded',sort:'loaded'},pagination:{hasMore:true,total:267},onPage:()=>remotePages++,onQueryChange:query=>queries.push(query)}}};
   const render=()=>React.createElement(ProductList,{widget,data:currentData,interactions});
@@ -120,15 +121,15 @@ test('full procurement data has ordinary pages, full-store search and profit sor
   const search=(value:string)=>act(()=>tree.root.findByProps({'aria-label':'搜索全部商品'}).props.onChange({target:{value}}));
   const page=(index:number)=>act(()=>tree.root.findByProps({'aria-label':'跳转页码'}).props.onChange({target:{value:String(index)}}));
   assert.equal(names().length,10);assert.equal(tree.root.findByProps({'aria-label':'跳转页码'}).findAllByType('option').length,27);assert.equal(button('下一批'),undefined);
-  page(26);assert.equal(names().length,7);assert.match(names()[0],/商品 260/);assert.equal(button('下一页').props.disabled,true);
-  for(const value of ['SKU-100205','OFFER-100205','销售规格-205','采购规格-205']){search(value);assert.equal(names().length,1);assert.match(names()[0],/商品 205/);assert.equal(tree.root.findByProps({'aria-label':'跳转页码'}).props.value,0);}
+  page(26);assert.equal(names().length,7);assert.match(names()[0],uiText(products[260].title));assert.equal(button('下一页').props.disabled,true);
+  for(const value of ['SKU-100205','OFFER-100205',products[205].salesSpecification,products[205].purchaseSpecification]){search(value);assert.equal(names().length,1);assert.match(names()[0],uiText(products[205].title));assert.equal(tree.root.findByProps({'aria-label':'跳转页码'}).props.value,0);}
   search('');const sort=()=>act(()=>tree.root.findAllByType('th')[1].findByType('button').props.onClick({persist(){}}));
-  sort();assert.match(names()[0],/商品 2SKU/);assert.match(names()[1],/商品 1SKU/,'zero follows a negative value and is not treated as missing');page(26);assert.match(names().at(-1),/商品 0SKU/,'unknown profits sort last in ascending order');
-  sort();assert.match(names()[0],/商品 266/,'descending profit sorts the full shop before pagination');page(26);assert.match(names().at(-1),/商品 0SKU/,'unknown profits also sort last descending');
+  sort();assert.match(names()[0],uiText(products[2].title));assert.match(names()[1],uiText(products[1].title),'zero follows a negative value and is not treated as missing');page(26);assert.match(names().at(-1),uiText(products[0].title),'unknown profits sort last in ascending order');
+  sort();assert.match(names()[0],uiText(products[266].title),'descending profit sorts the full shop before pagination');page(26);assert.match(names().at(-1),uiText(products[0].title),'unknown profits also sort last descending');
   currentData={...currentData,datasetKey:'refreshed-same-shop',payload:{...currentData.payload,products:[...products]}};act(()=>tree.update(render()));assert.equal(tree.root.findByProps({'aria-label':'跳转页码'}).props.value,26,'refresh keeps a valid page');
   currentData={...currentData,datasetKey:'fewer-products',payload:{products:products.slice(0,76),total:76}};act(()=>tree.update(render()));assert.equal(tree.root.findByProps({'aria-label':'跳转页码'}).findAllByType('option').length,8);assert.equal(tree.root.findByProps({'aria-label':'跳转页码'}).props.value,7,'refresh clamps a removed page');
   act(()=>tree.root.findByProps({'aria-label':'每页商品数'}).props.onChange({target:{value:'20'}}));assert.equal(names().length,20);assert.equal(tree.root.findByProps({'aria-label':'跳转页码'}).findAllByType('option').length,4);assert.equal(tree.root.findByProps({'aria-label':'跳转页码'}).props.value,0);
-  act(()=>button('下一页').props.onClick());act(()=>button('上一页').props.onClick());assert.equal(remotePages,0);assert.deepEqual(queries,[{search:'SKU-100205'},{search:'OFFER-100205'},{search:'销售规格-205'},{search:'采购规格-205'},{search:''}]);
+  act(()=>button('下一页').props.onClick());act(()=>button('上一页').props.onClick());assert.equal(remotePages,0);assert.deepEqual(queries,[{search:'SKU-100205'},{search:'OFFER-100205'},{search:products[205].salesSpecification},{search:products[205].purchaseSpecification},{search:''}]);
   search('没有这件商品');assert.match(JSON.stringify(tree.toJSON()),/全店商品中没有匹配记录/);assert.equal(tree.root.findByProps({'aria-label':'跳转页码'}).findAllByType('option').length,1);
   act(()=>tree.unmount());
 });

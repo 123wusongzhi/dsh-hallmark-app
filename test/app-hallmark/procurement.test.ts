@@ -1,3 +1,5 @@
+import { recordedProduct } from '../adapter/real-scenarios.ts';
+import { realStoreProducts } from '../real-data/corpus.ts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
@@ -13,7 +15,8 @@ import {dataSourceDefinitionIssues,sampleValidation} from '../../packages/app-pr
 import type {CoreClient,CoreStore} from '../../packages/core/src/types.ts';
 
 const settings={version:1,revision:4,updatedAt:'2026-10-01T00:00:00Z',fixedMinor:316,logisticsMicrosPerGram:39300,commissionPpm:200000};
-const row=(id=1,patch:any={})=>({storeId:'bill',productId:id,offerId:`offer-${id}`,sku:`10${id}`,title:`产品${id}`,status:'on_sale',currency:'CNY',imageUrl:'https://example.test/image.png',pricing:{sellerMinor:10001,currency:'CNY'},profit:{actualMinor:10001,purchaseMinor:2001,packageGrams:333,actualMargin:0.99},sources:[{sourceSkuMatched:true,sourceUrl:'https://example.test/purchase',sourceSpec:'蓝色 M',salesSpec:'蓝色 两件装',skuCode:'source-sku'}],...patch});
+const recordedSales = realStoreProducts().products;
+const row=(id=1,patch:any={})=>(recordedProduct({storeId:'bill',productId:id,offerId:`offer-${id}`,sku:`10${id}`,status:'on_sale',currency:'CNY',pricing:{sellerMinor:10001,currency:'CNY'},profit:{actualMinor:10001,purchaseMinor:2001,packageGrams:333,actualMargin:0.99},sources:recordedSales[(id-1)%recordedSales.length].sources,...patch},(id-1)%recordedSales.length));
 const good=(raw:any)=>({status:'ok' as const,raw,provenance:{source:'hallmark_snapshot' as const,endpoint:'/fixture',fetchedAt:new Date().toISOString()}});
 function fixture(rows:any[]=[row()],providedStore?:CoreStore){
  const records=new Map<string,any>(),store=providedStore??{get:(collection:string,id:string)=>records.get(`${collection}:${id}`),put:(collection:string,id:string,value:any)=>{records.set(`${collection}:${id}`,structuredClone(value));return value;}} as CoreStore;
@@ -96,7 +99,7 @@ test('full snapshot with missing channel fees is usable and cached without prete
  assert.ok([...f.records.keys()].some(key=>key.startsWith('complete_snapshots:')));const count=calls.length;const next=data(await f.read(args));assert.equal(calls.length,count);assert.equal(next.cache.refreshing,false);assert.equal(next.cache.fetchedAt,first.cache.fetchedAt);
 });
 test('a logistics permission failure removes matched profit while retaining product details and purchase links',async()=>{
- const f=fixture();let denied=false;addLogistics(f,()=>denied?{status:'failed',error:{code:'PERMISSION_DENIED',message:'no permission',retryable:false}}:undefined);const args={planMode:'delivery',deliveryMethodId:'1',fixedFeeYuan:0,logisticsYuanPerKg:0,commissionPercent:0};assert.ok(data(await f.read(args)).products[0].referenceProfit.margin!==null);denied=true;const result=data(await f.read({...args,forceRefresh:true}));assert.equal(result.products[0].logisticsMatch.status,'unknown');assert.equal(result.products[0].referenceProfit.margin,null);assert.equal(result.products[0].title,'产品1');assert.equal(result.products[0].purchaseLinks.length,1);assert.equal(result.plan.choices.length,0);
+ const f=fixture();let denied=false;addLogistics(f,()=>denied?{status:'failed',error:{code:'PERMISSION_DENIED',message:'no permission',retryable:false}}:undefined);const args={planMode:'delivery',deliveryMethodId:'1',fixedFeeYuan:0,logisticsYuanPerKg:0,commissionPercent:0};assert.ok(data(await f.read(args)).products[0].referenceProfit.margin!==null);denied=true;const result=data(await f.read({...args,forceRefresh:true}));assert.equal(result.products[0].logisticsMatch.status,'unknown');assert.equal(result.products[0].referenceProfit.margin,null);assert.equal(result.products[0].title,recordedSales[0].title);assert.equal(result.products[0].purchaseLinks.length,1);assert.equal(result.plan.choices.length,0);
 });
 test('loadAll returns 76 and 267 complete rows with one catalog and serial stock batches of at most 100',async()=>{
  for(const count of [76,267]){

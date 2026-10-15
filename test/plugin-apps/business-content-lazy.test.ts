@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiOzonProduct,uiStore,uiListingPayload,uiFixturePrelude,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
@@ -11,15 +12,16 @@ test('business full-content text avoids discarded serialization and refreshes wh
     const entry = resolve(directory, 'ui.mjs');
     await build({ stdin: { resolveDir: process.cwd(), sourcefile: 'business-content-lazy-test.tsx', loader: 'tsx', contents: `
 import React from 'react';
+${uiFixturePrelude()}
 import {create,act} from 'react-test-renderer';
 import assert from 'node:assert/strict';
 import {BusinessOperations} from './packages/plugin-apps/client/business-operations.tsx';
-const payload={offer_id:'SKU',name:'中文商品 🧩',price:'20',currency_code:'CNY',attributes:[{id:4191,values:[{value:'完整说明'}]}],nullable:null};
+const payload={offer_id:'SKU',name:uiProduct({},39).title,price:'20',currency_code:'CNY',attributes:[{id:4191,values:[{value:'完整说明'}]}],nullable:null};
 let plan={planId:'plan',storeId:'shop',title:'经营草稿',revision:1,status:'draft',rows:[{rowId:'row',action:'listing',target:{offerId:'SKU'},payload,revision:1,status:'draft',issues:[],corrections:[],repairHistory:{}}],createdAt:'2026-10-10T00:00:00Z',updatedAt:'2026-10-10T00:00:00Z'};
 const originalFetch=globalThis.fetch,originalStringify=JSON.stringify;let calls=0,tree;const requests=[];
 JSON.stringify=function(value,replacer,space){if(space===2&&value?.offer_id==='SKU')calls++;return originalStringify(value,replacer,space);};
 globalThis.fetch=async(url,options)=>{
- if(String(url).includes('resource=stores'))return Response.json({stores:[{id:'shop',name:'店铺',connectionId:'board'}]});
+ if(String(url).includes('resource=stores'))return Response.json({stores:[uiStore({id:'shop',connectionId:'board'})]});
  if(String(url).includes('resource=businessSettings'))return Response.json({pricing:null});
  const body=JSON.parse(options.body);requests.push(body);
  if(body.operation==='list')return Response.json({status:'ok',data:{plans:[plan]}});
@@ -34,7 +36,7 @@ const field=()=>tree.root.findByProps({'aria-label':'SKU 完整字段'});
 try{
  await act(async()=>{tree=create(<BusinessOperations sessionId="s" storeId="shop"/>);await settle();});
  assert.deepEqual(JSON.parse(field().props.value),payload);calls=0;
- await change('选择 SKU',true);await change('选择 SKU',false);await change('筛选商品','中文');await change('筛选商品','');
+ await change('选择 SKU',true);await change('选择 SKU',false);await change('筛选商品',payload.name.slice(0,4));await change('筛选商品','');
  await change('SKU 完整字段','{ local text');
  assert.equal(calls,0,'unchanged payload is not serialized on selection/search/typing');
  await click('应用字段修改');assert.match(JSON.stringify(tree.toJSON()),/字段格式有误/);assert.equal(calls,0);

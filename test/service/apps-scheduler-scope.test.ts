@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
+import {RuntimeStore,PROVIDER_RECORD_SCOPE_SQL} from '../../packages/app-runtime/src/store.ts';
 import {AppsSnapshotScheduler} from '../../packages/service/src/apps-scheduler.ts';
 import type {PresentationStore} from '../../packages/app-presentation/src/types.ts';
 const now=new Date('2026-10-10T00:00:00Z');
@@ -40,7 +40,7 @@ test('scoped query selects exactly the prior filter and preserves created_at/id 
 test('scoped SQL works on existing schema 3 and 4 disk stores and remains valid after reopen',()=>{
  const dir=mkdtempSync(join(tmpdir(),'scheduler-scope-'));try{for(const schemaVersion of [3,4] as const){
    const path=join(dir,`${schemaVersion}.db`);let old=new RuntimeStore(path,{schemaVersion});old.put('provider_records','plan',{appId:'apps',connectionId:'presentation',namespace:'apps_schedules',value:{scheduleId:'persisted'}});old.close();
-   for(let i=0;i<2;i++){const current=new RuntimeStore(path,{schemaVersion});assert.equal(current.db.prepare('PRAGMA user_version').get()?.user_version,schemaVersion);assert.equal(scheduler(current).list()[0].scheduleId,'persisted');assert.match(JSON.stringify(current.db.prepare("EXPLAIN QUERY PLAN SELECT value_json FROM provider_records WHERE json_extract(value_json,'$.appId')=? AND json_extract(value_json,'$.connectionId')=? AND json_extract(value_json,'$.namespace')=? ORDER BY created_at,id").all('apps','presentation','apps_schedules')),/SCAN provider_records/);current.close();assert.throws(()=>current.providerRecordScopeCandidates('apps','presentation','apps_schedules'),/STORE_CLOSED/);}
+   for(let i=0;i<2;i++){const current=new RuntimeStore(path,{schemaVersion});assert.equal(current.db.prepare('PRAGMA user_version').get()?.user_version,schemaVersion);assert.equal(scheduler(current).list()[0].scheduleId,'persisted');{const plan=JSON.stringify(current.db.prepare('EXPLAIN QUERY PLAN '+PROVIDER_RECORD_SCOPE_SQL).all('apps','presentation','apps_schedules'));assert.match(plan,/provider_records_namespace_connection/);assert.match(plan,/provider_records_irregular/);assert.doesNotMatch(plan,/SCAN provider_records(?! USING (COVERING )?INDEX provider_records_irregular)/);}current.close();assert.throws(()=>current.providerRecordScopeCandidates('apps','presentation','apps_schedules'),/STORE_CLOSED/);}
  }}finally{rmSync(dir,{recursive:true,force:true});}
 });
 test('scoped scheduler dispatch preserves scheduleId order and dataset grouping across unrelated records',async()=>{

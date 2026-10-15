@@ -1,10 +1,13 @@
+import {uiDictionaryValue} from '../real-data/ui-scenarios.ts';
+import {uiCollectionDetails,uiStore} from '../real-data/ui-scenarios.ts';
+import {realAncillary} from '../real-data/corpus.ts';
 import {HallmarkClient} from '../../packages/hallmark-adapter/index.ts';
 import {after,test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash,randomUUID} from 'node:crypto';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {AppsClient} from '../../packages/app-sdk/src/index.ts';
-import {catalog as generatedCatalog,call24,call38,type Input38} from '../../packages/app-sdk/src/generated.ts';
+import {catalog as generatedCatalog,call25,call39,type Input39} from '../../packages/app-sdk/src/generated.ts';
 import {AppsRuntime,RuntimeStore} from '../../packages/app-runtime/src/index.ts';
 import {HallmarkProvider,HallmarkStorePort,HALLMARK_DESCRIPTORS} from '../../packages/app-hallmark/src/index.ts';
 import {AppsPresentationService} from '../../packages/app-presentation/src/index.ts';
@@ -17,18 +20,18 @@ import {compileSchema,compileCapability,canonicalJson} from '../../packages/app-
 
 const reports:unknown[]=[],bytes=(value:unknown)=>Buffer.byteLength(typeof value==='string'?value:JSON.stringify(value)),hash=(value:unknown)=>createHash('sha256').update(canonicalJson(value)).digest('hex');
 after(()=>{if(process.env.APPS_COLLECTION_BATCH_REPORT)writeFileSync(process.env.APPS_COLLECTION_BATCH_REPORT,JSON.stringify(reports,null,2)+'\n');});
-const details=['cup-a','cup-b','cup-c'].map((id,i)=>({id,source:'taobao_tmall',title:['不锈钢保温杯','陶瓷马克杯','玻璃水杯'][i],currency:'CNY',attributes:{材质:['不锈钢','陶瓷','玻璃'][i],用途:'日常饮水'},package:{weightKg:.33,dimensionsCm:[25,10,10]},description:'杯口圆润，适合日常饮水。请按所选颜色区分规格，包装内包含杯体和配套杯盖。清洁后晾干收纳，避免与尖锐物品碰撞。',skus:['red','blue','white'].map((color,n)=>({sourceSkuId:`${id}-${color}`,spec:`颜色:${['红','蓝','白'][n]}`,properties:{颜色:['红','蓝','白'][n]},goodsPrice:12+n,currency:'CNY'}))}));
+const details=uiCollectionDetails();
 async function fixture(){
- let respond:((storeId:string,input:any)=>any)|undefined,attributes:any[]=[{id:85,dictionary_id:9,is_required:true,name:'Synthetic material'}];
+ let respond:((storeId:string,input:any)=>any)|undefined,attributes:any[]=[{id:85,dictionary_id:9,is_required:true,name:uiDictionaryValue(2)}];
  const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),port=new HallmarkStorePort(store,'fixture'),tools=new Map<string,NativeGatewayTool>(),agent={id:'collection-owner'},events:any[]=[],sourceReads:string[]=[],unexpected:string[]=[];let providerCalls=0,sequence=0;
  const forbidden=(name:string)=>async()=>{unexpected.push(name);throw Error(`Unexpected ${name}`);};
- const client:CoreClient={getStores:async()=>({status:'ok',raw:[{id:'legacy',name:'Legacy'}]}),getStoreProducts:forbidden('products'),syncStoreProducts:forbidden('sync'),getTargetMargin:forbidden('margin'),searchCollectedItems:forbidden('search'),getCollectedItem:forbidden('raw'),getCollectedItemDetail:async id=>{sourceReads.push(id);const detail=details.find(item=>item.id===id);assert.ok(detail);return {status:'ok',raw:structuredClone(detail)};},platformCall:forbidden('write'),platformRead:forbidden('platform-read')};
+ const client:CoreClient={getStores:async()=>({status:'ok',raw:[uiStore({id:'legacy'})]}),getStoreProducts:forbidden('products'),syncStoreProducts:forbidden('sync'),getTargetMargin:forbidden('margin'),searchCollectedItems:forbidden('search'),getCollectedItem:forbidden('raw'),getCollectedItemDetail:async id=>{sourceReads.push(id);const detail=details.find(item=>item.id===id);assert.ok(detail);return {status:'ok',raw:structuredClone(detail)};},platformCall:forbidden('write'),platformRead:forbidden('platform-read')};
  const broker:CoreBroker={getStoreTask:forbidden('store-task'),getListingTask:forbidden('listing-task'),requestId:()=>{throw Error('Unexpected requestId');}};
- const categoryCalls:any[]=[],legacyCalls:any[]=[];client.getCategoryData=async input=>{legacyCalls.push(input);return {status:'ok',raw:{storeId:input.storeId,values:[{id:11,value:'Legacy value'}],complete:false,stale:true}};};
- const gateway:any={listStores:()=>[{id:'shop',name:'Synthetic shop',enabled:true}],hasStore:(id:string)=>id==='shop',getStore:()=>({id:'shop'}),getProducts:async()=>({status:'ok',raw:{response:{items:[]}}}),request:async(storeId:string,input:any)=>{
+ const categoryCalls:any[]=[],legacyCalls:any[]=[];client.getCategoryData=async input=>{legacyCalls.push(input);return {status:'ok',raw:{storeId:input.storeId,values:[{id:11,value:uiDictionaryValue(3)}],complete:false,stale:true}};};
+ const gateway:any={listStores:()=>[uiStore({id:'shop',enabled:true})],hasStore:(id:string)=>id==='shop',getStore:()=>({id:'shop'}),getProducts:async()=>({status:'ok',raw:{response:{items:[]}}}),request:async(storeId:string,input:any)=>{
   assert.ok(['/v1/description-category/attribute','/v1/description-category/attribute/values','/v1/description-category/attribute/values/search'].includes(input.path),input.path);
   categoryCalls.push({storeId,...input});if(respond)return respond(storeId,input);
-  return {status:'ok',raw:{response:input.path.endsWith('/values')?{has_next:input.body.last_value_id===0,result:input.body.last_value_id===0?[{id:11,value:'First-page value'}]:[{id:22,value:'Required second-page value'}]}:{result:attributes}}};
+  return {status:'ok',raw:{response:input.path.endsWith('/values')?{has_next:input.body.last_value_id===0,result:input.body.last_value_id===0?[{id:11,value:uiDictionaryValue(0)}]:[{id:22,value:uiDictionaryValue(1)}]}:{result:attributes}}};
  }};
  const provider=new HallmarkProvider({store:port,client,broker,businessGateway:()=>gateway}),original=provider.execute.bind(provider);provider.execute=async context=>{providerCalls++;return original(context);};runtime.register(provider);
  runtime.addConnection({appId:'hallmark',connectionId:'fixture',displayName:'Fixture',config:{backend:'fixture'},configRevision:1,enabled:true});runtime.bind({sessionId:agent.id,appId:'hallmark',connectionId:'fixture',enabled:true,boundAt:new Date().toISOString()});
@@ -52,9 +55,9 @@ test('required dictionary metadata gives executable read and continuation retrie
   assert.equal(compileCapability(HALLMARK_DESCRIPTORS.find(d=>d.capabilityId===available.capability)!).input(available.input).length,0);
   const first=await f.call(available.capability,available.input),firstRaw=raw(first),next=firstRaw.continuation;assert.ok(next);assert.equal(firstRaw.completeness,'partial');
   assert.equal(compileCapability(HALLMARK_DESCRIPTORS.find(d=>d.capabilityId===next.capability)!).input(next.input).length,0);
-  const second=await f.call(next.capability,next.input),secondRaw=raw(second);assert.deepEqual(secondRaw.result,[{id:22,value:'Required second-page value'}]);assert.equal(secondRaw.continuation,null);assert.equal(secondRaw.completeness,'complete');
-  const firstOracle={has_next:true,result:[{id:11,value:'First-page value'}],completeness:'partial',continuation:{capability:'hallmark.categories.read',input:{storeId:'shop',mode:'values',descriptionCategoryId:'123',typeId:'456',attributeId:'85',limit:100,lastValueId:'11'}},storeId:'shop'};
-  const secondOracle={has_next:false,result:[{id:22,value:'Required second-page value'}],completeness:'complete',continuation:null,storeId:'shop'};
+  const second=await f.call(next.capability,next.input),secondRaw=raw(second);assert.deepEqual(secondRaw.result,[{id:22,value:uiDictionaryValue(1)}]);assert.equal(secondRaw.continuation,null);assert.equal(secondRaw.completeness,'complete');
+  const firstOracle={has_next:true,result:[{id:11,value:uiDictionaryValue(0)}],completeness:'partial',continuation:{capability:'hallmark.categories.read',input:{storeId:'shop',mode:'values',descriptionCategoryId:'123',typeId:'456',attributeId:'85',limit:100,lastValueId:'11'}},storeId:'shop'};
+  const secondOracle={has_next:false,result:[{id:22,value:uiDictionaryValue(1)}],completeness:'complete',continuation:null,storeId:'shop'};
   const {fetchedAt:firstFetched,...firstContent}=firstRaw,{fetchedAt:secondFetched,...secondContent}=secondRaw;
   assert.ok(Number.isFinite(Date.parse(firstFetched)));assert.ok(Number.isFinite(Date.parse(secondFetched)));
   assert.deepEqual(firstContent,firstOracle);assert.deepEqual(secondContent,secondOracle);
@@ -105,7 +108,7 @@ test('strict modern category modes accept executable values cursors only and rej
 });
 test('scoped cursors are emitted with exact category type attribute store limit and defaults',async()=>{
  const f=await fixture();try{
-  f.gateway.listStores=()=>[{id:'shop',name:'Synthetic shop',enabled:true},{id:'shop-b',name:'Synthetic other',enabled:true}];
+  f.gateway.listStores=()=>[uiStore({id:'shop',enabled:true}),uiStore({id:'shop-b',enabled:true},1)];
   for(const scope of [input,{...input,storeId:'shop-b'},{...input,descriptionCategoryId:'999'},{...input,typeId:'777'},{...input,attributeId:'86'},{...input,limit:10}]){
    const next=raw(await f.call('hallmark.categories.read',scope)).continuation;assert.deepEqual(next.input,{...scope,lastValueId:'11'});
    await f.call(next.capability,next.input);assert.equal(f.categoryCalls.at(-1).storeId,scope.storeId);const body=f.categoryCalls.at(-1).body;assert.equal(body.description_category_id,Number(scope.descriptionCategoryId));assert.equal(body.type_id,Number(scope.typeId));assert.equal(body.attribute_id,Number(scope.attributeId));assert.equal(body.limit,scope.limit);assert.equal(body.last_value_id,11);assert.equal(body.language,'DEFAULT');
@@ -166,26 +169,32 @@ test('committed generated SDK, tool schema and docs accept the exact emitted con
    assert.deepEqual(generated.inputSchema,descriptor.inputSchema);assert.deepEqual(tool.parameters,descriptor.inputSchema);assert.equal(compileSchema(generated.inputSchema as any)(next.input).length,0);assert.equal(compileSchema(tool.parameters)(next.input).length,0);assert.ok(docs.includes(canonicalJson(descriptor.inputSchema)));
   }
   const client=new AppsClient(f.transport,{kind:'script',sessionId:'collection-owner',runId:'generated-dictionary',stepKey:'read'}),ref={appId:'hallmark',connectionId:'fixture'};
-  const typedNext:Input38={...input,mode:'values',lastValueId:next.input.lastValueId};assert.deepEqual(typedNext,next.input);
-  assert.equal(raw(await call38(client,ref,typedNext)).result[0].id,22);assert.equal(raw(await call24(client,ref,typedNext)).result[0].id,22);
+  const typedNext:Input39={...input,mode:'values',lastValueId:next.input.lastValueId};assert.deepEqual(typedNext,next.input);
+  assert.equal(raw(await call39(client,ref,typedNext)).result[0].id,22);assert.equal(raw(await call25(client,ref,typedNext)).result[0].id,22);
   reports.push({case:'committed-generated-artifacts',continuation:next,generatedSchema:generatedCatalog.find(d=>d.capabilityId===next.capability)!.inputSchema,upstream:f.categoryCalls});
  }finally{await f.close();}
 });
 
 test('integrated category reuse preserves string identities and executable described dictionary continuation',async()=>{
  const f=await fixture();try{
-  const categories=Object.fromEntries(['cup-a','cup-b','cup-c'].map(id=>[id,{descriptionCategoryId:'123',typeId:'456'}]));
-  const prepared=await f.call('hallmark.listing.prepare',{storeId:'shop',selections:['cup-a','cup-b','cup-c'].map(id=>({id})),categories,refresh:true});
+  const dictionary=realAncillary('ozonDictionary'),template=realAncillary('ozonCategoryTemplate');
+  const attribute=template.attributes.find((value:any)=>value.id===dictionary.attributeId);assert.ok(attribute);
+  const selection={descriptionCategoryId:template.descriptionCategoryId,typeId:template.typeId};
+  f.setAttributes([{id:Number(attribute.id),name:attribute.name,is_required:attribute.required,dictionary_id:Number(attribute.dictionaryId)}]);
+  f.setResponse((_store,request)=>ok(request.path.endsWith('/values')?{has_next:request.body.last_value_id===0,result:[dictionary.values[request.body.last_value_id===0?0:1]]}:{result:[{id:Number(attribute.id),name:attribute.name,is_required:attribute.required,dictionary_id:Number(attribute.dictionaryId)}]}));
+  const categories=Object.fromEntries(['cup-a','cup-b','cup-c'].map(id=>[id,selection]));
+  const prepared=await f.call('hallmark.listing.prepare',{storeId:'shop',selections:['cup-a','cup-b','cup-c'].map(id=>({id})),categories,refresh:true,includeOptionalAttributes:true});
   assert.equal(prepared.status,'ok',JSON.stringify(prepared));
   assert.equal(f.categoryCalls.filter(c=>c.path==='/v1/description-category/attribute').length,1,'shared refreshed category is fetched once for the preparation');
   for(const id of ['cup-a','cup-b','cup-c']){
-   const selected=prepared.data.categories[id];assert.equal(selected.selection.descriptionCategoryId,'123');assert.equal(selected.selection.typeId,'456');
+   const category=prepared.data.categories[id],selected=category.sharedRef===undefined?category:prepared.data.shared.categories[category.sharedRef];
+   assert.deepEqual(selected.selection,selection);
    const available=selected.attributes[0].available,description=await f.describe(available.capability);
    assert.deepEqual(compileSchema(description.descriptor.inputSchema)(available.input),[]);
    const first=raw(await f.call(available.capability,available.input));assert.ok(first.continuation);
    assert.deepEqual(compileSchema(description.descriptor.inputSchema)(first.continuation.input),[]);
-   assert.equal(first.continuation.input.descriptionCategoryId,'123');assert.equal(first.continuation.input.lastValueId,'11');
-   const second=raw(await f.call(first.continuation.capability,first.continuation.input));assert.deepEqual(second.result,[{id:22,value:'Required second-page value'}]);assert.equal(second.completeness,'complete');
+   assert.equal(first.continuation.input.descriptionCategoryId,selection.descriptionCategoryId);assert.equal(first.continuation.input.typeId,selection.typeId);assert.equal(first.continuation.input.attributeId,dictionary.attributeId);assert.equal(first.continuation.input.lastValueId,dictionary.values[0].id);
+   const second=raw(await f.call(first.continuation.capability,first.continuation.input));assert.deepEqual(second.result,[dictionary.values[1]]);assert.equal(second.completeness,'complete');
   }
   assert.deepEqual(f.unexpected,[]);assert.equal(f.store.list('operations').length,0);
  }finally{await f.close();}

@@ -2,6 +2,8 @@
 
 这是随当前插件交付的协议说明和创作流程。历史聊天、旧临时 JSON、旧工程 README 不作为新组件接口依据。
 
+新建或修改源码前读取[组件性能与体验规格](performance.md)。首屏可用内容、图片调度和交互响应都属于交付要求；标准 `checkRunner` 对将发布的冻结构建执行正式验证，失败先修复再重测，不以编译成功或截图正常代替性能通过。
+
 先遵循[组件体验与用户偏好](user-preferences.md)：蓝白简洁、中文业务字段、共享数据源与店铺分离、跨接口组合；优先全量逻辑数据、本地分页搜索排序。每次先显示上次成功完整快照，默认有效期 15 分钟，到期或手动刷新都在后台。首次无快照、权限隔离和接口能力不足按该政策处理，不能虚构“完整”或“实时”。Host 已通过 `authoringInstructions.userPreferences` 直接提供核心规则，完整政策路径见 `developerDocs.userPreferences`。
 
 ## 先选现有入口
@@ -17,16 +19,17 @@
 
 1. `apps_describe` 查精确能力版本；明确连接、店铺后读取 1～5 条业务样本。字段不够再补查，不为了解接口遍历全店。
 2. `apps.authoring.begin`（appId `apps`，connectionId `presentation`）传入真实 bindings，保留返回的 workspacePath、attemptId、epoch、sourceRevision、viewRevision。
-3. 用 Host 返回的 starterPath 和 sdkDirectory 初始化空工程。商品列表加 `--template product-list`；安装依赖，按用户需求修改源码。
+3. 用 Host 返回的 starterPath 和 sdkDirectory 初始化空工程。商品列表加 `--template product-list`；安装依赖，按用户需求和[性能规格](performance.md)修改源码。
 4. 按 [数据结构](data.md) 和 [加载与分页](lifecycle.md) 使用 `useApps`。无需读取预览器内部代码或旧临时数据来推测协议。
 5. 使用 `checkRunner.prepareRequest` 填 attemptId 并运行，自动生成源码目录之外的请求，再执行返回的 requestPath；只维护 `.preview/plan.json`；Windows 优先 windowsCommand。见 [检查与发布](check-and-publish.md)。
-6. 读检查摘要和必要截图。存在具体失败或可见缺陷才修改；通过后 publish，再 inspect.summary 确认展示。
+6. 读检查摘要、性能失败项和必要截图。存在具体失败或可见缺陷才修改并重测；正式检查通过后 publish，再调用 `apps.authoring.await_display` 获取结果。完成表述只引用工具返回的 `completionStatement`；`outcome` 不是 `displayed` 时不说已展示。
 
 ## 按需索引
 
 | 内容 | 文档 |
 | --- | --- |
 | 用户偏好、完整快照、15 分钟后台刷新与能力边界 | [user-preferences.md](user-preferences.md) |
+| 首屏体验、图片与隐藏资源、渲染范围、性能失败修复 | [performance.md](performance.md) |
 | getData / payload / resources / revision / 商品金额单位 | [data.md](data.md) |
 | 快照优先、首次准备、刷新、分页降级、保存与历史 | [lifecycle.md](lifecycle.md) |
 | 检查请求、Windows 启动、续跑、截图、发布 | [check-and-publish.md](check-and-publish.md) |

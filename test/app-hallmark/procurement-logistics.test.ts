@@ -5,10 +5,11 @@ import type {LogisticsPlan} from '../../packages/app-hallmark/src/procurement-lo
 import type {AdapterResponse,CoreClient,CoreStore} from '../../packages/core/src/types.ts';
 import type {PlatformCallInput} from '../../packages/hallmark-adapter/types.ts';
 import {HallmarkStorePort} from '../../packages/app-hallmark/src/store.ts';
+import { recordedWarehouse, recordedProduct } from '../adapter/real-scenarios.ts';
 
 const started=Date.parse('2026-10-09T05:00:00Z');
 const plan=(id:string,warehouseId:string,active=true):LogisticsPlan=>({id,name:`方案 ${id}`,warehouseId,warehouseName:`仓库 ${warehouseId}`,providerId:'100',templateId:'200',status:active?'ACTIVE':'DISABLED',active});
-const warehouses={warehouses:[{warehouse_id:10,name:'小件仓',status:'created',contact:{phone:'not-for-output'}},{warehouse_id:20,name:'大件仓',status:'created'}],has_next:false,cursor:'terminal'};
+const warehouses={warehouses:[recordedWarehouse({warehouse_id:10,name:'小件仓',status:'created',contact:{phone:'not-for-output'}}),recordedWarehouse({warehouse_id:20,name:'大件仓',status:'created'},1)],has_next:false,cursor:'terminal'};
 const methods={delivery_methods:[{id:1,name:'2公斤 135元 方案名称',warehouse_id:10,provider_id:100,template_id:200,status:'ACTIVE'},{id:2,name:'大件',warehouse_id:20,provider_id:101,template_id:201,status:'ACTIVE'},{id:3,name:'停用',warehouse_id:10,status:'DISABLED'}],has_next:false,cursor:'terminal'};
 function fixture(respond:(path:string,body:any,storeId:string)=>any=(path)=>path==='/v2/warehouse/list'?warehouses:methods){
  const records=new Map<string,any>(),calls:{storeId:string;input:PlatformCallInput}[]=[];
@@ -95,20 +96,20 @@ test('receipt store mismatch does not return cache',async()=>{
 
 test('matching uses exact SKU and positive warehouse stock, excludes disabled methods, and never infers tariff',async()=>{
  const f=fixture(()=>({products:[{sku:101,warehouse_id:10,present:5,free_stock:3},{sku:101,warehouse_id:20,present:6,free_stock:0},{sku:102,warehouse_id:20,present:1},{sku:999,warehouse_id:10,free_stock:100}],has_next:false}));
- const result=await matchProductLogistics({...f.options,products:[{id:'a',sku:'101'},{id:'b',sku:'102'}],plans:[plan('1','10'),plan('2','20'),plan('3','10',false)]});
+ const result=await matchProductLogistics({...f.options,products:[recordedProduct({id:'a',sku:'101'}),recordedProduct({id:'b',sku:'102'})],plans:[plan('1','10'),plan('2','20'),plan('3','10',false)]});
  assert.deepEqual(f.calls[0].input.body,{sku:[101,102],limit:1000});assert.deepEqual(result.matches.map(item=>[item.id,item.planIds,item.status]),[['a',['1'],'unique'],['b',['2'],'unique']]);
  assert.ok(result.matches.every(item=>item.reason.includes('尚需确认')));assert.match(result.warnings.join(),/候选不代表已确认运费/);
 });
 
 test('multiple candidates require choice; missing SKU, absent and unknown quantities stay unknown',async()=>{
  const f=fixture(()=>({products:[{sku:101,warehouse_id:10,available:3},{sku:101,warehouse_id:20,available:2},{sku:102,warehouse_id:10},{sku:103,warehouse_id:10,present:0},{sku:104,warehouse_id:90,present:5}],has_next:false}));
- const result=await matchProductLogistics({...f.options,products:[{id:'many',sku:'101'},{id:'unknown',sku:'102'},{id:'zero',sku:'103'},{id:'no-plan',sku:'104'},{id:'absent',sku:'105'},{id:'no-sku',sku:null},{id:'unsafe',sku:'9007199254740993'}],plans:[plan('1','10'),plan('2','20')]});
+ const result=await matchProductLogistics({...f.options,products:[recordedProduct({id:'many',sku:'101'}),recordedProduct({id:'unknown',sku:'102'}),recordedProduct({id:'zero',sku:'103'}),recordedProduct({id:'no-plan',sku:'104'}),recordedProduct({id:'absent',sku:'105'}),recordedProduct({id:'no-sku',sku:null}),recordedProduct({id:'unsafe',sku:'9007199254740993'})],plans:[plan('1','10'),plan('2','20')]});
  assert.deepEqual(result.matches.map(item=>[item.id,item.status,item.planIds]),[['many','choice',['1','2']],['unknown','unknown',[]],['zero','unavailable',[]],['no-plan','unavailable',[]],['absent','unknown',[]],['no-sku','unknown',[]],['unsafe','unknown',[]]]);
 });
 
 test('stock cursor pages must complete before matching and requests contain only current-page SKUs',async()=>{
  const f=fixture((_path,body)=>!body.cursor?{products:[{sku:101,warehouse_id:10,present:1}],has_next:true,cursor:'second'}:{products:[{sku:101,warehouse_id:20,present:1}],has_next:false,cursor:'last'});
- const result=await matchProductLogistics({...f.options,products:[{id:'a',sku:'101'}],plans:[plan('1','10'),plan('2','20')]});
+ const result=await matchProductLogistics({...f.options,products:[recordedProduct({id:'a',sku:'101'})],plans:[plan('1','10'),plan('2','20')]});
  assert.equal(result.matches[0].status,'choice');assert.deepEqual(f.calls[1].input.body,{sku:[101],limit:1000,cursor:'second'});
  const g=fixture((_path,body)=>!body.cursor?{products:[{sku:101,warehouse_id:10,present:1}],has_next:true,cursor:'second'}:failure(429));
  await assert.rejects(matchProductLogistics({...g.options,products:[{id:'a',sku:'101'}],plans:[plan('1','10')]}),{code:'LOCAL_RATE_LIMIT'});
@@ -117,7 +118,7 @@ test('stock cursor pages must complete before matching and requests contain only
 
 test('stock cache remains page-specific, retains old timestamp on rate limit and rematches current catalog',async()=>{
  let rateLimited=false;const f=fixture(()=>rateLimited?failure(429):{products:[{sku:101,warehouse_id:10,present:1}],has_next:false});
- const options={...f.options,products:[{id:'a',sku:'101'}],plans:[plan('1','10')]};const first=await matchProductLogistics(options);rateLimited=true;
+ const options={...f.options,products:[recordedProduct({id:'a',sku:'101'})],plans:[plan('1','10')]};const first=await matchProductLogistics(options);rateLimited=true;
  const old=await matchProductLogistics({...options,now:started+900000,plans:[plan('1','10',false)]});assert.equal(old.cache.stale,true);assert.equal(old.cache.fetchedAt,first.cache.fetchedAt);assert.equal(old.matches[0].status,'unavailable');
  await assert.rejects(matchProductLogistics({...options,now:started+900001,products:[{id:'b',sku:'102'}]}),{code:'LOCAL_RATE_LIMIT'});
 });
@@ -132,7 +133,7 @@ test('invalid page, conflicting stock identity and malformed stock responses fai
 });
 
 test('empty SKU page avoids upstream requests and concurrent equal catalog reads share work',async()=>{
- const f=fixture(),empty=await matchProductLogistics({...f.options,products:[{id:'a',sku:null}],plans:[]});assert.equal(empty.matches[0].status,'unknown');assert.equal(f.calls.length,0);
+ const f=fixture(),empty=await matchProductLogistics({...f.options,products:[recordedProduct({id:'a',sku:null})],plans:[]});assert.equal(empty.matches[0].status,'unknown');assert.equal(f.calls.length,0);
  await Promise.all([loadLogisticsCatalog(f.options),loadLogisticsCatalog(f.options)]);assert.equal(f.calls.length,2);
 });
 
@@ -140,7 +141,7 @@ test('one stock-page authorization denial revokes every cached page and catalog 
  for(const rejection of [failure(401),failure(403),{status:'unavailable',error:{code:'PERMISSION_DENIED',message:'not permitted',retryable:true}}]){
   let denyBill=false;
   const f=fixture((path,body,storeId)=>denyBill&&storeId==='bill'?rejection:path==='/v2/warehouse/list'?warehouses:path==='/v2/delivery-method/list'?methods:{products:body.sku.map((sku:number)=>({sku,warehouse_id:10,free_stock:1})),has_next:false});
-  const a={...f.options,products:[{id:'a',sku:'101'}],plans:[plan('1','10')]},b={...a,products:[{id:'b',sku:'102'}]},helen={...b,storeId:'helen'};
+  const a={...f.options,products:[recordedProduct({id:'a',sku:'101'})],plans:[plan('1','10')]},b={...a,products:[recordedProduct({id:'b',sku:'102'})]},helen={...b,storeId:'helen'};
   await loadLogisticsCatalog(f.options);await loadLogisticsCatalog({...f.options,storeId:'helen'});
   await matchProductLogistics(a);await matchProductLogistics(b);await matchProductLogistics(helen);
   denyBill=true;await assert.rejects(matchProductLogistics({...a,forceRefresh:true}));
@@ -153,7 +154,7 @@ test('one stock-page authorization denial revokes every cached page and catalog 
 
 test('catalog permission denial also prevents reuse of cached stock pages',async()=>{
  let denied=false;const f=fixture((path,body)=>denied?failure(403):path==='/v2/warehouse/list'?warehouses:path==='/v2/delivery-method/list'?methods:{products:body.sku.map((sku:number)=>({sku,warehouse_id:10,present:1})),has_next:false});
- const match={...f.options,products:[{id:'a',sku:'101'}],plans:[plan('1','10')]};
+ const match={...f.options,products:[recordedProduct({id:'a',sku:'101'})],plans:[plan('1','10')]};
  await loadLogisticsCatalog(f.options);await matchProductLogistics(match);denied=true;
  await assert.rejects(loadLogisticsCatalog({...f.options,forceRefresh:true}),{code:'OZON_HTTP_403'});
  const count=f.calls.length;await assert.rejects(matchProductLogistics(match),{code:'OZON_HTTP_403'});assert.equal(f.calls.length,count+1);
@@ -162,7 +163,7 @@ test('catalog permission denial also prevents reuse of cached stock pages',async
 test('temporary stock failure preserves sibling page and catalog caches',async()=>{
  for(const status of [429,503]){
   let limited=false;const f=fixture((path,body)=>limited?failure(status):path==='/v2/warehouse/list'?warehouses:path==='/v2/delivery-method/list'?methods:{products:body.sku.map((sku:number)=>({sku,warehouse_id:10,free_stock:1})),has_next:false});
-  const a={...f.options,products:[{id:'a',sku:'101'}],plans:[plan('1','10')]},b={...a,products:[{id:'b',sku:'102'}]};
+  const a={...f.options,products:[recordedProduct({id:'a',sku:'101'})],plans:[plan('1','10')]},b={...a,products:[recordedProduct({id:'b',sku:'102'})]};
   await loadLogisticsCatalog(f.options);await matchProductLogistics(a);await matchProductLogistics(b);limited=true;
   assert.equal((await matchProductLogistics({...a,forceRefresh:true})).cache.stale,true);const count=f.calls.length;
   assert.equal((await matchProductLogistics(b)).matches[0].status,'unique');assert.equal((await loadLogisticsCatalog(f.options)).cache.stale,false);assert.equal(f.calls.length,count);
@@ -172,7 +173,7 @@ test('temporary stock failure preserves sibling page and catalog caches',async()
 test('a captured catalog authorization guard stays revoked even after a later generation recovers',async()=>{
  let denied=false;const f=fixture((path,body)=>denied?failure(403):path==='/v2/warehouse/list'?warehouses:path==='/v2/delivery-method/list'?methods:{products:body.sku.map((sku:number)=>({sku,warehouse_id:10,free_stock:1})),has_next:false});
  const catalog=await loadLogisticsCatalog(f.options);catalog.assertAuthorization();
- const match={...f.options,products:[{id:'a',sku:'101'}],plans:catalog.plans};await matchProductLogistics(match);denied=true;
+ const match={...f.options,products:[recordedProduct({id:'a',sku:'101'})],plans:catalog.plans};await matchProductLogistics(match);denied=true;
  await assert.rejects(matchProductLogistics({...match,forceRefresh:true}),{code:'OZON_HTTP_403'});assert.throws(catalog.assertAuthorization,{code:'OZON_LOGISTICS_AUTH_CHANGED'});
  denied=false;const recovered=await loadLogisticsCatalog(f.options);recovered.assertAuthorization();assert.throws(catalog.assertAuthorization,{code:'OZON_LOGISTICS_AUTH_CHANGED'});
  assert.equal((await matchProductLogistics({...match,plans:recovered.plans})).matches[0].status,'unique');assert.throws(catalog.assertAuthorization,{code:'OZON_LOGISTICS_AUTH_CHANGED'});
@@ -185,7 +186,7 @@ test('in-flight catalog response cannot return or repopulate a generation revoke
   if(path==='/v2/delivery-method/list'){if(hold){entered();await gate;}return methods;}
   return denyStocks?failure(403):{products:body.sku.map((sku:number)=>({sku,warehouse_id:10,free_stock:1})),has_next:false};
  });
- const match={...f.options,products:[{id:'a',sku:'101'}],plans:[plan('1','10')]};
+ const match={...f.options,products:[recordedProduct({id:'a',sku:'101'})],plans:[plan('1','10')]};
  await loadLogisticsCatalog(f.options);await matchProductLogistics(match);hold=true;
  const pending=loadLogisticsCatalog({...f.options,forceRefresh:true});await waiting;
  denyStocks=true;await assert.rejects(matchProductLogistics({...match,forceRefresh:true}),{code:'OZON_HTTP_403'});

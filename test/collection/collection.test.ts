@@ -1,3 +1,4 @@
+import { recordedSample, recordedRaw, recordedDetail, recordedSku } from '../adapter/real-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -5,19 +6,21 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CollectionService, CollectionError, normalizeProduct, COLLECTION_RESPONSE_MAX_BYTES } from '../../packages/collection/src/index.ts';
 import type { CollectionOptions } from '../../packages/collection/src/index.ts';
+import { realDetail, realRawContent } from '../real-data/corpus.ts';
 
 function fixture(id = 'product-a', count = 3): any {
-  return { id, source: 'taobao_tmall', title: `商品 ${id}`, currency: 'CNY', attributes: { 材质: '不锈钢', 型号: 'FM07-12D' },
-    images: ['https://images.example/main.jpg'], descriptionImages: ['https://images.example/detail.jpg'],
+  const selector = recordedSample({ id, source: 'taobao_tmall', nonempty: true }), source = realDetail(selector);
+  // Prices, scale, unicode and package below are deliberate boundary changes to recorded Taobao goods.
+  return recordedDetail({ id, source: 'taobao_tmall', currency: 'CNY', attributes: { ...source.attributes, 材质: '不锈钢', 型号: 'FM07-12D' },
     package: { weightKg: 0.33, dimensionsCm: [25, 10, 10] }, description: '😀商品资料'.repeat(700),
-    skus: Array.from({ length: count }, (_, i) => ({ sourceSkuId: `sku-${i}`, spec: `材质:不锈钢 | 颜色:颜色${i}`, properties: { 材质: '不锈钢', 颜色: `颜色${i}` }, goodsPrice: `${i + 1}.25`, price: i + 10, image: `https://images.example/sku-${i}.jpg` })) };
+    skus: Array.from({ length: count }, (_, i) => (recordedSku({ sourceSkuId: `sku-${i}`, spec: `材质:不锈钢 | 颜色:颜色${i}`, properties: { 材质: '不锈钢', 颜色: `颜色${i}` }, goodsPrice: `${i + 1}.25`, price: i + 10, image: source.images[i % source.images.length] }, selector, i % source.skus.length, ["sourceSellingPrice","id","code"]))) }, selector);
 }
 function setup(details: any[], extras: Partial<CollectionOptions> = {}) {
   const values = new Map<string, any>(); const calls = { detail: 0, raw: 0, search: 0 };
   const client = {
     async searchCollectedItems() { calls.search++; return { status: 'ok' as const, raw: details.map(d => ({ id: d.id, title: d.title, source: d.source, categoryPath: ['配件'], skuCount: d.skus.length, currency: d.currency, goodsMinPrice: 1.25, goodsMaxPrice: d.skus.length + .25, taskRelations: [{ store: 'bill' }] })) }; },
     async getCollectedItemDetail(id: string) { calls.detail++; return { status: 'ok' as const, raw: details.find(d => d.id === id) }; },
-    async getCollectedItem(id: string) { calls.raw++; return { status: 'ok' as const, raw: { id, content: JSON.stringify({ bulky: '原始字典'.repeat(5000), rows: Array.from({ length: 70 }, (_, i) => ({ id: i, value: 'raw' })) }), truncated: false } }; },
+    async getCollectedItem(id: string) { calls.raw++; return { status: 'ok' as const, raw: recordedRaw({ id, content: JSON.stringify({ ...realRawContent(), bulky: '原始字典'.repeat(5000), rows: Array.from({ length: 70 }, (_, i) => ({ id: i, value: 'raw' })) }), truncated: false }) }; },
   };
   const service = new CollectionService({ client, store: { get: <T>(c: string, id: string) => values.get(`${c}/${id}`) as T | undefined, put: <T>(c: string, id: string, v: T) => { values.set(`${c}/${id}`, structuredClone(v)); return v; } }, ...extras });
   return { service, calls, details, values };
@@ -29,15 +32,80 @@ test('normalization preserves procurement meaning, common package and selected f
   assert.equal(p.package.weightGrams, 330); assert.deepEqual(p.package.dimensionsMm, { length: 250, width: 100, height: 100 });
   assert.equal(p.skus[0].purchaseCost?.amount, '1.25'); assert.equal(p.skus[0].purchaseCost?.meaning, 'purchase_cost');
   assert.equal(p.attributes.型号, 'FM07-12D'); assert(!JSON.stringify(p).includes('dictionary'));
-  detail.source = 'alibaba_com'; detail.skus = [{ sourceSkuId: 'A', price: 2, sourceSellingPrice: { amount: 2, currency: 'USD' } }];
+  detail.source = 'alibaba_com'; detail.skus = [recordedSku({ sourceSkuId: 'A', price: 2, sourceSellingPrice: { amount: 2, currency: 'USD' } }, undefined, undefined, ["goodsPrice","id","code"])];
   const alibaba = normalizeProduct(detail);
-  assert.equal(alibaba.skus[0].purchaseCost, null); assert.equal(alibaba.skus[0].sourceDisplayPrice?.amount, '2');
-  assert(alibaba.unknowns.some(u => u.field === 'purchaseCost'));
+  assert.deepEqual(alibaba.skus[0].purchaseCost, { amount: '2', currency: 'USD', unit: null, meaning: 'purchase_cost' });
+  assert.equal(alibaba.skus[0].sourceDisplayPrice?.amount, '2');
+  assert(!alibaba.unknowns.some(u => u.field === 'purchaseCost'));
+});
+
+test('source SKU prices become procurement costs with their own currency and unit, not product-wide ranges', () => {
+  for (const source of ['taobao_tmall', 'alibaba_com', 'other']) {
+    const detail = recordedDetail({ id: 'prices', source, currency: 'CNY', unit: '包', price: 99, sourceSellingPrice: { min: 1, max: 99, currency: 'CNY' }, skus: [
+      recordedSku({ sourceSkuId: 'goods', goodsPrice: '3.43', sourceSellingPrice: { amount: 7, currency: 'USD' }, price: 9 }, recordedSample({id:'prices',source:source,nonempty:true}), undefined, ["id","code"]),
+      recordedSku({ sourceSkuId: 'offer', sourceSellingPrice: { amount: '2.50', currency: 'USD' }, price: 20, unit: '件' }, recordedSample({id:'prices',source:source,nonempty:true}), undefined, ["goodsPrice","id","code"]),
+      recordedSku({ sourceSkuId: 'legacy', price: 4.8 }, recordedSample({id:'prices',source:source,nonempty:true}), undefined, ["goodsPrice","sourceSellingPrice","id","code"]),
+      recordedSku({ sourceSkuId: 'blank', goodsPrice: '', sourceSellingPrice: { amount: ' ', currency: 'CNY' }, price: 6 }, recordedSample({id:'prices',source:source,nonempty:true}), undefined, ["id","code"]),
+      recordedSku({ sourceSkuId: 'free', goodsPrice: 0, price: 5 }, recordedSample({id:'prices',source:source,nonempty:true}), undefined, ["sourceSellingPrice","id","code"]),
+      { sourceSkuId: 'missing' }, recordedSku({ sourceSkuId: 'invalid', price: -2 }, recordedSample({id:'prices',source:source,nonempty:true}), undefined, ["goodsPrice","sourceSellingPrice","id","code"]),
+      recordedSku({ sourceSkuId: 'range-only', sourceSellingPrice: { min: 1, max: 3, currency: 'CNY' } }, recordedSample({id:'prices',source:source,nonempty:true}), undefined, ["goodsPrice","price","id","code"]),
+    ] }, recordedSample({id:'prices',source:source,nonempty:true}));
+    const product = normalizeProduct(detail);
+    assert.deepEqual(product.skus.slice(0, 5).map(s => s.purchaseCost), [
+      { amount: '3.43', currency: 'CNY', unit: '包', meaning: 'purchase_cost' },
+      { amount: '2.50', currency: 'USD', unit: '件', meaning: 'purchase_cost' },
+      ...['4.8', '6', '0'].map(amount => ({ amount, currency: 'CNY', unit: '包', meaning: 'purchase_cost' })),
+    ]);
+    assert.deepEqual(product.unknowns.find(u => u.field === 'purchaseCost')?.skuIds, ['missing', 'invalid', 'range-only']);
+  }
+});
+
+test('purchase cost adds captured freight once and uses zero when freight was not collected', () => {
+  const cases = [
+    { source: 'taobao_tmall', sku: { goodsPrice: 10.25, price: 12.25 }, delivery: { freightAmount: 2, freightVerified: true }, expected: '12.25' },
+    { source: 'taobao_tmall', sku: { price: 12.25 }, delivery: { freightAmount: 2 }, expected: '12.25' },
+    { source: 'alibaba_com', sku: { sourceSellingPrice: { amount: '3.43', currency: 'CNY' } }, delivery: { freightAmount: '0.80' }, expected: '4.23' },
+    { source: 'other', sku: { price: 10.25 }, delivery: { freightAmount: 2 }, expected: '12.25' },
+    { source: 'taobao_tmall', sku: { goodsPrice: 10.25 }, delivery: { freightVerified: false }, expected: '10.25' },
+    { source: 'taobao_tmall', sku: { goodsPrice: 10.25 }, delivery: { freight: '运费待询' }, expected: '10.25' },
+    { source: 'other', sku: { price: 10.25 }, delivery: { freightAmount: 0 }, expected: '10.25' },
+    { source: 'other', sku: { price: 0.1 }, delivery: { freightAmount: 0.2 }, expected: '0.3' },
+    { source: 'other', sku: { price: 10.25 }, delivery: undefined, expected: '10.25' },
+  ];
+  for (const { source, sku, delivery, expected } of cases) {
+    const detail = recordedDetail({ id: 'freight', source, currency: 'CNY', delivery, skus: [{ sourceSkuId: 'selected', ...sku }] }, recordedSample({id:'freight',source:source,nonempty:true}));
+    const original = structuredClone(detail), product = normalizeProduct(detail);
+    assert.equal(product.skus[0].purchaseCost?.amount, expected);
+    assert(!product.unknowns.some(u => u.field === 'purchaseCost'));
+    assert.deepEqual(detail, original, 'source goods price and captured delivery stay unchanged');
+  }
+  const mixed = normalizeProduct(recordedDetail({ id: 'mixed-currency', source: 'alibaba_com', currency: 'CNY', delivery: { freightAmount: 2 }, skus: [recordedSku({ sourceSkuId: 'selected', sourceSellingPrice: { amount: 1, currency: 'USD' } }, recordedSample({id:'mixed-currency',source:'alibaba_com',nonempty:true}), undefined, ["goodsPrice","price","id","code"])] }, recordedSample({id:'mixed-currency',source:'alibaba_com',nonempty:true})));
+  assert.equal(mixed.skus[0].purchaseCost, null, 'do not add CNY freight directly to USD goods');
+});
+
+test('fresh legacy cache is remapped from saved source detail without waiting or fetching again', async () => {
+  const detail = fixture('cached-price', 1); detail.source = 'alibaba_com';
+  detail.skus = [recordedSku({ sourceSkuId: 'offer', sourceSellingPrice: { amount: '2.35', currency: 'CNY' } }, undefined, undefined, ["goodsPrice","price","id","code"])];
+  detail.delivery = { freightAmount: 1.2 };
+  const { service, values, calls } = setup([detail]);
+  const original = await service.getProduct(detail.id);
+  const key = `collection_products/legacy-collection:${detail.id}`, saved = values.get(key);
+  saved.product.mapping.version = 'collection-2'; saved.product.revision = 'old-price-mapping';
+  saved.product.skus[0].purchaseCost = null;
+  saved.product.unknowns.push({ field: 'purchaseCost', reason: '来源只有卖家报价，采购成本未知', skuIds: ['offer'] });
+  const fetchedAtMs = saved.fetchedAtMs;
+  const updated = await service.getProduct(detail.id);
+  assert.equal(updated.skus[0].purchaseCost?.amount, '3.55');
+  assert.equal(updated.revision, original.revision);
+  assert(!updated.unknowns.some(u => u.field === 'purchaseCost'));
+  assert.equal(values.get(key).product.revision, updated.revision);
+  assert.equal(values.get(key).fetchedAtMs, fetchedAtMs);
+  assert.equal(calls.detail, 1);
 });
 
 test('Alibaba logistics packages and SKU images bind by stable identity, never row order', () => {
   const d = fixture(); d.source = 'alibaba_com'; delete d.package;
-  d.skus = [{ id: 'native-b', sourceSkuId: 'B', properties: { 颜色: '蓝' } }, { id: 'native-a', sourceSkuId: 'A', properties: { 颜色: '红' } }];
+  d.skus = [recordedSku({ id: 'native-b', sourceSkuId: 'B', properties: { 颜色: '蓝' } }, undefined, undefined, ["id","code"]), recordedSku({ id: 'native-a', sourceSkuId: 'A', properties: { 颜色: '红' } }, undefined, undefined, ["id","code"])];
   d.sourceDetails = { packaging: { pkgWeight: .33, pkgMeasure: { inputArray: ['25', '10', '10'] } }, logistics: { logisticsSku: [{ skuId: 'native-a', skuOuterId: 'A', pkgWeightSku: .5, pkgMeasureLengthSku: 30, pkgMeasureWidthSku: 20, pkgMeasureHeightSku: 10 }], tariffsHsCode: [{ hsCode: '85369060' }] }, editorFields: { priceUnit: { text: 'Piece/Pieces' }, minOrderQuantity: 1, saleProp: { color: [{ text: '红', imageUrl: 'https://images.example/red.jpg' }] } } };
   const p = normalizeProduct(d);
   assert.equal(p.skus[0].package, null); assert.equal(p.skus[1].package?.weightGrams, 500);
@@ -162,8 +230,10 @@ test('one hundred product references cannot bypass a small response budget throu
 
 test('raw evidence returns complete directories/array pages, unicode descriptions have lossless continuation', async () => {
   const { service, calls } = setup([fixture()]);
-  const r = await service.resourceRead({ id: 'product-a', kind: 'raw', maxBytes: 1024 });
-  assert(r.directory.some((e: any) => e.path === '/source/bulky'));
+  let r = await service.resourceRead({ id: 'product-a', kind: 'raw', maxBytes: 1024 });
+  const directory = [...r.directory];
+  while (r.nextCursor) { r = await service.resourceRead({ id: 'product-a', kind: 'raw', maxBytes: 1024, cursor: r.nextCursor }); directory.push(...r.directory); }
+  assert(directory.some((e: any) => e.path === '/source/bulky'));
   const p = await service.resourceRead({ id: 'product-a', kind: 'raw', path: '/source/rows' }); assert.equal(p.returned, 40);
   const p2 = await service.resourceRead({ id: 'product-a', kind: 'raw', path: '/source/rows', cursor: p.nextCursor }); assert.equal(p2.returned, 30); assert.equal(calls.raw, 1);
   const initial = await service.read({ id: 'product-a' }); let text = initial.items[0].description.text, cursor = initial.items[0].description.nextCursor;
@@ -173,7 +243,7 @@ test('raw evidence returns complete directories/array pages, unicode description
 });
 
 test('plain-text SKU specs survive compact output and selected missing SKU is explicit error', async () => {
-  const d = fixture(); d.skus = [{ sourceSkuId: 'a', spec: '红色小款', goodsPrice: 5 }, { sourceSkuId: 'b', spec: '蓝色大款', goodsPrice: 7 }];
+  const d = fixture(); d.skus = [recordedSku({ sourceSkuId: 'a', spec: '红色小款', goodsPrice: 5 }, undefined, undefined, ["properties","id","code"]), recordedSku({ sourceSkuId: 'b', spec: '蓝色大款', goodsPrice: 7 }, undefined, undefined, ["properties","id","code"])];
   const { service } = setup([d]); const r = await service.read({ id: d.id });
   assert(r.items[0].skus.columns.includes('spec')); assert(r.items[0].skus.rows[0].includes('红色小款'));
   await assert.rejects(service.read({ id: d.id, skuIds: ['bad'] }), (e: any) => e.code === 'COLLECTION_SKU_NOT_FOUND');
@@ -205,27 +275,29 @@ test('cached image references are bounded, read-only, source-scoped and tied to 
   let downloads = 0;
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6t8sAAAAASUVORK5CYII=', 'base64');
   const first = fixture('first', 335), second = fixture('second', 335);
+  first.skus[0].image = second.skus[0].image = realDetail('pinduoduo').images[0];
   const f = setup([first, second], { cacheDir: directory, fetch: async () => { downloads++; return new Response(png); } });
   try {
     const product = await f.service.getProduct('first'), other = await f.service.getProduct('second');
     const assetIds = [product.skus[0].imageRef!, product.skus[167].imageRef!, product.skus[334].imageRef!];
+    const sourceOrder = product.assets.filter(asset => assetIds.includes(asset.id)).map(asset => asset.id);
     for (const assetId of assetIds) await f.service.resourceRead({ id: product.id, kind: 'image', assetId });
     const before = structuredClone([...f.values]), calls = { ...f.calls };
     const references = f.service.cachedImageAssets(product);
-    assert.deepEqual(references.map(asset => asset.id), assetIds);
+    assert.deepEqual(references.map(asset => asset.id), sourceOrder);
     assert.ok(references.every(asset => /^[a-f0-9]{64}$/.test(asset.contentHash)));
-    assert.deepEqual(f.service.cachedImageAssets(product, { excludeAssetIds: [assetIds[0]], limit: 1 }).map(asset => asset.id), [assetIds[1]]);
+    assert.deepEqual(f.service.cachedImageAssets(product, { excludeAssetIds: [assetIds[0]], limit: 1 }).map(asset => asset.id), sourceOrder.filter(id => id !== assetIds[0]).slice(0, 1));
     assert.deepEqual(f.service.cachedImageAssets(product, { assetIds: [assetIds[2]] }).map(asset => asset.id), [assetIds[2]]);
     assert.deepEqual(f.service.cachedImageAssets(other), [], 'same URLs downloaded for another item are not its evidence');
     assert.deepEqual(f.service.cachedImageAssets({ ...product, sourceId: 'unrelated-provider' }), []);
     assert.deepEqual([...f.values], before, 'reading cache evidence never changes source or asset records');
     assert.deepEqual(f.calls, calls); assert.equal(downloads, 3, '335 SKU candidates do not trigger downloads');
     references[0].skuIds.push('caller-change');
-    assert.deepEqual(f.service.cachedImageAssets(product)[0].skuIds, ['sku-0']);
+    assert.deepEqual(f.service.cachedImageAssets(product)[0].skuIds, product.assets.find(asset => asset.id === sourceOrder[0])!.skuIds);
     first.skus[0].image = 'https://images.example/replaced.jpg';
     const changed = await f.service.getProduct('first', { refresh: true });
     assert.deepEqual(f.service.cachedImageAssets(product), [], 'an obsolete source snapshot cannot supply reference metadata');
-    assert.deepEqual(f.service.cachedImageAssets(changed).map(asset => asset.id), assetIds.slice(1), 'replaced asset URLs do not inherit old cached pixels');
+    assert.deepEqual(f.service.cachedImageAssets(changed).map(asset => asset.id), sourceOrder.filter(id => id !== assetIds[0]), 'replaced asset URLs do not inherit old cached pixels');
     assert.equal(downloads, 3);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });

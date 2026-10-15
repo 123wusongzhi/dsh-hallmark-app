@@ -21,10 +21,10 @@ test('fixed image questions scope specification text to primary image and keep n
     assert.equal(clarity.choices?.no_text.applicable, false);
     const subject = questions.find(q => q.id === `image-subject-consistency:draft-${i}`)!;
     assert.deepEqual(subject.imageIds, ['source-4', `draft-${i}`]);
-    assert.match(subject.instructions, /多商品或多主体无法确定对应对象时选 evidence_insufficient/);
+    assert.match(subject.instructions, /多商品或多主体结合上下文仍无法合理确定对象时选 evidence_insufficient/);
     assert.match(subject.instructions, /不把短样展示图要求成整卷长度/);
   }
-  for (const q of questions) { assert.equal(q.version, '1'); assert.equal(q.choices?.evidence_insufficient.status, 'pending'); }
+  for (const q of questions) { assert.equal(q.version, '2'); assert.equal(q.choices?.evidence_insufficient.status, 'pending'); }
 });
 
 test('rich content alone cannot silently become a primary image or fabricate source images', () => {
@@ -32,6 +32,16 @@ test('rich content alone cannot silently become a primary image or fabricate sou
   assert.deepEqual(questions[0].imageIds, []);
   assert.deepEqual(questions.at(-1)!.imageIds, ['draft-0']);
   assert.equal(questions.at(-1)!.choices?.evidence_insufficient.status, 'pending');
+});
+
+test('standard listing requires cover specification but never forces text or exact SKU photography on other images',()=>{
+  const questions=listingImageQuestions({primaryImage:{id:'cover',field:'primary_image'},draftImages:[{id:'cover',field:'primary_image'},{id:'detail',field:'rich'}],referenceImageIds:['source'],requireSpecificationText:true});
+  assert.equal(questions[0].choices?.no_spec_text.status,'rejected');
+  assert.equal(questions[0].choices?.no_spec_text.applicable,undefined);
+  assert.match(questions[0].instructions,/单件、整包或整套/);
+  const detail=questions.find(q=>q.id==='image-text-legibility:detail')!;assert.equal(detail.choices?.no_text.status,'passed');
+  const subject=questions.find(q=>q.id==='image-subject-consistency:detail')!;
+  assert.match(subject.instructions,/不要求唯一、完全相同 SKU/);assert.match(subject.instructions,/由准确规格文案解释/);assert.match(subject.instructions,/不新增审美标准/);
 });
 
 test('draft create and revise accept only simple application-owned reference subject data outside Ozon payload', () => {

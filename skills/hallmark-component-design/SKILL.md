@@ -8,13 +8,15 @@ user-invocable: true
 
 先读取 Host 的 `authoringInstructions.userPreferences` 与 `developerDocs.userPreferences` 指向的统一政策（随包 `authoring-docs/user-preferences.md`），再按需读取 [Hallmark 视觉规范](references/visual-direction.md)。政策只用于当前用户的 DSH / Hallmark：蓝白简洁、视觉层次、中文字段、共享数据源与店铺分离、跨接口组合和渐进操作。默认全量逻辑数据与本地分页搜索排序；每次先显示上次成功完整快照，15 分钟到期或手动刷新在后台更新，不清空旧内容。首次无快照轻量准备，跨店与授权隔离；接口不支持时明确范围并补后端，不能伪称全量。用户最新指令优先。
 
+新建或修改源码前，读取 Host 的 `developerDocs.performance`（随包 `authoring-docs/performance.md`）。让可用商品内容先出现、刷新时保留有效快照、当前首屏图片优先、隐藏内容不抢网络，并控制 DOM 和同步计算。标准 checkRunner 对同一冻结构建验收；性能失败先修复、重新正式验证，通过后发布，不另建 Host/CDP 或仅凭截图判断速度。
+
 窄栏使用图文列表、宽页可以使用表格，是可修改的设计起点。只调整应用目录、工作台、组件库、聊天消息中的组件入口与右侧组件视图，保留 DSH 原侧栏、已有会话与原输入框。
 
 用户在任意已有会话输入 `@` 选择应用，然后自己发送原聊天请求。同一个原 Agent 使用原文件、命令与 Apps 网关处理创建或编辑请求。不要建立独立聊天标签、额外 Agent 循环或替代 DSH 的聊天界面。引用 chip、会话应用/连接绑定与 Agent 手动发送是三个不同事实；不能把一次选中直接当作 Runtime 已授权绑定。
 
 ## 先核实正在执行的能力
 
-使用原 `apps_list` 和 `apps_describe` 网关确认应用、连接及精确能力版本。新路径是 `apps.authoring.begin / record_build / record_preview / publish / inspect / cancel / save_component@1.0.0`，通过 `apps_invoke` 调用；组件库操作继续使用 `apps.presentation.*`。所有调用使用正在处理的原 sessionId 与明确启用的 appId/connectionId，不猜店铺、数据集或组件身份。
+使用原 `apps_list` 和 `apps_describe` 网关确认应用、连接及精确能力版本。新路径是 `apps.authoring.begin / record_build / record_preview / publish / inspect / await_display / cancel / save_component@1.0.0`，通过 `apps_invoke` 调用；组件库操作继续使用 `apps.presentation.*`。所有调用使用正在处理的原 sessionId 与明确启用的 appId/connectionId，不猜店铺、数据集或组件身份。
 
 Host 提供的 `authoringGuidance` 是安装目录、source starter、SDK、构建/预览 CLI 与本机 Runtime 参数的定位来源。使用其中实际返回的路径，先检查文件存在和当前版本。当前安装包包含 `source-starter/create-apps-source.mjs`、`lib/apps-authoring-build.js`、`lib/apps-authoring-preview.js`，不要求访问原 monorepo TS 源码。若正在执行的 Host 没有新能力，说明实际版本及缺少的能力；旧 `hallmark_open_source_component` 只保留旧兼容语义，不能冒充已验证的新 authoring 发布。
 
@@ -28,7 +30,7 @@ Host 提供的 `authoringGuidance` 是安装目录、source starter、SDK、构�
 - 大结果的 sample 是截断样本；需要完整内容时按 authoringGuidance.resultReader 写 request.json 并运行读取器，使用返回的 outputPath。不要重复查询、猜结果文件或查 SQLite。
 - 完整快照优先使用本地分页，不为翻页重调接口。只有服务端游标分页的能力使用 useApps.readBindingPage(bindingId, cursor) 降级并标明范围；协商 bindingPagesV1 后宿主同步更新当前页 payload/resources/revision，接口页大小取 binding.query.input.limit。附加到聊天暂未开放，不生成附加按钮或为附加设置勾选；分页不自动同步 Agent 上下文。invokeCapability 仅做独立查询，不用于这条分页链路。
 - 先执行标准 build 和 live_readonly preview，出现具体失败后再定位相关实现；不要预先遍历安装包源码、旧报告或数据库。
-- 复用未变源码的 build 回执和预览生成的两张截图。外网图片使用预览缓存/占位，图片慢不触发重建或额外等待截图。
+- 复用未变源码且满足当前验证要求的 build/preview 回执和截图。视觉预览的外网图片缓存/占位不测真实加载速度；性能报告的受控资源数据也不代表真实源站耗时。按明确失败项修复，不为等待外网图片反复重建。
 
 ## 普通源码、构建与反馈循环
 
@@ -37,12 +39,14 @@ Host 提供的 `authoringGuidance` 是安装目录、source starter、SDK、构�
 3. 直接编辑 TSX、CSS、JavaScript、图片与其他资源。允许条件、循环、局部状态、搜索、排序、图表与派生计算，不把旧 ViewSpec 词表或宿主 React 版本当作源码上限。新 A.2 页面使用 `@dsh/apps-component-runtime/apps/react` 的 v2 SDK，旧 v1 页面继续使用原根入口与 `/react`；协议必须与预览和 Host 匹配。新 SDK 的 required readiness assertions 必须实际读取 React commit 后的 DOM/数据，不能返回固定 PASS。
 4. 先读 authoringGuidance.developerDocs.index，按其中流程用 checkRunner.prepareRequest 自动准备请求（仅填 attemptId）；只维护 `.preview/plan.json`，不要将请求放在源码根目录或手改 epoch/sourceRevision。build 使用 Host 的实际路径与 begin 返回身份；preview 使用 live_readonly 和真实交互断言。搜索、勾选、分页、刷新、附加按实际功能验证，requiredMethods 与动作对应。fixture 仅用于明确离线测试。
 5. 优先运行 checkRunner，Windows 使用 windowsCommand。薄启动脚本等待真实进程退出；现有检查器顺序构建、自动登记构建回执、双视口预览、自动登记预览回执。无需再手动执行这四步。凭据从 keyFile 读取，不把令牌内容写入聊天或命令行；不手造 PASS 报告。
-6. 阅读 result/summaryPath 的失败项、回执及 420/1040 截图。需要顶部、底部或交互后画面时提前在 assertion 配置 screenshot，不额外搭建 Host/CDP。仅在发现具体布局或交互缺陷时修改源码；通过后复用成功回执。异常读返回的独立错误摘要路径，并结合 inspect.summary 定位。
-7. 调用 publish，带同一 attemptId、epoch、buildId、两份回执 ID、viewId 与 expectedViewRevision。publish 仅表示 prepared，当前聊天自动加载；inspect.summary 确认实际展示。展示失败不自动重建；保存由用户明确要求后单独执行。
+6. 阅读 result/summaryPath 的失败项、性能证据、回执及 420/1040 截图。需要顶部、底部或交互后画面时提前在 assertion 配置 screenshot，不额外搭建 Host/CDP。发现具体体验、性能或交互失败后修复并重测；不得篡改报告、关闭检查或放宽预算。通过后复用符合当前要求的成功回执。异常读返回的独立错误摘要路径，并结合 inspect.summary 定位。
+7. 调用 publish，带同一 attemptId、epoch、buildId、两份回执 ID、viewId 与 expectedViewRevision。publish 仅表示发布已接受，不代表已展示。publish 后调用 `apps.authoring.await_display` 获取结果。完成表述只引用工具返回的 `completionStatement`；`outcome` 不是 `displayed` 时不说已展示。`awaiting_user_view` 时告知用户打开右侧面板后再调用 await_display；`display_stalled` 或 `display_failed` 且 `nextAction.action=reopen_same_build` 时重开同一构建，不重建。保存由用户明确要求后单独执行。
 
 单独 build/preview CLI 仍可用于只需要某一阶段的任务，正常新建走上面的 checkRunner 流程。
 
 组件设计与数据绑定分别管理。数据刷新只更新原绑定的数据与 freshness，保留设计、源码 buildId、组件版本、本地排序和可兼容 UI 状态。多绑定分别报告成功、失败或陈旧时间，不能用一个绑定的成功覆盖另一个绑定的错误。
+
+starter 的图片 helper 是优先复用的实现，自定义组件仍须满足同一性能规格。模板或 SDK 更新不会自动修改旧保存版本的 dist；优化旧版本需要编辑工作副本并验证新构建，普通查看、刷新或原样保存不因此重建。
 
 ## 用户选择、原聊天与可选主动请求
 

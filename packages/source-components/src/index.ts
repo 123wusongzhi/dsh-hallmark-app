@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type { SourceArtifact, SourcePreview } from '../../presentation/src/types.ts';
-import {regularFileIdentity} from './file-verification-cache.ts';
+import {directoryPathIdentity,regularFileIdentity,regularFilePathIdentity} from './file-verification-cache.ts';
 
 export class SourceComponentError extends Error {
   code: string;
@@ -46,6 +46,9 @@ export class SourceComponentStore {
   workspace:string;
   private verifiedBuilds=new Map<string,{fingerprint:string;result:{valid:boolean;errors:string[]}}>();
   private verifiedBuildBytes=0;
+  readonly verification={checks:0,hashPasses:0,hashedFiles:0,hashedBytes:0};
+  /** Parsed manifests by buildId, valid while the manifest file keeps the same stat identity (archives are immutable). */
+  private manifests=new Map<string,{identity:string;value:SourceBuildManifest}>();
   constructor(directory:string,workspace=join(directory,'workspace')){this.directory=resolve(directory);this.workspace=resolve(workspace);}
   private buildDirectory(buildId:string):string {
     if(!/^[a-f0-9]{64}$/.test(buildId))throw new SourceComponentError('SOURCE_BUILD_NOT_FOUND','源码构建不存在。');
@@ -87,14 +90,35 @@ export class SourceComponentStore {
     const preview=this.capturePreview(source.directory,source.buildId);return preview?{...source,preview,thumbnail:preview.screenshotPath}:source;
   }
   manifest(buildId:string):SourceBuildManifest|undefined {
-    const path=join(this.buildDirectory(buildId),'manifest.json');return existsSync(path)?JSON.parse(readFileSync(path,'utf8')):undefined;
+    const path=join(this.buildDirectory(buildId),'manifest.json');
+    let identity:string;try{identity=regularFilePathIdentity(path);}catch(error){this.manifests.delete(buildId);if(!existsSync(path))return undefined;throw error;}
+    const cached=identity===undefined?undefined:this.manifests.get(buildId);
+    if(cached&&cached.identity===identity){this.manifests.delete(buildId);this.manifests.set(buildId,cached);return structuredClone(cached.value);}
+    this.manifests.delete(buildId);
+    const text=readFileSync(path,'utf8'),value=JSON.parse(text) as SourceBuildManifest;
+    // Cache only when the file did not change while it was read; callers always receive their own copy.
+    if(identity!==undefined&&text.length<=2*1024*1024){try{if(regularFilePathIdentity(path)===identity){while(this.manifests.size>=32)this.manifests.delete(this.manifests.keys().next().value!);this.manifests.set(buildId,{identity,value:structuredClone(value)});}}catch{}}
+    return value;
   }
-  /** Verify immutable archived bytes; old manifests remain readable without being rewritten. */
+  /** Fresh membership + stat/path checks, not a TTL: changed bytes, missing/new members and symlink substitutions cannot reuse a prior archive hash. */
+  private archiveIdentity(project:string,manifestPath:string):{files:string[];fingerprint:string} {
+    const checked=new Map<string,string>(),members:[string,string,string][]=[],files:string[]=[],root=directoryPathIdentity(project,checked),manifest=regularFilePathIdentity(manifestPath,checked);
+    const visit=(directory:string)=>{for(const entry of readdirSync(directory,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))){
+      const path=join(directory,entry.name),file=relative(project,path).split(sep).join('/');
+      if(entry.isSymbolicLink())throw new Error('ARCHIVE_SYMLINK');
+      if(entry.isDirectory()){members.push([file,'directory',directoryPathIdentity(path,checked)]);visit(path);}
+      else if(entry.isFile()){members.push([file,regularFileIdentity(path),realpathSync(path)]);files.push(file);}
+      else throw new Error('ARCHIVE_REGULAR_FILE_REQUIRED');
+    }};
+    visit(project);return {files:files.sort(),fingerprint:JSON.stringify([root,manifest,members])};
+  }
+  /** Verify immutable archived bytes; old manifests remain readable without being rewritten. Every call inspects membership and file identity; only unchanged successful hashes are reused. */
   verify(buildId:string):{valid:boolean;errors:string[]} {
+    this.verification.checks++;
     const directory=this.buildDirectory(buildId),project=join(directory,'project'),manifestPath=join(directory,'manifest.json');
     if(!existsSync(manifestPath))return {valid:false,errors:['SOURCE_BUILD_NOT_FOUND']};
     let projectFiles:string[],fingerprint:string;
-    const inspect=()=>{const files=walk(project);return {files,fingerprint:JSON.stringify([regularFileIdentity(manifestPath),files.map(file=>[file,regularFileIdentity(filePath(project,file))])])};};
+    const inspect=()=>this.archiveIdentity(project,manifestPath);
     try{({files:projectFiles,fingerprint}=inspect());}catch{return {valid:false,errors:['SOURCE_BUILD_UNREADABLE']};}
     const cached=this.verifiedBuilds.get(buildId);
     if(cached?.fingerprint===fingerprint){this.verifiedBuilds.delete(buildId);this.verifiedBuilds.set(buildId,cached);return {valid:cached.result.valid,errors:[...cached.result.errors]};}
@@ -107,9 +131,10 @@ export class SourceComponentStore {
     const validFileManifest=Array.isArray(fileManifest)&&fileManifest.every(file=>file&&typeof file.path==='string'&&Number.isSafeInteger(file.size)&&file.size>=0&&typeof file.sha256==='string'&&/^[a-f0-9]{64}$/.test(file.sha256));
     if(fileManifest!==undefined&&(!validFileManifest||fileManifest!.length!==projectFiles.length||new Set(fileManifest!.map(file=>file.path)).size!==projectFiles.length||fileManifest!.some(file=>!projectFiles.includes(file.path))))errors.push('SOURCE_MANIFEST_MISMATCH');
     const expected=new Map(validFileManifest?fileManifest!.map(file=>[file.path,file]):[]),hash=createHash('sha256');
+    this.verification.hashPasses++;
     // One read feeds both the per-file checksum and historical content-addressing checksum.
     for(const file of projectFiles){
-      try{const bytes=readFileSync(filePath(project,file));hash.update(`${Buffer.byteLength(file)}:${file}:${bytes.length}:`).update(bytes);const reference=expected.get(file);if(reference&&(bytes.length!==reference.size||createHash('sha256').update(bytes).digest('hex')!==reference.sha256))errors.push(`SOURCE_FILE_HASH_MISMATCH: ${file}`);}catch{errors.push(`SOURCE_FILE_NOT_FOUND: ${file}`);}
+      try{const bytes=readFileSync(filePath(project,file));this.verification.hashedFiles++;this.verification.hashedBytes+=bytes.length;hash.update(`${Buffer.byteLength(file)}:${file}:${bytes.length}:`).update(bytes);const reference=expected.get(file);if(reference&&(bytes.length!==reference.size||createHash('sha256').update(bytes).digest('hex')!==reference.sha256))errors.push(`SOURCE_FILE_HASH_MISMATCH: ${file}`);}catch{errors.push(`SOURCE_FILE_NOT_FOUND: ${file}`);}
     }
     if(!projectFiles.includes('dist/index.html')||hash.digest('hex')!==buildId)errors.push('SOURCE_BUILD_HASH_MISMATCH');
     // Recheck membership and file identity after hashing, so an editor write during verification is never cached.

@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiOzonProduct,uiStore,uiListingPayload,uiFixturePrelude,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
@@ -33,7 +34,7 @@ async function backend(price:number){
   if(req.url==='/api/stores/shop/data/read'){
    const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(Buffer.from(chunk));
    assert.equal(JSON.parse(Buffer.concat(chunks).toString()).path,'/v5/product/info/prices');
-   return res.end(JSON.stringify({storeId:'shop',outcome:'response_received',httpStatus:200,response:{items:[{product_id:1,offer_id:'offer',price:{price:String(price),marketing_seller_price:String(price),currency_code:'CNY'}}],total:1}}));
+   return res.end(JSON.stringify({storeId:'shop',outcome:'response_received',httpStatus:200,response:{items:[uiOzonProduct({product_id:1,offer_id:'offer',price:{price:String(price),marketing_seller_price:String(price),currency_code:'CNY'}})],total:1}}));
   }
   res.statusCode=404;res.end('{}');
  });

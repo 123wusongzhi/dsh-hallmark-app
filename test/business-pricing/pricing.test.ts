@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BusinessPricingRepository, BusinessPricingError, legacyReferenceDraft, minimumPriceForMargin, quotePricing } from '../../packages/business-pricing/src/index.ts';
 import type { BusinessPricingConfig, BusinessPricingDraft, PricingStore, QuoteInput } from '../../packages/business-pricing/src/index.ts';
+import { realStoreProducts, realPricingSettings } from '../real-data/corpus.ts';
 
 const NOW = '2026-10-10T09:00:00.000Z';
+const observedProduct = realStoreProducts().products[0], observedRules = realPricingSettings();
 function memory(): PricingStore {
   let records = new Map<string, unknown>();
   return {
@@ -15,10 +17,12 @@ function memory(): PricingStore {
 }
 function repository() { return new BusinessPricingRepository(memory(), () => NOW); }
 function config(patch: Partial<BusinessPricingDraft> = {}): BusinessPricingConfig {
-  return { ...legacyReferenceDraft(NOW), ...patch, schemaVersion: 1, storeId: 'bill', revision: 1, updatedAt: NOW };
+  const draft = legacyReferenceDraft(NOW);
+  draft.plans[0] = { ...draft.plans[0], fixedMinor: observedRules.fixedMinor, logisticsMicrosPerGram: observedRules.logisticsMicrosPerGram, commissionPpm: observedRules.commissionPpm };
+  return { ...draft, ...patch, schemaVersion: 1, storeId: 'bill', revision: 1, updatedAt: NOW };
 }
 function input(patch: Partial<QuoteInput> = {}): QuoteInput {
-  return { storeId: 'bill', action: 'listing', pricingMode: 'automatic', purchaseMinor: 2000, weightGrams: 100, at: NOW, ...patch };
+  return { storeId: 'bill', action: 'listing', pricingMode: 'automatic', purchaseMinor: observedProduct.profit.purchaseMinor, weightGrams: observedProduct.profit.packageGrams, at: NOW, ...patch };
 }
 function has(result: ReturnType<typeof quotePricing>, code: string) { return result.issues.some(issue => issue.code === code); }
 
@@ -82,16 +86,16 @@ test('configuration validates every money, rate, identity, time and boundary fie
   assert.equal(repo.read('bill'), undefined);
 });
 
-test('old formula is reproduced with integer ceiling: 20 + 3.16 + 3.93 and target 60%', () => {
+test('recorded procurement and package reproduce exact manual and listing target prices', () => {
   const result = quotePricing(config(), input({ pricingMode: 'manual', action: 'price' }));
   assert.equal(result.status, 'ready');
   assert.equal(result.targetMarginPpm, 50000);
-  assert.equal(result.suggestedPriceMinor, 3613);
-  assert.deepEqual(result.breakdown, { purchaseMinor: 2000, fixedMinor: 316, logisticsMinor: 393, commissionMinor: 723,
-    totalCostMinor: 3432, profitMinor: 181, marginPpm: 50096 });
+  assert.equal(result.suggestedPriceMinor, 4497);
+  assert.deepEqual(result.breakdown, { purchaseMinor: 2663, fixedMinor: 316, logisticsMinor: 393, commissionMinor: 900,
+    totalCostMinor: 4272, profitMinor: 225, marginPpm: 50033 });
   const listing = quotePricing(config(), input());
-  assert.equal(listing.suggestedPriceMinor, 13545);
-  assert.equal(listing.breakdown.profitMinor, 8127);
+  assert.equal(listing.suggestedPriceMinor, 16860);
+  assert.equal(listing.breakdown.profitMinor, 10116);
   assert.equal(listing.breakdown.marginPpm, 600000);
   assert.ok(has(listing, 'AUTO_LISTING_PRICE_LIMIT'));
 });
@@ -115,16 +119,16 @@ test('manual prices can fall below targets or show a loss when no explicit hard 
 
 test('configured hard margin is evaluated exactly, independently of displayed ppm and desired target', () => {
   const model = config({ minimumMarginPpm: 50000 });
-  const below = quotePricing(model, input({ action: 'price', pricingMode: 'manual', priceMinor: 3612 }));
-  const pass = quotePricing(model, input({ action: 'price', pricingMode: 'manual', priceMinor: 3613 }));
+  const below = quotePricing(model, input({ action: 'price', pricingMode: 'manual', priceMinor: 4496 }));
+  const pass = quotePricing(model, input({ action: 'price', pricingMode: 'manual', priceMinor: 4497 }));
   assert.ok(has(below, 'MARGIN_BELOW_MINIMUM'));
   assert.equal(pass.status, 'ready');
-  assert.equal(pass.minimumAllowedPriceMinor, 3613);
+  assert.equal(pass.minimumAllowedPriceMinor, 4497);
 });
 
 test('automatic listing upper limit never clips a computed price and does not restrict manual or promotion prices', () => {
   const auto = quotePricing(config(), input());
-  assert.equal(auto.suggestedPriceMinor, 13545);
+  assert.equal(auto.suggestedPriceMinor, 16860);
   assert.ok(has(auto, 'AUTO_LISTING_PRICE_LIMIT'));
   assert.equal(quotePricing(config(), input({ pricingMode: 'manual', priceMinor: 14000 })).status, 'ready');
   assert.equal(quotePricing(config(), input({ action: 'promotion', priceMinor: 14000 })).status, 'ready');
@@ -135,13 +139,13 @@ test('listing keeps its own target when checking a manual price without enforcin
   const manual = quotePricing(config(), input({ pricingMode: 'manual', priceMinor: 4000 }));
   assert.equal(manual.targetMarginPpm, 600000);
   assert.equal(manual.suggestedPriceMinor, automatic.suggestedPriceMinor);
-  assert.equal(manual.suggestedPriceMinor, 13545);
+  assert.equal(manual.suggestedPriceMinor, 16860);
   assert.equal(manual.evaluatedPriceMinor, 4000, 'The explicit price is evaluated rather than overwritten');
   assert.equal(manual.status, 'ready', 'A desired target is not a minimum margin or an automatic-price restriction');
   assert.ok(manual.warnings.some(message => message.includes('未达到目标')));
   const ordinary = quotePricing(config(), input({ action: 'price', pricingMode: 'manual', priceMinor: 4000 }));
   assert.equal(ordinary.targetMarginPpm, 50000);
-  assert.equal(ordinary.suggestedPriceMinor, 3613);
+  assert.equal(ordinary.suggestedPriceMinor, 4497);
 });
 
 test('absolute price bounds apply and a suggested price can rise above min price by one cent for rounding', () => {

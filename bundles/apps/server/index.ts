@@ -9,16 +9,18 @@ import {snapshotPluginConfig} from '../../../packages/dsh-plugin/server/config.t
 import {validateServiceUrl, ServiceFailure} from '../../../packages/dsh-plugin/server/service-client.ts';
 import type {PluginContext, PluginConfig} from '../../../packages/dsh-plugin/server/types.ts';
 import type {JsonValue} from '../../../packages/app-contracts/src/index.ts';
-import {AppsHost, HttpAppsHostTransport, type AppsPluginContext, type AppsHostTransport} from '../../../packages/plugin-apps/src/index.ts';
+import {AppsHost, HttpAppsHostTransport, RuntimeHealthMonitor, RuntimeRestarter, loadRuntimeLaunchManifest, type AppsPluginContext, type AppsHostTransport} from '../../../packages/plugin-apps/src/index.ts';
+import {AsyncJsonlLog} from '../../../packages/service/src/request-log.ts';
 import {apply as attachHallmark} from '../../../packages/plugin-hallmark/src/index.ts';
 import {apply as attachNotes} from '../../../packages/plugin-notes/src/index.ts';
 import type {NativeSessionAdapterMode} from '../../../packages/dsh-compat/src/index.ts';
 import type {AppsAuthoringGuidance} from '../../../packages/plugin-apps/src/authoring-guidance.ts';
+import {attachListingImageJobs,type ListingImageContext} from '../../../packages/plugin-apps/src/listing-image-jobs.ts';
 export const name = 'dsh-plugin-apps-bundle';
-export const version = '1.0.0-candidate.72';
+export const version = '1.0.0-candidate.76';
 export const inject = ['tools', 'commands', 'systemPrompt', 'connection', 'agents', 'sessionQuery'];
 export const Config = Schema.object({
-  serviceUrl: Schema.string().default('http://127.0.0.1:4181').description('显式Apps Runtime回环地址；候选包不启动或重启运行服务。'),
+  serviceUrl: Schema.string().default('http://127.0.0.1:4181').description('显式Apps Runtime回环地址；仅有本插件受信启动清单时自动恢复，外部实例不接管。'),
   dataDirectory: Schema.string().default('').description('隔离Apps Runtime绝对数据目录；留空仅使用明确APPS_DATA_DIR，不能复用旧库。'),
   requestTimeoutMs: Schema.natural().min(100).max(90000).default(75000),
   contentBudgetBytes: Schema.natural().min(2048).max(16384).default(16384),
@@ -45,13 +47,13 @@ export class RuntimeLegacyHallmarkPlugin extends HallmarkPlugin {
 }
 export interface AppsBundleHandle {host: AppsHost;legacy: RuntimeLegacyHallmarkPlugin;dispose(): Promise<void>}
 /** Explicit assembly owns 1+N logical modules; no Provider is imported into the Host. */
-export async function createAppsBundle(ctx: PluginContext & AppsPluginContext, config: PluginConfig, transport: AppsHostTransport, options: {legacyToolProjection?: boolean;nativeSessionAdapter?: NativeSessionAdapterMode} = {}): Promise<AppsBundleHandle> {
+export async function createAppsBundle(ctx: PluginContext & AppsPluginContext, config: PluginConfig, transport: AppsHostTransport, options: {legacyToolProjection?: boolean;nativeSessionAdapter?: NativeSessionAdapterMode;health?: RuntimeHealthMonitor;restarter?: RuntimeRestarter;log?: (row: Record<string,unknown>) => void} = {}): Promise<AppsBundleHandle> {
   let sessions:AppsPluginContext['sessions'];try{sessions=(typeof ctx.get==='function'?ctx.get('sessions'):ctx.sessions) as AppsPluginContext['sessions'];}catch{sessions=undefined;}
   const legacyContext: PluginContext = {
     agents: ctx.agents, sessions, sessionQuery: ctx.sessionQuery, commands: ctx.commands, connection: ctx.connection,
     tools: {register: tool => options.legacyToolProjection ? ctx.tools.register({...tool,...(['hallmark_update_price','hallmark_update_stock','hallmark_list_product'].includes(tool.name)?{timeoutMs:APPS_BUSINESS_REQUEST_TIMEOUT_MS}:{})}) : () => {}},
     // An unregistered legacy tool must not be advertised as available in the model's instructions.
-    systemPrompt: {context: contribution => options.legacyToolProjection ? ctx.systemPrompt.context(contribution) : () => {}},
+    systemPrompt: {context: contribution => options.legacyToolProjection ? host.registerContext({...contribution,text:context=>host.isAppSelected(context,'hallmark')?contribution.text(context):''}) : () => {}},
     on: ctx.on.bind(ctx), ...(ctx.effect ? {effect: ctx.effect.bind(ctx)} : {}),
   };
   const legacy = new RuntimeLegacyHallmarkPlugin(legacyContext,config,transport);
@@ -59,7 +61,7 @@ export async function createAppsBundle(ctx: PluginContext & AppsPluginContext, c
   const cliPath=join(dirname(process.execPath),'resources','runtime','cli','bin','dsh.cmd'),electron=Boolean(process.versions.electron);
   const dataDirectory=config.dataDirectory??process.env.APPS_DATA_DIR,serviceUrl=config.serviceUrl;
   const authoringGuidance:AppsAuthoringGuidance|undefined=dataDirectory&&serviceUrl?{cliPath:existsSync(cliPath)?cliPath:null,nodeExecutable:process.execPath,nodeArgs:electron?['--expose-internals']:[],nodeEnvironment:electron?{ELECTRON_RUN_AS_NODE:'1'}:{},starterPath:fileURLToPath(new URL('../source-starter/create-apps-source.mjs',import.meta.url)),sdkDirectory:fileURLToPath(new URL('../sdk/component-runtime',import.meta.url)),buildRunnerPath:fileURLToPath(new URL('./apps-authoring-build.js',import.meta.url)),previewRunnerPath:fileURLToPath(new URL('./apps-authoring-preview.js',import.meta.url)),runtime:{url:serviceUrl,keyFile:join(dataDirectory,'service-key'),archiveRoot:join(dataDirectory,'source-components'),evidenceRoot:join(dataDirectory,'authoring-evidence')}}:undefined;
-  const host = new AppsHost(ctx,transport,undefined,{nativeSessionAdapter:options.nativeSessionAdapter,authoringGuidance,prepareView:async(view,sessionId,signal)=>{
+  const host = new AppsHost(ctx,transport,undefined,{nativeSessionAdapter:options.nativeSessionAdapter,authoringGuidance,health:options.health,restarter:options.restarter,log:options.log,prepareView:async(view,sessionId,signal)=>{
     if(!view||typeof view!=='object'||Array.isArray(view))return;
     if(view.ownerSessionId!==sessionId)throw new Error('VIEW_NOT_OWNED');
     if(view.source)await legacy.prepareSource({kind:'source',source:view.source});
@@ -80,9 +82,17 @@ export async function createAppsBundle(ctx: PluginContext & AppsPluginContext, c
   let disposed = false;
   const dispose = async () => {if (disposed) return;disposed = true;attachments.splice(0).reverse().forEach(remove => remove());await Promise.allSettled([legacy.dispose(),host.dispose()]);};
   try {
-    await host.start();attachments.push(host.attachApp('apps'),attachHallmark(host),attachNotes(host));await legacy.start();
+    attachments.push(attachListingImageJobs({tools:ctx.tools,agents:ctx.agents,on:ctx.on.bind(ctx),systemPrompt:{context:(contribution:Parameters<AppsHost['registerContext']>[0])=>host.registerContext(contribution)}} as unknown as ListingImageContext,context=>host.isAppSelected(context,'hallmark')));
+    await host.start();
+    attachments.push(host.whenReady(()=>{
+      const added:(()=>void)[]=[];
+      try{added.push(host.attachApp('apps'));added.push(attachHallmark(host));added.push(attachNotes(host));attachments.push(...added);}
+      catch(error){added.reverse().forEach(remove=>remove());throw error;}
+    }));
+    await legacy.start();
     const listingSkill=fileURLToPath(new URL('../skills/ozon-listing/SKILL.md',import.meta.url));
-    attachments.push(ctx.systemPrompt.context({name:'hallmark-business-operations',order:515,text:context=>{
+    attachments.push(host.registerContext({name:'hallmark-business-operations',order:515,text:context=>{
+      if(!host.isAppSelected(context,'hallmark'))return '';
       const agent=context.agent??context.scope as {id?:string}|undefined;
       if(!agent||typeof agent.id!=='string'||ctx.agents.get(agent.id)!==agent||context.scope&&context.scope!==agent)return '';
       return 'Ozon经营操作：先发现当前Hallmark连接和hallmark.plan.*能力版本，使用同一草稿/审核/执行入口。上品默认完整制作标题、属性、主图与详情；任务匹配时通过原生skill工具加载ozon-listing，组件创作继续使用hallmark-component-design。保存草稿不触发模型审核，提交确定版本时程序自动审核；无须额外facts、preflight或已审阅声明。程序绑定SKU与采购成本，unknown只核查原操作。'+(existsSync(listingSkill)?`若原生技能目录尚未更新，可读取随包同版本指引：${listingSkill}。`:'');
@@ -100,6 +110,14 @@ export async function apply(ctx: PluginContext & AppsPluginContext, raw: unknown
   const token = readFileSync(join(directory,'service-key'),'utf8').trim();
   if (!/^[a-f0-9]{64}$/.test(token)) throw new Error('SERVICE_KEY_INVALID');
   const config = snapshotPluginConfig({serviceUrl,dataDirectory:directory,autoStart:false,requestTimeoutMs:parsed.requestTimeoutMs,contentBudgetBytes:parsed.contentBudgetBytes});
-  await createAppsBundle(ctx,config,new HttpAppsHostTransport(serviceUrl,token),{legacyToolProjection:parsed.legacyToolProjection,nativeSessionAdapter:parsed.nativeSessionAdapter});
+  // Host-side proxy failures and Runtime health transitions: logs/host-YYYY-MM-DD.jsonl in the Runtime data directory (buffered async, 16 MiB per file, newest 14 files).
+  const hostLog = new AsyncJsonlLog({directory:join(directory,'logs'),prefix:'host-',maxFileBytes:16*1024*1024}), log = (row: Record<string,unknown>) => hostLog.write(row);
+  const transport = new HttpAppsHostTransport(serviceUrl,token), health = new RuntimeHealthMonitor({probe: signal => transport.health(signal), log});
+  const launch=loadRuntimeLaunchManifest(directory,serviceUrl,fileURLToPath(new URL('./runtime.js',import.meta.url)));
+  const restarter=launch.manifest?new RuntimeRestarter({monitor:health,manifest:launch.manifest,log}):undefined;
+  if(!restarter){health.disableRestart(launch.reason??'NO_LAUNCH_SPEC');log({ts:new Date().toISOString(),event:'runtime_restart',reason:launch.reason??'NO_LAUNCH_SPEC'});}
+  try {await createAppsBundle(ctx,config,transport,{legacyToolProjection:parsed.legacyToolProjection,nativeSessionAdapter:parsed.nativeSessionAdapter,health,restarter,log});}
+  catch (error) {await hostLog.close();throw error;}
+  ctx.effect?.(() => () => {void hostLog.close();});
 }
 export default {name, inject, Config, apply};

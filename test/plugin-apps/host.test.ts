@@ -1,3 +1,4 @@
+import {uiProduct,uiOzonProduct,uiStore,uiDictionaryValue,uiText} from '../real-data/ui-scenarios.ts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync} from 'node:fs';
@@ -14,6 +15,7 @@ import {composeAppsRuntime} from '../../packages/service/src/apps-main.ts';
 import {runAuthoringPreview} from '../../scripts/apps-authoring-preview.mjs';
 import {AppsHost, HttpAppsHostTransport, type AppsHostTransport, type AppsPluginContext, type NativeGatewayTool} from '../../packages/plugin-apps/src/index.ts';
 import {createAppsBundle} from '../../bundles/apps/server/index.ts';
+import {TOOL_DEFINITIONS} from '../../packages/contracts/src/index.ts';
 import type {PluginContext, NativeTool} from '../../packages/dsh-plugin/server/types.ts';
 import type {AppProvider, CapabilityDescriptor, ExecutionContext, CapabilityResult, SessionAppBinding} from '../../packages/app-contracts/src/index.ts';
 function provider(appId: string, calls: ExecutionContext[], count = 1, large = false): AppProvider {
@@ -32,20 +34,20 @@ function connection(runtime: AppsRuntime,appId: string,connectionId: string,sess
 
 test('stored result reader keeps trusted session identity and excludes mixed operation requests',async()=>{
   const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),f=context(),calls:any[]=[];
-  const transport={...inProcessTransport(runtime),async readModelResult(input:any){calls.push(input);return {kind:'array',items:[{id:85,values:[{value:'Brand'}]}],completeness:'complete'};}};
+  const transport={...inProcessTransport(runtime),async readModelResult(input:any){calls.push(input);return {kind:'array',items:[{id:85,values:[{value:uiDictionaryValue(2)}]}],completeness:'complete'};}};
   const host=new AppsHost(f.ctx,transport);await host.start();
   try{
     const tool=f.tools.get('apps_inspect') as NativeGatewayTool,execution={agent:f.A,signal:new AbortController().signal};
     const result=await tool.execute({resultRef:'result:original',path:'/data/result/0/attributes',limit:4},execution);
     assert.deepEqual(calls,[{resultRef:'result:original',sessionId:'A',path:'/data/result/0/attributes',limit:4}]);
-    assert.match(tool.output.render({},result)[0].text,/Brand/);
+    assert.match(tool.output.render({},result)[0].text,uiText(uiDictionaryValue(2)));
     for(const bad of [{resultRef:'r',sessionId:'B'},{resultRef:'r',operationId:'o'},{operationId:'o',path:''},{resultRef:'r',cursor:'-1'}])assert.equal((await tool.execute(bad,execution) as any).error.code,'INVALID_INPUT');
     assert.equal(calls.length,1);
   }finally{await host.dispose();await runtime.dispose();store.close();}
 });
 
 const previewBrowser=process.env.DSH_PREVIEW_BROWSER_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe';
-// Windows may assign a Fetch-restricted low port (for example 2049) to listen(0).
+// Avoid Fetch-restricted low ports; Windows may also reserve high ports, so retry EACCES.
 async function listenForFetch(server:ReturnType<typeof createAppsServer>):Promise<string>{
   for(let attempt=0;attempt<20;attempt++){
     try{
@@ -55,7 +57,7 @@ async function listenForFetch(server:ReturnType<typeof createAppsServer>):Promis
         server.once('error',failed);server.once('listening',ready);server.listen(randomInt(20000,65536),'127.0.0.1');
       });
       return `http://127.0.0.1:${(server.address() as {port:number}).port}`;
-    }catch(error){if((error as NodeJS.ErrnoException).code!=='EADDRINUSE')throw error;}
+    }catch(error){if(!['EADDRINUSE','EACCES'].includes((error as NodeJS.ErrnoException).code??''))throw error;}
   }
   throw new Error('No free Fetch-compatible fixture port');
 }
@@ -109,7 +111,7 @@ test('real bundle Host reads prepared and recoverable legacy preview archives be
       const recovered=await bundle.host.ui(new Request('http://dsh.invalid/api/dsh-apps?'+query));assert.equal(recovered.status,200,JSON.stringify(await recovered.clone().json()));const fixed=await recovered.json();assert.equal(fixed.publication.state,state);assert.equal(fixed.publication.source.buildId,publication.candidateBuildId);assert.equal(await (await asset.fetch(new Request('http://dsh.invalid/api/hallmark-source/'+publication.candidateBuildId+'/index.html'))).text(),html);
     }
     assert.equal(instance.store.list<{namespace:string}>('provider_records').filter(row=>row.namespace==='frame_grants').length,0);assert.equal(instance.presentation.getView(view.viewId)?.source,undefined);
-  }finally{try{await bundle?.dispose();}finally{server.closeAllConnections();await new Promise<void>(accept=>server.close(()=>accept()));await instance.close();assert.match(resolve(directory),/apps-host-prepared-[^\\/]+$/);rmSync(directory,{recursive:true,force:true,maxRetries:5,retryDelay:200});}}
+  }finally{try{await bundle?.dispose();}finally{server.closeAllConnections();await new Promise<void>(accept=>server.close(()=>accept()));await instance.close();assert.match(resolve(directory),/apps-host-prepared-[^\\/]+$/);rmSync(directory,{recursive:true,force:true,maxRetries:15,retryDelay:200});}}
 });
 
 test('manual startMount crosses the original-session UI route only, with fixed identity and no extra gateway tool',async()=>{
@@ -153,7 +155,7 @@ test('actual AssembleContext scope supplies the Apps summary only for the identi
   try {
     const prompt=f.prompts.get('dsh-apps-summary') as {text(context:{agent?:{id:string};scope?:object;signal?:AbortSignal}):string};
     assert.ok(prompt);const signal=new AbortController().signal;
-    const assembled=prompt.text({scope:f.A,signal});assert.match(assembled,/固定发现网关/);assert.match(assembled,/"appId":"notes"/);
+    const assembled=prompt.text({scope:f.A,signal});assert.equal(assembled,'');
     assert.equal(prompt.text({scope:{id:'A'},signal}),'');assert.equal(prompt.text({agent:f.A,scope:f.B,signal}),'');assert.equal(prompt.text({signal}),'');
     assert.equal(prompt.text({agent:f.A,signal}),assembled);assert.equal(calls.length,0);
     assert.equal(host.requestAgent()?.status,'failed');assert.equal(host.updateContext()?.status,'failed');
@@ -187,13 +189,26 @@ test('native gateway rendering uses a Runtime spill projection and fails closed 
   }finally{await host.dispose();await runtime.dispose();store.close();}
 });
 
-test('combined Host registers old 26 names once and their HTTP compatibility dispatch uses the Runtime ledger',async()=>{
+test('combined Host registers the exact current tools and old 26 names once, with compatibility dispatch in the Runtime ledger',async()=>{
   const directory=mkdtempSync(join(tmpdir(),'apps-host-bundle-')),store=new RuntimeStore(join(directory,'apps.db')),runtime=new AppsRuntime(store),calls:ExecutionContext[]=[];
   runtime.register(provider('hallmark',calls));runtime.register(provider('notes',calls));const presentation=new AppsPresentationService({store,runtime,sources:new SourceComponentStore(join(directory,'source-components'))});runtime.register(presentation.provider());
   runtime.addConnection({appId:'hallmark',connectionId:'H1',displayName:'H1',enabled:true,config:{},configRevision:1});runtime.addConnection({appId:'notes',connectionId:'N1',displayName:'N1',enabled:true,config:{},configRevision:1});runtime.addConnection({appId:'apps',connectionId:'presentation',displayName:'Shared',enabled:true,config:{},configRevision:1});store.put('legacy_aliases','connection:default',{appId:'hallmark',connectionId:'H1',status:'resolved'});
   const token='b'.repeat(64),server=createAppsServer({runtime,presentation,token});let bundle:Awaited<ReturnType<typeof createAppsBundle>>|undefined;
   try {writeFileSync(join(directory,'service-key'),token);const url=await listenForFetch(server),f=context(),transport=new HttpAppsHostTransport(url,token);bundle=await createAppsBundle(f.ctx,{serviceUrl:url,dataDirectory:directory,autoStart:false},transport,{legacyToolProjection:true});
-    assert.equal(f.tools.size,30);assert.equal([...f.tools.keys()].filter(name=>name.startsWith('hallmark_')).length,26);assert.equal([...f.tools.keys()].filter(name=>name.startsWith('apps_')).length,4);assert.equal(f.routes.size,2);
+    const currentTools=['apps_list','apps_describe','apps_invoke','apps_inspect','listing_image_prepare'],legacyTools=TOOL_DEFINITIONS.map(tool=>tool.name),expectedTools=[...currentTools,...legacyTools];
+    assert.equal(legacyTools.length,26);assert.equal(new Set(expectedTools).size,expectedTools.length);assert.deepEqual([...f.tools.keys()].sort(),expectedTools.toSorted());assert.equal([...f.tools.keys()].filter(name=>name.startsWith('apps_')).length,4);assert.equal(f.routes.size,2);
+    const assemble=async(agent:typeof f.A)=>{
+      const hook=f.listeners.get('system-prompt/assemble') as Function;
+      const initial={contexts:[...f.prompts].map(([name,value])=>({name,text:(value as {text(context:unknown):string}).text({scope:agent})}))};
+      return hook(initial,{scope:agent},async()=>initial);
+    };
+    assert.deepEqual((await assemble(f.B)).contexts,[]);
+    runtime.bind({sessionId:'B',appId:'notes',connectionId:'N1',enabled:true,boundAt:new Date().toISOString()});
+    const notes=await assemble(f.B);assert.deepEqual(notes.contexts.map((row:{name:string})=>row.name),['dsh-apps-summary']);assert.doesNotMatch(notes.contexts[0].text,/hallmark/);
+    runtime.bind({sessionId:'B',appId:'hallmark',connectionId:'H1',enabled:true,boundAt:new Date().toISOString()});
+    const selected=await assemble(f.B);assert.ok(selected.contexts.some((row:{name:string})=>row.name==='hallmark-business-operations'));assert.ok(selected.contexts.some((row:{name:string})=>row.name==='listing-image-handoff'));
+    for(const binding of runtime.sessionBindings('B'))runtime.bind({...binding,enabled:false});
+    assert.deepEqual((await assemble(f.B)).contexts,[]);
     await bundle.legacy.setActive('A',true);const tool=f.tools.get('hallmark_list_stores') as NativeTool;const result=await tool.execute({},{agent:f.A,name:'hallmark_list_stores',arguments:{},signal:new AbortController().signal});assert.equal(result.status,'ok');assert.equal(calls.length,1);assert.equal(store.list('invocations').length,1);
     assert.equal((await tool.execute({},{agent:f.B,name:'hallmark_list_stores',arguments:{},signal:new AbortController().signal})).error?.code,'APP_NOT_ACTIVE');assert.equal(calls.length,1);
     const diagnostic=await transport.diagnostics('A');assert.equal(diagnostic.invocations.length,1);assert.equal(diagnostic.invocations[0].appId,'hallmark');assert.equal(diagnostic.invocations[0].connectionId,'H1');assert.ok(diagnostic.invocations[0].invocationId);assert.ok(diagnostic.invocations[0].traceId);assert.equal(diagnostic.invocations[0].operationId,null);assert.equal((await transport.diagnostics('B')).invocations.length,0);
@@ -201,7 +216,7 @@ test('combined Host registers old 26 names once and their HTTP compatibility dis
     const unknown=await bundle.host.ui(new Request('http://dsh.invalid/api/dsh-apps?resource=diagnostics&sessionId=nonexistent'));assert.equal(unknown.status,400);
     await bundle.dispose();assert.equal(f.tools.size,0);assert.equal(f.routes.size,0);assert.equal(runtime.listApps().length,3);assert.equal(store.list('invocations').length,1);
     const defaultContext=context(),defaultBundle=await createAppsBundle(defaultContext.ctx,{serviceUrl:url,dataDirectory:directory,autoStart:false},transport);
-    try {assert.equal(defaultContext.tools.size,4);assert.equal([...defaultContext.tools.keys()].filter(name=>name.startsWith('hallmark_')).length,0);assert.equal(defaultContext.prompts.has('hallmark-app'),false);assert.equal(runtime.describe('hallmark_list_stores')?.capabilityId,'hallmark.read0');assert.equal(defaultContext.routes.size,2);assert.equal((await defaultBundle.host.directory()).apps.find(row=>row.appId==='apps')?.hostProjectionState,'attached');
+    try {assert.deepEqual([...defaultContext.tools.keys()].sort(),currentTools.toSorted());assert.equal([...defaultContext.tools.keys()].filter(name=>name.startsWith('hallmark_')).length,0);assert.equal(defaultContext.prompts.has('hallmark-app'),false);assert.equal(runtime.describe('hallmark_list_stores')?.capabilityId,'hallmark.read0');assert.equal(defaultContext.routes.size,2);assert.equal((await defaultBundle.host.directory()).apps.find(row=>row.appId==='apps')?.hostProjectionState,'attached');
       const shared=await defaultBundle.host.call('apps_invoke',{appId:'apps',connectionId:'presentation',capabilityId:'apps.presentation.list_saved',capabilityVersion:'1.0.0',input:{}},'A') as CapabilityResult;assert.equal(shared.status,'ok',JSON.stringify(shared));
       runtime.bind({sessionId:'A',appId:'notes',connectionId:'N1',enabled:true,boundAt:new Date().toISOString()});const project=join(directory,'project');mkdirSync(join(project,'dist'),{recursive:true});writeFileSync(join(project,'package.json'),'{"name":"native-source-fixture","private":true}');writeFileSync(join(project,'package-lock.json'),'{"lockfileVersion":3}');writeFileSync(join(project,'Component.tsx'),'export default () => null;');writeFileSync(join(project,'dist/index.html'),'<html>Actual native source proxy fixture</html>');
       const args={appId:'apps',connectionId:'presentation',capabilityId:'apps.presentation.open_source_component',capabilityVersion:'1.0.0',input:{directory:project,title:'Native source',bindings:[{bindingId:'notes',appId:'notes',connectionId:'N1',capabilityId:'notes.read0',capabilityMajor:1,input:{},projection:[],refresh:{mode:'manual'}}]}},gateway=defaultContext.tools.get('apps_invoke') as NativeGatewayTool,result=await gateway.execute(args,{agent:defaultContext.A,signal:new AbortController().signal}) as {result:CapabilityResult};assert.equal(result.result.status,'ok',JSON.stringify(result));const view=(result.result as unknown as {data:{viewId:string;viewRevision:number;source:{buildId:string}}}).data;

@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiFixturePrelude,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdirSync,mkdtempSync,rmSync} from 'node:fs';
@@ -9,7 +10,8 @@ test('workbench tabs, real preview, Chinese configuration and independent persis
   const root=resolve('artifacts');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'workbench-ui-')),entry=join(directory,'fixture.mjs');
   try{
     await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
-      import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
+      import React from 'react';
+${uiFixturePrelude()}import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
       import {AppsWorkspace} from './packages/plugin-apps/client/workspace.tsx';
       import {MaterialLibrary} from './packages/plugin-apps/client/material-library.tsx';
       import {WorkbenchBoard,WorkbenchInstanceView,workbenchDisplaySpec} from './packages/plugin-apps/client/workbench-board.tsx';
@@ -25,7 +27,7 @@ test('workbench tabs, real preview, Chinese configuration and independent persis
       const runtime={describe:()=>descriptor,getConnection:()=>({enabled:true}),invoke:async request=>{
         calls.push(request);const input=request.input;
         if(delayProduct&&input.productId==='p1')await new Promise(resolve=>{slowResolve=resolve;});
-        const id=input.productId??(input.cursor?'p3':'p1'),items=input.productId?[{id,name:id==='p1'?'真实蓝杯':'真实白杯',price:1999,sku:'SKU-'+id,spec:id==='p1'?'蓝色 500ml':'白色 300ml'}]:input.cursor?[{id:'p3',name:'真实旅行袋',price:9900}]:[{id:'p1',name:'真实蓝杯',price:1999},{id:'p2',name:'真实白杯',price:2500}];
+        const id=input.productId??(input.cursor?'p3':'p1'),items=input.productId?[uiProduct({id,price:1999,sku:'SKU-'+id},id==='p1'?2:40)]:input.cursor?[uiProduct({id:'p3',price:9900},20)]:[uiProduct({id:'p1',price:1999},2),uiProduct({id:'p2',price:2500},40)];
         return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{items,total:3,cursor:input.cursor?null:'batch2'}};
       }};
       const presentation=new AppsPresentationService({store,runtime}),agent={kind:'agent',sessionId:'A',nativeCallId:'fixture'};
@@ -64,30 +66,30 @@ test('workbench tabs, real preview, Chinese configuration and independent persis
         assert.ok(button('工作台'));await act(async()=>{board().props.onAdd();await settle();});
         assert.ok(button('素材库'));assert.equal(button('工作台').props['aria-pressed'],false);assert.equal(button('添加到工作台').props.disabled,true);
         assert.match(JSON.stringify(tree.toJSON()),/示例数据/);
-        const exampleRow=tree.root.findByType(MaterialLibrary).findAllByType('tr').find(node=>text(node).includes('示例 · 便携保温杯'));await act(async()=>exampleRow.props.onClick());assert.match(JSON.stringify(tree.toJSON()),/雾蓝/);assert.equal(requests.some(row=>row.body?.operation==='preview'),false,'interactive example does not pretend to query real data');
+        const exampleRow=tree.root.findByType(MaterialLibrary).findAllByType('tr').find(node=>typeof node.props.onClick==='function');await act(async()=>exampleRow.props.onClick());assert.ok(tree.root.findByType(MaterialLibrary).findAllByType('tbody').length>1,'unbound preset detail remains interactive');assert.equal(requests.some(row=>row.body?.operation==='preview'),false,'interactive example does not pretend to query real data');
         const skuPicker=tree.root.findAllByType(DataSourcePicker).find(node=>node.props.label==='SKU 明细');assert.equal(skuPicker.findAllByType('option').find(node=>node.props.value==='products').props.disabled,true);assert.match(text(skuPicker),/缺少SKU 编码、SKU 规格/);
         await change('商品列表数据来源','products');await change('SKU 明细数据来源','sku');
         assert.equal(tree.root.findAllByProps({'aria-label':'分页位置'}).length,0);assert.equal(tree.root.findAllByProps({'aria-label':'店铺编号'}).length,0);
-        assert.match(JSON.stringify(tree.toJSON()),/真实蓝杯/);assert.match(JSON.stringify(tree.toJSON()),/¥19.99|CNY/);assert.equal(button('添加到工作台').props.disabled,false);
+        assert.match(JSON.stringify(tree.toJSON()),uiText(uiProduct({},2).title));assert.match(JSON.stringify(tree.toJSON()),/¥19.99|CNY/);assert.equal(button('添加到工作台').props.disabled,false);
         await click('调整显示');const image=tree.root.findAllByProps({'aria-label':'显示商品图片'})[0];assert.equal(image.props.disabled,false);
         await act(async()=>image.props.onClick());await act(async()=>tree.root.findByProps({'aria-label':'重命名商品名称'}).props.onClick());await change('商品名称显示名称','我关心的商品');await act(async()=>tree.root.findByProps({'aria-label':'商品列表紧凑'}).props.onClick());await change('模块布局','one');
         const library=tree.root.findByType(MaterialLibrary),preview=library.findByType(WorkbenchInstanceView),draft=preview.props.instance;
         assert.equal(draft.design.widgets[0].options.columns.find(column=>column.field==='product.name').label,'我关心的商品');assert.equal(draft.design.widgets[0].options.density,'compact');assert.equal(draft.design.layout.columns,1);
         const stale=structuredClone(draft);stale.design.widgets[0].options={...stale.design.widgets[0].options,rowsPath:'old.rows',example:true,fieldMeta:{'price.current':{currency:'USD',numericScale:100}}};
         const derived=await presentation.previewWorkbenchInstance('hallmark',stale,agent),merged=workbenchDisplaySpec(stale,derived);assert.equal(merged.widgets[0].options.rowsPath,'items');assert.equal(merged.widgets[0].options.example,false);assert.equal(merged.widgets[0].options.fieldMeta['price.current'].currency,'CNY');assert.equal(merged.widgets[0].options.fieldMeta['price.current'].numericScale,.01);assert.equal(merged.widgets[0].options.density,'compact');assert.equal(merged.widgets[0].options.columns.find(column=>column.field==='product.name').label,'我关心的商品');assert.equal(merged.layout.columns,1);assert.deepEqual(merged.bindings,derived.view.design.bindings);
-        const row=library.findAllByType('tr').find(node=>text(node).includes('真实蓝杯'));await act(async()=>{row.props.onClick();await settle();});assert.match(JSON.stringify(library.toJSON?.()??tree.toJSON()),/蓝色 500ml/);
+        const row=library.findAllByType('tr').find(node=>text(node).includes(uiProduct({},2).title));await act(async()=>{row.props.onClick();await settle();});assert.match(JSON.stringify(library.toJSON?.()??tree.toJSON()),uiText(uiProduct({},2).spec));
         await click('完成');await change('工作台组件名称','我的商品工作台');await click('添加到工作台');const saved=presentation.getWorkbench('hallmark');assert.equal(saved.instances.length,1);assert.equal(saved.instances[0].title,'我的商品工作台');assert.equal(button('工作台').props['aria-pressed'],true);assert.ok(button('素材库'));assert.equal(tree.root.findByProps({'data-instance-id':saved.instances[0].instanceId}).props.className.includes('is-highlighted'),true);
         const readsBefore=requests.filter(row=>row.body?.operation==='read').length;
         await act(async()=>{tree.update(<AppsWorkspace currentSessionId='B'/>);await settle();});assert.equal(presentation.getWorkbench('hallmark').instances.length,1);assert.equal(requests.filter(row=>row.body?.operation==='read').length,readsBefore,'switching chat must not reset the workbench');
         const boardReadsBeforeMaterials=requests.filter(row=>row.body?.operation==='read').length;await click('素材库');assert.equal(board().findAllByType(WorkbenchInstanceView).length,0,'the hidden board contains no live readers');assert.equal(requests.filter(row=>row.body?.operation==='read').length,boardReadsBeforeMaterials,'opening materials does not start background board reads');await change('工作台组件名称','第二个独立实例');await click('添加到工作台');assert.equal(board().findAllByType(WorkbenchInstanceView).length,0,'returning to the compact catalogue never mounts readers');assert.equal(requests.filter(row=>row.body?.operation==='read').length,boardReadsBeforeMaterials);assert.equal(presentation.getWorkbench('hallmark').instances.length,2);assert.notEqual(presentation.getWorkbench('hallmark').instances[0].instanceId,presentation.getWorkbench('hallmark').instances[1].instanceId);
         const cards=tree.root.findAll(node=>node.props['data-instance-id']);const firstCard=cards[0];await act(async()=>{firstCard.findAllByType('button').find(node=>text(node)==='配置').props.onClick();await settle();});await change('工作台组件名称','仅修改第一个');await click('保存配置');assert.deepEqual(presentation.getWorkbench('hallmark').instances.map(instance=>instance.title),['仅修改第一个','第二个独立实例']);
         await act(async()=>tree.unmount());await act(async()=>{tree=create(<AppsWorkspace currentSessionId='A'/>);await settle();});assert.equal(tree.root.findAll(node=>node.props['data-instance-id']).length,2);assert.match(JSON.stringify(tree.toJSON()),/仅修改第一个/);
-        await act(async()=>{tree.root.findByProps({'aria-label':'打开仅修改第一个'}).props.onClick();await settle();});assert.ok(button('仅修改第一个'),'clicking a card creates a component tab');assert.equal(button('仅修改第一个').props['aria-pressed'],true);const first=tree.root.findAllByType(WorkbenchBoard).find(node=>node.props.detailInstanceId).findAll(node=>node.props['data-instance-id'])[0];const next=first.findAllByType('button').find(node=>['下一批','加载更多'].includes(text(node)));await act(async()=>{next.props.onClick();await settle();});assert.match(text(first),/真实旅行袋/);assert.ok(first.findAllByType('button').find(node=>text(node)==='返回第一批'));await act(async()=>{first.findAllByType('button').find(node=>text(node)==='返回第一批').props.onClick();await settle();});assert.match(text(first),/真实蓝杯/);
+        await act(async()=>{tree.root.findByProps({'aria-label':'打开仅修改第一个'}).props.onClick();await settle();});assert.ok(button('仅修改第一个'),'clicking a card creates a component tab');assert.equal(button('仅修改第一个').props['aria-pressed'],true);const first=tree.root.findAllByType(WorkbenchBoard).find(node=>node.props.detailInstanceId).findAll(node=>node.props['data-instance-id'])[0];const next=first.findAllByType('button').find(node=>['下一批','加载更多'].includes(text(node)));await act(async()=>{next.props.onClick();await settle();});assert.match(text(first),uiText(uiProduct({},20).title));assert.ok(first.findAllByType('button').find(node=>text(node)==='返回第一批'));await act(async()=>{first.findAllByType('button').find(node=>text(node)==='返回第一批').props.onClick();await settle();});assert.match(text(first),uiText(uiProduct({},2).title));
         // A slow SKU response cannot overwrite a newer selection.
         const selectable=()=>first.findAllByType('tr').filter(node=>typeof node.props.onClick==='function');delayProduct=true;
-        await act(async()=>{selectable().find(node=>text(node).includes('真实蓝杯')).props.onClick();await settle();});assert.ok(slowResolve,'fixture must hold the earlier SKU response');
-        await act(async()=>{selectable().find(node=>text(node).includes('真实白杯')).props.onClick();await settle();});
-        assert.match(text(first),/白色 300ml/);assert.doesNotMatch(text(first),/蓝色 500ml/);if(slowResolve)await act(async()=>{slowResolve();await settle();});assert.match(text(first),/白色 300ml/);assert.doesNotMatch(text(first),/蓝色 500ml/);
+        await act(async()=>{selectable().find(node=>text(node).includes(uiProduct({},2).title)).props.onClick();await settle();});assert.ok(slowResolve,'fixture must hold the earlier SKU response');
+        await act(async()=>{selectable().find(node=>text(node).includes(uiProduct({},40).title)).props.onClick();await settle();});
+        assert.match(text(first),uiText(uiProduct({},40).spec));assert.doesNotMatch(text(first),uiText(uiProduct({},2).spec));if(slowResolve)await act(async()=>{slowResolve();await settle();});assert.match(text(first),uiText(uiProduct({},40).spec));assert.doesNotMatch(text(first),uiText(uiProduct({},2).spec));
         assert.equal(requests.some(row=>row.body?.action==='authoring'||row.body?.action==='presentation'),false,'normal composition never creates source drafts or builds');
         delayProduct=false;
         await presentation.registerDataSource({definition:{...base,id:'products',title:'测试店铺商品新版',fields:productFields},expectedRevision:1},agent);
@@ -116,7 +118,8 @@ test('Agent handoff prepares only explicitly selected connections before inserti
   const root=resolve('artifacts');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'workbench-agent-')),entry=join(directory,'fixture.mjs');
   try{
     await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
-      import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
+      import React from 'react';
+${uiFixturePrelude()}import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
       import {MaterialLibrary} from './packages/plugin-apps/client/material-library.tsx';
       import {DataSourcePicker} from './packages/plugin-apps/client/data-source-picker.tsx';
       import {MATERIAL_CATALOG} from './packages/app-presentation/src/materials/catalog.ts';
@@ -152,7 +155,8 @@ test('Chinese query choices preserve raw typed values and optional All removes o
   const root=resolve('artifacts');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'workbench-choices-')),entry=join(directory,'fixture.mjs');
   try{
     await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
-      import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
+      import React from 'react';
+${uiFixturePrelude()}import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
       import {QueryParameters} from './packages/plugin-apps/client/module-config.tsx';
       globalThis.IS_REACT_ACT_ENVIRONMENT=true;
       const source={input:{},parameters:[

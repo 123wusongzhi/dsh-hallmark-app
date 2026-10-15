@@ -1,4 +1,5 @@
 import {test} from 'node:test';
+import {realDetail} from '../real-data/corpus.ts';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {AppsRuntime,RuntimeStore,type RuntimeOperation} from '../../packages/app-runtime/src/index.ts';
@@ -18,7 +19,7 @@ function fixture(){
   const provider:AppProvider={manifest:{manifestVersion:1,appId:'hallmark',displayName:'Fixture Hallmark',providerPackage:'test',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:['product']},descriptors:BUSINESS_DESCRIPTORS,mutationScope(request){return operations.get((request.input as {planId:string}).planId).rows.map(row=>`bill/${row.target.offerId}`);},execute:context=>executeBusiness(operations,domain,context),async inspect(id,context){events.push('runtime:inspect');return businessResult(await operations.inspect(planId(id),context.signal),context);},async continueOperation(id,context){events.push('runtime:continue');return businessResult(await operations.continueSubmitted(planId(id),context.signal),context);},async dispose(){}};
   runtime.register(provider);runtime.addConnection({appId:'hallmark',connectionId:'C1',displayName:'Fixture',config:{},configRevision:1,enabled:true});runtime.bind({sessionId:'session',appId:'hallmark',connectionId:'C1',enabled:true,boundAt:new Date().toISOString()});
   const invoke=(id:string)=>runtime.invoke({protocolVersion:'1.0',invocationId:randomUUID(),traceId:randomUUID(),appId:'hallmark',connectionId:'C1',capabilityId:'hallmark.plan.submit',capabilityVersion:'1.0.0',input:{planId:id,expectedRevision:operations.get(id).revision},source:{kind:'agent',sessionId:'session',nativeCallId:randomUUID()},deadlineAt:new Date(Date.now()+3000).toISOString()} satisfies InvocationRequest);
-  const rows:BusinessRowInput[]=[{rowId:'listing',action:'listing',target:{offerId:'red'},procurement:[{itemId:'source',sourceSkuId:'source-red',quantity:1}],payload:{offer_id:'red',name:'Cup',price:'20',currency_code:'CNY'}},{rowId:'stock',action:'stock',target:{offerId:'red'},payload:{stock:0,warehouse_id:7},dependsOn:['listing']}];
+  const rows:BusinessRowInput[]=[{rowId:'listing',action:'listing',target:{offerId:'red'},procurement:[{itemId:'source',sourceSkuId:'source-red',quantity:1}],payload:{offer_id:'red',name:realDetail(1).title,price:'20',currency_code:'CNY'}},{rowId:'stock',action:'stock',target:{offerId:'red'},payload:{stock:0,warehouse_id:7},dependsOn:['listing']}];
   const poller=new BusinessOperationPoller(runtime);
   return {store,runtime,domain,operations,events,rows,poller,invoke,get reviews(){return reviews;},set reviewStatus(value:typeof reviewStatus){reviewStatus=value;},set send(value:typeof send){send=value;},set inspection(value:typeof inspection){inspection=value;},advance(ms:number){now+=ms;},async tick(){const next=new BusinessOperationPoller(runtime);await next.tick();await next.stop();},async close(){await poller.stop();await runtime.dispose();store.close();}};
 }

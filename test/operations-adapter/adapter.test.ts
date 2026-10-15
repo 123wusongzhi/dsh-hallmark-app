@@ -1,3 +1,8 @@
+import { recordedSample, recordedPlatformProduct, recordedProduct, recordedDetail, recordedSku } from '../adapter/real-scenarios.ts';
+
+
+import { realDetail } from '../real-data/corpus.ts';
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RuntimeStore } from '../../packages/app-runtime/src/store.ts';
@@ -13,24 +18,62 @@ import type { BusinessExecutionInput, BusinessRowInput, TrustedRowContext } from
 import { createDecisionReviewer } from '../../packages/service/src/decision-review.ts';
 import type { IndependentReviewRequest, SemanticReviewRequest } from '../../packages/app-contracts/src/business-review.ts';
 import { CollectionService } from '../../packages/collection/src/index.ts';
+import {prepareListing} from '../../packages/app-hallmark/src/listing-prepare.ts';
+import {BusinessPackagingRepository} from '../../packages/business-packaging/src/index.ts';
+import {publicPlan,executeBusiness} from '../../packages/app-hallmark/src/operations-provider.ts';
 import { hash as collectionHash } from '../../packages/collection/src/normalize.ts';
+import {LISTING_ASSET_URL_NAMESPACE,listingAssetUrlKey,type VerifiedListingAssetUrl} from '../../packages/app-hallmark/src/listing-assets.ts';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const ok = (raw: unknown): AdapterResponse => ({ status: 'ok', raw });
 const platform = (response: unknown, httpStatus = 200): AdapterResponse => ok({ outcome: 'response_received', httpStatus, response });
-const row = (action: BusinessRowInput['action'] = 'price'): BusinessRowInput & { rowId: string } => ({ rowId: 'row', action, target: { offerId: 'offer', productId: 100 }, payload: action === 'listing' ? { offer_id: 'offer', name: 'Cup', price: '12', currency_code: 'CNY', attributes: [] } : { price: '12', currency_code: 'CNY' }, ...(action === 'listing' ? { procurement: [{ itemId: 'source', sourceSkuId: 'source-sku', quantity: 1 }] } : {}) });
-const context: TrustedRowContext = { identity: { storeId: 'bill', offerId: 'offer', productId: '100', sku: '200' }, current: { price: '10', currency_code: 'CNY' }, source: {}, procurement: [] };
+const sourceBaseline = realDetail(1);
+const row = (action: BusinessRowInput['action'] = 'price'): BusinessRowInput & { rowId: string } => ({ rowId: 'row', action, target: { offerId: 'offer', productId: 100 }, payload: action === 'listing' ? { offer_id: 'offer', name: sourceBaseline.title, price: '12', currency_code: 'CNY', attributes: [] } : { price: '12', currency_code: 'CNY' }, ...(action === 'listing' ? { procurement: [{ itemId: 'source', sourceSkuId: 'source-sku', quantity: 1 }] } : {}) });
+const context: TrustedRowContext = { identity: recordedProduct({ storeId: 'bill', offerId: 'offer', productId: '100', sku: '200' }), current: { price: '10', currency_code: 'CNY' }, source: {}, procurement: [] };
+
+test('unpriced preparation flows through automatic draft, revise, review-time repricing, import and inspect',async()=>{
+ const f=fixture();try{
+  f.gateway.listStores=()=>[{id:'bill'}];f.importResult({result:{items:[{offer_id:'offer',status:'pending'}]}});
+  f.products([]);f.detail(recordedDetail({id:'source',source:'taobao_tmall',title:sourceBaseline.title,currency:'CNY',delivery:{freightAmount:0},package:{weightKg:.05,dimensionsCm:{length:10,width:8,height:2}},skus:[recordedSku({sourceSkuId:'source-sku',goodsPrice:3.43,currency:'CNY',unit:'件'},1)]},1));
+  f.read(path=>path==='/v3/product/info/list'?platform({items:[]}):undefined);f.call(platform({result:{task_id:1234}}));
+  const pricing=new BusinessPricingRepository(f.store),config={currency:'CNY' as const,defaultPlanId:'channel',plans:[{id:'channel',name:'Channel',enabled:true,fixedMinor:300,logisticsMicrosPerGram:40000,commissionPpm:200000}],listingTargetMarginPpm:350000,manualTargetMarginPpm:50000,minimumMarginPpm:100000,maxAutoPriceMinor:null,minPriceMinor:null,maxPriceMinor:null};
+  pricing.save('bill',config,0);
+  const collection=new CollectionService({store:f.store,client:f.client}),packaging=new BusinessPackagingRepository(f.store);
+  const prepared=await prepareListing({storeId:'bill',selections:[{id:'source',skuIds:['source-sku']}]},{store:f.store,client:f.client,collection,packaging,pricing:{read:pricing.read.bind(pricing),quote:()=>{throw Error('prepare must not calculate prices');}}});
+  assert.equal(prepared.sales[0].quote,undefined);
+  const adapter=new HallmarkBusinessAdapter({store:f.store,client:f.client,broker:f.broker,gateway:f.gateway,pricing,collection,packaging});let reviews=0;
+  const engine=new BusinessOperations({store:f.store,source:adapter,transport:adapter,reviewer:{async review(request){
+   if(reviews++===0)pricing.save('bill',{...config,listingTargetMarginPpm:500000},pricing.read('bill')!.revision);
+   return {status:'passed',questions:request.questions.map(q=>({id:q.id,version:q.version,status:'passed',reviewer:'independent-agent',reasonCode:'FIXTURE'})),evidence:{versions:request.versions,requests:[],thresholds:{pass:.95,reject:.05}}};
+  }}});
+  const input:BusinessRowInput={action:'listing',target:{offerId:'offer'},saleId:prepared.sales[0].id,pricing:{mode:'automatic'},payload:{offer_id:'offer',name:sourceBaseline.title,description:'Recorded product',attributes:[]}};
+  const invoke=async(operation:string,args:any)=>{const result=await executeBusiness(engine,f.store,{request:{capabilityId:'hallmark.listing.draft.'+operation,input:args,invocationId:'flow-'+operation,traceId:'flow',source:{kind:'agent',sessionId:'flow'}}} as any,async id=>(await collection.getProduct(id)).revision);assert.equal(result.status,'ok',JSON.stringify(result));return (result as any).data;};
+  let plan=await invoke('create',{storeId:'bill',preparationRevision:prepared.preparationRevision,rows:[input]});
+  assert.deepEqual(plan.rows[0].procurement,prepared.sales[0].procurement);
+  const firstPrice=Number(plan.rows[0].payload.price);assert.ok(firstPrice>0,JSON.stringify({issues:plan.rows[0].issues,quote:plan.rows[0].context?.pricingQuote}));assert.equal(plan.rows[0].pricing?.mode,'automatic');assert.equal(f.writes.length,0);
+  const visible:any=publicPlan(plan);assert.equal(visible.rows[0].payload.price,plan.rows[0].payload.price);assert.equal(visible.rows[0].pricingQuote.breakdown,undefined);assert.ok(engine.get(plan.planId).rows[0].context?.pricingQuote?.breakdown);
+  const doubled=await prepareListing({storeId:'bill',selections:[{id:'source',skuIds:['source-sku']}],compositions:[{id:prepared.sales[0].id,members:prepared.sales[0].procurement.map((p:any)=>({...p,quantity:2}))}]},{store:f.store,client:f.client,collection,packaging,pricing});
+  plan=await invoke('revise',{planId:plan.planId,expectedRevision:plan.revision,preparationRevision:doubled.preparationRevision,rows:[{...input,rowId:plan.rows[0].rowId}]});
+  assert.ok(Number(plan.rows[0].payload.price)>firstPrice);const revisedPrice=Number(plan.rows[0].payload.price);
+  plan=await invoke('submit',{planId:plan.planId,expectedRevision:plan.revision});
+  assert.equal(plan.rows[0].status,'pending',JSON.stringify(plan.rows[0].issues));assert.ok(reviews>0);assert.equal(f.writes.length,1);assert.equal(f.writes[0].path,'/v3/product/import');
+  const sent=f.writes[0].body.items[0];assert.ok(Number(sent.price)>revisedPrice);assert.equal(sent.price,plan.rows[0].payload.price);assert.equal(sent.currency_code,'CNY');assert.equal(plan.rows[0].pricing?.mode,'automatic');
+  await engine.submit({planId:plan.planId,expectedRevision:plan.revision});assert.equal(f.writes.length,1);
+  f.importResult({result:{items:[{offer_id:'offer',product_id:100,status:'imported'}]}});plan=await engine.inspect(plan.planId);assert.equal(plan.rows[0].status,'succeeded',JSON.stringify(plan.rows[0].issues));assert.equal(f.writes.length,1);
+ }finally{f.database.close();}
+});
 
 function fixture() {
   const database = new RuntimeStore(':memory:'), store = new HallmarkStorePort(database, 'connection');
-  let currentPrice: string | number = 10, products: any[] = [{ storeId: 'bill', offerId: 'offer', productId: 100 }], detail: any = { id: 'source', title: 'Cup', currency: 'CNY', skus: [{ sourceSkuId: 'source-sku', price: 3.43, image: 'https://example.com/source.jpg' }] }, rawCall = platform({ result: [{ updated: true }] }), taskLog: any[] = [], importResult: any = { result: { items: [{ offer_id: 'offer', product_id: 100, status: 'imported' }] } }, onRead: ((path: string) => AdapterResponse | undefined) | undefined, archived = false;
+  // Price transport scenarios start with no procurement mapping; listing separately reads the recorded source below.
+  let currentPrice: string | number = 10, products: any[] = [recordedProduct({ storeId: 'bill', offerId: 'offer', productId: 100, sources: [] })], detail: any = recordedDetail({ id: 'source', skus: [recordedSku({ sourceSkuId: 'source-sku' }, 1, undefined, ["id","code"])] },1), rawCall = platform({ result: [{ updated: true }] }), taskLog: any[] = [], importResult: any = { result: { items: [recordedPlatformProduct({ offer_id: 'offer', product_id: 100, status: 'imported' })] } }, onRead: ((path: string) => AdapterResponse | undefined) | undefined, archived = false;
   const writes: any[] = [], reads: any[] = [], taskReads: any[] = [];
   const read = async (_store: string, input: any): Promise<AdapterResponse> => {
     reads.push(input); const override = onRead?.(input.path); if (override) return override;
-    if (input.path === '/v3/product/info/list') return platform({ items: [{ offer_id: 'offer', id: 100, sku: 200, is_archived: archived }] });
-    if (input.path === '/v5/product/info/prices') return platform({ result: { items: [{ offer_id: 'offer', product_id: 100, price: { price: currentPrice, old_price: '20.00', min_price: 5, currency_code: 'CNY' } }] } });
+    if (input.path === '/v3/product/info/list') return platform({ items: [recordedPlatformProduct({ offer_id: 'offer', id: 100, sku: 200, is_archived: archived })] });
+    if (input.path === '/v5/product/info/prices') return platform({ result: { items: [recordedPlatformProduct({ offer_id: 'offer', product_id: 100, price: { price: currentPrice, old_price: '20.00', min_price: 5, currency_code: 'CNY' } })] } });
     if (input.path === '/v1/product/import/info') return platform(importResult);
     if (input.path === '/v4/product/info/attributes') return platform({ result: [{ offer_id: 'offer', id: 100, attributes: [] }] });
     if (input.path.includes('/actions/')) return platform({ result: { products: [], last_id: 0 } });
@@ -43,11 +86,91 @@ function fixture() {
     getTask: async taskId => { taskReads.push(taskId); return ok({ id: taskId, platformCalls: taskLog }); },
   };
   const broker: CoreBroker = { getStoreTask: async () => ok({ taskId: 'task' }), getListingTask: async () => ok({ taskId: 'listing-task' }), requestId: (_kind, executionId) => `request-${executionId}` };
-  const gateway:any={hasStore:(id:string)=>id==='bill',getStore:()=>({id:'bill',enabled:true,hasCredentials:true,credentialRevision:1}),request:async(_id:string,input:any)=>['/v3/product/import','/v1/product/import/prices','/v2/products/stocks','/v1/product/archive','/v1/product/unarchive','/v1/actions/products/update','/v2/actions/products/deactivate'].includes(input.path)?client.platformCall('direct-fixture',input):read('bill',input)};
+  const gateway:any={listStores:()=>[{id:'bill',enabled:true,hasCredentials:true,credentialRevision:1,sourceConnectionId:'connection'}],hasStore:(id:string)=>id==='bill',getStore:()=>({id:'bill',enabled:true,hasCredentials:true,credentialRevision:1}),request:async(_id:string,input:any)=>['/v3/product/import','/v1/product/import/prices','/v2/products/stocks','/v1/product/archive','/v1/product/unarchive','/v1/actions/products/update','/v2/actions/products/deactivate'].includes(input.path)?client.platformCall('direct-fixture',input):read('bill',input)};
   const adapter = new HallmarkBusinessAdapter({ store, client, broker, gateway });
   const catalogList=store.list.bind(store);store.list=((collection:string)=>collection==='business_catalog'?products:catalogList(collection)) as typeof store.list;
   return { database, store, adapter, client, broker, gateway, writes, reads, taskReads, price(value: string | number) { currentPrice = value; }, products(value: any[]) { products = value; }, detail(value: any) { detail = value; }, call(value: AdapterResponse) { rawCall = value; }, taskLog(value: any[]) { taskLog = value; }, importResult(value: any) { importResult = value; }, read(fn: typeof onRead) { onRead = fn; } };
 }
+
+test('media delivery is assembled before save, locally repaired, reviewed and imported without a copy-agent round trip', async t => {
+  const f=fixture();
+  t.mock.method(globalThis,'fetch',async(url:unknown)=>new Response(new TextEncoder().encode(String(url)),{headers:{'content-type':'image/png'}}));
+  try{
+    f.products([]);f.detail(recordedDetail({id:'source',title:'Cup',currency:'CNY',skus:[recordedSku({sourceSkuId:'source-sku',goodsPrice:3.43,image:'https://source.test/cup.png'}, recordedSample({id:'source',source:undefined,nonempty:true}), undefined, ["id","code"])]}, recordedSample({id:'source',source:undefined,nonempty:true})));
+    f.read(path=>path==='/v3/product/info/list'?platform({items:[]}):path==='/v1/product/import/info'?platform({result:{items:[{offer_id:'offer',status:'pending'}]}}):undefined);
+    f.call(platform({result:{task_id:1234}}));
+    const reviewed:SemanticReviewRequest[]=[];
+    const engine=new BusinessOperations({store:f.store,source:f.adapter,transport:f.adapter,reviewer:{async review(request){
+      reviewed.push(request);
+      const status=request.questions[0].id.startsWith('image-text-legibility:')&&request.images?.some(image=>image.url==='https://cdn.test/detail-1.png')?'rejected':'passed';
+      return {status,questions:request.questions.map(q=>({id:q.id,version:q.version,status,reviewer:'independent-agent',reasonCode:'FIXTURE'})),evidence:{versions:request.versions,requests:[],thresholds:{pass:.95,reject:.05}}};
+    }}});
+    const listing:BusinessRowInput={...row('listing'),target:{offerId:'offer'},payload:{...row('listing').payload,description:'Одна чашка.'},listingAssets:{images:Array.from({length:7},(_,i)=>`https://cdn.test/gallery-${i}.png`),richContentImages:Array.from({length:8},(_,i)=>`https://cdn.test/detail-${i}.png`)}};
+    let plan=await engine.create({storeId:'bill',rows:[listing]});
+    assert.equal(reviewed.length,0);assert.equal(f.writes.length,0);assert.equal(plan.rows[0].context?.assets?.length,15);
+    const initial=plan.rows[0].payload;
+    assert.equal(initial.primary_image,listing.listingAssets!.images[0]);assert.equal((initial.attributes as any[]).filter(a=>a.id===11254).length,1);
+    plan=await engine.submit({planId:plan.planId,expectedRevision:plan.revision});
+    assert.equal(plan.rows[0].status,'blocked');assert.equal(f.writes.length,0);assert.equal(reviewed.length,33,'two text questions plus cover spec and two questions per image');
+    assert.ok(reviewed.filter(r=>r.questions[0].id.startsWith('image-')).every(r=>r.images?.filter(i=>i.role==='draft').length===1),'each visual request receives only its relevant output image');
+    assert.ok(reviewed.find(r=>r.questions[0].id==='description-facts')&&!JSON.stringify(reviewed.find(r=>r.questions[0].id==='description-facts')!.draft).includes('11254'),'generated rich JSON is not a model text review dependency');
+    const changedImageId=reviewed.find(r=>r.questions[0].id.startsWith('image-text-legibility:')&&r.images?.some(i=>i.url==='https://cdn.test/detail-1.png'))!.questions[0].id.split(':')[1];
+    const repaired=structuredClone(listing);repaired.rowId=plan.rows[0].rowId;repaired.listingAssets!.richContentImages[1]='https://cdn.test/detail-1-fixed.png';
+    plan=await engine.revise({planId:plan.planId,expectedRevision:plan.revision,rows:[repaired]});
+    const saved=structuredClone(plan.rows[0].payload);
+    plan=await engine.submit({planId:plan.planId,expectedRevision:plan.revision});
+    assert.deepEqual(reviewed.slice(33).map(r=>r.questions[0].id),[`image-text-legibility:${changedImageId}`,`image-subject-consistency:${changedImageId}`],'one fixed detail image reuses all unrelated successful reviews');
+    assert.equal(plan.rows[0].status,'pending');assert.equal(f.writes.length,1);assert.deepEqual(f.writes[0].body.items[0],saved);
+    const sent:any=f.writes[0].body.items[0];assert.equal(Object.hasOwn(sent,'listingAssets'),false);
+    const rich=JSON.parse(sent.attributes.find((a:any)=>a.id===11254).values[0].value);
+    assert.deepEqual(rich.content.map((w:any)=>w.blocks[0].img.src),repaired.listingAssets!.richContentImages);
+    assert.deepEqual(plan.rows[0].listingAssets,repaired.listingAssets,'review refresh and transport input retain the media contract');
+    await engine.submit({planId:plan.planId,expectedRevision:plan.revision});assert.equal(f.writes.length,1);
+  }finally{f.database.close();}
+});
+
+test('images verified by assets.publish reuse their hash on save and submit; other images download in parallel',async t=>{
+  const f=fixture(),digest=(i:number)=>i.toString(16).padStart(64,'0'),published=Array.from({length:14},(_,i)=>`https://cdn.test/images/image-v1-${digest(i+1)}`);
+  const external='https://other.test/detail-7.png',downloads:string[]=[];let active=0,peak=0;
+  t.mock.method(globalThis,'fetch',async(url:unknown)=>{downloads.push(String(url));active++;peak=Math.max(peak,active);await new Promise(resolve=>setTimeout(resolve,5));active--;return new Response(new TextEncoder().encode(String(url)),{headers:{'content-type':'image/png'}});});
+  try{
+    for(const [i,url] of published.entries())f.store.put<VerifiedListingAssetUrl>(LISTING_ASSET_URL_NAMESPACE,listingAssetUrlKey(url),{url,contentHash:digest(i+1),verifiedAt:new Date(0).toISOString(),mode:'stable'});
+    f.products([]);f.detail(recordedDetail({id:'source',title:'Cup',currency:'CNY',skus:[recordedSku({sourceSkuId:'source-sku',goodsPrice:3.43}, recordedSample({id:'source',source:undefined,nonempty:true}), undefined, ["id","code"])]}, recordedSample({id:'source',source:undefined,nonempty:true})));
+    f.read(path=>path==='/v3/product/info/list'?platform({items:[]}):undefined);
+    const engine=new BusinessOperations({store:f.store,source:f.adapter,transport:f.adapter,reviewer:{async review(request){return {status:'passed',questions:request.questions.map(q=>({id:q.id,version:q.version,status:'passed',reviewer:'independent-agent',reasonCode:'FIXTURE'})),evidence:{versions:request.versions,requests:[],thresholds:{pass:.95,reject:.05}}};}}});
+    const listing:BusinessRowInput={...row('listing'),target:{offerId:'offer'},listingAssets:{images:published.slice(0,7),richContentImages:[...published.slice(7),external]}};
+    const plan=await engine.create({storeId:'bill',rows:[listing]});
+    assert.equal(plan.rows[0].context?.assets?.length,15);
+    const hashes=new Map(plan.rows[0].context!.assets!.map(asset=>[asset.url,asset.contentHash]));
+    assert.deepEqual(published.map(url=>hashes.get(url)),published.map((_,i)=>digest(i+1)));
+    assert.deepEqual(downloads.filter(url=>url.startsWith('https://cdn.test/')),[],'publisher-verified images are not downloaded again');
+    assert.equal(downloads.filter(url=>url===external).length,1);
+    await engine.submit({planId:plan.planId,expectedRevision:plan.revision});
+    assert.deepEqual(downloads.filter(url=>url.startsWith('https://cdn.test/')),[],'fresh submit load still reuses verified hashes');
+  }finally{f.database.close();}
+  const g=fixture(),urls=Array.from({length:15},(_,i)=>`https://other.test/${i}.png`);downloads.length=0;peak=0;
+  try{
+    g.products([]);g.detail(recordedDetail({id:'source',title:'Cup',currency:'CNY',skus:[recordedSku({sourceSkuId:'source-sku',goodsPrice:3.43}, recordedSample({id:'source',source:undefined,nonempty:true}), undefined, ["id","code"])]}, recordedSample({id:'source',source:undefined,nonempty:true})));
+    g.read(path=>path==='/v3/product/info/list'?platform({items:[]}):undefined);
+    const engine=new BusinessOperations({store:g.store,source:g.adapter,transport:g.adapter,reviewer:{async review(){throw new Error('not submitted');}}});
+    const plan=await engine.create({storeId:'bill',rows:[{...row('listing'),target:{offerId:'offer'},listingAssets:{images:urls.slice(0,7),richContentImages:urls.slice(7)}}]});
+    assert.deepEqual(plan.rows[0].context!.assets!.map(asset=>asset.url),businessImageUrls(plan.rows[0].payload),'parallel downloads keep listing order');
+    assert.ok(peak>1&&peak<=4,`bounded parallel downloads, peak ${peak}`);
+  }finally{g.database.close();}
+});
+
+test('incomplete media delivery blocks only its row without model calls or platform writes',async()=>{
+  const f=fixture();try{
+    f.products([]);f.detail(recordedDetail({id:'source',title:'Cup',currency:'CNY',skus:[recordedSku({sourceSkuId:'source-sku',goodsPrice:3.43}, recordedSample({id:'source',source:undefined,nonempty:true}), undefined, ["id","code"])]}, recordedSample({id:'source',source:undefined,nonempty:true})));
+    f.read(path=>path==='/v3/product/info/list'?platform({items:[]}):undefined);
+    let reviews=0;
+    const engine=new BusinessOperations({store:f.store,source:f.adapter,transport:f.adapter,reviewer:{async review(){reviews++;throw new Error('Must not review incomplete media');}}});
+    const plan=await engine.create({storeId:'bill',rows:[{...row('listing'),listingAssets:{images:[],richContentImages:[]}}]});
+    assert.ok(plan.rows[0].issues.some(i=>i.code==='LISTING_ASSETS_COUNT_INVALID'));
+    const submitted=await engine.submit({planId:plan.planId,expectedRevision:plan.revision});
+    assert.equal(submitted.rows[0].status,'blocked');assert.equal(reviews,0);assert.equal(f.writes.length,0);
+  }finally{f.database.close();}
+});
 
 test('price read shapes and decimal formatting normalize to the same action fields', async () => {
   const f = fixture(); try {
@@ -62,9 +185,9 @@ test('price read shapes and decimal formatting normalize to the same action fiel
 test('native archive readback updates the catalogue immediately without deleting source or cost identity',async()=>{
   const f=fixture();try{
     const sources=[{sourceSkuMatched:true,productId:'source',skuCode:'source-sku'}];
-    f.products([{storeId:'bill',offerId:'offer',productId:100,sources,price:'12.00',profit:{purchaseMinor:343}}]);
+    f.products([recordedProduct({storeId:'bill',offerId:'offer',productId:100,sources,price:'12.00',profit:{purchaseMinor:343}})]);
     f.call(platform({result:true}));
-    f.read(path=>path==='/v3/product/info/list'?platform({items:[{id:100,offer_id:'offer',sku:200,is_archived:true,statuses:{is_created:true,moderate_status:'approved'}}]}):undefined);
+    f.read(path=>path==='/v3/product/info/list'?platform({items:[recordedPlatformProduct({id:100,offer_id:'offer',sku:200,is_archived:true,statuses:{is_created:true,moderate_status:'approved'}})]}):undefined);
     const input:BusinessExecutionInput={executionId:'archive-observation',storeId:'bill',row:{...row('archive'),payload:{archived:true}},context};
     const result=await f.adapter.execute(input);assert.equal(result.status,'succeeded');assert.equal(f.writes.length,1);assert.equal(f.writes[0].path,'/v1/product/archive');
     const saved=f.store.get<any>('business_catalog',businessHash(['bill','offer']));
@@ -75,7 +198,7 @@ test('native archive readback updates the catalogue immediately without deleting
 
 test('listing description alias is saved, reviewed and imported as the same complete 4191 text', async () => {
   const f = fixture(); try {
-    f.products([]); f.detail({ id: 'source', title: 'Cup', source: 'taobao_tmall', currency: 'CNY', skus: [{ sourceSkuId: 'source-sku', goodsPrice: 3.43 }] });
+    f.products([]); f.detail(recordedDetail({ id: 'source', title: 'Cup', source: 'taobao_tmall', currency: 'CNY', skus: [recordedSku({ sourceSkuId: 'source-sku', goodsPrice: 3.43 }, recordedSample({id:'source',source:'taobao_tmall',nonempty:true}), undefined, ["id","code"])] }, recordedSample({id:'source',source:'taobao_tmall',nonempty:true})));
     f.read(path => path === '/v3/product/info/list' ? platform({ items: [] }) : path === '/v1/product/import/info' ? platform({ result: { items: [{ offer_id: 'offer', status: 'pending' }] } }) : undefined);
     f.call(platform({ result: { task_id: 1234 } }));
     const reviewed: any[] = [];
@@ -153,10 +276,11 @@ test('blank description does not create an empty attribute, and description norm
 test('listing facts and shared description carry source images to independent vision review and cache their exact evidence', async () => {
   const f = fixture(); try {
     f.products([]); f.read(path => path === '/v3/product/info/list' ? platform({ items: [] }) : undefined);
-    const source = { id: 'source', title: '支架', description: '来源正文：表面镀铬。', sourceDetails: { material: '金属' }, mainImage: 'https://example.com/structure.jpg', images: ['https://example.com/structure.jpg'], skus: [
-      { sourceSkuId: 'source-sku', spec: '单只', goodsPrice: 3.43, image: 'https://example.com/dimensions.jpg' },
-      { sourceSkuId: 'unselected', spec: '其他规格', image: 'https://example.com/other.jpg' },
-    ] };
+    const original = realDetail(11);
+    const source = recordedDetail({ id: 'source', images: [original.mainImage], descriptionImages: [], skus: [
+      recordedSku({ sourceSkuId: 'source-sku' }, 11, 0, ['id','code']),
+      recordedSku({ sourceSkuId: 'unselected' }, 11, 1, ['id','code']),
+    ] }, 11);
     f.detail(source);
     const reviewed: IndependentReviewRequest[] = []; let decisionCalls = 0;
     const reviewer = createDecisionReviewer({ key: 'fixture', fetchImpl: async () => {
@@ -186,9 +310,9 @@ test('listing facts and shared description carry source images to independent vi
       assert.match(request.questions[0].instructions, /实际查看/);
       assert.deepEqual(request.context.reasons, [{ id: request.questions[0].id, reasonCode: 'image_protocol_unverified' }]);
     }
-    assert.equal(reviewed[0].questions[0].version, '3');
+    assert.equal(reviewed[0].questions[0].version, '4');
     const details = reviewed.find(request => request.questions[0].id === 'description-facts')!;
-    assert.equal(details.questions[0].version, '4');
+    assert.equal(details.questions[0].version, '5');
     assert.equal((details.source as any).items[0].description, source.description);
     assert.deepEqual((details.source as any).items[0].sourceDetails, source.sourceDetails);
     assert.deepEqual((details.source as any).composition, listings[0].procurement);
@@ -208,7 +332,7 @@ test('listing facts and shared description carry source images to independent vi
 test('listing facts without source images remain text-only and prefer configured Decisions', async () => {
   const f = fixture(); try {
     f.products([]); f.read(path => path === '/v3/product/info/list' ? platform({ items: [] }) : undefined);
-    f.detail({ id: 'source', title: 'Cup', description: 'One cup.', skus: [{ sourceSkuId: 'source-sku', goodsPrice: 3.43 }] });
+    f.detail(recordedDetail({ id: 'source', title: 'Cup', description: 'One cup.', images: [], mainImage: null, descriptionImages: [], skus: [recordedSku({ sourceSkuId: 'source-sku', goodsPrice: 3.43 }, recordedSample({id:'source',source:undefined,nonempty:true}), undefined, ["id","code"])] }, recordedSample({id:'source',source:undefined,nonempty:true})));
     const reviewed: SemanticReviewRequest[] = [], submitted: any[] = []; let fallbackCalls = 0;
     const reviewer = createDecisionReviewer({ key: 'fixture', fetchImpl: async (_url, options) => {
       const body = JSON.parse(String(options?.body)); submitted.push(body);
@@ -237,12 +361,11 @@ test('selected rack review includes downloaded shared dimensions before redundan
   t.mock.method(globalThis, 'fetch', async () => new Response(png, { headers: { 'content-type': 'image/png' } }));
   try {
     f.products([]); f.read(path => path === '/v3/product/info/list' ? platform({ items: [] }) : undefined);
-    const source = { id: 'source', title: '碗盘架', currency: 'CNY', mainImage: 'https://example.com/main-0.jpg', images: Array.from({ length: 6 }, (_, i) => `https://example.com/main-${i}.jpg`), descriptionImages: ['https://example.com/detail.jpg'], skus: [
-      { sourceSkuId: 'fixture-bowl-single', spec: '碗架【1个装】', goodsPrice: 5.9, image: 'https://example.com/bowl.jpg' },
-      { sourceSkuId: 'fixture-plate-single', spec: '盘架【1个装】', goodsPrice: 5.9, image: 'https://example.com/plate.jpg' },
-      { sourceSkuId: 'fixture-bowl-plate-set', spec: '碗架+盘架【共2个】', goodsPrice: 10.9, image: 'https://example.com/shared-dimensions.jpg' },
-      ...Array.from({ length: 332 }, (_, i) => ({ sourceSkuId: `other-${i}`, spec: `其他规格 ${i}`, goodsPrice: 5.9, image: `https://example.com/uncached-${i}.jpg` })),
-    ] };
+    const source = recordedDetail({ id: 'source', skus: [
+      recordedSku({}, 11, 0), recordedSku({}, 11, 1), recordedSku({}, 11, 2),
+      // Explicit scale extension repeats this product's uncached SKU 3/4 facts with local unique aliases.
+      ...Array.from({ length: 332 }, (_, i) => recordedSku({ sourceSkuId: `other-${i}` }, 11, 3 + i % 2, ['id','code'])),
+    ] }, 11);
     f.detail(source);
     const collection = new CollectionService({ client: f.client, store: f.store, sourceId: 'review-fixture', cacheDir: directory, fetch: async url => { downloads.push(String(url)); return new Response(png); } });
     const product = await collection.getProduct('source');
@@ -254,7 +377,7 @@ test('selected rack review includes downloaded shared dimensions before redundan
       reviewed.push(request);
       return { status: 'rejected', questions: request.questions.map(question => ({ id: question.id, version: question.version, status: 'rejected', reviewer: 'independent-agent', reasonCode: 'FIXTURE' })), evidence: { versions: request.versions, requests: [], thresholds: { pass: .95, reject: .05 } } };
     } } });
-    const listings = source.skus.slice(0, 2).map(sku => ({ ...row('listing'), rowId: sku.sourceSkuId, target: { offerId: sku.sourceSkuId }, procurement: [{ itemId: source.id, sourceSkuId: sku.sourceSkuId, quantity: 1 }], payload: {
+    const listings = source.skus.slice(0, 2).map((sku: any) => ({ ...row('listing'), rowId: sku.sourceSkuId, target: { offerId: sku.sourceSkuId }, procurement: [{ itemId: source.id, sourceSkuId: sku.sourceSkuId, quantity: 1 }], payload: {
       ...row('listing').payload, name: sku.spec, description: 'Размеры по изображению продавца.', images: ['https://example.com/draft.jpg'], attributes: [{ id: 85, values: [{ value: 'Нет бренда' }] }],
     } }));
     const draft = await engine.create({ storeId: 'bill', rows: listings });
@@ -274,12 +397,12 @@ test('selected rack review includes downloaded shared dimensions before redundan
       assert.equal(evidence[0].origins[0].scope, 'selected-sku'); assert.equal(evidence[1].origins[0].scope, 'main');
       const shared = evidence.find((entry: any) => entry.imageId === images.find(image => image.url === source.skus[2].image)!.id).origins[0];
       assert.equal(shared.scope, 'other-sku-reference');
-      assert.deepEqual(shared.skus, [{ sourceSkuId: 'fixture-bowl-plate-set', spec: '碗架+盘架【共2个】' }]);
+      assert.deepEqual(shared.skus, [{ sourceSkuId: source.skus[2].sourceSkuId, spec: source.skus[2].spec }]);
       assert.match(shared.contentHash, /^[a-f0-9]{64}$/); assert.equal(shared.sourceRevision, product.revision);
       assert.deepEqual((request.source as any).composition, [{ itemId: 'source', sourceSkuId: selected.sourceSkuId, quantity: 1 }]);
       if(!['image-specification-text','image-text-legibility:draft-0'].includes(request.questions[0].id))assert.match(request.questions[0].instructions, /其他 SKU 图中的件数或组合不是当前销售组成/);
     }
-    assert.deepEqual(reviewed.slice(0, 5).map(request => request.questions[0].version), ['3', '4', '1', '1', '1']);
+    assert.deepEqual(reviewed.slice(0, 5).map(request => request.questions[0].version), ['4', '5', '2', '2', '2']);
     assert.deepEqual((result.rows[0].payload.attributes as any[])[0], listings[0].payload.attributes[0], 'brand conflict is never silently corrected or auto-passed');
     await engine.submit({ planId: draft.planId, expectedRevision: draft.revision });
     assert.equal(reviewed.length, 10, 'identical evidence reuses the completed reviews');
@@ -311,12 +434,12 @@ test('engine and real adapter restore a numerically equivalent price without a f
 
 test('only exact existing source links infer one-unit procurement and never manufacture a full cost', async () => {
   const f = fixture(); try {
-    f.products([{ storeId: 'bill', offerId: 'offer', productId: 100, sources: [{ sourceSkuMatched: true, productId: 'source', skuCode: 'source-sku' }], profit: { costMinor: 999 } }]);
+    f.products([recordedProduct({ storeId: 'bill', offerId: 'offer', productId: 100, sources: [{ sourceSkuMatched: true, productId: 'source', skuCode: 'source-sku' }], profit: { costMinor: 999 } })]);
     const linked = await f.adapter.load({ storeId: 'bill', row: row(), fresh: true });
-    assert.deepEqual(linked.normalizedProcurement, [{ itemId: 'source', sourceSkuId: 'source-sku', quantity: 1 }]); assert.equal(linked.procurement[0].unitPrice, 3.43); assert.equal(linked.policy?.breakEvenPrice, null);
-    f.products([{ storeId: 'bill', offerId: 'offer', productId: 100, sources: [{ sourceSkuMatched: true, productId: 'source', skuCode: 'source-sku', salesSpec: 'two-pack' }] }]);
+    assert.deepEqual(linked.normalizedProcurement, [{ itemId: 'source', sourceSkuId: 'source-sku', quantity: 1 }]); assert.equal(linked.procurement[0].unitPrice, Number(sourceBaseline.skus[0].goodsPrice)); assert.equal(linked.policy?.breakEvenPrice, null);
+    f.products([recordedProduct({ storeId: 'bill', offerId: 'offer', productId: 100, sources: [{ sourceSkuMatched: true, productId: 'source', skuCode: 'source-sku', salesSpec: 'two-pack' }] })]);
     const ambiguous = await f.adapter.load({ storeId: 'bill', row: row(), fresh: true }); assert.equal(ambiguous.normalizedProcurement, undefined); assert.deepEqual(ambiguous.procurement, []);
-    f.products([{ storeId: 'bill', offerId: 'offer', productId: 100, sources: [{ sourceSkuMatched: true, productId: 'source', skuCode: 'sale-bundle', salesSpec: 'two-pack', components: [{ sourceSkuId: 'source-sku', quantity: 2 }] }] }]);
+    f.products([recordedProduct({ storeId: 'bill', offerId: 'offer', productId: 100, sources: [{ sourceSkuMatched: true, productId: 'source', skuCode: 'sale-bundle', salesSpec: 'two-pack', components: [{ sourceSkuId: 'source-sku', quantity: 2 }] }] })]);
     const composed = await f.adapter.load({ storeId: 'bill', row: row(), fresh: true }); assert.deepEqual(composed.normalizedProcurement, [{ itemId: 'source', sourceSkuId: 'source-sku', quantity: 2 }]);
   } finally { f.database.close(); }
 });
@@ -337,7 +460,7 @@ test('import inspection uses its original task even when the older store gateway
   const f = fixture(); try {
     const gateway=f.client.storeDataRead,taskReads: any[]=[];
     f.client.storeDataRead=async (storeId,input)=>input.path==='/v1/product/import/info'?{status:'failed',error:{code:'ENDPOINT_NOT_ALLOWED',message:'店铺数据查询需要已登记只读接口',retryable:false}}:gateway(storeId,input);
-    f.client.platformRead=async (taskId,input)=>{taskReads.push({taskId,...input});return platform({result:{items:[{offer_id:'offer',product_id:100,status:'imported'}]}});};
+    f.client.platformRead=async (taskId,input)=>{taskReads.push({taskId,...input});return platform({result:{items:[recordedPlatformProduct({offer_id:'offer',product_id:100,status:'imported'})]}});};
     f.call(platform({result:{task_id:5787296567}}));
     const input: BusinessExecutionInput={executionId:'original-import',storeId:'bill',row:row('listing'),context};
     f.store.put('business_transport_receipts','original-import',{executionId:'original-import',storeId:'bill',taskId:'listing-task',requestId:'historical-request',path:'/v3/product/import',body:{},dispatchStarted:true,importTaskId:5787296567,response:platform({result:{task_id:5787296567}})});
@@ -349,9 +472,9 @@ test('import inspection uses its original task even when the older store gateway
 
 test('inspected Ozon product and SKU merge into the exact saved procurement composition', async () => {
   const f = fixture(); try {
-    f.products([]);f.detail({id:'source',title:'Cup',source:'taobao_tmall',currency:'CNY',skus:[{sourceSkuId:'source-sku',goodsPrice:3.43}]});
+    f.products([]);f.detail(recordedDetail({id:'source',title:'Cup',source:'taobao_tmall',currency:'CNY',skus:[recordedSku({sourceSkuId:'source-sku',goodsPrice:3.43}, recordedSample({id:'source',source:'taobao_tmall',nonempty:true}), undefined, ["id","code"])]}, recordedSample({id:'source',source:'taobao_tmall',nonempty:true})));
     let imported=false;f.read(path=>path==='/v3/product/info/list'&&!imported?platform({items:[]}):undefined);
-    f.call(platform({result:{task_id:5787296567}}));f.read(path=>path==='/v1/product/import/info'?platform({result:{items:[{offer_id:'offer',product_id:100,status:imported?'imported':'pending'}]}}):path==='/v3/product/info/list'&&!imported?platform({items:[]}):undefined);
+    f.call(platform({result:{task_id:5787296567}}));f.read(path=>path==='/v1/product/import/info'?platform({result:{items:[recordedPlatformProduct({offer_id:'offer',product_id:100,status:imported?'imported':'pending'})]}}):path==='/v3/product/info/list'&&!imported?platform({items:[]}):undefined);
     const engine=new BusinessOperations({store:f.store,source:f.adapter,transport:f.adapter,reviewer:{async review(request){return {status:'passed',questions:request.questions.map(q=>({id:q.id,version:q.version,status:'passed',reviewer:'decisions',reasonCode:'MATCH'})),evidence:{versions:request.versions,requests:[],thresholds:{pass:.95,reject:.1}}};}}});
     const listing=row('listing');listing.target={offerId:'offer'};const draft=await engine.create({storeId:'bill',rows:[listing]});
     const first=await engine.submit({planId:draft.planId,expectedRevision:1});assert.equal(first.rows[0].status,'pending');assert.equal(f.writes.length,1);
@@ -360,24 +483,33 @@ test('inspected Ozon product and SKU merge into the exact saved procurement comp
   } finally { f.database.close(); }
 });
 
-test('unknown goods cost never falls back to freight-inclusive or unverified selling prices', async () => {
+test('legacy procurement uses the same source SKU selling prices as collection normalization', async () => {
   const f = fixture(); try {
-    f.products([{ storeId: 'bill', offerId: 'offer', productId: 100, sources: [{ sourceSkuMatched: true, productId: 'source', skuCode: 'source-sku' }] }]);
+    f.products([recordedProduct({ storeId: 'bill', offerId: 'offer', productId: 100, sources: [{ sourceSkuMatched: true, productId: 'source', skuCode: 'source-sku' }] })]);
     for (const source of ['taobao_tmall', 'alibaba_com']) {
-      f.detail({ id: 'source', source, currency: 'CNY', description: 'Original product description', delivery: { freightVerified: false }, skus: [{ sourceSkuId: 'source-sku', price: 30 }] });
-      const missing = await f.adapter.load({ storeId: 'bill', row: row(), fresh: true }); assert.equal(missing.procurement[0].unitPrice, null); assert.equal(missing.policy?.breakEvenPrice, null);
+      f.detail(recordedDetail({ id: 'source', source, currency: 'CNY', description: 'Original product description', delivery: { freightVerified: false }, skus: [recordedSku({ sourceSkuId: 'source-sku', price: 30 }, recordedSample({id:'source',source:source,nonempty:true}), undefined, ["goodsPrice","sourceSellingPrice","id","code"])] }, recordedSample({id:'source',source:source,nonempty:true})));
+      const missing = await f.adapter.load({ storeId: 'bill', row: row(), fresh: true }); assert.equal(missing.procurement[0].unitPrice, 30); assert.equal(missing.policy?.breakEvenPrice, null);
       assert.equal((missing.source as any).items[0].description, 'Original product description'); assert.equal((missing.source as any).items[0].delivery.freightVerified, false);
     }
-    f.detail({ id: 'source', source: 'taobao_tmall', currency: 'CNY', skus: [{ sourceSkuId: 'source-sku', goodsPrice: 17, price: 25 }] });
+    f.detail(recordedDetail({ id: 'source', source: 'taobao_tmall', currency: 'CNY', skus: [recordedSku({ sourceSkuId: 'source-sku', goodsPrice: 17, price: 25 }, recordedSample({id:'source',source:'taobao_tmall',nonempty:true}), undefined, ["sourceSellingPrice","id","code"])] }, recordedSample({id:'source',source:'taobao_tmall',nonempty:true})));
     assert.equal((await f.adapter.load({ storeId: 'bill', row: row(), fresh: true })).procurement[0].unitPrice, 17);
+    for (const sku of [recordedSku({ sourceSkuId: 'source-sku', goodsPrice: 17, price: 25 }, undefined, undefined, ["sourceSellingPrice","id","code"]), recordedSku({ sourceSkuId: 'source-sku', price: 25 }, undefined, undefined, ["goodsPrice","sourceSellingPrice","id","code"])]) {
+      f.detail(recordedDetail({ id: 'source', source: 'taobao_tmall', currency: 'CNY', delivery: { freightAmount: 8 }, skus: [sku] }, recordedSample({id:'source',source:'taobao_tmall',nonempty:true})));
+      assert.equal((await f.adapter.load({ storeId: 'bill', row: row(), fresh: true })).procurement[0].unitPrice, 25);
+    }
+    f.detail(recordedDetail({ id: 'source', source: 'alibaba_com', currency: 'CNY', delivery: { freightAmount: 1.2 }, skus: [recordedSku({ sourceSkuId: 'source-sku', sourceSellingPrice: { amount: '2.35', currency: 'CNY' } }, recordedSample({id:'source',source:'alibaba_com',nonempty:true}), undefined, ["goodsPrice","price","id","code"])] }, recordedSample({id:'source',source:'alibaba_com',nonempty:true})));
+    assert.equal((await f.adapter.load({ storeId: 'bill', row: row(), fresh: true })).procurement[0].unitPrice, 3.55);
+    f.detail(recordedDetail({ id: 'source', source: 'alibaba_com', currency: 'CNY', skus: [recordedSku({ sourceSkuId: 'source-sku', sourceSellingPrice: { amount: '2.35', currency: 'USD' }, price: 20, unit: '包' }, recordedSample({id:'source',source:'alibaba_com',nonempty:true}), undefined, ["goodsPrice","id","code"])] }, recordedSample({id:'source',source:'alibaba_com',nonempty:true})));
+    const offer = await f.adapter.load({ storeId: 'bill', row: row(), fresh: true });
+    assert.deepEqual(offer.procurement[0], { itemId: 'source', sourceSkuId: 'source-sku', unitPrice: 2.35, currency: 'USD', unit: '包' });
   } finally { f.database.close(); }
 });
 
 test('created but moderation-rejected listing retains Ozon identity and purchase binding without reimport', async () => {
   const f = fixture(); try {
-    f.products([]);f.detail({id:'source',title:'Cup',source:'taobao_tmall',currency:'CNY',skus:[{sourceSkuId:'source-sku',goodsPrice:3.43}]});
+    f.products([]);f.detail(recordedDetail({id:'source',title:'Cup',source:'taobao_tmall',currency:'CNY',skus:[recordedSku({sourceSkuId:'source-sku',goodsPrice:3.43}, recordedSample({id:'source',source:'taobao_tmall',nonempty:true}), undefined, ["id","code"])]}, recordedSample({id:'source',source:'taobao_tmall',nonempty:true})));
     let imported=false;f.read(path=>path==='/v3/product/info/list'&&!imported?platform({items:[]}):undefined);
-    f.call(platform({result:{task_id:5787296567}}));f.read(path=>path==='/v1/product/import/info'?platform({result:{items:[{offer_id:'offer',product_id:100,status:imported?'imported':'pending',errors:imported?[{code:'SPU_ALREADY_EXISTS_IN_ANOTHER_ACCOUNT',attribute_id:0,field:'spu',state:'moderated',level:'error',description:'Duplicate original product'}]:[]}]}}):path==='/v3/product/info/list'&&!imported?platform({items:[]}):undefined);
+    f.call(platform({result:{task_id:5787296567}}));f.read(path=>path==='/v1/product/import/info'?platform({result:{items:[recordedPlatformProduct({offer_id:'offer',product_id:100,status:imported?'imported':'pending',errors:imported?[{code:'SPU_ALREADY_EXISTS_IN_ANOTHER_ACCOUNT',attribute_id:0,field:'spu',state:'moderated',level:'error',description:'Duplicate original product'}]:[]})]}}):path==='/v3/product/info/list'&&!imported?platform({items:[]}):undefined);
     const engine=new BusinessOperations({store:f.store,source:f.adapter,transport:f.adapter,reviewer:{async review(request){return {status:'passed',questions:request.questions.map(q=>({id:q.id,version:q.version,status:'passed',reviewer:'decisions',reasonCode:'MATCH'})),evidence:{versions:request.versions,requests:[],thresholds:{pass:.95,reject:.1}}};}}});
     const listing=row('listing');listing.target={offerId:'offer'};const draft=await engine.create({storeId:'bill',rows:[listing]});await engine.submit({planId:draft.planId,expectedRevision:1});imported=true;
     const finished=await engine.inspect(draft.planId),saved=f.store.get<any>('business_procurement_bindings',businessHash(['bill','offer']))!;
@@ -390,7 +522,7 @@ test('created but moderation-rejected listing retains Ozon identity and purchase
 
 test('moderation failure keeps its created product ID even if the detail read is temporarily unavailable', async () => {
   const f = fixture(); try {
-    f.call(platform({result:{task_id:5787296567}}));f.importResult({result:{items:[{offer_id:'offer',product_id:100,status:'imported',errors:[{code:'SPU_ALREADY_EXISTS_IN_ANOTHER_ACCOUNT',field:'spu',level:'error',description:'Duplicate'}]}]}});
+    f.call(platform({result:{task_id:5787296567}}));f.importResult({result:{items:[recordedPlatformProduct({offer_id:'offer',product_id:100,status:'imported',errors:[{code:'SPU_ALREADY_EXISTS_IN_ANOTHER_ACCOUNT',field:'spu',level:'error',description:'Duplicate'}]})]}});
     f.read(path=>path==='/v3/product/info/list'?{status:'unavailable',error:{code:'READ_TIMEOUT',message:'Unavailable',retryable:true}}:undefined);
     const result=await f.adapter.execute({executionId:'created-rejected',storeId:'bill',row:row('listing'),context});assert.equal(result.status,'rejected');assert.deepEqual(result.identity,{offerId:'offer',productId:'100'});assert.equal((result.receipt as any).completion,'imported; moderation rejected');assert.equal(f.writes.length,1);
   } finally { f.database.close(); }
@@ -400,8 +532,8 @@ test('live-shaped brand validation failure names the field without claiming mode
   const f=fixture();try{
     const error={code:'error_attribute_values_out_of_range',field:'',attribute_id:85,state:'new',level:'error',attribute_name:'Бренд',description:'Проверьте значение. В личном кабинете выберите вариант из списка.'};
     f.call(platform({result:{task_id:5791496972}}));
-    f.importResult({result:{items:[{offer_id:'offer',product_id:100,status:'imported',errors:[error]}]}});
-    f.read(path=>path==='/v3/product/info/list'?platform({items:[{id:100,offer_id:'offer',sku:0,statuses:{is_created:false,moderate_status:'',status_failed:'imported',validation_status:'pending'},stocks:{has_stock:false,stocks:[]}}]}):undefined);
+    f.importResult({result:{items:[recordedPlatformProduct({offer_id:'offer',product_id:100,status:'imported',errors:[error]})]}});
+    f.read(path=>path==='/v3/product/info/list'?platform({items:[recordedPlatformProduct({id:100,offer_id:'offer',sku:0,statuses:{is_created:false,moderate_status:'',status_failed:'imported',validation_status:'pending'},stocks:{has_stock:false,stocks:[]}})]}):undefined);
     const input={executionId:'brand-invalid',storeId:'bill',row:row('listing'),context};
     const result=await f.adapter.execute(input),receipt=result.receipt as any;
     assert.equal(result.status,'rejected');assert.deepEqual(result.identity,{offerId:'offer',productId:'100'});
@@ -421,13 +553,13 @@ test('live-shaped brand validation failure names the field without claiming mode
 test('explicit native moderation rejection is distinct from an unknown import failure',async()=>{
   const f=fixture();try{
     f.call(platform({result:{task_id:123}}));
-    f.importResult({result:{items:[{offer_id:'offer',product_id:100,status:'imported',errors:[]}]}});
-    f.read(path=>path==='/v3/product/info/list'?platform({items:[{id:100,offer_id:'offer',sku:200,statuses:{is_created:true,moderate_status:'declined'}}]}):undefined);
+    f.importResult({result:{items:[recordedPlatformProduct({offer_id:'offer',product_id:100,status:'imported',errors:[]})]}});
+    f.read(path=>path==='/v3/product/info/list'?platform({items:[recordedPlatformProduct({id:100,offer_id:'offer',sku:200,statuses:{is_created:true,moderate_status:'declined'}})]}):undefined);
     const moderated=await f.adapter.execute({executionId:'native-moderation',storeId:'bill',row:row('listing'),context});
     assert.equal(moderated.status,'rejected');assert.equal((moderated.receipt as any).completion,'imported; moderation rejected');
     assert.equal(moderated.issues?.[0].code,'OZON_MODERATION_REJECTED');assert.match(moderated.issues![0].message,/审核拒绝/);
-    f.importResult({result:{items:[{offer_id:'offer',product_id:100,status:'failed',errors:[{code:'NEW_PLATFORM_REASON',description:'Preserve this unknown reason'}]}]}});
-    f.read(path=>path==='/v3/product/info/list'?platform({items:[{id:100,offer_id:'offer',sku:0,statuses:{is_created:false,moderate_status:''}}]}):undefined);
+    f.importResult({result:{items:[recordedPlatformProduct({offer_id:'offer',product_id:100,status:'failed',errors:[{code:'NEW_PLATFORM_REASON',description:'Preserve this unknown reason'}]})]}});
+    f.read(path=>path==='/v3/product/info/list'?platform({items:[recordedPlatformProduct({id:100,offer_id:'offer',sku:0,statuses:{is_created:false,moderate_status:''}})]}):undefined);
     const unknown=await f.adapter.execute({executionId:'unknown-reason',storeId:'bill',row:row('listing'),context});
     assert.equal((unknown.receipt as any).completion,'import rejected; card not created; platform rejected');
     assert.equal(unknown.issues?.[0].message,'Preserve this unknown reason');
@@ -439,8 +571,8 @@ test('known required attributes get precise repair guidance and successful impor
     const required=platformIssues([{code:'ATTRIBUTE_REQUIRED',attribute_id:85}])[0];
     assert.match(required.message,/品牌.*85/);assert.match(required.suggestion!,/必填属性/);
     f.call(platform({result:{task_id:123}}));
-    f.importResult({result:{items:[{offer_id:'offer',product_id:100,status:'imported',errors:[]}]}});
-    f.read(path=>path==='/v3/product/info/list'?platform({items:[{id:100,offer_id:'offer',sku:0,statuses:{is_created:false,moderate_status:''}}]}):undefined);
+    f.importResult({result:{items:[recordedPlatformProduct({offer_id:'offer',product_id:100,status:'imported',errors:[]})]}});
+    f.read(path=>path==='/v3/product/info/list'?platform({items:[recordedPlatformProduct({id:100,offer_id:'offer',sku:0,statuses:{is_created:false,moderate_status:''}})]}):undefined);
     const result=await f.adapter.execute({executionId:'imported-only',storeId:'bill',row:row('listing'),context});
     assert.equal(result.status,'succeeded');assert.equal((result.receipt as any).completion,'imported; card not created; moderation and sellability are separate');
   }finally{f.database.close();}
@@ -448,11 +580,11 @@ test('known required attributes get precise repair guidance and successful impor
 
 test('an assigned product ID with sku zero permits only a verified repair of the original rejected listing row', async () => {
   const f = fixture(); try {
-    f.products([]);f.detail({id:'source',title:'Cup',source:'taobao_tmall',currency:'CNY',skus:[{sourceSkuId:'source-sku',goodsPrice:3.43}]});
+    f.products([]);f.detail(recordedDetail({id:'source',title:'Cup',source:'taobao_tmall',currency:'CNY',skus:[recordedSku({sourceSkuId:'source-sku',goodsPrice:3.43}, recordedSample({id:'source',source:'taobao_tmall',nonempty:true}), undefined, ["id","code"])]}, recordedSample({id:'source',source:'taobao_tmall',nonempty:true})));
     let exists=false,rejected=true;
-    f.read(path=>path==='/v3/product/info/list'?platform({items:exists?[{offer_id:'offer',id:100,sku:rejected?'0':200,statuses:{is_created:!rejected,status:rejected?'moderated':'processed'},is_archived:false}]:[]}):undefined);
+    f.read(path=>path==='/v3/product/info/list'?platform({items:exists?[recordedPlatformProduct({offer_id:'offer',id:100,sku:rejected?'0':200,statuses:{is_created:!rejected,status:rejected?'moderated':'processed'},is_archived:false})]:[]}):undefined);
     const send=f.client.platformCall!;f.call(platform({result:{task_id:5787296567}}));f.client.platformCall=async (taskId,input)=>{const result=await send(taskId,input);exists=true;return result;};
-    f.read(path=>path==='/v1/product/import/info'?platform({result:{items:[{offer_id:'offer',product_id:100,status:'imported',errors:rejected?[{code:'ATTRIBUTE_INVALID',field:'attributes',level:'error',state:'moderated',description:'Correct the option'}]:[]}]}}):path==='/v3/product/info/list'?platform({items:exists?[{offer_id:'offer',id:100,sku:rejected?'0':200,statuses:{is_created:!rejected,status:rejected?'moderated':'processed'},is_archived:false}]:[]}):undefined);
+    f.read(path=>path==='/v1/product/import/info'?platform({result:{items:[recordedPlatformProduct({offer_id:'offer',product_id:100,status:'imported',errors:rejected?[{code:'ATTRIBUTE_INVALID',field:'attributes',level:'error',state:'moderated',description:'Correct the option'}]:[]})]}}):path==='/v3/product/info/list'?platform({items:exists?[recordedPlatformProduct({offer_id:'offer',id:100,sku:rejected?'0':200,statuses:{is_created:!rejected,status:rejected?'moderated':'processed'},is_archived:false})]:[]}):undefined);
     const engine=new BusinessOperations({store:f.store,source:f.adapter,transport:f.adapter,reviewer:{async review(request){return {status:'passed',questions:request.questions.map(q=>({id:q.id,version:q.version,status:'passed',reviewer:'decisions',reasonCode:'MATCH'})),evidence:{versions:request.versions,requests:[],thresholds:{pass:.95,reject:.1}}};}}});
     const listing=row('listing');listing.target={offerId:'offer'};const draft=await engine.create({storeId:'bill',rows:[listing]});const first=await engine.submit({planId:draft.planId,expectedRevision:1});
     assert.equal(first.rows[0].status,'rejected');assert.deepEqual(first.rows[0].target,{offerId:'offer',productId:'100'});assert.equal((first.rows[0].receipt as any).completion,'imported; card not created; field validation failed');assert.equal(f.store.get<any>('business_procurement_bindings',businessHash(['bill','offer']))!.target.sku,undefined);
@@ -511,7 +643,7 @@ test('primary image selection is explicit and only genuine source references can
   try{
     f.products([]);
     const gallery=Array.from({length:12},(_,i)=>`https://source.test/gallery-${i}.jpg`),subjectUrl=gallery[11];
-    f.detail({id:'source',title:'金属支架',mainImage:gallery[0],images:gallery,skus:[{sourceSkuId:'source-sku',goodsPrice:3.43,spec:'银色单只',image:gallery[1]}]});
+    f.detail(recordedDetail({id:'source',title:'金属支架',mainImage:gallery[0],images:gallery,skus:[recordedSku({sourceSkuId:'source-sku',goodsPrice:3.43,spec:'银色单只',image:gallery[1]}, recordedSample({id:'source',source:undefined,nonempty:true}), undefined, ["properties","id","code"])]}, recordedSample({id:'source',source:undefined,nonempty:true})));
     const target:BusinessRowInput={...row('listing'),referenceSubjects:[{sourceImageUrl:subjectUrl,subject:'左侧银色支架'}],payload:{...row('listing').payload,images:['https://cdn.test/extra.jpg'],primary_image:'https://cdn.test/main.jpg'}};
     const loaded=await f.adapter.load({storeId:'bill',row:target,fresh:false}),unit=loaded.reviewUnits!.find(unit=>unit.id==='sku-images')!;
     assert.equal(loaded.sourceImages?.[0].url,subjectUrl,'explicit source from outside the default first eight is retained');
@@ -540,7 +672,7 @@ test('single-SKU images need no reference declaration and changing a selected su
     assert.deepEqual(autoUnit.questions.find(q=>q.id.startsWith('image-subject-consistency:'))?.imageIds,['source-0','draft-0']);
     assert.equal((autoUnit.source as any).referenceSubjects,undefined);
     assert.equal(automatic.issues?.some(issue=>issue.code.startsWith('REFERENCE_SUBJECT')),false);
-    const load=async(subject:string)=>f.adapter.load({storeId:'bill',row:{...target,referenceSubjects:[{sourceImageUrl:'https://example.com/source.jpg',subject}]},fresh:false});
+    const load=async(subject:string)=>f.adapter.load({storeId:'bill',row:{...target,referenceSubjects:[{sourceImageUrl:sourceBaseline.skus[0].image,subject}]},fresh:false});
     const left=await load('左侧银色杯子'),right=await load('右侧银色杯子');
     assert.notEqual(businessHash(left.reviewUnits!.find(unit=>unit.id==='sku-images')!.source),businessHash(right.reviewUnits!.find(unit=>unit.id==='sku-images')!.source));
     assert.deepEqual(left.normalizedPayload,right.normalizedPayload,'subject selection never modifies native item fields');
@@ -614,7 +746,7 @@ test('promotions parse object amounts and exit through the native v2 contract',a
 test('pricing uses selected channel and real source cost, preserves automatic intent, and refuses an altered collection origin',async()=>{
  const f=fixture();try{
   const pricing=new BusinessPricingRepository(f.store);pricing.save('bill',{currency:'CNY',defaultPlanId:'a',plans:[{id:'a',name:'A',enabled:true,fixedMinor:316,logisticsMicrosPerGram:39300,commissionPpm:200000},{id:'b',name:'B',enabled:true,fixedMinor:100,logisticsMicrosPerGram:10000,commissionPpm:100000}],listingTargetMarginPpm:600000,manualTargetMarginPpm:50000,minimumMarginPpm:100000,maxAutoPriceMinor:null,minPriceMinor:null,maxPriceMinor:null},0);
-  f.products([]);f.detail({id:'source',title:'Cup',currency:'CNY',skus:[{sourceSkuId:'source-sku',price:3.43}]});f.read(path=>path==='/v3/product/info/list'?platform({items:[]}):undefined);
+  f.products([]);f.detail(recordedDetail({id:'source',title:'Cup',currency:'CNY',skus:[recordedSku({sourceSkuId:'source-sku',price:3.43}, recordedSample({id:'source',source:undefined,nonempty:true}), undefined, ["goodsPrice","sourceSellingPrice","id","code"])]}, recordedSample({id:'source',source:undefined,nonempty:true})));f.read(path=>path==='/v3/product/info/list'?platform({items:[]}):undefined);
   const adapter=new HallmarkBusinessAdapter({client:f.client,store:f.store,broker:f.broker,gateway:f.gateway,pricing}),item={...row('listing'),target:{offerId:'new'},pricing:{planId:'b',mode:'automatic' as const},payload:{name:'Cup',weight:50,weight_unit:'g',currency_code:'CNY'}};
   const quote=await adapter.load({storeId:'bill',row:item,fresh:false});assert.equal(quote.pricingQuote?.status,'ready');assert.equal(quote.pricingQuote?.breakdown.purchaseMinor,343);assert.equal(quote.pricingQuote?.planId,'b');assert.deepEqual(quote.normalizedPricing,{planId:'b',mode:'automatic'});assert.equal(quote.normalizedPayload?.price,(quote.pricingQuote!.suggestedPriceMinor!/100).toFixed(2));
   const engine=new BusinessOperations({store:f.store,source:adapter,transport:adapter,reviewer:{review:async()=>{throw Error('Draft must not review');}}});const plan=await engine.create({storeId:'bill',rows:[item]});assert.equal(plan.rows[0].pricing?.mode,'automatic');assert.equal(f.writes.length,0);
@@ -626,7 +758,7 @@ test('native catalogue joins exact local multi-source composition and excludes a
  const f=fixture();try{
   f.store.put('business_migrations','catalog:bill',{done:true});f.store.put('business_procurement_bindings',businessHash(['bill','offer']),{storeId:'bill',target:{offerId:'offer',productId:'100',sku:'200'},binding:{currency:'CNY',amount:8,components:[{itemId:'source',sourceSkuId:'red',quantity:2,unitPrice:3,currency:'CNY'},{itemId:'source2',sourceSkuId:'blue',quantity:1,unitPrice:2,currency:'CNY'}]}});
   f.client.getStoreProducts=async()=>{throw Error('old product catalogue must be offline after migration');};f.client.getStores=async()=>{throw Error('old store list must be offline');};
-  f.gateway.listStores=()=>[{id:'bill',name:'Bill',enabled:true,hasCredentials:true,credentialRevision:1,sourceConnectionId:'connection'}];f.gateway.getProducts=async()=>platform({items:[{id:100,offer_id:'offer',sku:200,name:'Cup',price:'12',currency_code:'CNY'}]});
+  f.gateway.listStores=()=>[{id:'bill',name:'Bill',enabled:true,hasCredentials:true,credentialRevision:1,sourceConnectionId:'connection'}];f.gateway.getProducts=async()=>platform({items:[recordedPlatformProduct({id:100,offer_id:'offer',sku:200,name:'Cup',price:'12',currency_code:'CNY'})]});
   const connected=businessConnectedClient(f.client,f.gateway,f.store,'connection'),catalog=await connected.getStoreProducts();assert.equal(catalog.status,'ok');assert.equal(catalog.raw.products[0].sources.length,2);assert.equal(catalog.raw.products[0].profit.purchaseMinor,800);assert.equal((await connected.getStores()).raw[0].name,'Bill');
   assert.equal(localBusinessProducts(f.store,'bill')[0].procurementBinding.components.length,2);
   f.gateway.getStore=()=>({id:'bill',sourceConnectionId:'other'});const scoped=connectionBusinessGateway(f.gateway,'connection');assert.equal(scoped.hasStore('bill'),false);assert.equal((await scoped.request('bill',{path:'/v3/product/info/list'})).error?.code,'STORE_CONNECTION_MISMATCH');
@@ -646,19 +778,19 @@ test('category search inherits its ancestor category ID and reads template/dicti
 
 test('a price draft naturally imports legacy procurement identity before any product-list screen is opened',async()=>{
  const f=fixture();try{
-  const sourceProduct={storeId:'bill',offerId:'offer',productId:100,sources:[{sourceSkuMatched:true,productId:'source',skuCode:'source-sku',sourceUrl:'https://source.example/item'}]};
+  const sourceProduct=recordedProduct({storeId:'bill',offerId:'offer',productId:100,sources:[{sourceSkuMatched:true,productId:'source',skuCode:'source-sku',sourceUrl:'https://source.example/item'}]});
   let legacyReads=0;f.client.getStoreProducts=async()=>{legacyReads++;return ok({stores:[{id:'bill'}],products:[sourceProduct]});};
   f.gateway.listStores=()=>[{id:'bill',legacyStoreId:'bill',sourceConnectionId:'connection',name:'Bill',enabled:true,hasCredentials:true,credentialRevision:1}];
   const freshStore=new HallmarkStorePort(f.database,'cold-start'),client=businessConnectedClient(f.client,f.gateway,freshStore,'connection'),adapter=new HallmarkBusinessAdapter({client,gateway:f.gateway,store:freshStore,broker:f.broker});
-  const draft=await adapter.load({storeId:'bill',row:row(),fresh:false});assert.deepEqual(draft.normalizedProcurement,[{itemId:'source',sourceSkuId:'source-sku',quantity:1}]);assert.equal(draft.procurement[0].unitPrice,3.43);assert.equal(legacyReads,1);
+  const draft=await adapter.load({storeId:'bill',row:row(),fresh:false});assert.deepEqual(draft.normalizedProcurement,[{itemId:'source',sourceSkuId:'source-sku',quantity:1}]);assert.equal(draft.procurement[0].unitPrice,Number(sourceBaseline.skus[0].goodsPrice));assert.equal(legacyReads,1);
   f.client.getStoreProducts=async()=>{throw Error('legacy product backend must no longer be read');};await adapter.load({storeId:'bill',row:row(),fresh:true});assert.equal(legacyReads,1);assert.equal(freshStore.list('business_catalog').length,1);
  }finally{f.database.close();}
 });
 
 test('native catalogue preserves old profit only as history and never presents it as current computed profit',async()=>{
  const f=fixture();try{
-  f.products([{storeId:'bill',offerId:'offer',productId:100,profit:{purchaseMinor:343,packageGrams:30,actualMinor:999,costMinor:500,profitMinor:499,actualMargin:.5}}]);f.store.put('business_migrations','catalog:bill',{done:true});
-  f.gateway.listStores=()=>[{id:'bill',name:'Bill',sourceConnectionId:'connection'}];f.gateway.getProducts=async()=>platform({items:[{id:100,offer_id:'offer',sku:200,name:'Cup',price:'10.37',currency_code:'CNY'}]});
+  f.products([recordedProduct({storeId:'bill',offerId:'offer',productId:100,profit:{purchaseMinor:343,packageGrams:30,actualMinor:999,costMinor:500,profitMinor:499,actualMargin:.5}})]);f.store.put('business_migrations','catalog:bill',{done:true});
+  f.gateway.listStores=()=>[{id:'bill',name:'Bill',sourceConnectionId:'connection'}];f.gateway.getProducts=async()=>platform({items:[recordedPlatformProduct({id:100,offer_id:'offer',sku:200,name:'Cup',price:'10.37',currency_code:'CNY'})]});
   const client=businessConnectedClient(f.client,f.gateway,f.store,'connection'),data=await client.getStoreProducts(),product=data.raw.products[0];assert.equal(product.profit.purchaseMinor,343);assert.equal(product.profit.packageGrams,null);assert.equal(product.profit.actualMinor,null);assert.equal(product.profit.costMinor,null);assert.equal(product.profit.profitMinor,null);assert.equal(product.profit.actualMargin,null);assert.equal(product.historicalProfit.actualMargin,.5);assert.match(product.historicalProfit.basis,/历史参考/);
   const [computed]=profitRows([product]);assert.equal(computed.referenceProfit.costMissing,true);assert.equal(computed.referenceProfit.margin,null);assert.equal(computed.referenceProfit.profitMinor,null);assert.deepEqual(JSON.parse(JSON.stringify(product)),product,'native projection is JSON-safe');
  }finally{f.database.close();}
@@ -667,8 +799,8 @@ test('native catalogue preserves old profit only as history and never presents i
 test('automatic repricing evaluates the final suggested tier, ignores a previous price and uses verified actual weight',async()=>{
  const f=fixture();try{
   const pricing=new BusinessPricingRepository(f.store);pricing.save('bill',{currency:'CNY',logisticsSelection:'automatic',defaultPlanId:null,plans:[{id:'low',name:'Low',enabled:true,maxPriceExclusiveMinor:13500,fixedMinor:316,logisticsMicrosPerGram:39300,commissionPpm:200000},{id:'high',name:'High',enabled:true,minPriceMinor:13500,fixedMinor:1800,logisticsMicrosPerGram:39300,commissionPpm:200000}],listingTargetMarginPpm:600000,manualTargetMarginPpm:50000,minimumMarginPpm:100000,maxAutoPriceMinor:null,minPriceMinor:null,maxPriceMinor:null},0);
-  f.products([{storeId:'bill',offerId:'offer',productId:100,sources:[{sourceSkuMatched:true,productId:'source',skuCode:'source-sku'}],weight:{source:'ozon_order_actual',grams:50,revision:'verified'}}]);
-  f.detail({id:'source',currency:'CNY',skus:[{sourceSkuId:'source-sku',price:100}]});f.read(path=>path==='/v4/product/info/attributes'?platform({result:[{offer_id:'offer',id:100,weight:1000,weight_unit:'g'}]}):undefined);
+  f.products([recordedProduct({storeId:'bill',offerId:'offer',productId:100,sources:[{sourceSkuMatched:true,productId:'source',skuCode:'source-sku'}],weight:{source:'ozon_order_actual',grams:50,revision:'verified'}})]);
+  f.detail(recordedDetail({id:'source',currency:'CNY',skus:[recordedSku({sourceSkuId:'source-sku',price:100}, recordedSample({id:'source',source:undefined,nonempty:true}), undefined, ["goodsPrice","sourceSellingPrice","id","code"])]}, recordedSample({id:'source',source:undefined,nonempty:true})));f.read(path=>path==='/v4/product/info/attributes'?platform({result:[{offer_id:'offer',id:100,weight:1000,weight_unit:'g'}]}):undefined);
   const adapter=new HallmarkBusinessAdapter({client:f.client,store:f.store,broker:f.broker,gateway:f.gateway,pricing});
   const result=await adapter.load({storeId:'bill',row:{...row(),pricing:{mode:'automatic',planId:'low'},payload:{price:'1',currency_code:'CNY'}},fresh:false});
   assert.equal(result.pricingQuote?.status,'ready');assert.equal(result.pricingQuote?.planId,'high');assert.equal(result.pricingQuote?.breakdown.logisticsMinor,197);assert.equal(Math.round(Number(result.normalizedPayload?.price)*100),result.pricingQuote?.evaluatedPriceMinor);assert.equal(result.pricingQuote?.evaluatedPriceMinor,result.pricingQuote?.suggestedPriceMinor);assert.deepEqual(result.normalizedPricing,{mode:'automatic'});assert.equal(result.policy?.minimumPrice,undefined);

@@ -5,11 +5,14 @@ import { HallmarkStorePort } from '../../packages/app-hallmark/src/store.ts';
 import { BusinessOperations } from '../../packages/app-hallmark/src/operations/index.ts';
 import type { BusinessOperationsOptions, BusinessRowInput, BusinessTransportResult, TrustedRowContext, ReviewUnit } from '../../packages/app-hallmark/src/operations/types.ts';
 import type { SemanticReviewRequest, SemanticReviewResult } from '../../packages/app-contracts/src/business-review.ts';
+import { realCollection } from '../real-data/corpus.ts';
+
+const recorded = realCollection(1), recordedSku = recorded.skus[0], recordedImage = recorded.assets[0].url;
 
 const answer = (request: SemanticReviewRequest, status: 'passed' | 'rejected' | 'pending' = 'passed'): SemanticReviewResult => ({ status, questions: request.questions.map(q => ({ id: q.id, version: q.version, status, reviewer: 'decisions', reasonCode: status })), evidence: { versions: request.versions, requests: [], thresholds: { pass: .95, reject: .1 } } });
 const price = (offerId: string, value = '12'): BusinessRowInput => ({ action: 'price', target: { offerId }, payload: { price: value, currency_code: 'CNY' } });
-const listing = (offerId: string): BusinessRowInput => ({ action: 'listing', target: { offerId }, procurement: [{ itemId: 'source', sourceSkuId: offerId, quantity: 2 }], payload: { offer_id: offerId, price: '30', currency_code: 'CNY', name: 'Cup', description: 'Shared detail', images: [`https://test/${offerId}.jpg`] } });
-const unit = (id: string, draft: unknown, source: unknown = { product: 'cup' }): ReviewUnit => ({ id, source, draft, questions: [{ id, version: '1', instructions: 'Check', passCriteria: 'Matches', failCriteria: 'Conflicts', imageIds: [] }] });
+const listing = (offerId: string): BusinessRowInput => ({ action: 'listing', target: { offerId }, procurement: [{ itemId: 'source', sourceSkuId: offerId, quantity: 2 }], payload: { offer_id: offerId, price: '30', currency_code: 'CNY', name: recorded.title, description: recorded.description || recorded.title, images: [recordedImage] } });
+const unit = (id: string, draft: unknown, source: unknown = realCollection(1)): ReviewUnit => ({ id, source, draft, questions: [{ id, version: '1', instructions: 'Check', passCriteria: 'Matches', failCriteria: 'Conflicts', imageIds: [] }] });
 
 test('price policy changed during semantic review is checked before dispatch without repeating unrelated content review',async()=>{
  const f=fixture();try{
@@ -52,7 +55,7 @@ function fixture() {
   const options: BusinessOperationsOptions = {
     store,
     source: { async load({ storeId, row }) {
-      const context: TrustedRowContext = { identity: { storeId, ...row.target }, current: current.get(row.target.offerId) ?? (row.action === 'listing' ? {} : { price: '10', currency_code: 'CNY' }), source: { sourceId: 'source', original: 'Trusted original cup' }, procurement: [{ itemId: 'source', sourceSkuId: row.target.offerId, unitPrice: 12, currency: 'CNY', unit: 'piece' }], assets: [{ url: `https://test/${row.target.offerId}.jpg`, contentHash: `image-${row.target.offerId}` }] };
+      const context: TrustedRowContext = { identity: { storeId, ...row.target }, current: current.get(row.target.offerId) ?? (row.action === 'listing' ? {} : { price: '10', currency_code: 'CNY' }), source: { ...realCollection(1), sourceId: 'source' }, procurement: [{ itemId: 'source', sourceSkuId: row.target.offerId, unitPrice: Number(recordedSku.purchaseCost!.amount), currency: recordedSku.purchaseCost!.currency, unit: recordedSku.purchaseCost!.unit ?? '来源 SKU 销售单位' }], assets: [{ url: recordedImage, contentHash: `image-${row.target.offerId}` }] };
       modify(context, row); return structuredClone(context);
     } },
     transport: {
@@ -113,7 +116,7 @@ test('shared content is reviewed once; a local repair only rechecks its own chan
 test('changing shared evidence invalidates every dependent row but shares the new review', async () => {
   const f = fixture(); try {
     f.source((c, row) => { c.reviewUnits = [unit('shared', row.payload.description)]; });
-    f.review(async request => answer(request, request.draft === 'Shared detail' ? 'rejected' : 'passed'));
+    f.review(async request => answer(request, request.draft === (recorded.description || recorded.title) ? 'rejected' : 'passed'));
     const draft = await f.engine.create({ storeId: 'bill', rows: [listing('red'), listing('blue')] });
     await f.engine.submit({ planId: draft.planId, expectedRevision: 1 }); assert.equal(f.reviews.length, 1); assert.equal(f.sends.length, 0);
     const fixed = await f.engine.revise({ planId: draft.planId, expectedRevision: 1, rows: draft.rows.map(r => ({ ...listing(r.target.offerId), rowId: r.rowId, payload: { ...r.payload, description: 'Corrected detail' } })) });
@@ -127,7 +130,7 @@ test('procurement cost comes only from trusted source and explicit sales quantit
     const row = listing('red'); row.procurement![0] = { ...row.procurement![0], unitPrice: 0.01 } as any;
     f.source(c => { c.policy = { requireCost: true, breakEvenPrice: null, currency: 'CNY' }; });
     const draft = await f.engine.create({ storeId: 'bill', rows: [row, { action: 'archive', target: { offerId: 'old' }, payload: { archived: true } }] });
-    assert.equal(draft.rows[0].binding?.amount, 24); assert.equal(draft.rows[0].binding?.components[0].unitPrice, 12);
+    assert.equal(draft.rows[0].binding?.amount, 5.5); assert.equal(draft.rows[0].binding?.components[0].unitPrice, 2.75);
     const result = await f.engine.submit({ planId: draft.planId, expectedRevision: 1 });
     assert.equal(result.rows[0].issues[0].code, 'COST_BASIS_MISSING'); assert.deepEqual(f.sends, ['old']);
   } finally { f.database.close(); }
@@ -189,7 +192,7 @@ test('two failed repairs count per question, pending service failures never cons
       if (attempt === 1) { f.review(async request => answer(request, 'pending')); const pending = await f.engine.submit({ planId: plan.planId, expectedRevision: plan.revision }); assert.equal(Object.values(pending.rows[0].repairHistory)[0].count, 0); }
       f.review(async request => answer(request, 'rejected')); plan = await f.engine.submit({ planId: plan.planId, expectedRevision: plan.revision });
     }
-    assert.equal(plan.rows[0].status, 'needs_user'); assert.equal(Object.values(plan.rows[0].repairHistory)[0].count, 2); assert.equal(f.sends.length, 0);
+    assert.equal(plan.rows[0].status, 'blocked'); assert.equal(plan.rows[0].issues.some(issue=>issue.requiresUser), false); assert.match(plan.rows[0].issues[0].suggestion!, /停止重复生成/); assert.equal(Object.values(plan.rows[0].repairHistory)[0].count, 2); assert.equal(f.sends.length, 0);
   } finally { f.database.close(); }
 });
 
@@ -214,7 +217,7 @@ test('explicit row dependencies are ordered internally and imported identities b
     f.write(async offer => ({ status: 'succeeded', identity: { offerId: offer, productId: 123, sku: 456 } }));
     const draft = await f.engine.create({ storeId: 'bill', rows: [{ ...price('next'), rowId: 'next', dependsOn: ['listing'] }, { ...listing('red'), rowId: 'listing' }] });
     const result = await f.engine.submit({ planId: draft.planId, expectedRevision: 1 }); assert.equal(result.status, 'done'); assert.deepEqual(f.sends, ['red', 'next']);
-    const binding = f.store.list<any>('business_procurement_bindings').find(r => r.target.offerId === 'red'); assert.equal(binding.target.productId, 123); assert.equal(binding.binding.amount, 24);
+    const binding = f.store.list<any>('business_procurement_bindings').find(r => r.target.offerId === 'red'); assert.equal(binding.target.productId, 123); assert.equal(binding.binding.amount, 5.5);
   } finally { f.database.close(); }
 });
 
@@ -269,7 +272,7 @@ test('later operations retain and reuse saved procurement identity instead of re
     const edit = await f.engine.create({ storeId: 'bill', rows: [price('red', '31')] });
     assert.deepEqual(edit.rows[0].procurement, [{ itemId: 'source', sourceSkuId: 'red', quantity: 2 }]); assert.equal(edit.rows[0].target.productId, 123);
     await f.engine.submit({ planId: edit.planId, expectedRevision: 1 });
-    const binding = f.store.list<any>('business_procurement_bindings').find(value => value.target.offerId === 'red'); assert.equal(binding.binding.amount, 24); assert.equal(binding.binding.components.length, 1);
+    const binding = f.store.list<any>('business_procurement_bindings').find(value => value.target.offerId === 'red'); assert.equal(binding.binding.amount, 5.5); assert.equal(binding.binding.components.length, 1);
   } finally { f.database.close(); }
 });
 

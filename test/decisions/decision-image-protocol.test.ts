@@ -5,11 +5,17 @@ import type { AddressInfo } from 'node:net';
 import { createDecisionImageProtocol } from '../../packages/service/src/decision-image-protocol.ts';
 import { createDecisionReviewer } from '../../packages/service/src/decision-review.ts';
 import type { SemanticReviewRequest } from '../../packages/app-contracts/src/business-review.ts';
+import {realCorpus,realCorpusPath} from '../real-data/corpus.ts';
+import {readFileSync} from 'node:fs';
+import {dirname,join} from 'node:path';
 
-const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6t8sAAAAASUVORK5CYII=', 'base64');
+const corpus=realCorpus(),asset=corpus.imageAssets.find(image=>image.status==='captured'&&image.mimeType==='image/png'&&corpus.records.some(row=>row.detail.id===image.productId&&row.detail.skus.length));
+assert.ok(asset,'A genuine PNG with source SKUs is required');
+const detail=corpus.records.find(row=>row.detail.id===asset.productId)!.detail,sku=detail.skus[0];
+const png=readFileSync(join(dirname(realCorpusPath),asset.file!));
 const dataUrl = `data:image/png;base64,${png.toString('base64')}`;
 const request = (...urls: string[]): SemanticReviewRequest => ({
-  source: { sku: 'red', subject: 'red cup' }, draft: { name: 'Red cup' }, versions: { source: 's1', draft: 'd1' },
+  source: {itemId:detail.id,sku:sku.sourceSkuId,subject:detail.title,spec:sku.spec}, draft: {name:detail.title}, versions: { source: 's1', draft: 'd1' },
   questions: [{ id: 'visual', version: '1', instructions: 'Compare supplied subjects.', passCriteria: 'Same subject.', failCriteria: 'Different subject.' }],
   images: urls.map((url, index) => ({ id: `image-${index}`, role: index ? 'draft' : 'source', url })),
 });

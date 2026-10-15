@@ -65,6 +65,8 @@ export interface AppsComponent {
   revisions?:{revision:number;title:string;savedAt:string;buildId?:string}[];
 }
 export interface DatasetSnapshot {
+  /** Internal writer identity; only a newer success from this exact owner may clear a failed preparation. */
+  preparationOwner?:string;
   datasetId:string;
   canonicalBinding:JsonValue;
   revision:string;
@@ -88,7 +90,8 @@ export interface AppsBindingData {
   payload:JsonValue|null;
   resources:ResourceRef[];
   freshness:Freshness;
-  state:'ready'|'failed'|'unavailable'|'empty';
+  state:'ready'|'failed'|'unavailable'|'empty'|'preparing';
+  preparation?:{state:'preparing'|'ready'|'failed';startedAt:string;finishedAt?:string;elapsedMs:number;phase:'queued'|'query'|'settled';error?:FailureInfo};
   lastSuccessAt:string|null;
   sourceDataTime:string|null;
   provenance:DataProvenance[];

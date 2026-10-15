@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import { HallmarkClient } from '../../packages/hallmark-adapter/client.ts';
 import { TaskBroker } from '../../packages/hallmark-adapter/task-broker.ts';
 import type { MappingStore } from '../../packages/hallmark-adapter/types.ts';
+import { realCollection } from '../real-data/corpus.ts';
 
-const input = { variants: [{ salesSkuId: 'sale-bundle', components: [{ sourceSkuId: 'source-sku', quantity: 2 }], spec: 'source-sku × 2' }], reason: 'Program sale composition' };
+const recorded = realCollection(1), sourceSkuId = recorded.skus[0].id!;
+const input = { variants: [{ salesSkuId: 'sale-bundle', components: [{ sourceSkuId, quantity: 2 }], spec: `${recorded.skus[0].spec} × 2` }], reason: 'Program sale composition' };
 test('sales variant client uses the existing metadata route and preserves the actual composition', async () => {
   const calls: Array<{ url: string; init: RequestInit }> = [];
   const client = new HallmarkClient({ baseUrl: 'http://127.0.0.1:4173', fetchImpl: (async (url, init) => {
@@ -25,11 +27,11 @@ test('lost registration response is unknown and the client never repeats its POS
 test('task broker recognizes source components after variant registration and unwraps cached task details', async () => {
   const records = new Map<string, unknown>();
   const store: MappingStore = { get: <T>(collection: string, id: string) => records.get(`${collection}/${id}`) as T | undefined, put: <T>(collection: string, id: string, value: T) => { records.set(`${collection}/${id}`, value); return value; } };
-  const task = { id: 'task', kind: 'listing', status: 'submitted', storeId: 'bill', productId: 'source', salesVariants: input.variants };
+  const task = { id: 'task', kind: 'listing', status: 'submitted', storeId: 'bill', productId: recorded.id, salesVariants: input.variants };
   const generalTask = { id: 'general-task', kind: 'listing', status: 'listed', storeId: 'bill', productId: 'general-source' };
   let lists = 0;
   const client = { getTasks: async () => { lists++; return { status: 'ok', raw: [task, generalTask] }; }, getTask: async () => ({ status: 'ok', raw: { task: generalTask, platformCalls: [] } }) } as unknown as HallmarkClient;
   const broker = new TaskBroker(client, store);
-  const listing = await broker.getListingTask({ storeId: 'bill', collectedItemId: 'source', skuScope: ['source-sku'] }); assert.equal(listing.status, 'ok'); assert.equal(listing.raw?.taskId, 'task');
+  const listing = await broker.getListingTask({ storeId: 'bill', collectedItemId: recorded.id, skuScope: [sourceSkuId] }); assert.equal(listing.status, 'ok'); assert.equal(listing.raw?.taskId, 'task');
   assert.equal((await broker.getStoreTask('bill')).raw?.taskId, 'general-task'); const before = lists; await broker.getStoreTask('bill'); assert.equal(lists, before, 'cached task envelope is usable without a full task scan');
 });

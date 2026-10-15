@@ -25,7 +25,7 @@ const browser=process.env.DSH_PREVIEW_BROWSER_PATH??'C:/Program Files/Google/Chr
 const count=(path:string)=>existsSync(path)?readFileSync(path,'utf8').trim().split('\n').length:0;
 const outputRoot=process.env.DSH_PERFORMANCE_CLI_EVIDENCE_ROOT;
 function directory(name:string){if(!outputRoot)return mkdtempSync(join(tmpdir(),'apps-'+name+'-'));const path=join(resolve(outputRoot),name+'-'+randomUUID());mkdirSync(path,{recursive:true});return path;}
-function cleanup(path:string){if(!outputRoot){assert.ok(resolve(path).startsWith(resolve(tmpdir())));rmSync(path,{recursive:true,force:true,maxRetries:5,retryDelay:200});}}
+function cleanup(path:string){if(!outputRoot){assert.ok(resolve(path).startsWith(resolve(tmpdir())));rmSync(path,{recursive:true,force:true,maxRetries:15,retryDelay:200});}}
 function retain(path:string,value:unknown){if(outputRoot)writeFileSync(join(path,'results.json'),JSON.stringify(value,null,2)+'\n');}
 function project(workspace:string,counter:string,gate?:string,gateUrl?:string){
  const html=`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:12px;font:16px sans-serif}</style><h1>Performance fixture</h1><button id="toggle">Select</button><output id="result">unselected</output><script>

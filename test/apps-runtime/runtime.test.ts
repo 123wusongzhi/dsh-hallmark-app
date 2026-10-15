@@ -1,3 +1,4 @@
+import {uiProduct,uiOzonProduct,uiStore,uiDictionaryValue,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -68,7 +69,7 @@ test('model projection caps UTF8 and complete data remains readable; spill failu
 test('oversized object results retain a labeled sample and exact original result read route',()=>{
   const store=new RuntimeStore(':memory:');
   try{
-    const data={total:338,cursor:'60',products:Array.from({length:60},(_,id)=>({id,title:'商品'.repeat(200),profit:{purchaseMinor:100,actualMinor:150,actualMargin:0.2}}))};
+    const data={total:338,cursor:'60',products:Array.from({length:60},(_,id)=>uiProduct({id,title:uiProduct({},id%41).title.repeat(200),profit:{purchaseMinor:100,actualMinor:150,actualMargin:0.2}},id%41))};
     const result:CapabilityResult={status:'ok',invocationId:'object-result',traceId:'trace',data};
     const projected=projectModelResult(store,result),summary=JSON.parse(projected.content);
     assert.ok(Buffer.byteLength(projected.content)<=16384);

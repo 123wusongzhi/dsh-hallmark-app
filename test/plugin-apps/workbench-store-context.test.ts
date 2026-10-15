@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiOzonProduct,uiStore,uiListingPayload,uiFixturePrelude,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,rmSync} from 'node:fs';
@@ -15,7 +16,8 @@ async function runFixture(contents:string,marker:string){
 
 test('changing store drops old rows, selections and pagination; late responses cannot replace the new store or its permission error',async()=>{
   await runFixture(`
-    import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
+    import React from 'react';
+${uiFixturePrelude()}import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
     import {WorkbenchInstanceView} from './packages/plugin-apps/client/workbench-board.tsx';
     import {ViewRenderer} from './packages/dsh-plugin/client/renderer.tsx';
     import {createMaterialView} from './packages/app-presentation/src/materials/catalog.ts';
@@ -25,22 +27,22 @@ test('changing store drops old rows, selections and pagination; late responses c
     const fields=[{role:'product.id',path:'id',confirmed:true},{role:'product.name',path:'name',confirmed:true},{role:'price.current',path:'price',confirmed:true,currency:'CNY'},{role:'sku.id',path:'sku',confirmed:true},{role:'sku.specification',path:'specification',confirmed:true}];
     const source={kind:'data_source',id:'shared-products',revision:1,title:'Ozon 商品',storeScoped:true,fields,input:{},parameters:[{name:'productId',label:'商品编号',type:'string',linked:true}],rowsPath:'items',operations:{pagination:{cursorParam:'cursor'},search:{scope:'loaded'},sort:{scope:'loaded'}},validation:{status:'verified',issues:[]}};
     const result=(params)=>{const id=params.context.storeId,derived=structuredClone(design);for(const widget of derived.widgets){widget.fields=Object.fromEntries(fields.map(field=>[field.role,field.path]));widget.options={...widget.options,rowsPath:'items'};}
-      return {instanceId:'shared',view:{viewId:'preview-'+id,design:derived},dataSources:{products:source,sku:{...source,id:'shared-sku'}},pages:{products:{hasMore:!params.cursor,nextCursor:'next',loadedCount:1,total:2},sku:{hasMore:false,loadedCount:params.bindingId==='sku'?1:0}},data:{bindings:['products','sku'].map(bindingId=>({bindingId,datasetId:id+'-'+bindingId,payload:{items:bindingId==='sku'&&params.bindingId!=='sku'?[]:[{id:id+'-product',name:id+'商品',price:12,sku:id+'-sku',specification:id+'规格'}]},state:'ready',lastSuccessAt:'2026-10-08T10:00:00Z',sourceDataTime:null,freshness:'fresh',provenance:[]}))}};};
+      return {instanceId:'shared',view:{viewId:'preview-'+id,design:derived},dataSources:{products:source,sku:{...source,id:'shared-sku'}},pages:{products:{hasMore:!params.cursor,nextCursor:'next',loadedCount:1,total:2},sku:{hasMore:false,loadedCount:params.bindingId==='sku'?1:0}},data:{bindings:['products','sku'].map(bindingId=>({bindingId,datasetId:id+'-'+bindingId,payload:{items:bindingId==='sku'&&params.bindingId!=='sku'?[]:[uiProduct({id:id+'-product',price:12,sku:id+'-sku',specification:uiProduct({},id==='A'?7:40).spec},id==='A'?7:40)]},state:'ready',lastSuccessAt:'2026-10-08T10:00:00Z',sourceDataTime:null,freshness:'fresh',provenance:[]}))}};};
     const requests=[],slow=[];let hold=false,deny=false,tree;const originalFetch=globalThis.fetch;
     globalThis.fetch=async(url,options)=>{const body=JSON.parse(options.body);requests.push({body,signal:options.signal});const params=body.params;if(hold&&params.context.storeId==='A')await new Promise(resolve=>slow.push(resolve));if(deny&&params.context.storeId==='C')return Response.json({status:'failed',error:{code:'ACCESS_DENIED',message:'当前店铺无订单读取权限'}},{status:403});return Response.json(result(params));};
     const settle=()=>new Promise(resolve=>setTimeout(resolve,10)),render=(storeId,refreshKey=0)=><WorkbenchInstanceView appId='hallmark' instance={instance} context={{storeId}} refreshKey={refreshKey}/>;
     const contents=()=>JSON.stringify(tree.toJSON()),interactions=()=>tree.root.findByType(ViewRenderer).props.interactions;
     try{
-      await act(async()=>{tree=create(render('A'));await settle();});assert.match(contents(),/A商品/);
-      await act(async()=>{interactions().onSelect({widgetId:'products',field:'product.id',value:'A-product'});await settle();});assert.equal(interactions().bindings.sku.selectedProductId,'A-product');assert.match(contents(),/A规格/);
+      await act(async()=>{tree=create(render('A'));await settle();});assert.match(contents(),uiText(uiProduct({},7).title));
+      await act(async()=>{interactions().onSelect({widgetId:'products',field:'product.id',value:'A-product'});await settle();});assert.equal(interactions().bindings.sku.selectedProductId,'A-product');assert.match(contents(),uiText(uiProduct({},7).spec));
       await act(async()=>{interactions().bindings.products.onPage();await settle();});assert.equal(requests.at(-1).body.params.cursor,'next');
       hold=true;await act(async()=>{tree.update(render('A',1));await settle();});const delayed=requests.at(-1);assert.equal(slow.length,1);
-      await act(async()=>{tree.update(render('B',1));await settle();});assert.equal(delayed.signal.aborted,true);assert.match(contents(),/B商品/);assert.doesNotMatch(contents(),/A商品|A规格/);
+      await act(async()=>{tree.update(render('B',1));await settle();});assert.equal(delayed.signal.aborted,true);assert.match(contents(),uiText(uiProduct({},40).title));assert.doesNotMatch(contents(),new RegExp([uiProduct({},7).title,uiProduct({},7).spec].map(value=>uiText(value).source).join('|')));
       const firstB=requests.find(request=>request.body.params.context.storeId==='B').body.params;assert.equal(firstB.cursor,undefined);assert.equal(firstB.params,undefined);assert.deepEqual(interactions().selectedByWidget,{});assert.equal(interactions().bindings.sku.selectedProductId,undefined);
       assert.equal(tree.root.findByType(ViewRenderer).props.spec.widgets[0].options.density,'compact');assert.equal(tree.root.findByType(ViewRenderer).props.spec.widgets[0].options.columns[0].label,'我的商品');
-      await act(async()=>{slow.shift()();await settle();});assert.match(contents(),/B商品/);assert.doesNotMatch(contents(),/A商品/);
-      await act(async()=>{tree.update(render('A',2));await settle();});deny=true;await act(async()=>{tree.update(render('C',2));await settle();});assert.match(contents(),/当前店铺无订单读取权限/);assert.doesNotMatch(contents(),/A商品|B商品/);
-      await act(async()=>{slow.shift()();await settle();});assert.match(contents(),/当前店铺无订单读取权限/);assert.doesNotMatch(contents(),/A商品|B商品/);
+      await act(async()=>{slow.shift()();await settle();});assert.match(contents(),uiText(uiProduct({},40).title));assert.doesNotMatch(contents(),uiText(uiProduct({},7).title));
+      await act(async()=>{tree.update(render('A',2));await settle();});deny=true;await act(async()=>{tree.update(render('C',2));await settle();});assert.match(contents(),/当前店铺无订单读取权限/);assert.doesNotMatch(contents(),new RegExp([7,40].map(index=>uiText(uiProduct({},index).title).source).join('|')));
+      await act(async()=>{slow.shift()();await settle();});assert.match(contents(),/当前店铺无订单读取权限/);assert.doesNotMatch(contents(),new RegExp([7,40].map(index=>uiText(uiProduct({},index).title).source).join('|')));
       console.log('STORE_SWITCH_RESPONSE_ISOLATION_PASS');
     }finally{for(const release of slow)release();if(tree)await act(async()=>tree.unmount());globalThis.fetch=originalFetch;}
   `,'STORE_SWITCH_RESPONSE_ISOLATION_PASS');
@@ -48,7 +50,8 @@ test('changing store drops old rows, selections and pagination; late responses c
 
 test('workbench store selection persists once, preserves configured instances and is inherited by material previews',async()=>{
   await runFixture(`
-    import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
+    import React from 'react';
+${uiFixturePrelude()}import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
     import {WorkbenchBoard} from './packages/plugin-apps/client/workbench-board.tsx';
     import {MaterialLibrary,initialSourceParameters} from './packages/plugin-apps/client/material-library.tsx';
     import {MATERIAL_CATALOG,createMaterialView} from './packages/app-presentation/src/materials/catalog.ts';
@@ -59,7 +62,7 @@ test('workbench store selection persists once, preserves configured instances an
     let board={kind:'workbench',workbenchId:'hallmark',appId:'hallmark',revision:1,context:{storeId:'A'},instances:[instance],updatedAt:'2026-10-08T00:00:00Z'};
     const stores=[{id:'A',name:'Bill',connectionId:'platform'},{id:'B',name:'Helen',connectionId:'platform'}],requests=[],originalFetch=globalThis.fetch;
     const makeResult=(current,context)=>{const design=structuredClone(current.design);for(const widget of design.widgets){widget.fields={'product.id':'id','product.name':'name','price.current':'price'};widget.options={...widget.options,rowsPath:'items'};}
-      return {instanceId:current.instanceId,view:{viewId:'current',design},dataSources:{products:source},pages:{products:{hasMore:false,loadedCount:1}},data:{bindings:[{bindingId:'products',datasetId:context.storeId,payload:{items:[{id:'product',name:context.storeId+'商品',price:12}]},state:'ready',lastSuccessAt:'2026-10-08T00:00:00Z',sourceDataTime:null,freshness:'fresh',provenance:[]}]}};};
+      return {instanceId:current.instanceId,view:{viewId:'current',design},dataSources:{products:source},pages:{products:{hasMore:false,loadedCount:1}},data:{bindings:[{bindingId:'products',datasetId:context.storeId,payload:{items:[uiProduct({id:'product',price:12},context.storeId==='A'?7:40)]},state:'ready',lastSuccessAt:'2026-10-08T00:00:00Z',sourceDataTime:null,freshness:'fresh',provenance:[]}]}};};
     globalThis.fetch=async(url,options)=>{const resource=new URL(String(url),'http://fixture').searchParams.get('resource'),body=options?.body?JSON.parse(options.body):undefined;requests.push({resource,body});if(body){if(body.operation==='save'){assert.equal(body.params.expectedRevision,board.revision);board={...board,...body.params,revision:board.revision+1};return Response.json(board);}if(body.operation==='read'||body.operation==='preview')return Response.json(makeResult(body.params.instance??board.instances[0],body.params.context??board.context));throw Error('unexpected '+body.operation);}if(resource==='stores')return Response.json({stores});if(resource==='workbench')return Response.json(board);if(resource==='dataSources')return Response.json({dataSources:[source]});if(resource==='materials')return Response.json({materials:MATERIAL_CATALOG});throw Error('unexpected '+resource);};
     let tree;const wait=()=>new Promise(resolve=>setTimeout(resolve,10));
     function Harness(){const [current,setCurrent]=React.useState(),[revision,setRevision]=React.useState(0);return <><WorkbenchBoard appId='hallmark' revision={revision} onAdd={()=>{}} onConfigure={()=>{}} onChange={setCurrent}/><MaterialLibrary appId='hallmark' sessionId='chat' initial={instance} currentWorkbench={current} onContextChange={next=>{setCurrent(next);setRevision(value=>value+1);}} onComplete={()=>{}}/></>;}
@@ -80,7 +83,8 @@ test('workbench store selection persists once, preserves configured instances an
 
 test('generic data tables expose all ten shared sources, Chinese fields, real empty results and remote cursor controls',async()=>{
   await runFixture(`
-    import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
+    import React from 'react';
+${uiFixturePrelude()}import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
     import {MaterialLibrary} from './packages/plugin-apps/client/material-library.tsx';
     import {DataSourcePicker} from './packages/plugin-apps/client/data-source-picker.tsx';
     import {ModuleConfig} from './packages/plugin-apps/client/module-config.tsx';

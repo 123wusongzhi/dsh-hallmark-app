@@ -1,3 +1,5 @@
+import {uiActivity} from '../real-data/ui-scenarios.ts';
+import {uiProduct,uiProducts,uiText,uiTask} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
@@ -5,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {createMaterialView,MATERIAL_CATALOG,materialExampleData} from '../../packages/app-presentation/src/materials/catalog.ts';
+import {createMaterialView,MATERIAL_CATALOG} from '../../packages/app-presentation/src/materials/catalog.ts';
 import {validateViewSpec} from '../../packages/presentation/src/validation.ts';
 import {toRenderSpec} from '../../packages/dsh-plugin/client/render-catalog.ts';
 import {materialDisplay,materialRows,materialValue} from '../../packages/dsh-plugin/client/widgets/material-format.ts';
@@ -17,10 +19,14 @@ const result=await build({entryPoints:[fileURLToPath(new URL('../../packages/dsh
 const compiled={exports:{} as {ViewRenderer:React.ComponentType<{spec:ViewSpec;data:BindingData[];interactions?:ViewInteractions}>}};
 new Function('require','module','exports',result.outputFiles[0].text)(require,compiled,compiled.exports);
 const {ViewRenderer}=compiled.exports;
+function recordedMaterialData(spec:ViewSpec):BindingData[]{
+  const products=[2,20,40].map(index=>{const row=uiProduct({},index);return {product:{id:row.id,name:row.title,image:row.image},price:{current:row.minor==null?null:row.minor/100,currency:row.currency},sku:{id:row.sku,specification:row.spec}};});
+  return spec.bindings.map(binding=>({bindingId:binding.id,datasetKey:'real-source-material',state:'ready',payload:spec.widgets.some(widget=>widget.bindingId===binding.id&&widget.type==='table')?[{activity:{id:uiActivity().id,name:uiActivity().title,status:uiActivity().is_participating?'participating':'inactive',startsAt:uiActivity().date_start,endsAt:uiActivity().date_end}}]:products,provenance:{source:'real_corpus_projection',example:true}}));
+}
 function fixture(){
   const spec=createMaterialView('product-list');
   Object.assign(spec.widgets[0],{fields:{'product.id':'id','product.name':'title','product.image':'image','price.current':'minor','price.currency':'currency'},options:{columns:[{field:'product.image'},{field:'product.name',label:'我的商品'},{field:'price.current'}],pageSize:1,density:'compact',fieldMeta:{'price.current':{numericScale:.01}}}});
-  const data:BindingData={bindingId:'products',datasetKey:'fixture',state:'ready',payload:[{id:'p1',title:'红色杯子',image:'https://example.com/test-image.png',minor:1234,currency:'CNY'},{id:'p2',title:'蓝色杯子',minor:990,currency:'CNY'}],provenance:{source:'test_fixture'}};
+  const data:BindingData={bindingId:'products',datasetKey:'fixture',state:'ready',payload:[uiProduct({id:'p1',minor:1234,currency:'CNY'},2),uiProduct({id:'p2',minor:990,currency:'CNY',image:null},20)],provenance:{source:'real_corpus_projection'}};
   return {spec,data};
 }
 test('materials expand to valid native view specs, require semantic bindings, and preserve editable preset links',()=>{
@@ -49,14 +55,14 @@ test('native product list actually filters, sorts, pages, selects and replaces a
   act(()=>{tree=create(React.createElement(ViewRenderer,{spec,data:[data],interactions}));});
   const text=()=>JSON.stringify(tree.toJSON());
   assert.match(text(),/CNY 12.34/);assert.match(text(),/已加载 2 \/ 共 100/);assert.match(text(),/我的商品/);
-  const image=tree.root.findByType('img');assert.equal(image.props.loading,'lazy');assert.equal(image.props.referrerPolicy,'no-referrer');
+  const image=tree.root.findByType('img');assert.equal(image.props.loading,'eager');assert.equal(image.props.fetchpriority,'high');assert.equal(image.props.referrerPolicy,'no-referrer');
   act(()=>image.props.onError());assert.equal(tree.root.findAllByType('img').length,0);assert.match(text(),/暂无商品图片/);
   const rows=()=>tree.root.findAll((node:any)=>node.type==='tr'&&node.props.tabIndex===0);
   act(()=>rows()[0].props.onKeyDown({key:'Enter',preventDefault(){}}));assert.equal((selected[0] as any).value,'p1');
   const button=(label:string)=>tree.root.findAllByType('button').find((node:any)=>node.children.includes(label));
   act(()=>button('下一页').props.onClick());assert.match(text(),/CNY 9.90/);
-  act(()=>tree.root.findByType('input').props.onChange({target:{value:'红色'}}));assert.match(text(),/红色杯子/);assert.doesNotMatch(text(),/蓝色杯子/);
-  act(()=>tree.root.findByType('input').props.onChange({target:{value:'p2'}}));assert.match(text(),/蓝色杯子/);assert.doesNotMatch(text(),/红色杯子/);
+  act(()=>tree.root.findByType('input').props.onChange({target:{value:uiProduct({},2).title}}));assert.match(text(),uiText(uiProduct({},2).title));assert.doesNotMatch(text(),uiText(uiProduct({},20).title));
+  act(()=>tree.root.findByType('input').props.onChange({target:{value:'p2'}}));assert.match(text(),uiText(uiProduct({},20).title));assert.doesNotMatch(text(),uiText(uiProduct({},2).title));
   act(()=>tree.root.findByType('input').props.onChange({target:{value:''}}));
   act(()=>button('当前售价').props.onClick({persist(){},shiftKey:false}));assert.match(text(),/CNY 9.90/);
   act(()=>tree.unmount());
@@ -72,19 +78,19 @@ test('server operations emit explicit queries and remote paging callback without
   act(()=>tree.unmount());
 });
 test('SKU detail waits for selection and hides previous product rows while switching',()=>{
-  const spec=createMaterialView('product-browser'),data=materialExampleData(spec);
+  const spec=createMaterialView('product-browser'),data=recordedMaterialData(spec);
   const html=(interactions?:ViewInteractions)=>renderToStaticMarkup(React.createElement(ViewRenderer,{spec,data,interactions}));
   assert.match(html(),/请选择一个商品/);assert.match(html(),/示例/);
-  const selected=html({bindings:{sku:{selectedProductId:'example-2'}}});assert.match(selected,/DEMO-WHITE/);assert.doesNotMatch(selected,/DEMO-BLUE/);assert.doesNotMatch(selected,/利润率|库存|选品评分/);
-  const loading=html({bindings:{sku:{selectedProductId:'example-2',pagination:{loading:true}}}});assert.match(loading,/正在读取所选商品/);assert.doesNotMatch(loading,/DEMO-WHITE/);
+  const selected=html({bindings:{sku:{selectedProductId:uiProduct({},20).id}}});assert.match(selected,uiText(uiProduct({},20).sku));assert.doesNotMatch(selected,uiText(uiProduct({},2).sku));assert.doesNotMatch(selected,/利润率|库存|选品评分/);
+  const loading=html({bindings:{sku:{selectedProductId:uiProduct({},20).id,pagination:{loading:true}}}});assert.match(loading,/正在读取所选商品/);assert.doesNotMatch(loading,uiText(uiProduct({},20).sku));
 });
 test('activity material reuses table and resolves provider row paths and date aliases without write actions',()=>{
   const spec=createMaterialView('activity-list');validateViewSpec(spec);
   spec.bindings[0].fieldMap={'activity.name':'name','activity.status':'status','activity.startsAt':'from','activity.endsAt':'to'};
   spec.widgets[0].options={...spec.widgets[0].options,rowsPath:'result.activities',fieldMeta:{'activity.name':{label:'活动名称'}},example:false};validateViewSpec(spec);
-  const data:BindingData={bindingId:'activities',datasetKey:'fixture',state:'ready',payload:{result:{activities:[{name:'真实结构活动',status:'active',from:'2026-10-08T00:00:00Z',to:'2026-10-12T00:00:00Z'}]}},provenance:{source:'synthetic_fixture'}};
-  const html=renderToStaticMarkup(React.createElement(ViewRenderer,{spec,data:[data]}));assert.match(html,/真实结构活动/);assert.match(html,/2026\/10\/08/);assert.doesNotMatch(html,/报名|修改活动|示例<\/span>/);
-  const example=createMaterialView('activity-list'),preview=renderToStaticMarkup(React.createElement(ViewRenderer,{spec:example,data:materialExampleData(example)}));assert.match(preview,/示例 · 秋季促销/);assert.match(preview,/hm-material-example/);
+  const data:BindingData={bindingId:'activities',datasetKey:'fixture',state:'ready',payload:{result:{activities:[uiActivity({status:'active',from:'2026-10-08T00:00:00Z',to:'2026-10-12T00:00:00Z'})]}},provenance:{source:'real_corpus_derived_scenario'}};
+  const html=renderToStaticMarkup(React.createElement(ViewRenderer,{spec,data:[data]}));assert.match(html,uiText(uiActivity().title));assert.match(html,/2026\/10\/08/);assert.doesNotMatch(html,/报名|修改活动|示例<\/span>/);
+  const example=createMaterialView('activity-list'),preview=renderToStaticMarkup(React.createElement(ViewRenderer,{spec:example,data:recordedMaterialData(example)}));assert.match(preview,uiText(uiActivity().title));assert.match(preview,/hm-material-example/);
 });
 
 test('Ozon generic tables use declared amount units and currencies and distinguish permission failures from empty results',()=>{
@@ -92,7 +98,7 @@ test('Ozon generic tables use declared amount units and currencies and distingui
   widget.columns=[{field:'ozon.amount',label:'记账金额'},{field:'ozon.actualWeight',label:'物流实重'}];
   widget.fields=spec.bindings[0].fieldMap={'ozon.amount':'amount','ozon.actualWeight':'weight'};
   widget.options={...widget.options,rowsPath:'items',fieldMeta:{'ozon.amount':{format:'currency',currencyPath:'currency',numericScale:0.01},'ozon.actualWeight':{format:'integer',unit:'克'}}};
-  const data:BindingData={bindingId:'main',datasetKey:'fixture',state:'ready',payload:{items:[{amount:4497,currency:'CNY',weight:310},{amount:10,currency:null,weight:null}]},provenance:{source:'synthetic_fixture'}};
+  const data:BindingData={bindingId:'main',datasetKey:'fixture',state:'ready',payload:{items:[{amount:4497,currency:'CNY',weight:310},{amount:10,currency:null,weight:null}]},provenance:{source:'real_corpus_derived_scenario'}};
   const html=renderToStaticMarkup(React.createElement(ViewRenderer,{spec,data:[data]}));
   assert.match(html,/44\.97/);assert.match(html,/CNY/);assert.match(html,/310 克/);assert.match(html,/币种未确认/);assert.doesNotMatch(html,/RUB/);
   const denied=renderToStaticMarkup(React.createElement(ViewRenderer,{spec,data:[{...data,state:'unavailable',payload:null,lastError:{message:'当前店铺没有财务读取权限'}}]}));
@@ -102,14 +108,14 @@ test('Ozon generic tables use declared amount units and currencies and distingui
 test('temporary refresh failures keep cached native rows while permission and connection changes hide them',()=>{
   const spec=createMaterialView('data-table'),widget=spec.widgets[0];
   widget.columns=[{field:'title',label:'商品'}];widget.options={...widget.options,rowsPath:'items'};
-  const data:BindingData={bindingId:'main',datasetKey:'same-query',state:'unavailable',payload:{items:[{title:'上次成功的经营行'}]},lastSuccessAt:'2026-10-09T03:00:00Z',provenance:{source:'synthetic_fixture'}};
+  const data:BindingData={bindingId:'main',datasetKey:'same-query',state:'unavailable',payload:{items:[{title:uiProduct({},40).title}]},lastSuccessAt:'2026-10-09T03:00:00Z',provenance:{source:'real_corpus_derived_scenario'}};
   const render=(lastError:unknown,payload:unknown=data.payload)=>renderToStaticMarkup(React.createElement(ViewRenderer,{spec,data:[{...data,lastError,payload}]}));
   for(const code of ['LOCAL_RATE_LIMIT','HALLMARK_HTTP_503']){
     const html=render({code,message:'稍后重试',retryPolicy:'read_retry'});
-    assert.match(html,/上次成功的经营行/);assert.match(html,/显示已缓存数据/);assert.doesNotMatch(html,/hm-error/);
+    assert.match(html,uiText(uiProduct({},40).title));assert.match(html,/显示已缓存数据/);assert.doesNotMatch(html,/hm-error/);
   }
   for(const error of [{code:'PERMISSION_DENIED',message:'权限已变更',retryPolicy:'never'},{code:'HALLMARK_HTTP_403',message:'访问不可用',retryPolicy:'read_retry'},{code:'CONNECTION_CONFIG_CHANGED',message:'连接已变更',retryPolicy:'read_retry'}]){
-    const html=render(error);assert.doesNotMatch(html,/上次成功的经营行/);assert.doesNotMatch(html,/显示已缓存数据/);assert.match(html,/hm-error/);
+    const html=render(error);assert.doesNotMatch(html,uiText(uiProduct({},40).title));assert.doesNotMatch(html,/显示已缓存数据/);assert.match(html,/hm-error/);
   }
   const waiting=render({code:'LOCAL_RATE_LIMIT',retryPolicy:'read_retry'},null);
   assert.match(waiting,/数据正在准备/);assert.doesNotMatch(waiting,/hm-error|上次成功的经营行|显示已缓存数据/);
@@ -121,13 +127,13 @@ test('semantic activity tables label absent fields without changing configured c
   const originalColumns=structuredClone(widget.columns);
   widget.fields=spec.bindings[0].fieldMap={'activity.id':'id','activity.name':'title','activity.startsAt':'from','activity.endsAt':'to'};
   widget.options={...widget.options,rowsPath:'response.result',fieldMeta:{'activity.id':{format:'text'},'activity.name':{label:'活动名称'},'activity.startsAt':{format:'datetime'},'activity.endsAt':{format:'datetime'}}};
-  const iso='2026-10-08T00:00:00Z',data:BindingData={bindingId:'activities',datasetKey:'fixture',state:'ready',payload:{response:{result:[{id:0,title:'活动真实名称',from:iso,to:''}]}},provenance:{source:'synthetic_fixture'}};
+  const iso='2026-10-08T00:00:00Z',data:BindingData={bindingId:'activities',datasetKey:'fixture',state:'ready',payload:{response:{result:[uiActivity({id:0,from:iso,to:''},1)]}},provenance:{source:'real_corpus_derived_scenario'}};
   let tree:any;act(()=>{tree=create(React.createElement(ViewRenderer,{spec,data:[data]}));});
   const cells=tree.root.findAllByType('td');
   assert.deepEqual(tree.root.findAllByType('th').map((node:any)=>node.findByType('button').props['aria-label']),originalColumns.map(column=>`${column.label}，点击排序`));
   assert.equal(cells[0].findByType('span').children.join(''),'暂无数据','an optional unmapped activity status is missing');
   assert.equal(cells[1].findByType('time').props.dateTime,iso,'existing date formatting retains the source timestamp');
-  assert.equal(cells[2].findByType('span').children.join(''),'活动真实名称');
+  assert.equal(cells[2].findByType('span').children.join(''),uiActivity({},1).title);
   assert.equal(cells[3].findByType('span').children.join(''),'暂无数据','an empty mapped value is missing');
   assert.equal(cells[4].findByType('span').children.join(''),'0','real zero must remain visible');
   assert.deepEqual(widget.columns,originalColumns,'rendering must not filter or reorder user columns');

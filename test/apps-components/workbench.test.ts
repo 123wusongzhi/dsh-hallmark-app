@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiStore,uiListingPayload,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
@@ -17,7 +18,7 @@ const descriptor:CapabilityDescriptor={capabilityId:'shop.products',version:'1.0
 const definition:DataSourceDraft={id:'products',title:'店铺商品',appId:'shop',connectionId:'shop-1',capabilityId:descriptor.capabilityId,capabilityMajor:1,input:{limit:2},parameters:[{name:'limit',label:'每页数量',type:'integer'},{name:'cursor',label:'下一页',type:'string'},{name:'productId',label:'商品编号',type:'string',linked:true},{name:'query',label:'查询',type:'string'}],rowsPath:'items',fields:[{role:'product.id',path:'id',confirmed:true},{role:'product.name',path:'name',confirmed:true},{role:'price.current',path:'price',confirmed:true,currency:'CNY',numericScale:0.01},{role:'sku.id',path:'sku',confirmed:true},{role:'sku.specification',path:'spec',confirmed:true}],operations:{pagination:{cursorParam:'cursor',limitParam:'limit'},search:{scope:'loaded'},sort:{scope:'loaded'}}};
 function fixture(t:{after:(fn:()=>void)=>void}) {
  const store=new RuntimeStore(':memory:');t.after(()=>store.close());const calls:InvocationRequest[]=[];
- let payload:JsonValue={items:[{id:'p1',name:'商品一',price:1999,sku:'sku1',spec:'蓝色'}],total:3,cursor:'next'};
+ let payload:JsonValue={items:[uiProduct({id:'p1',price:1999,sku:'sku1'})],total:3,cursor:'next'};
  const runtime={describe:()=>descriptor,getConnection:()=>({enabled:true}),invoke:async(request:InvocationRequest):Promise<CapabilityResult>=>{calls.push(request);return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:structuredClone(payload)};}};
  const presentation=new AppsPresentationService({store,runtime}),dataSources=new DataSourceLibrary({store,runtime}),workbench=new WorkbenchLibrary({store,runtime,dataSources,refreshBinding:(...args)=>presentation.refreshBinding(...args)});
  return {store,runtime,dataSources,workbench,calls,presentation,setPayload:(value:JsonValue)=>{payload=value;}};
@@ -53,7 +54,7 @@ test('an unbound workbench instance cannot join an authorized instance read of t
  t.after(async()=>{release();await runtime.dispose();store.close();});
  runtime.register({manifest:{manifestVersion:1,appId:'shop',displayName:'Shop fixture',providerPackage:'fixture',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:[]},descriptors:[{...descriptor,execution:{...descriptor.execution,timeoutMs:10000}}],execute:async context=>{
   providerCalls.push(context.request);if(context.request.source.kind==='workbench'){entered();await barrier;}
-  return {status:'ok',invocationId:context.request.invocationId,traceId:context.request.traceId,data:{items:[{id:'p1',name:'商品一',price:1999,sku:'sku1',spec:'蓝色'}],total:1}};
+  return {status:'ok',invocationId:context.request.invocationId,traceId:context.request.traceId,data:{items:[uiProduct({id:'p1',price:1999,sku:'sku1'})],total:1}};
  },dispose:async()=>{}});
  runtime.addConnection({appId:'shop',connectionId:'shop-1',displayName:'Shop fixture',config:{},configRevision:1,enabled:true});runtime.bind({sessionId:'s',appId:'shop',connectionId:'shop-1',enabled:true,boundAt:new Date().toISOString()});
  const presentation=new AppsPresentationService({store,runtime}),dataSources=new DataSourceLibrary({store,runtime}),workbench=new WorkbenchLibrary({store,runtime,dataSources,refreshBinding:(...args)=>presentation.refreshBinding(...args)});

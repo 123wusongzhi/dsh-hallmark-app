@@ -1,3 +1,5 @@
+import { browserSourceRows } from '../real-data/browser.ts';
+import { REAL_SALES_PRODUCTS } from '../real-data/browser-data.ts';
 // Isolated DOM verification of the real component renderer and the public native input bridge.
 // All rows, native scopes and composer actions below are fixtures; no business endpoint is contacted.
 import React, { useMemo, useState } from 'react';
@@ -11,13 +13,15 @@ import { STYLES } from '../../packages/dsh-plugin/client/styles.ts';
 import type { BindingData, ViewSpec } from '../../packages/presentation/src/types.ts';
 
 const originalDraft='请帮我分析这些产品适不适合上架，先列出理由。';
-const names=['便携收纳袋','不锈钢保温杯','桌面整理架','旅行洗漱包','防滑鼠标垫','折叠手机支架','厨房收纳盒','硅胶隔热垫'];
-const rows=Array.from({length:24},(_,i)=>({id:`collected-${String(i+1).padStart(3,'0')}`,title:`${names[i%names.length]} ${i+1}`,price:19+(i*17)%130,skuCount:2+i%4,collectedAt:`2026-10-06T${String(8+Math.floor(i/6)).padStart(2,'0')}:${String(i%6*10).padStart(2,'0')}:00Z`}));
+const rows=browserSourceRows(24);
 const datasetKey='collected:fixture-selection';
 const spec:ViewSpec={id:'fixture-collected-products',title:'采集产品 · 交互验收',layout:{type:'column',children:['products']},widgets:[{id:'products',type:'table',title:'采集产品',bindingId:'items',columns:[{field:'title',label:'产品名称'},{field:'price',label:'售价',format:'currency'},{field:'skuCount',label:'SKU 数'},{field:'collectedAt',label:'采集时间',format:'date'}],options:{pageSize:10,currency:'CNY'}}],bindings:[{id:'items',datasetKey,query:{tool:'hallmark_search_collected_items',params:{query:'',limit:100}},fieldMap:{}}]};
 const initialData:BindingData={bindingId:'items',datasetKey,payload:{items:rows,total:rows.length},state:'ready',dataTime:'2026-10-06T12:00:00Z',lastSuccessAt:'2026-10-06T12:01:00Z',provenance:{source:'app_snapshot',endpoint:'/api/items'}};
-const chartSpec:ViewSpec={id:'fixture-profit-charts',title:'利润图表 · 合成验收',layout:{type:'tabs',children:['profit-line','profit-bar']},widgets:[{id:'profit-line',type:'line_chart',title:'参考利润折线',bindingId:'profit',options:{xField:'title',yField:'referenceProfit.margin'}},{id:'profit-bar',type:'bar_chart',title:'参考利润柱图',bindingId:'profit',options:{xField:'title',yField:'referenceProfit.margin'}}],bindings:[{id:'profit',datasetKey:'profit:fixture',fieldMap:{}}]};
-const chartData:BindingData[]=[{bindingId:'profit',datasetKey:'profit:fixture',payload:{rows:[{title:'合成盈利',referenceProfit:{margin:0.24}},{title:'合成亏损',referenceProfit:{margin:-0.12}},{title:'缺成本产品',referenceProfit:{margin:0,costMissing:true}},{title:'缺数值产品',referenceProfit:{margin:null}}]},state:'ready',provenance:{source:'synthetic_browser_fixture'},metricBasis:'合成参考利润口径，非真实店铺数据',dataTime:'2026-10-06T12:00:00Z'}];
+const chartSpec:ViewSpec={id:'fixture-profit-charts',title:'利润图表 · 真实快照验收',layout:{type:'tabs',children:['profit-line','profit-bar']},widgets:[{id:'profit-line',type:'line_chart',title:'参考利润折线',bindingId:'profit',options:{xField:'title',yField:'referenceProfit.margin'}},{id:'profit-bar',type:'bar_chart',title:'参考利润柱图',bindingId:'profit',options:{xField:'title',yField:'referenceProfit.margin'}}],bindings:[{id:'profit',datasetKey:'profit:fixture',fieldMap:{}}]};
+const chartSamples=[REAL_SALES_PRODUCTS.find(p=>p.profit?.actualMargin>0)!,REAL_SALES_PRODUCTS.find(p=>p.profit?.actualMargin<0)!];
+const chartRows=chartSamples.map(p=>({...structuredClone(p),referenceProfit:{margin:p.profit.actualMargin}}));
+// Missing-cost and missing-value inputs are explicit fault projections of authentic rows.
+const chartData:BindingData[]=[{bindingId:'profit',datasetKey:'profit:fixture',payload:{rows:[...chartRows,{...structuredClone(chartRows[0]),referenceProfit:{margin:0,costMissing:true}},{...structuredClone(chartRows[1]),referenceProfit:{margin:null}}]},state:'ready',provenance:{source:'real_store_products_snapshot',projection:'actualMargin alias; two explicit missing-data faults'},metricBasis:'真实销售快照已记录利润率；另外两个输入显式制造缺失条件',dataTime:chartSamples[0].lastSeenAt}];
 const assertions:string[]=[];const errors:string[]=[];const navigated:string[]=[];let submissions=0;let networkCalls=0;let insertionCount=0;
 window.addEventListener('error',event=>errors.push(event.message));window.addEventListener('unhandledrejection',event=>errors.push(String(event.reason)));
 const originalConsoleError=console.error.bind(console);console.error=(...args:unknown[])=>{errors.push(args.map(String).join(' '));originalConsoleError(...args);};
@@ -46,13 +50,13 @@ function Fixture(){
   (window as any).__SELECTION_DEMO__=()=>{setTarget('fixture-session-a');setPanel('chat');setData({...initialData,payload:structuredClone(initialData.payload)});setDraft(originalDraft);setDraftIds({});nativeDrafts.clear();};
   return <main className="selection-fixture hm-root"><style>{STYLES}</style>
     <RootObserver usePanelInfo={(selector:any)=>selector({activePanelId:panel==='apps'?'hallmark-apps':null})} useSessions={(selector:any)=>selector({phase:'ready',byId:{'fixture-session-a':{id:'fixture-session-a',retainedBy:{mainView:panel==='chat'&&target==='fixture-session-a'?1:0}},'fixture-session-b':{id:'fixture-session-b',retainedBy:{mainView:panel==='chat'&&target==='fixture-session-b'?1:0}}}})}/>
-    <header className="fixture-heading"><div><div className="fixture-eyebrow">DSH · 隔离交互验收</div><h1>选中产品，交给当前聊天</h1><p>合成数据与原生输入契约模拟；不连接店铺，不发送消息。</p></div><span className="fixture-mode">{panel==='chat'?'原聊天已挂载':'工作区：聊天未挂载'}</span></header>
+    <header className="fixture-heading"><div><div className="fixture-eyebrow">DSH · 隔离交互验收</div><h1>选中产品，交给当前聊天</h1><p>真实业务快照与原生输入契约模拟；不连接店铺，不发送消息。</p></div><span className="fixture-mode">{panel==='chat'?'原聊天已挂载':'工作区：聊天未挂载'}</span></header>
     <div className="fixture-controls"><button type="button" onClick={refresh}>模拟快照刷新</button><button type="button" onClick={()=>setTarget(target==='fixture-session-a'?'fixture-session-b':'fixture-session-a')}>切换目标聊天</button><button type="button" onClick={()=>setPanel('apps')}>进入模拟工作区</button><span>当前目标：{target}</span></div>
     <div className="fixture-columns"><section className="fixture-table-panel"><ProductSelectionProvider sessionId="fixture-session-a" spec={spec} data={bindings}><ViewRenderer spec={spec} data={bindings}/></ProductSelectionProvider></section>
     <aside className="fixture-composer"><div className="fixture-eyebrow">原生附件契约的测试替身（非宿主截图）</div><h2>原聊天输入框</h2><p>产品 ID 保存为 JSON 文件附件；已写的问题保持原样，由用户手动发送。</p>
       {panel==='chat'?<><NativeInput sessionId={target} inputActions={inputActions} useInput={(selector:any)=>selector({phase:'plain',attachmentIds:draftIds[target]??[]})} useSession={(selector:any)=>selector({subagent:null,removed:false})}/><ul data-testid="native-attachments">{(draftIds[target]??[]).map(id=><li key={id}>{nativeDrafts.get(id)?.file.name}<button type="button" aria-label="移除产品附件" onClick={()=>{const attachment=nativeDrafts.get(id);if(attachment)conversation.releaseDraftAttachments([attachment]);setDraftIds(current=>({...current,[target]:current[target].filter(value=>value!==id)}));}}>移除</button></li>)}</ul><label htmlFor="native-draft">待发送草稿<textarea id="native-draft" data-testid="native-draft" value={draft} onChange={event=>setDraft(event.target.value)}/></label><span className="fixture-not-sent">尚未发送 · 不会自动提交</span></>:<p role="status">工作区中未挂载聊天输入框。点击附加后应精确返回会话 A。</p>}
     </aside></div>
-    <section className="fixture-charts" data-testid="chart-verification"><div className="fixture-eyebrow">RECHARTS · 实际 SVG 渲染验收</div><h2>参考利润图表</h2><p>只绘制 2 个有数值且成本已知的合成点；缺成本与缺数值不会成为零。</p><div className="fixture-controls"><button type="button" onClick={()=>setChartHidden(value=>!value)}>切换图表可见性</button><button type="button" onClick={()=>setChartNarrow(value=>!value)}>切换图表容器宽度</button><button type="button" onClick={()=>setInvalidDraft(value=>!value)}>切换不完整草稿</button></div><div data-testid="chart-container" hidden={chartHidden} style={{width:chartNarrow?340:760,maxWidth:'100%'}}><ViewRenderer spec={invalidDraft?{...chartSpec,layout:{type:'grid',columns:0,children:['profit-line']}}:chartSpec} data={chartData}/></div></section>
+    <section className="fixture-charts" data-testid="chart-verification"><div className="fixture-eyebrow">RECHARTS · 实际 SVG 渲染验收</div><h2>参考利润图表</h2><p>只绘制 2 个有数值且成本已知的真实快照点；缺成本与缺数值不会成为零。</p><div className="fixture-controls"><button type="button" onClick={()=>setChartHidden(value=>!value)}>切换图表可见性</button><button type="button" onClick={()=>setChartNarrow(value=>!value)}>切换图表容器宽度</button><button type="button" onClick={()=>setInvalidDraft(value=>!value)}>切换不完整草稿</button></div><div data-testid="chart-container" hidden={chartHidden} style={{width:chartNarrow?340:760,maxWidth:'100%'}}><ViewRenderer spec={invalidDraft?{...chartSpec,layout:{type:'grid',columns:0,children:['profit-line']}}:chartSpec} data={chartData}/></div></section>
     <div id="fixture-result" role="status"/></main>;
 }
 createRoot(document.getElementById('root')!).render(<Fixture/>);
@@ -73,7 +77,7 @@ const parseContext=async()=>JSON.parse(await latestFile!.text());
     document.querySelector<HTMLButtonElement>('[aria-label="售价，点击排序"]')!.click();await delay(80);button('下一页')!.click();await delay(80);
     check(selected(2),'selection survives sorting and changing table pages');
     button('附加到当前聊天')!.click();await wait(()=>insertionCount===1,'selected rows attached as a File');
-    const context=await parseContext();check(JSON.stringify(context.products.map((p:any)=>p.itemId).sort())===JSON.stringify(['collected-001','collected-002']),'attached file IDs remain the exact selected products after sorting and pagination');
+    const context=await parseContext();check(JSON.stringify(context.products.map((p:any)=>p.itemId).sort())===JSON.stringify([rows[0].id,rows[1].id].sort()),'attached file IDs remain the exact selected products after sorting and pagination');
     check(context.sessionId==='fixture-session-a'&&context.viewId===spec.id&&context.datasetKey===datasetKey,'context carries exact session, view and dataset identity');
     check(draft()===originalDraft&&submissions===0&&latestFile?.type==='application/json','native attachment keeps original draft byte-for-byte unchanged and never calls submit');
     button('附加到当前聊天')!.click();await delay(30);check(insertionCount===1,'repeated click reuses the same native attachment');
@@ -95,7 +99,7 @@ const parseContext=async()=>JSON.parse(await latestFile!.text());
     const initialChartWidth=visibleSvg()!.getBoundingClientRect().width;
     check(linePath()!.getTotalLength()>0&&visibleChartPanel()!.querySelectorAll('.recharts-line-dots circle').length===2,'real Recharts line SVG has a nonempty curve and exactly two valid points');
     const chartRows=Array.from(visibleChartPanel()!.querySelectorAll('details tbody tr')).map(row=>row.textContent);
-    check(chartRows.length===2&&chartRows.some(row=>row?.includes('0.24'))&&chartRows.some(row=>row?.includes('-0.12'))&&!chartRows.some(row=>row?.includes('缺成本')||row?.includes('缺数值')),'missing-cost and missing-value profits are excluded rather than plotted as zero');
+    check(chartRows.length===2&&chartRows.some(row=>row?.includes(chartSamples[0].title))&&chartRows.some(row=>row?.includes(chartSamples[1].title)),'missing-cost and missing-value profits are excluded rather than plotted as zero');
     chartTab('参考利润柱图').click();await wait(()=>barPaths().length===2&&barPaths().every(path=>path.getBoundingClientRect().height>0),'previously hidden bar chart visible');
     check(visibleSvg()!.getBoundingClientRect().width>500&&barPaths().every(path=>Boolean(path.getAttribute('d'))),'hidden bar tab becomes a visible positive/negative chart with two real SVG bars');
     button('切换图表容器宽度')!.click();await wait(()=>{const width=visibleSvg()?.getBoundingClientRect().width??0;return width>0&&width<=340;},'ResizeObserver resized bar chart');

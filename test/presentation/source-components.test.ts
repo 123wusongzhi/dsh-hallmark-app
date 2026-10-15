@@ -9,6 +9,7 @@ import {AppCore} from '../../packages/core/src/index.ts';
 import {createAppServer} from '../../packages/service/src/server.ts';
 import {inspectSourceProject} from '../../packages/source-components/src/index.ts';
 import {executeUI} from '../../packages/service/src/ui.ts';
+import {realSourceProducts,realSourceSummaries} from '../real-data/corpus.ts';
 
 function setup(t:any){
  const directory=mkdtempSync(join(tmpdir(),'hallmark-source-')),project=join(directory,'project'),sources=join(directory,'sources');
@@ -41,10 +42,11 @@ test('matching screenshot reports are archived outside the build hash; stale pre
 });
 
 test('source draft and removed-owner tombstone survive a manager/core restart; data fields are delivered unchanged',async t=>{
- const f=setup(t);f.store.updateSnapshotSuccess('collected:test',{items:[{id:'product',profit:{actualMargin:.3},arbitrary:{label:'真实'}}]},null);
+ const f=setup(t),payload={items:realSourceProducts()};f.store.updateSnapshotSuccess('collected:test',payload,null);
  const result=await f.core.invoke('hallmark_open_source_component',{directory:f.project},{sessionId:'A'});assert.equal(result.status,'ok');const id=(result.data as any).viewId;
  const presentation=new PresentationManager(f.store,{sourceDirectory:f.sources}),core=new AppCore({...f,presentation});assert.equal(core.listSessionViews('A').views.length,1);assert.equal(core.getSessionView('B',id),undefined);
- assert.equal((core.getSessionViewData('A',id)?.data as any).bindings[0].payload.items[0].profit.actualMargin,.3);
+ assert.deepEqual((core.getSessionViewData('A',id)?.data as any).bindings[0].payload,payload);
+ assert.equal(payload.items.length,41); // Complete recorded fields, including genuinely missing prices/SKUs, survive the restart.
  assert.equal((await core.invoke('hallmark_open_source_component',{directory:f.project,viewId:id},{sessionId:'B'})).error?.code,'VIEW_NOT_OWNED');
  core.manageSessionView('A',id,{action:'remove'});const restarted=new AppCore({...f,presentation:new PresentationManager(f.store,{sourceDirectory:f.sources})});assert.equal(restarted.listSessionViews('A').views.length,0);assert.equal(restarted.getSessionView('A',id),undefined);
  assert.equal(f.store.list('components').length,0);
@@ -53,8 +55,10 @@ test('source draft and removed-owner tombstone survive a manager/core restart; d
 test('failed first query load still opens the source draft and a later explicit refresh recovers data',async t=>{
  const f=setup(t),opened=await f.core.invoke('hallmark_open_source_component',{directory:f.project,bindings:[{id:'collected',query:{tool:'hallmark_search_collected_items',params:{limit:2}},fieldMap:{}}]},{sessionId:'A'});
  assert.equal(opened.status,'ok');const {spec,initialData}=opened.data as any;assert.equal(initialData[0].status,'unavailable');assert.ok(f.core.getSessionView('A',spec.id));assert.equal(f.core.getSessionViewData('A',spec.id)?.error?.code,'SNAPSHOT_EMPTY');
- f.client.searchCollectedItems=async()=>({status:'ok',raw:[{id:'recovered',title:'恢复的数据'}]});
+ const recovered=realSourceSummaries().slice(0,2);
+ f.client.searchCollectedItems=async()=>({status:'ok',raw:structuredClone(recovered)});
  assert.equal((await f.core.refreshDataset(spec.bindings[0].datasetKey,{sessionId:'A'})).status,'ok');assert.equal(f.core.getSessionViewData('A',spec.id)?.status,'ok');assert.equal(f.core.getSessionView('A',spec.id)?.source?.buildId,spec.source.buildId);assert.equal(f.store.list('components').length,0);
+ assert.deepEqual((f.core.getSessionViewData('A',spec.id)?.data as any).bindings[0].payload,{items:recovered,total:recovered.length});
 });
 
 test('source saved versions, templates, CAS updates and rollback produce reproducible editable projects',t=>{

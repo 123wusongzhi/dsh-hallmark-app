@@ -3,6 +3,1968 @@ import { AppsClient } from './index.ts';
 import type { AppRef, CapabilityResult, JsonValue } from '../../app-contracts/src/index.ts';
 export const catalog = [
   {
+    "capabilityId": "apps.authoring.await_display",
+    "version": "1.0.0",
+    "title": "await_display",
+    "description": "只读、可重复：最多等待 waitMs（默认 20000，最大 25000）毫秒，直到当前发布的展示成功、失败或超时，然后返回与 inspect 相同的结果。它只报告读到的当前状态；超时返回时展示可能仍未发生，outcome 不是 displayed 时不能说已展示。",
+    "effect": "query",
+    "inputSchema": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "displayId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "waitMs": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 25000
+            }
+          },
+          "required": [
+            "attemptId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "publicationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "displayId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "waitMs": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 25000
+            }
+          },
+          "required": [
+            "publicationId"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "enum": [
+                "in_progress",
+                "build_failed",
+                "preview_failed",
+                "build_passed",
+                "published_awaiting_display",
+                "awaiting_user_view",
+                "displaying",
+                "display_stalled",
+                "displayed",
+                "display_failed",
+                "superseded",
+                "cancelled",
+                "interrupted"
+              ]
+            },
+            "completionStatement": {
+              "type": "string",
+              "minLength": 1
+            },
+            "waitedMs": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "displayDeadlineAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lastConfirmedDisplay": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "preparedBuild": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "currentDisplay": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "blockedStage": {
+              "type": "string",
+              "minLength": 1
+            },
+            "nextAction": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "target": {
+                  "type": "object"
+                },
+                "errorCodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "action",
+                "reason",
+                "target",
+                "errorCodes"
+              ],
+              "additionalProperties": false
+            },
+            "requiresRebuild": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "outcome",
+            "completionStatement",
+            "waitedMs",
+            "displayDeadlineAt",
+            "lastConfirmedDisplay",
+            "preparedBuild",
+            "currentDisplay",
+            "blockedStage",
+            "nextAction",
+            "requiresRebuild"
+          ],
+          "additionalProperties": false
+        },
+        "draft": {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "const": 1
+            },
+            "draftId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ownerSessionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "workspacePath": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "epoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "status": {
+              "enum": [
+                "editing",
+                "building",
+                "build_failed",
+                "previewing",
+                "preview_failed",
+                "publish_ready",
+                "mounting",
+                "mounted",
+                "failed_mount",
+                "cancelled",
+                "superseded",
+                "interrupted",
+                "closed",
+                "discarded"
+              ]
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "sourceComponentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "selectedSourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "baseRevisionAtOpen": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "draftId",
+            "ownerSessionId",
+            "viewId",
+            "workspacePath",
+            "sourceRevision",
+            "epoch",
+            "status",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        },
+        "attempt": {
+          "type": "object",
+          "properties": {
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "draftId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "epoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sourceRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "state": {
+              "enum": [
+                "editing",
+                "building",
+                "build_failed",
+                "previewing",
+                "preview_failed",
+                "publish_ready",
+                "mounting",
+                "mounted",
+                "failed_mount",
+                "cancelled",
+                "superseded",
+                "interrupted"
+              ]
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "expectedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "invocationRefs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256",
+                  "bytes"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "terminalReason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "buildReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "previewReceiptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "publicationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "requestHash": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "attemptId",
+            "draftId",
+            "epoch",
+            "sourceRevision",
+            "state",
+            "startedAt",
+            "expectedViewRevision",
+            "invocationRefs",
+            "evidenceRefs",
+            "terminalReason"
+          ],
+          "additionalProperties": false
+        },
+        "publication": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "publicationId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "viewId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ownerSessionId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "attemptId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "attemptEpoch": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "expectedViewRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "candidateBuildId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "priorActiveBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "enum": [
+                    "prepared",
+                    "mounting",
+                    "mounted",
+                    "failed_mount",
+                    "cancelled",
+                    "superseded",
+                    "interrupted"
+                  ]
+                },
+                "readyDeadlineAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "mountStartedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "evidenceRefs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "sha256",
+                      "bytes"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "buildReceiptId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "previewReceiptId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "buildId": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "directory": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "entry": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "required": [
+                    "buildId",
+                    "directory",
+                    "entry",
+                    "files"
+                  ],
+                  "additionalProperties": true
+                },
+                "frameInstanceId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "documentNonce": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "committedViewRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "terminalReason": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "publicationId",
+                "viewId",
+                "ownerSessionId",
+                "attemptId",
+                "attemptEpoch",
+                "expectedViewRevision",
+                "candidateBuildId",
+                "priorActiveBuildId",
+                "state",
+                "readyDeadlineAt",
+                "evidenceRefs",
+                "createdAt",
+                "updatedAt",
+                "buildReceiptId",
+                "previewReceiptId",
+                "source"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "view": {
+          "type": "object",
+          "properties": {
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ownerSessionId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "design": {},
+            "bindings": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "bindingId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "appId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "connectionId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "capabilityMajor": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "input": {},
+                  "projection": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "datasetId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "refresh": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "enum": [
+                          "manual",
+                          "scheduled"
+                        ]
+                      },
+                      "scheduleId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "mode"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "bindingId",
+                  "appId",
+                  "connectionId",
+                  "capabilityId",
+                  "capabilityMajor",
+                  "input",
+                  "projection",
+                  "refresh"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "sourceRefs": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "params": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "revision",
+                  "params"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "context": {
+              "type": "object",
+              "properties": {
+                "storeId": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "storeId"
+              ],
+              "additionalProperties": false
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "buildId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "directory": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "entry": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "buildId",
+                "directory",
+                "entry",
+                "files"
+              ],
+              "additionalProperties": true
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "sourceComponentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "baseRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "viewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "activeBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lastGoodBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "previousGoodBuildId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pendingPublicationId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "validationStatus": {
+              "enum": [
+                "draft_unpublished",
+                "legacy_unverified",
+                "verified"
+              ]
+            }
+          },
+          "required": [
+            "viewId",
+            "ownerSessionId",
+            "title",
+            "design",
+            "bindings",
+            "createdAt",
+            "updatedAt",
+            "viewRevision",
+            "activeBuildId",
+            "lastGoodBuildId",
+            "previousGoodBuildId",
+            "pendingPublicationId",
+            "validationStatus"
+          ],
+          "additionalProperties": true
+        },
+        "latestDisplay": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "displayId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "generation": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "ownerSessionId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "viewId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "publicationId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "attemptId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "attemptEpoch": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "buildId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "expectedViewRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "state": {
+                  "enum": [
+                    "opening",
+                    "ready",
+                    "failed",
+                    "retired"
+                  ]
+                },
+                "view": {
+                  "type": "object",
+                  "properties": {
+                    "viewId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "ownerSessionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "design": {},
+                    "bindings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "bindingId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "appId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "connectionId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "capabilityId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "capabilityMajor": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "input": {},
+                          "projection": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "datasetId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "refresh": {
+                            "type": "object",
+                            "properties": {
+                              "mode": {
+                                "enum": [
+                                  "manual",
+                                  "scheduled"
+                                ]
+                              },
+                              "scheduleId": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": [
+                              "mode"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "bindingId",
+                          "appId",
+                          "connectionId",
+                          "capabilityId",
+                          "capabilityMajor",
+                          "input",
+                          "projection",
+                          "refresh"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "sourceRefs": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "params": {
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "revision",
+                          "params"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "context": {
+                      "type": "object",
+                      "properties": {
+                        "storeId": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "storeId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "source": {
+                      "type": "object",
+                      "properties": {
+                        "buildId": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "directory": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "entry": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "files": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      },
+                      "required": [
+                        "buildId",
+                        "directory",
+                        "entry",
+                        "files"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "sourceComponentId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "baseRevision": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "viewRevision": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "activeBuildId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "lastGoodBuildId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "previousGoodBuildId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "pendingPublicationId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "validationStatus": {
+                      "enum": [
+                        "draft_unpublished",
+                        "legacy_unverified",
+                        "verified"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "viewId",
+                    "ownerSessionId",
+                    "title",
+                    "design",
+                    "bindings",
+                    "createdAt",
+                    "updatedAt",
+                    "viewRevision",
+                    "activeBuildId",
+                    "lastGoodBuildId",
+                    "previousGoodBuildId",
+                    "pendingPublicationId",
+                    "validationStatus"
+                  ],
+                  "additionalProperties": true
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "phase": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 160
+                      },
+                      "message": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 4096
+                      },
+                      "at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "requestId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "attempts": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10
+                      },
+                      "retryPolicy": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 32
+                      },
+                      "cause": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 500
+                      }
+                    },
+                    "required": [
+                      "phase",
+                      "code",
+                      "message"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "readyAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "openedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "readyDeadlineAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "frameInstanceId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "documentNonce": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "displayId",
+                "generation",
+                "ownerSessionId",
+                "viewId",
+                "publicationId",
+                "attemptId",
+                "attemptEpoch",
+                "buildId",
+                "expectedViewRevision",
+                "state",
+                "view",
+                "errors",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "displays": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "displayId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "ownerSessionId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "viewId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "publicationId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "attemptId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "attemptEpoch": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "buildId": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "expectedViewRevision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "opening",
+                  "ready",
+                  "failed",
+                  "retired"
+                ]
+              },
+              "view": {
+                "type": "object",
+                "properties": {
+                  "viewId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "ownerSessionId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "design": {},
+                  "bindings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "bindingId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "appId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "connectionId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "capabilityId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "capabilityMajor": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "input": {},
+                        "projection": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "datasetId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "refresh": {
+                          "type": "object",
+                          "properties": {
+                            "mode": {
+                              "enum": [
+                                "manual",
+                                "scheduled"
+                              ]
+                            },
+                            "scheduleId": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "mode"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "bindingId",
+                        "appId",
+                        "connectionId",
+                        "capabilityId",
+                        "capabilityMajor",
+                        "input",
+                        "projection",
+                        "refresh"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "sourceRefs": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "params": {
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "revision",
+                        "params"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "context": {
+                    "type": "object",
+                    "properties": {
+                      "storeId": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "storeId"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "buildId": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "directory": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "entry": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "files": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    },
+                    "required": [
+                      "buildId",
+                      "directory",
+                      "entry",
+                      "files"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "sourceComponentId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "baseRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "viewRevision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "activeBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "lastGoodBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "previousGoodBuildId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "pendingPublicationId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "validationStatus": {
+                    "enum": [
+                      "draft_unpublished",
+                      "legacy_unverified",
+                      "verified"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewId",
+                  "ownerSessionId",
+                  "title",
+                  "design",
+                  "bindings",
+                  "createdAt",
+                  "updatedAt",
+                  "viewRevision",
+                  "activeBuildId",
+                  "lastGoodBuildId",
+                  "previousGoodBuildId",
+                  "pendingPublicationId",
+                  "validationStatus"
+                ],
+                "additionalProperties": true
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "phase": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    "at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "attempts": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 10
+                    },
+                    "retryPolicy": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 32
+                    },
+                    "cause": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "phase",
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "readyAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "openedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "readyDeadlineAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "frameInstanceId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "documentNonce": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "displayId",
+              "generation",
+              "ownerSessionId",
+              "viewId",
+              "publicationId",
+              "attemptId",
+              "attemptEpoch",
+              "buildId",
+              "expectedViewRevision",
+              "state",
+              "view",
+              "errors",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "display": {
+          "type": "object",
+          "properties": {
+            "displayId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "generation": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "ownerSessionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "viewId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "publicationId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attemptEpoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "buildId": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "expectedViewRevision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "state": {
+              "enum": [
+                "opening",
+                "ready",
+                "failed",
+                "retired"
+              ]
+            },
+            "view": {
+              "type": "object",
+              "properties": {
+                "viewId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ownerSessionId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "design": {},
+                "bindings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "bindingId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "appId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "capabilityId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "capabilityMajor": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "input": {},
+                      "projection": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "datasetId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "refresh": {
+                        "type": "object",
+                        "properties": {
+                          "mode": {
+                            "enum": [
+                              "manual",
+                              "scheduled"
+                            ]
+                          },
+                          "scheduleId": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "mode"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "bindingId",
+                      "appId",
+                      "connectionId",
+                      "capabilityId",
+                      "capabilityMajor",
+                      "input",
+                      "projection",
+                      "refresh"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "sourceRefs": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "revision": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "params": {
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "revision",
+                      "params"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "context": {
+                  "type": "object",
+                  "properties": {
+                    "storeId": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "storeId"
+                  ],
+                  "additionalProperties": false
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "buildId": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "directory": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "entry": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "required": [
+                    "buildId",
+                    "directory",
+                    "entry",
+                    "files"
+                  ],
+                  "additionalProperties": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "sourceComponentId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "baseRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "viewRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "activeBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "lastGoodBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "previousGoodBuildId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "pendingPublicationId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "validationStatus": {
+                  "enum": [
+                    "draft_unpublished",
+                    "legacy_unverified",
+                    "verified"
+                  ]
+                }
+              },
+              "required": [
+                "viewId",
+                "ownerSessionId",
+                "title",
+                "design",
+                "bindings",
+                "createdAt",
+                "updatedAt",
+                "viewRevision",
+                "activeBuildId",
+                "lastGoodBuildId",
+                "previousGoodBuildId",
+                "pendingPublicationId",
+                "validationStatus"
+              ],
+              "additionalProperties": true
+            },
+            "errors": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "attempts": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10
+                  },
+                  "retryPolicy": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  },
+                  "cause": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "phase",
+                  "code",
+                  "message"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "readyAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "openedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "readyDeadlineAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "frameInstanceId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "documentNonce": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "displayId",
+            "generation",
+            "ownerSessionId",
+            "viewId",
+            "publicationId",
+            "attemptId",
+            "attemptEpoch",
+            "buildId",
+            "expectedViewRevision",
+            "state",
+            "view",
+            "errors",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        },
+        "workspaceAvailable": {
+          "type": "boolean"
+        },
+        "missingEvidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "awaited": {
+          "type": "object",
+          "properties": {
+            "requestedMs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "elapsedMs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "timedOut": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "requestedMs",
+            "elapsedMs",
+            "timedOut"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "summary",
+        "draft",
+        "attempt",
+        "publication",
+        "view",
+        "latestDisplay",
+        "displays",
+        "workspaceAvailable",
+        "missingEvidence",
+        "awaited"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 30000,
+      "concurrency": "declared_safe",
+      "lockScope": "resources",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": false,
+      "keywords": [
+        "authoring",
+        "component",
+        "source",
+        "receipt"
+      ]
+    },
+    "aliases": []
+  },
+  {
     "capabilityId": "apps.authoring.begin",
     "version": "1.0.0",
     "title": "begin",
@@ -1170,7 +3132,7 @@ export const catalog = [
     "capabilityId": "apps.authoring.inspect",
     "version": "1.0.0",
     "title": "inspect",
-    "description": "Versioned local authoring metadata. Candidates, mounting, confirmed display and explicit saved assets are distinct; this action owns no domain mutation or another Agent loop.",
+    "description": "读取尝试、发布与展示的当前状态。summary.outcome 与 completionStatement 由程序判定；只有 outcome=displayed 才可说已展示。lastConfirmedDisplay 可能来自旧构建（见 isCurrentBuild），不代表本次结果；本调用不等待展示，需要等待请用 apps.authoring.await_display。",
     "effect": "query",
     "inputSchema": {
       "oneOf": [
@@ -1216,6 +3178,39 @@ export const catalog = [
         "summary": {
           "type": "object",
           "properties": {
+            "outcome": {
+              "enum": [
+                "in_progress",
+                "build_failed",
+                "preview_failed",
+                "build_passed",
+                "published_awaiting_display",
+                "awaiting_user_view",
+                "displaying",
+                "display_stalled",
+                "displayed",
+                "display_failed",
+                "superseded",
+                "cancelled",
+                "interrupted"
+              ]
+            },
+            "completionStatement": {
+              "type": "string",
+              "minLength": 1
+            },
+            "waitedMs": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "displayDeadlineAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "lastConfirmedDisplay": {
               "type": [
                 "object",
@@ -1276,6 +3271,10 @@ export const catalog = [
             }
           },
           "required": [
+            "outcome",
+            "completionStatement",
+            "waitedMs",
+            "displayDeadlineAt",
             "lastConfirmedDisplay",
             "preparedBuild",
             "currentDisplay",
@@ -2184,6 +4183,26 @@ export const catalog = [
                       "at": {
                         "type": "string",
                         "format": "date-time"
+                      },
+                      "requestId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "attempts": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10
+                      },
+                      "retryPolicy": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 32
+                      },
+                      "cause": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 500
                       }
                     },
                     "required": [
@@ -2203,6 +4222,14 @@ export const catalog = [
                   "format": "date-time"
                 },
                 "readyAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "openedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "readyDeadlineAt": {
                   "type": "string",
                   "format": "date-time"
                 },
@@ -2536,6 +4563,26 @@ export const catalog = [
                     "at": {
                       "type": "string",
                       "format": "date-time"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "attempts": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 10
+                    },
+                    "retryPolicy": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 32
+                    },
+                    "cause": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
                     }
                   },
                   "required": [
@@ -2555,6 +4602,14 @@ export const catalog = [
                 "format": "date-time"
               },
               "readyAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "openedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "readyDeadlineAt": {
                 "type": "string",
                 "format": "date-time"
               },
@@ -2882,6 +4937,26 @@ export const catalog = [
                   "at": {
                     "type": "string",
                     "format": "date-time"
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "attempts": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10
+                  },
+                  "retryPolicy": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  },
+                  "cause": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
                   }
                 },
                 "required": [
@@ -2901,6 +4976,14 @@ export const catalog = [
               "format": "date-time"
             },
             "readyAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "openedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "readyDeadlineAt": {
               "type": "string",
               "format": "date-time"
             },
@@ -2978,7 +5061,7 @@ export const catalog = [
     "capabilityId": "apps.authoring.publish",
     "version": "1.0.0",
     "title": "publish",
-    "description": "Versioned local authoring metadata. Candidates, mounting, confirmed display and explicit saved assets are distinct; this action owns no domain mutation or another Agent loop.",
+    "description": "发布已接受：仅表示构建与预览证据已登记、发布状态为 prepared；不代表已在 DSH 展示。返回的 outcome 与 completionStatement 才是完成状态，完成表述只引用 completionStatement；随后调用 apps.authoring.await_display 获取展示结果。",
     "effect": "compute",
     "inputSchema": {
       "type": "object",
@@ -3177,6 +5260,27 @@ export const catalog = [
         "terminalReason": {
           "type": "string",
           "minLength": 1
+        },
+        "outcome": {
+          "enum": [
+            "in_progress",
+            "build_failed",
+            "preview_failed",
+            "build_passed",
+            "published_awaiting_display",
+            "awaiting_user_view",
+            "displaying",
+            "display_stalled",
+            "displayed",
+            "display_failed",
+            "superseded",
+            "cancelled",
+            "interrupted"
+          ]
+        },
+        "completionStatement": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -3195,7 +5299,9 @@ export const catalog = [
         "updatedAt",
         "buildReceiptId",
         "previewReceiptId",
-        "source"
+        "source",
+        "outcome",
+        "completionStatement"
       ],
       "additionalProperties": false
     },
@@ -3837,6 +5943,13 @@ export const catalog = [
                       "type": "string",
                       "minLength": 1
                     }
+                  },
+                  "interactionCaseIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
                   }
                 },
                 "required": [
@@ -3989,6 +6102,236 @@ export const catalog = [
             },
             "verdict": {
               "const": "PASS"
+            },
+            "performance": {
+              "type": "object",
+              "properties": {
+                "policyVersion": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "profile": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "imageDelayMs": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "viewports": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "width": {
+                        "enum": [
+                          420,
+                          1040
+                        ]
+                      },
+                      "initial": {
+                        "type": "object",
+                        "properties": {
+                          "readyMs": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "blockingMs": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "maxTaskMs": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "layoutShift": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "domElements": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "renderedRows": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "imageRequests": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "hiddenImageRequests": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "visibleImages": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "lazyVisibleImages": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "missingImageSpace": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "unprioritizedFirstImage": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "loadedScriptBytes": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "feedbackMs": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "readyMs",
+                          "blockingMs",
+                          "maxTaskMs",
+                          "layoutShift",
+                          "domElements",
+                          "renderedRows",
+                          "imageRequests",
+                          "hiddenImageRequests",
+                          "visibleImages",
+                          "lazyVisibleImages",
+                          "missingImageSpace",
+                          "unprioritizedFirstImage",
+                          "loadedScriptBytes",
+                          "feedbackMs"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "interactions": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "readyMs": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "blockingMs": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "maxTaskMs": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "layoutShift": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "domElements": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "renderedRows": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "imageRequests": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "hiddenImageRequests": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "visibleImages": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "lazyVisibleImages": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "missingImageSpace": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "unprioritizedFirstImage": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "loadedScriptBytes": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "feedbackMs": {
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "readyMs",
+                            "blockingMs",
+                            "maxTaskMs",
+                            "layoutShift",
+                            "domElements",
+                            "renderedRows",
+                            "imageRequests",
+                            "hiddenImageRequests",
+                            "visibleImages",
+                            "lazyVisibleImages",
+                            "missingImageSpace",
+                            "unprioritizedFirstImage",
+                            "loadedScriptBytes",
+                            "feedbackMs",
+                            "id"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "width",
+                      "initial",
+                      "interactions"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "verdict": {
+                  "enum": [
+                    "PASS",
+                    "FAIL",
+                    "INCOMPLETE"
+                  ]
+                }
+              },
+              "required": [
+                "policyVersion",
+                "profile",
+                "imageDelayMs",
+                "viewports",
+                "verdict"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -4126,6 +6469,13 @@ export const catalog = [
                       "type": "string",
                       "minLength": 1
                     }
+                  },
+                  "interactionCaseIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
                   }
                 },
                 "required": [
@@ -4217,6 +6567,236 @@ export const catalog = [
                 "FAIL",
                 "INCOMPLETE"
               ]
+            },
+            "performance": {
+              "type": "object",
+              "properties": {
+                "policyVersion": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "profile": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "imageDelayMs": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "viewports": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "width": {
+                        "enum": [
+                          420,
+                          1040
+                        ]
+                      },
+                      "initial": {
+                        "type": "object",
+                        "properties": {
+                          "readyMs": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "blockingMs": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "maxTaskMs": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "layoutShift": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "domElements": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "renderedRows": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "imageRequests": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "hiddenImageRequests": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "visibleImages": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "lazyVisibleImages": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "missingImageSpace": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "unprioritizedFirstImage": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "loadedScriptBytes": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "feedbackMs": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "readyMs",
+                          "blockingMs",
+                          "maxTaskMs",
+                          "layoutShift",
+                          "domElements",
+                          "renderedRows",
+                          "imageRequests",
+                          "hiddenImageRequests",
+                          "visibleImages",
+                          "lazyVisibleImages",
+                          "missingImageSpace",
+                          "unprioritizedFirstImage",
+                          "loadedScriptBytes",
+                          "feedbackMs"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "interactions": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "readyMs": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "blockingMs": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "maxTaskMs": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "layoutShift": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "domElements": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "renderedRows": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "imageRequests": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "hiddenImageRequests": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "visibleImages": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "lazyVisibleImages": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "missingImageSpace": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "unprioritizedFirstImage": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "loadedScriptBytes": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "feedbackMs": {
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "readyMs",
+                            "blockingMs",
+                            "maxTaskMs",
+                            "layoutShift",
+                            "domElements",
+                            "renderedRows",
+                            "imageRequests",
+                            "hiddenImageRequests",
+                            "visibleImages",
+                            "lazyVisibleImages",
+                            "missingImageSpace",
+                            "unprioritizedFirstImage",
+                            "loadedScriptBytes",
+                            "feedbackMs",
+                            "id"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "width",
+                      "initial",
+                      "interactions"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "verdict": {
+                  "enum": [
+                    "PASS",
+                    "FAIL",
+                    "INCOMPLETE"
+                  ]
+                }
+              },
+              "required": [
+                "policyVersion",
+                "profile",
+                "imageDelayMs",
+                "viewports",
+                "verdict"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -5171,7 +7751,8 @@ export const catalog = [
                             "ready",
                             "failed",
                             "unavailable",
-                            "empty"
+                            "empty",
+                            "preparing"
                           ]
                         }
                       },
@@ -6004,7 +8585,8 @@ export const catalog = [
                           "ready",
                           "failed",
                           "unavailable",
-                          "empty"
+                          "empty",
+                          "preparing"
                         ]
                       }
                     },
@@ -6817,7 +9399,8 @@ export const catalog = [
                   "ready",
                   "failed",
                   "unavailable",
-                  "empty"
+                  "empty",
+                  "preparing"
                 ]
               }
             },
@@ -7317,7 +9900,8 @@ export const catalog = [
                   "ready",
                   "failed",
                   "unavailable",
-                  "empty"
+                  "empty",
+                  "preparing"
                 ]
               }
             },
@@ -8494,7 +11078,8 @@ export const catalog = [
                   "ready",
                   "failed",
                   "unavailable",
-                  "empty"
+                  "empty",
+                  "preparing"
                 ]
               }
             },
@@ -9057,7 +11642,8 @@ export const catalog = [
                       "ready",
                       "failed",
                       "unavailable",
-                      "empty"
+                      "empty",
+                      "preparing"
                     ]
                   }
                 },
@@ -10152,7 +12738,8 @@ export const catalog = [
                   "ready",
                   "failed",
                   "unavailable",
-                  "empty"
+                  "empty",
+                  "preparing"
                 ]
               }
             },
@@ -13260,6 +15847,67 @@ export const catalog = [
     "aliases": []
   },
   {
+    "capabilityId": "hallmark.collection.associations",
+    "version": "1.0.0",
+    "title": "查询采集商品与销售商品关联",
+    "description": "按采集商品稳定 id 和 storeId 一次核查精确销售关联，返回对应 offerId、平台 productId、来源 SKU/组合、当前在售状态、草稿记录和未关联历史提示。不按标题或型号猜同款。已知 id 直接调用，无需再搜索；不知道 id 时 collection.search 定位一次，再调用本工具。未找到关联不等于从未上架；未知按返回结论报告，不再反复关键词搜索商品列表。默认复用5分钟内状态，refresh=true主动更新，分页只用 continuation.input。",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "refresh": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "storeId"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 90000,
+      "concurrency": "declared_safe",
+      "lockScope": "resources",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "采集箱",
+        "商品",
+        "sku",
+        "上品",
+        "图片",
+        "associations"
+      ]
+    },
+    "aliases": []
+  },
+  {
     "capabilityId": "hallmark.collection.read",
     "version": "1.0.0",
     "title": "读取精简采集资料",
@@ -13496,7 +16144,7 @@ export const catalog = [
     "capabilityId": "hallmark.collection.search",
     "version": "1.0.0",
     "title": "搜索采集商品",
-    "description": "搜索采集商品事实，默认每页30张精简卡片；关键词不匹配旧任务文本。价格明确采购价或来源展示售价。用户找未上商品时推荐 store.listingRecord=not_found；found含保存的上品草稿及失败/归档记录，unavailable表示读取未完成，不能当无记录。recordLookup解释查询口径与失败原因；新记录筛选无法确定总数时total=null，knownMatches仅为已知匹配。不要轮流试旧status和association来猜未上。旧store.status仅兼容历史成功铺货覆盖度，store.saleState筛当前在售/无库存/归档等，store.association筛采购关联，条件在分页统计前组合。店铺saleStates按去重销售商品offer计数，不是来源SKU数；过期或缺失观察为unknown。返回全量匹配统计与续页。",
+    "description": "查某个采集商品是否上过或在售：本工具仅定位商品 id，随后用 hallmark.collection.associations(id,storeId) 查看精确销售关联，不再按关键词搜索店铺商品。搜索采集商品事实，默认每页30张精简卡片；关键词不匹配旧任务文本。价格明确采购价或来源展示售价。用户找未上商品时推荐 store.listingRecord=not_found；found含保存的上品草稿及失败/归档记录，unavailable表示读取未完成，不能当无记录。recordLookup解释查询口径与失败原因；新记录筛选无法确定总数时total=null，knownMatches仅为已知匹配。不要轮流试旧status和association来猜未上。旧store.status仅兼容历史成功铺货覆盖度，store.saleState筛当前在售/无库存/归档等，store.association筛采购关联，条件在分页统计前组合。店铺saleStates按去重销售商品offer计数，不是来源SKU数；过期或缺失观察为unknown。返回全量匹配统计与续页。",
     "effect": "query",
     "inputSchema": {
       "type": "object",
@@ -13780,7 +16428,7 @@ export const catalog = [
     "capabilityId": "hallmark.listing.assets.publish",
     "version": "1.0.0",
     "title": "交付上品图片",
-    "description": "将明确选中的本机 PNG、JPEG 或 WebP 成品图片交付为平台可读公网地址。程序自动导入、缓存和核对实际图片；同一内容重复调用可复用。返回逐文件地址、内容版本及 SKU 关联，失败不影响其他已成功图片。用于草稿素材，不提交 Ozon 商品。",
+    "description": "将明确选中的本机 PNG、JPEG 或 WebP 成品图片交付为平台可读公网地址。程序自动导入、缓存和核对实际图片；同一内容重复调用直接复用。返回逐文件地址与内容版本；图片对应哪条销售行写在 images.json，不在此接口传递。单次调用约 4 分钟内结束，未及完成的文件逐个返回 LISTING_ASSET_TIME_BUDGET，原样重试即可；失败不影响其他已成功图片。用于草稿素材，不提交 Ozon 商品。",
     "effect": "mutation",
     "inputSchema": {
       "type": "object",
@@ -13795,13 +16443,6 @@ export const catalog = [
               "path": {
                 "type": "string",
                 "minLength": 1
-              },
-              "skuIds": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1
-                }
               }
             },
             "required": [
@@ -13841,10 +16482,135 @@ export const catalog = [
     "aliases": []
   },
   {
+    "capabilityId": "hallmark.listing.category.read",
+    "version": "1.0.0",
+    "title": "读取上品类目约束",
+    "description": "选定类目后只读制作所需属性约束；默认必填，scope=all 分页列出全部约束，attributeIds 精确读取指定字段。字典值通过属性 available 按需查询，不返回全量字典。不会重建准备版本或销售组成；续页仅使用 continuation.input。",
+    "effect": "query",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "storeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "descriptionCategoryId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "typeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "enum": [
+            "required",
+            "all"
+          ]
+        },
+        "attributeIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "maxItems": 100
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "refresh": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "storeId"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "descriptionCategoryId",
+            "typeId"
+          ],
+          "not": {
+            "required": [
+              "cursor"
+            ]
+          }
+        },
+        {
+          "required": [
+            "cursor"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "descriptionCategoryId"
+                ]
+              },
+              {
+                "required": [
+                  "typeId"
+                ]
+              },
+              {
+                "required": [
+                  "scope"
+                ]
+              },
+              {
+                "required": [
+                  "attributeIds"
+                ]
+              },
+              {
+                "required": [
+                  "refresh"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "mode": "sync",
+      "timeoutMs": 90000,
+      "concurrency": "declared_safe",
+      "lockScope": "resources",
+      "idempotency": "not_applicable",
+      "completionEvidence": "response"
+    },
+    "discovery": {
+      "defaultVisible": true,
+      "keywords": [
+        "上品",
+        "类目",
+        "属性",
+        "必填",
+        "模板"
+      ]
+    },
+    "aliases": []
+  },
+  {
     "capabilityId": "hallmark.listing.draft.create",
     "version": "1.0.0",
     "title": "创建经营草稿",
-    "description": "保存一张经营操作表，不触发模型或平台提交。程序读取原商品与采购SKU、绑定组成并补齐确定性数据。payload填写一次：价格 price/currency_code；库存 stock/warehouse_id；归档 archived；活动 action_id/price/stock（活动配额）；listing为原生Ozon item。上品procurement引用完整来源itemId/sourceSkuId及quantity。多主体参考图可在行级referenceSubjects填写真实sourceImageUrl和主体位置，例如“左侧银色贴片”；单一明确主体可省略。它只指定比较对象，不手填采购价或审核声明。",
+    "description": "上品推荐入口。保存一张经营操作表，不触发模型或平台提交。程序读取原商品与采购SKU、绑定组成并补齐确定性数据。payload填写一次：价格 price/currency_code；库存 stock/warehouse_id；归档 archived；活动 action_id/price/stock（活动配额）；listing为原生Ozon item。完整图片交付优先用行级listingAssets:{images:[7个成功HTTPS地址，首图在前],richContentImages:[8个成功HTTPS地址，按阅读顺序]}；程序统一生成图库、primary_image与富文本属性11254，覆盖payload中旧的对应媒体字段，保留其他属性。不要让文案代理拼富文本JSON。上品推荐 hallmark.listing.draft.create/revise；传 preparationRevision（顶层或行级）及行 saleId，程序从准备快照解析采购组成。也兼容显式 procurement；同时传入时必须一致。不得将 saleId 当 offerId。多主体参考图可在行级referenceSubjects填写真实sourceImageUrl和主体位置，例如“左侧银色贴片”；单一明确主体可省略。它只指定比较对象，不手填采购价或审核声明。",
     "effect": "compute",
     "inputSchema": {
       "type": "object",
@@ -13857,12 +16623,24 @@ export const catalog = [
           "type": "string",
           "minLength": 1
         },
+        "preparationRevision": {
+          "type": "string",
+          "minLength": 1
+        },
         "rows": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
               "rowId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "saleId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "preparationRevision": {
                 "type": "string",
                 "minLength": 1
               },
@@ -13954,6 +16732,36 @@ export const catalog = [
                   ],
                   "additionalProperties": false
                 }
+              },
+              "listingAssets": {
+                "type": "object",
+                "properties": {
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 7,
+                    "maxItems": 7,
+                    "uniqueItems": true
+                  },
+                  "richContentImages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 8,
+                    "maxItems": 8,
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "images",
+                  "richContentImages"
+                ],
+                "additionalProperties": false
               },
               "pricing": {
                 "type": "object",
@@ -14031,7 +16839,7 @@ export const catalog = [
     "capabilityId": "hallmark.listing.draft.get",
     "version": "1.0.0",
     "title": "读取经营变更单",
-    "description": "读取一张经营变更单，或凭原runtime operationId找到它。默认精简表格；includeEvidence可读取完整来源和审核证据，不执行平台写入。",
+    "description": "上品推荐入口。读取一张经营变更单，或凭原runtime operationId找到它。默认精简表格；view=payload 可按 rowIds/cursor/limit 读取规范化 payload、采购组成及修正；includeEvidence可读取完整来源和审核证据，不执行平台写入。",
     "effect": "query",
     "inputSchema": {
       "type": "object",
@@ -14046,6 +16854,12 @@ export const catalog = [
         },
         "includeEvidence": {
           "type": "boolean"
+        },
+        "view": {
+          "enum": [
+            "summary",
+            "payload"
+          ]
         },
         "rowIds": {
           "type": "array",
@@ -14122,12 +16936,16 @@ export const catalog = [
     "capabilityId": "hallmark.listing.draft.revise",
     "version": "1.0.0",
     "title": "修改经营草稿",
-    "description": "按稳定rowId修改尚未执行的行，程序更新版本和受影响的审核依赖。rows每项提供完整目标行；成功或未决行不可改写。草稿保存不调用模型。",
+    "description": "上品推荐入口。按稳定rowId修改尚未执行的行，程序更新版本和受影响的审核依赖。rows每项提供完整目标行；成功或未决行不可改写。草稿保存不调用模型。",
     "effect": "compute",
     "inputSchema": {
       "type": "object",
       "properties": {
         "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "preparationRevision": {
           "type": "string",
           "minLength": 1
         },
@@ -14141,6 +16959,14 @@ export const catalog = [
             "type": "object",
             "properties": {
               "rowId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "saleId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "preparationRevision": {
                 "type": "string",
                 "minLength": 1
               },
@@ -14232,6 +17058,36 @@ export const catalog = [
                   ],
                   "additionalProperties": false
                 }
+              },
+              "listingAssets": {
+                "type": "object",
+                "properties": {
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 7,
+                    "maxItems": 7,
+                    "uniqueItems": true
+                  },
+                  "richContentImages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 8,
+                    "maxItems": 8,
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "images",
+                  "richContentImages"
+                ],
+                "additionalProperties": false
               },
               "pricing": {
                 "type": "object",
@@ -14310,7 +17166,7 @@ export const catalog = [
     "capabilityId": "hallmark.listing.draft.submit",
     "version": "1.0.0",
     "title": "审核并提交经营变更",
-    "description": "明确提交当前草稿版本。规则可确定的直接执行；图文/语义由独立模型审核，必要时Host启动独立子代理。通过行自动执行。缺事实只返回具体字段问题；无需userRequest/valueSource/scopeConfirmed或已审阅声明。程序负责行级幂等；pending/unknown仅inspect，勿另建同目标重复操作。",
+    "description": "上品推荐入口。明确提交当前草稿版本。规则可确定的直接执行；图文/语义由独立模型审核，必要时Host启动独立子代理。通过行自动执行。接受有依据的上下文判断与语义改写，仅退回实质矛盾或无法合理填写的关键问题；同款参考主体配实际规格文案可用，不追加逐字比对和审美审核；无需userRequest/valueSource/scopeConfirmed或已审阅声明。程序负责行级幂等；pending/unknown仅inspect，勿另建同目标重复操作。",
     "effect": "mutation",
     "inputSchema": {
       "type": "object",
@@ -14362,7 +17218,7 @@ export const catalog = [
     "capabilityId": "hallmark.listing.prepare",
     "version": "1.0.0",
     "title": "准备上品资料",
-    "description": "给目标店铺与已选商品/SKU，程序一次组合精简采集资料、采购组成、包装结果、经营规则、已有商品关联和类目候选/模板。支持多SKU组合销售；已有资料版本可复用。整个响应受字节预算限制，续页仅传 continuation.input，无需重读已返回资料；类目默认给必填约束，其余字段可按需展开。只准备数据，不审核、不生成检查声明；Agent接着制作标题、属性和图片，再保存草稿。",
+    "description": "给目标店铺与已选商品/SKU，程序一次组合精简采集资料、采购组成、包装结果、经营规则、已有商品关联和类目候选/模板。支持多SKU组合销售；已有资料版本可复用。整个响应受字节预算限制，续页仅传 continuation.input，无需重读已返回资料；类目默认给必填约束，其余字段可按需展开。只准备数据，不计算或返回报价；创建/修改草稿指定 pricing.mode=automatic 且不填 price，程序计算并写入售价。重复包装公共字段及类目内容以 sharedRef 引用本页 shared.packaging/shared.categories；包装合并本页定义与行内 version、missing，不跨页引用。preparationRevision 是稳定快照引用；salesRevision 是制作依赖版本，不随类目选择变化。选定类目用 hallmark.listing.category.read 按需读取约束。上品统一使用 hallmark.listing.draft.create/revise，传 preparationRevision + 行 saleId，由程序解析采购组成。",
     "effect": "query",
     "inputSchema": {
       "type": "object",
@@ -18456,7 +21312,7 @@ export const catalog = [
     "capabilityId": "hallmark.plan.create",
     "version": "1.0.0",
     "title": "创建经营草稿",
-    "description": "保存一张经营操作表，不触发模型或平台提交。程序读取原商品与采购SKU、绑定组成并补齐确定性数据。payload填写一次：价格 price/currency_code；库存 stock/warehouse_id；归档 archived；活动 action_id/price/stock（活动配额）；listing为原生Ozon item。上品procurement引用完整来源itemId/sourceSkuId及quantity。多主体参考图可在行级referenceSubjects填写真实sourceImageUrl和主体位置，例如“左侧银色贴片”；单一明确主体可省略。它只指定比较对象，不手填采购价或审核声明。",
+    "description": "通用经营入口；上品推荐 hallmark.listing.draft.*。保存一张经营操作表，不触发模型或平台提交。程序读取原商品与采购SKU、绑定组成并补齐确定性数据。payload填写一次：价格 price/currency_code；库存 stock/warehouse_id；归档 archived；活动 action_id/price/stock（活动配额）；listing为原生Ozon item。完整图片交付优先用行级listingAssets:{images:[7个成功HTTPS地址，首图在前],richContentImages:[8个成功HTTPS地址，按阅读顺序]}；程序统一生成图库、primary_image与富文本属性11254，覆盖payload中旧的对应媒体字段，保留其他属性。不要让文案代理拼富文本JSON。上品推荐 hallmark.listing.draft.create/revise；传 preparationRevision（顶层或行级）及行 saleId，程序从准备快照解析采购组成。也兼容显式 procurement；同时传入时必须一致。不得将 saleId 当 offerId。多主体参考图可在行级referenceSubjects填写真实sourceImageUrl和主体位置，例如“左侧银色贴片”；单一明确主体可省略。它只指定比较对象，不手填采购价或审核声明。",
     "effect": "compute",
     "inputSchema": {
       "type": "object",
@@ -18469,12 +21325,24 @@ export const catalog = [
           "type": "string",
           "minLength": 1
         },
+        "preparationRevision": {
+          "type": "string",
+          "minLength": 1
+        },
         "rows": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
               "rowId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "saleId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "preparationRevision": {
                 "type": "string",
                 "minLength": 1
               },
@@ -18567,6 +21435,36 @@ export const catalog = [
                   "additionalProperties": false
                 }
               },
+              "listingAssets": {
+                "type": "object",
+                "properties": {
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 7,
+                    "maxItems": 7,
+                    "uniqueItems": true
+                  },
+                  "richContentImages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 8,
+                    "maxItems": 8,
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "images",
+                  "richContentImages"
+                ],
+                "additionalProperties": false
+              },
               "pricing": {
                 "type": "object",
                 "properties": {
@@ -18643,7 +21541,7 @@ export const catalog = [
     "capabilityId": "hallmark.plan.get",
     "version": "1.0.0",
     "title": "读取经营变更单",
-    "description": "读取一张经营变更单，或凭原runtime operationId找到它。默认精简表格；includeEvidence可读取完整来源和审核证据，不执行平台写入。",
+    "description": "读取一张经营变更单，或凭原runtime operationId找到它。默认精简表格；view=payload 可按 rowIds/cursor/limit 读取规范化 payload、采购组成及修正；includeEvidence可读取完整来源和审核证据，不执行平台写入。",
     "effect": "query",
     "inputSchema": {
       "type": "object",
@@ -18658,6 +21556,12 @@ export const catalog = [
         },
         "includeEvidence": {
           "type": "boolean"
+        },
+        "view": {
+          "enum": [
+            "summary",
+            "payload"
+          ]
         },
         "rowIds": {
           "type": "array",
@@ -18781,7 +21685,7 @@ export const catalog = [
     "capabilityId": "hallmark.plan.list",
     "version": "1.0.0",
     "title": "经营变更记录",
-    "description": "列出此连接（可筛选店铺）的经营操作记录，包含逐行价格、采购关联、审核问题和执行状态。",
+    "description": "分页列出此连接的经营单摘要，含 planId、店铺、标题、行数与状态计数；用返回的 read 读取行明细，continuation 读取下一页。上品保存统一使用 hallmark.listing.draft.*。",
     "effect": "query",
     "inputSchema": {
       "type": "object",
@@ -18789,6 +21693,15 @@ export const catalog = [
         "storeId": {
           "type": "string",
           "minLength": 1
+        },
+        "cursor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
         }
       },
       "required": [],
@@ -18881,12 +21794,16 @@ export const catalog = [
     "capabilityId": "hallmark.plan.revise",
     "version": "1.0.0",
     "title": "修改经营草稿",
-    "description": "按稳定rowId修改尚未执行的行，程序更新版本和受影响的审核依赖。rows每项提供完整目标行；成功或未决行不可改写。草稿保存不调用模型。",
+    "description": "通用经营入口；上品推荐 hallmark.listing.draft.*。按稳定rowId修改尚未执行的行，程序更新版本和受影响的审核依赖。rows每项提供完整目标行；成功或未决行不可改写。草稿保存不调用模型。",
     "effect": "compute",
     "inputSchema": {
       "type": "object",
       "properties": {
         "planId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "preparationRevision": {
           "type": "string",
           "minLength": 1
         },
@@ -18900,6 +21817,14 @@ export const catalog = [
             "type": "object",
             "properties": {
               "rowId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "saleId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "preparationRevision": {
                 "type": "string",
                 "minLength": 1
               },
@@ -18992,6 +21917,36 @@ export const catalog = [
                   "additionalProperties": false
                 }
               },
+              "listingAssets": {
+                "type": "object",
+                "properties": {
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 7,
+                    "maxItems": 7,
+                    "uniqueItems": true
+                  },
+                  "richContentImages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 8,
+                    "maxItems": 8,
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "images",
+                  "richContentImages"
+                ],
+                "additionalProperties": false
+              },
               "pricing": {
                 "type": "object",
                 "properties": {
@@ -19069,7 +22024,7 @@ export const catalog = [
     "capabilityId": "hallmark.plan.submit",
     "version": "1.0.0",
     "title": "审核并提交经营变更",
-    "description": "明确提交当前草稿版本。规则可确定的直接执行；图文/语义由独立模型审核，必要时Host启动独立子代理。通过行自动执行。缺事实只返回具体字段问题；无需userRequest/valueSource/scopeConfirmed或已审阅声明。程序负责行级幂等；pending/unknown仅inspect，勿另建同目标重复操作。",
+    "description": "通用经营入口；上品推荐 hallmark.listing.draft.*。明确提交当前草稿版本。规则可确定的直接执行；图文/语义由独立模型审核，必要时Host启动独立子代理。通过行自动执行。接受有依据的上下文判断与语义改写，仅退回实质矛盾或无法合理填写的关键问题；同款参考主体配实际规格文案可用，不追加逐字比对和审美审核；无需userRequest/valueSource/scopeConfirmed或已审阅声明。程序负责行级幂等；pending/unknown仅inspect，勿另建同目标重复操作。",
     "effect": "mutation",
     "inputSchema": {
       "type": "object",
@@ -19254,6 +22209,14 @@ export const catalog = [
               "type": "string",
               "minLength": 1
             },
+            "saleId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "preparationRevision": {
+              "type": "string",
+              "minLength": 1
+            },
             "action": {
               "enum": [
                 "price",
@@ -19342,6 +22305,36 @@ export const catalog = [
                 ],
                 "additionalProperties": false
               }
+            },
+            "listingAssets": {
+              "type": "object",
+              "properties": {
+                "images": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 7,
+                  "maxItems": 7,
+                  "uniqueItems": true
+                },
+                "richContentImages": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 8,
+                  "maxItems": 8,
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "images",
+                "richContentImages"
+              ],
+              "additionalProperties": false
             },
             "pricing": {
               "type": "object",
@@ -19758,7 +22751,7 @@ export const catalog = [
     "capabilityId": "hallmark.products.list_product",
     "version": "1.0.0",
     "title": "hallmark_list_product",
-    "description": "提交已有采集商品及明确 SKU 范围的最终商品内容；每个 importItem 用 _sourceSkuId 关联采购规格，Ozon 字段填写一次。提交后由程序统一审核并执行；无需审阅声明或机械幂等键。pending/unknown 只查询原操作，不重复提交。 现由统一经营变更审核执行；不要求检查声明或用户值证明。",
+    "description": "旧上品兼容入口：内部创建并提交；新任务统一使用 hallmark.listing.prepare → hallmark.listing.draft.create/revise → hallmark.listing.draft.submit。",
     "effect": "mutation",
     "inputSchema": {
       "type": "object",
@@ -21502,92 +24495,92 @@ export const catalog = [
     "aliases": []
   }
 ] as const;
-export type Input0 = (({ "mode": "new"; "viewId"?: string; "componentId"?: string; "revision"?: number; "workspacePath"?: string; "newCopy"?: boolean; "title"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "invocationId"?: string; "attemptId"?: string }) | ({ "mode": "edit"; "viewId": string; "componentId"?: string; "revision"?: number; "workspacePath"?: string; "newCopy"?: boolean; "title"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "invocationId"?: string; "attemptId"?: string }) | ({ "mode": "open_saved"; "componentId": string; "viewId"?: string; "revision"?: number; "workspacePath"?: string; "newCopy"?: boolean; "title"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "invocationId"?: string; "attemptId"?: string }));
-export type Output0 = { "draft": { "schemaVersion": 1; "draftId": string; "ownerSessionId": string; "viewId": string; "workspacePath": string; "sourceRevision": number; "epoch": number; "status": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted" | "closed" | "discarded"; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "selectedSourceRevision"?: number; "baseRevisionAtOpen"?: number }; "attempt": { "attemptId": string; "draftId": string; "epoch": number; "sourceRevision": number; "state": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "startedAt": string; "expectedViewRevision": number; "invocationRefs": Array<string>; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "terminalReason": string | null; "buildReceiptId"?: string; "previewReceiptId"?: string; "publicationId"?: string; "requestHash"?: string }; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified"; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "sourceComponentId"?: string; "baseRevision"?: number } & { [key: string]: JsonValue }) };
+export type Input0 = (({ "attemptId": string; "displayId"?: string; "waitMs"?: number }) | ({ "publicationId": string; "displayId"?: string; "waitMs"?: number }));
+export type Output0 = { "summary": { "outcome": "in_progress" | "build_failed" | "preview_failed" | "build_passed" | "published_awaiting_display" | "awaiting_user_view" | "displaying" | "display_stalled" | "displayed" | "display_failed" | "superseded" | "cancelled" | "interrupted"; "completionStatement": string; "waitedMs": number | null; "displayDeadlineAt": string | null; "lastConfirmedDisplay": ({  } & { [key: string]: JsonValue }) | null; "preparedBuild": ({  } & { [key: string]: JsonValue }) | null; "currentDisplay": ({  } & { [key: string]: JsonValue }) | null; "blockedStage": string; "nextAction": { "action": string; "reason": string; "target": ({  } & { [key: string]: JsonValue }); "errorCodes": Array<string> }; "requiresRebuild": boolean | null }; "draft": { "schemaVersion": 1; "draftId": string; "ownerSessionId": string; "viewId": string; "workspacePath": string; "sourceRevision": number; "epoch": number; "status": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted" | "closed" | "discarded"; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "selectedSourceRevision"?: number; "baseRevisionAtOpen"?: number }; "attempt": { "attemptId": string; "draftId": string; "epoch": number; "sourceRevision": number; "state": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "startedAt": string; "expectedViewRevision": number; "invocationRefs": Array<string>; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "terminalReason": string | null; "buildReceiptId"?: string; "previewReceiptId"?: string; "publicationId"?: string; "requestHash"?: string }; "publication": (({ "publicationId": string; "viewId": string; "ownerSessionId": string; "attemptId": string; "attemptEpoch": number; "expectedViewRevision": number; "candidateBuildId": string; "priorActiveBuildId": string | null; "state": "prepared" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "readyDeadlineAt": string | null; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "createdAt": string; "updatedAt": string; "buildReceiptId": string; "previewReceiptId": string; "source": ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "mountStartedAt"?: string | null; "frameInstanceId"?: string; "documentNonce"?: string; "committedViewRevision"?: number; "terminalReason"?: string }) | (null)); "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified"; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "sourceComponentId"?: string; "baseRevision"?: number } & { [key: string]: JsonValue }); "latestDisplay": (({ "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified"; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "sourceComponentId"?: string; "baseRevision"?: number } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string; "requestId"?: string; "attempts"?: number; "retryPolicy"?: string; "cause"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "openedAt"?: string; "readyDeadlineAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string }) | (null)); "displays": Array<{ "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified"; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "sourceComponentId"?: string; "baseRevision"?: number } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string; "requestId"?: string; "attempts"?: number; "retryPolicy"?: string; "cause"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "openedAt"?: string; "readyDeadlineAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string }>; "workspaceAvailable": boolean; "missingEvidence": Array<string>; "awaited": { "requestedMs": number; "elapsedMs": number; "timedOut": boolean }; "display"?: { "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified"; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "sourceComponentId"?: string; "baseRevision"?: number } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string; "requestId"?: string; "attempts"?: number; "retryPolicy"?: string; "cause"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "openedAt"?: string; "readyDeadlineAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string } };
 export function call0(client: AppsClient, ref: AppRef, input: Input0, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output0>> { return client.invoke(ref, catalog[0], input as JsonValue, options) as Promise<CapabilityResult<Output0>>; }
 
-export type Input1 = { "attemptId": string; "expectedEpoch": number; "reason": string };
-export type Output1 = { "status": "cancelled" | "already_published"; "activeBuildId": string | null; "viewRevision": number; "publication"?: { "publicationId": string; "viewId": string; "ownerSessionId": string; "attemptId": string; "attemptEpoch": number; "expectedViewRevision": number; "candidateBuildId": string; "priorActiveBuildId": string | null; "state": "prepared" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "readyDeadlineAt": string | null; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "createdAt": string; "updatedAt": string; "buildReceiptId": string; "previewReceiptId": string; "source": ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "mountStartedAt"?: string | null; "frameInstanceId"?: string; "documentNonce"?: string; "committedViewRevision"?: number; "terminalReason"?: string } };
+export type Input1 = (({ "mode": "new"; "viewId"?: string; "componentId"?: string; "revision"?: number; "workspacePath"?: string; "newCopy"?: boolean; "title"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "invocationId"?: string; "attemptId"?: string }) | ({ "mode": "edit"; "viewId": string; "componentId"?: string; "revision"?: number; "workspacePath"?: string; "newCopy"?: boolean; "title"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "invocationId"?: string; "attemptId"?: string }) | ({ "mode": "open_saved"; "componentId": string; "viewId"?: string; "revision"?: number; "workspacePath"?: string; "newCopy"?: boolean; "title"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "invocationId"?: string; "attemptId"?: string }));
+export type Output1 = { "draft": { "schemaVersion": 1; "draftId": string; "ownerSessionId": string; "viewId": string; "workspacePath": string; "sourceRevision": number; "epoch": number; "status": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted" | "closed" | "discarded"; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "selectedSourceRevision"?: number; "baseRevisionAtOpen"?: number }; "attempt": { "attemptId": string; "draftId": string; "epoch": number; "sourceRevision": number; "state": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "startedAt": string; "expectedViewRevision": number; "invocationRefs": Array<string>; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "terminalReason": string | null; "buildReceiptId"?: string; "previewReceiptId"?: string; "publicationId"?: string; "requestHash"?: string }; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified"; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "sourceComponentId"?: string; "baseRevision"?: number } & { [key: string]: JsonValue }) };
 export function call1(client: AppsClient, ref: AppRef, input: Input1, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output1>> { return client.invoke(ref, catalog[1], input as JsonValue, options) as Promise<CapabilityResult<Output1>>; }
 
-export type Input2 = (({ "attemptId": string; "displayId"?: string }) | ({ "publicationId": string; "displayId"?: string }));
-export type Output2 = { "summary": { "lastConfirmedDisplay": ({  } & { [key: string]: JsonValue }) | null; "preparedBuild": ({  } & { [key: string]: JsonValue }) | null; "currentDisplay": ({  } & { [key: string]: JsonValue }) | null; "blockedStage": string; "nextAction": { "action": string; "reason": string; "target": ({  } & { [key: string]: JsonValue }); "errorCodes": Array<string> }; "requiresRebuild": boolean | null }; "draft": { "schemaVersion": 1; "draftId": string; "ownerSessionId": string; "viewId": string; "workspacePath": string; "sourceRevision": number; "epoch": number; "status": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted" | "closed" | "discarded"; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "selectedSourceRevision"?: number; "baseRevisionAtOpen"?: number }; "attempt": { "attemptId": string; "draftId": string; "epoch": number; "sourceRevision": number; "state": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "startedAt": string; "expectedViewRevision": number; "invocationRefs": Array<string>; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "terminalReason": string | null; "buildReceiptId"?: string; "previewReceiptId"?: string; "publicationId"?: string; "requestHash"?: string }; "publication": (({ "publicationId": string; "viewId": string; "ownerSessionId": string; "attemptId": string; "attemptEpoch": number; "expectedViewRevision": number; "candidateBuildId": string; "priorActiveBuildId": string | null; "state": "prepared" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "readyDeadlineAt": string | null; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "createdAt": string; "updatedAt": string; "buildReceiptId": string; "previewReceiptId": string; "source": ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "mountStartedAt"?: string | null; "frameInstanceId"?: string; "documentNonce"?: string; "committedViewRevision"?: number; "terminalReason"?: string }) | (null)); "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified"; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "sourceComponentId"?: string; "baseRevision"?: number } & { [key: string]: JsonValue }); "latestDisplay": (({ "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified"; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "sourceComponentId"?: string; "baseRevision"?: number } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string }) | (null)); "displays": Array<{ "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified"; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "sourceComponentId"?: string; "baseRevision"?: number } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string }>; "workspaceAvailable": boolean; "missingEvidence": Array<string>; "display"?: { "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified"; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "sourceComponentId"?: string; "baseRevision"?: number } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string } };
+export type Input2 = { "attemptId": string; "expectedEpoch": number; "reason": string };
+export type Output2 = { "status": "cancelled" | "already_published"; "activeBuildId": string | null; "viewRevision": number; "publication"?: { "publicationId": string; "viewId": string; "ownerSessionId": string; "attemptId": string; "attemptEpoch": number; "expectedViewRevision": number; "candidateBuildId": string; "priorActiveBuildId": string | null; "state": "prepared" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "readyDeadlineAt": string | null; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "createdAt": string; "updatedAt": string; "buildReceiptId": string; "previewReceiptId": string; "source": ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "mountStartedAt"?: string | null; "frameInstanceId"?: string; "documentNonce"?: string; "committedViewRevision"?: number; "terminalReason"?: string } };
 export function call2(client: AppsClient, ref: AppRef, input: Input2, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output2>> { return client.invoke(ref, catalog[2], input as JsonValue, options) as Promise<CapabilityResult<Output2>>; }
 
-export type Input3 = { "attemptId": string; "epoch": number; "viewId": string; "expectedViewRevision": number; "buildId": string; "buildReceiptId": string; "previewReceiptId": string; "publicationId"?: string };
-export type Output3 = { "publicationId": string; "viewId": string; "ownerSessionId": string; "attemptId": string; "attemptEpoch": number; "expectedViewRevision": number; "candidateBuildId": string; "priorActiveBuildId": string | null; "state": "prepared" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "readyDeadlineAt": string | null; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "createdAt": string; "updatedAt": string; "buildReceiptId": string; "previewReceiptId": string; "source": ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "mountStartedAt"?: string | null; "frameInstanceId"?: string; "documentNonce"?: string; "committedViewRevision"?: number; "terminalReason"?: string };
+export type Input3 = (({ "attemptId": string; "displayId"?: string }) | ({ "publicationId": string; "displayId"?: string }));
+export type Output3 = { "summary": { "outcome": "in_progress" | "build_failed" | "preview_failed" | "build_passed" | "published_awaiting_display" | "awaiting_user_view" | "displaying" | "display_stalled" | "displayed" | "display_failed" | "superseded" | "cancelled" | "interrupted"; "completionStatement": string; "waitedMs": number | null; "displayDeadlineAt": string | null; "lastConfirmedDisplay": ({  } & { [key: string]: JsonValue }) | null; "preparedBuild": ({  } & { [key: string]: JsonValue }) | null; "currentDisplay": ({  } & { [key: string]: JsonValue }) | null; "blockedStage": string; "nextAction": { "action": string; "reason": string; "target": ({  } & { [key: string]: JsonValue }); "errorCodes": Array<string> }; "requiresRebuild": boolean | null }; "draft": { "schemaVersion": 1; "draftId": string; "ownerSessionId": string; "viewId": string; "workspacePath": string; "sourceRevision": number; "epoch": number; "status": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted" | "closed" | "discarded"; "createdAt": string; "updatedAt": string; "sourceComponentId"?: string; "selectedSourceRevision"?: number; "baseRevisionAtOpen"?: number }; "attempt": { "attemptId": string; "draftId": string; "epoch": number; "sourceRevision": number; "state": "editing" | "building" | "build_failed" | "previewing" | "preview_failed" | "publish_ready" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "startedAt": string; "expectedViewRevision": number; "invocationRefs": Array<string>; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "terminalReason": string | null; "buildReceiptId"?: string; "previewReceiptId"?: string; "publicationId"?: string; "requestHash"?: string }; "publication": (({ "publicationId": string; "viewId": string; "ownerSessionId": string; "attemptId": string; "attemptEpoch": number; "expectedViewRevision": number; "candidateBuildId": string; "priorActiveBuildId": string | null; "state": "prepared" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "readyDeadlineAt": string | null; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "createdAt": string; "updatedAt": string; "buildReceiptId": string; "previewReceiptId": string; "source": ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "mountStartedAt"?: string | null; "frameInstanceId"?: string; "documentNonce"?: string; "committedViewRevision"?: number; "terminalReason"?: string }) | (null)); "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified"; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "sourceComponentId"?: string; "baseRevision"?: number } & { [key: string]: JsonValue }); "latestDisplay": (({ "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified"; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "sourceComponentId"?: string; "baseRevision"?: number } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string; "requestId"?: string; "attempts"?: number; "retryPolicy"?: string; "cause"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "openedAt"?: string; "readyDeadlineAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string }) | (null)); "displays": Array<{ "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified"; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "sourceComponentId"?: string; "baseRevision"?: number } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string; "requestId"?: string; "attempts"?: number; "retryPolicy"?: string; "cause"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "openedAt"?: string; "readyDeadlineAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string }>; "workspaceAvailable": boolean; "missingEvidence": Array<string>; "display"?: { "displayId": string; "generation": number; "ownerSessionId": string; "viewId": string; "publicationId": string; "attemptId": string; "attemptEpoch": number; "buildId": string; "expectedViewRevision": number; "state": "opening" | "ready" | "failed" | "retired"; "view": ({ "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "viewRevision": number; "activeBuildId": string | null; "lastGoodBuildId": string | null; "previousGoodBuildId": string | null; "pendingPublicationId": string | null; "validationStatus": "draft_unpublished" | "legacy_unverified" | "verified"; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "sourceComponentId"?: string; "baseRevision"?: number } & { [key: string]: JsonValue }); "errors": Array<{ "phase": string; "code": string; "message": string; "at"?: string; "requestId"?: string; "attempts"?: number; "retryPolicy"?: string; "cause"?: string }>; "createdAt": string; "updatedAt": string; "readyAt"?: string; "openedAt"?: string; "readyDeadlineAt"?: string; "frameInstanceId"?: string; "documentNonce"?: string } };
 export function call3(client: AppsClient, ref: AppRef, input: Input3, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output3>> { return client.invoke(ref, catalog[3], input as JsonValue, options) as Promise<CapabilityResult<Output3>>; }
 
-export type Input4 = { "attemptId": string; "epoch": number; "reportRef": { "path": string; "sha256": string; "bytes": number } };
-export type Output4 = (({ "schemaVersion": 1; "receiptId": string; "attemptId": string; "sourceRevision": number; "sourceInputDigest": string; "lockfileDigest": string; "command": Array<string>; "cwd": string; "toolchain": ({  } & { [key: string]: JsonValue }); "exitCode": 0; "startedAt": string; "finishedAt": string; "logRef": { "path": string; "sha256": string; "bytes": number }; "distDigest": string; "archiveBuildId": string; "fileManifestRef": { "path": string; "sha256": string; "bytes": number }; "inputUnchanged": true; "verdict": "PASS"; "executionKind"?: "executed" | "reuse"; "executionId"?: string; "reusedFrom"?: { "path": string; "sha256": string; "bytes": number }; "reuseVerifiedAt"?: string }) | ({ "schemaVersion": 1; "receiptId": string; "attemptId": string; "sourceRevision": number; "sourceInputDigest": string; "lockfileDigest": string; "command": Array<string>; "cwd": string; "toolchain": ({  } & { [key: string]: JsonValue }); "exitCode": number; "startedAt": string; "finishedAt": string; "logRef": { "path": string; "sha256": string; "bytes": number }; "distDigest": ((string) | (null)); "archiveBuildId": ((string) | (null)); "fileManifestRef": (({ "path": string; "sha256": string; "bytes": number }) | (null)); "inputUnchanged": boolean; "verdict": "FAIL"; "executionKind"?: "executed" | "reuse"; "executionId"?: string; "reusedFrom"?: { "path": string; "sha256": string; "bytes": number }; "reuseVerifiedAt"?: string }));
+export type Input4 = { "attemptId": string; "epoch": number; "viewId": string; "expectedViewRevision": number; "buildId": string; "buildReceiptId": string; "previewReceiptId": string; "publicationId"?: string };
+export type Output4 = { "publicationId": string; "viewId": string; "ownerSessionId": string; "attemptId": string; "attemptEpoch": number; "expectedViewRevision": number; "candidateBuildId": string; "priorActiveBuildId": string | null; "state": "prepared" | "mounting" | "mounted" | "failed_mount" | "cancelled" | "superseded" | "interrupted"; "readyDeadlineAt": string | null; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }>; "createdAt": string; "updatedAt": string; "buildReceiptId": string; "previewReceiptId": string; "source": ({ "buildId": string; "directory": string; "entry": string; "files": Array<string> } & { [key: string]: JsonValue }); "outcome": "in_progress" | "build_failed" | "preview_failed" | "build_passed" | "published_awaiting_display" | "awaiting_user_view" | "displaying" | "display_stalled" | "displayed" | "display_failed" | "superseded" | "cancelled" | "interrupted"; "completionStatement": string; "mountStartedAt"?: string | null; "frameInstanceId"?: string; "documentNonce"?: string; "committedViewRevision"?: number; "terminalReason"?: string };
 export function call4(client: AppsClient, ref: AppRef, input: Input4, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output4>> { return client.invoke(ref, catalog[4], input as JsonValue, options) as Promise<CapabilityResult<Output4>>; }
 
-export type Input5 = { "attemptId": string; "epoch": number; "buildReceiptId": string; "reportRef": { "path": string; "sha256": string; "bytes": number } };
-export type Output5 = (({ "schemaVersion": 1; "receiptId": string; "attemptId": string; "buildReceiptId": string; "buildId": string; "protocol": "dsh.apps.component.v2"; "mode": "fixture" | "live_readonly"; "runnerVersion": string; "startedAt": string; "finishedAt": string; "viewportResults": Array<{ "id": string; "contentWidthCssPx": number; "heightCssPx": number; "deviceScaleFactor": number; "screenshot": { "path": string; "sha256": string; "bytes": number }; "pageErrors": Array<string>; "unhandledRejections": Array<string>; "failedRequests": Array<string>; "bridgeReady": true; "assertionIds": Array<string> }>; "assertionResults": Array<(({ "id": string; "required": true; "expected": string; "actual": string | null; "status": "PASS"; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }> }) | ({ "id": string; "required": false; "expected": string; "actual": string | null; "status": "PASS" | "FAIL" | "NOT_RUN" | "BLOCKED"; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }> }))>; "verdict": "PASS" }) | ({ "schemaVersion": 1; "receiptId": string; "attemptId": string; "buildReceiptId": string; "buildId": string; "protocol": "dsh.apps.component.v2"; "mode": "fixture" | "live_readonly"; "runnerVersion": string; "startedAt": string; "finishedAt": string; "viewportResults": Array<{ "id": string; "contentWidthCssPx": number; "heightCssPx": number; "deviceScaleFactor": number; "screenshot": { "path": string; "sha256": string; "bytes": number }; "pageErrors": Array<string>; "unhandledRejections": Array<string>; "failedRequests": Array<string>; "bridgeReady": boolean; "assertionIds": Array<string> }>; "assertionResults": Array<{ "id": string; "required": boolean; "expected": string; "actual": string | null; "status": "PASS" | "FAIL" | "NOT_RUN" | "BLOCKED"; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }> }>; "verdict": "FAIL" | "INCOMPLETE" }));
+export type Input5 = { "attemptId": string; "epoch": number; "reportRef": { "path": string; "sha256": string; "bytes": number } };
+export type Output5 = (({ "schemaVersion": 1; "receiptId": string; "attemptId": string; "sourceRevision": number; "sourceInputDigest": string; "lockfileDigest": string; "command": Array<string>; "cwd": string; "toolchain": ({  } & { [key: string]: JsonValue }); "exitCode": 0; "startedAt": string; "finishedAt": string; "logRef": { "path": string; "sha256": string; "bytes": number }; "distDigest": string; "archiveBuildId": string; "fileManifestRef": { "path": string; "sha256": string; "bytes": number }; "inputUnchanged": true; "verdict": "PASS"; "executionKind"?: "executed" | "reuse"; "executionId"?: string; "reusedFrom"?: { "path": string; "sha256": string; "bytes": number }; "reuseVerifiedAt"?: string }) | ({ "schemaVersion": 1; "receiptId": string; "attemptId": string; "sourceRevision": number; "sourceInputDigest": string; "lockfileDigest": string; "command": Array<string>; "cwd": string; "toolchain": ({  } & { [key: string]: JsonValue }); "exitCode": number; "startedAt": string; "finishedAt": string; "logRef": { "path": string; "sha256": string; "bytes": number }; "distDigest": ((string) | (null)); "archiveBuildId": ((string) | (null)); "fileManifestRef": (({ "path": string; "sha256": string; "bytes": number }) | (null)); "inputUnchanged": boolean; "verdict": "FAIL"; "executionKind"?: "executed" | "reuse"; "executionId"?: string; "reusedFrom"?: { "path": string; "sha256": string; "bytes": number }; "reuseVerifiedAt"?: string }));
 export function call5(client: AppsClient, ref: AppRef, input: Input5, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output5>> { return client.invoke(ref, catalog[5], input as JsonValue, options) as Promise<CapabilityResult<Output5>>; }
 
-export type Input6 = (({ "viewId": string; "expectedViewRevision": number; "userRequest": string; "mode": "save_as"; "title"?: string }) | ({ "viewId": string; "expectedViewRevision": number; "userRequest": string; "mode": "update"; "componentId": string; "expectedRevision": number; "title"?: string }));
-export type Output6 = ({ "componentId": string; "revision": number; "title": string; "view": ({  } & { [key: string]: JsonValue }); "userRequest": string; "savedAt": string } & { [key: string]: JsonValue });
+export type Input6 = { "attemptId": string; "epoch": number; "buildReceiptId": string; "reportRef": { "path": string; "sha256": string; "bytes": number } };
+export type Output6 = (({ "schemaVersion": 1; "receiptId": string; "attemptId": string; "buildReceiptId": string; "buildId": string; "protocol": "dsh.apps.component.v2"; "mode": "fixture" | "live_readonly"; "runnerVersion": string; "startedAt": string; "finishedAt": string; "viewportResults": Array<{ "id": string; "contentWidthCssPx": number; "heightCssPx": number; "deviceScaleFactor": number; "screenshot": { "path": string; "sha256": string; "bytes": number }; "pageErrors": Array<string>; "unhandledRejections": Array<string>; "failedRequests": Array<string>; "bridgeReady": true; "assertionIds": Array<string>; "interactionCaseIds"?: Array<string> }>; "assertionResults": Array<(({ "id": string; "required": true; "expected": string; "actual": string | null; "status": "PASS"; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }> }) | ({ "id": string; "required": false; "expected": string; "actual": string | null; "status": "PASS" | "FAIL" | "NOT_RUN" | "BLOCKED"; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }> }))>; "verdict": "PASS"; "performance"?: { "policyVersion": string; "profile": string; "imageDelayMs": number; "viewports": Array<{ "width": 420 | 1040; "initial": { "readyMs": number; "blockingMs": number; "maxTaskMs": number; "layoutShift": number; "domElements": number; "renderedRows": number; "imageRequests": number; "hiddenImageRequests": number; "visibleImages": number; "lazyVisibleImages": number; "missingImageSpace": number; "unprioritizedFirstImage": number; "loadedScriptBytes": number; "feedbackMs": ((number) | (null)) }; "interactions": Array<{ "readyMs": number; "blockingMs": number; "maxTaskMs": number; "layoutShift": number; "domElements": number; "renderedRows": number; "imageRequests": number; "hiddenImageRequests": number; "visibleImages": number; "lazyVisibleImages": number; "missingImageSpace": number; "unprioritizedFirstImage": number; "loadedScriptBytes": number; "feedbackMs": ((number) | (null)); "id": string }> }>; "verdict": "PASS" | "FAIL" | "INCOMPLETE" } }) | ({ "schemaVersion": 1; "receiptId": string; "attemptId": string; "buildReceiptId": string; "buildId": string; "protocol": "dsh.apps.component.v2"; "mode": "fixture" | "live_readonly"; "runnerVersion": string; "startedAt": string; "finishedAt": string; "viewportResults": Array<{ "id": string; "contentWidthCssPx": number; "heightCssPx": number; "deviceScaleFactor": number; "screenshot": { "path": string; "sha256": string; "bytes": number }; "pageErrors": Array<string>; "unhandledRejections": Array<string>; "failedRequests": Array<string>; "bridgeReady": boolean; "assertionIds": Array<string>; "interactionCaseIds"?: Array<string> }>; "assertionResults": Array<{ "id": string; "required": boolean; "expected": string; "actual": string | null; "status": "PASS" | "FAIL" | "NOT_RUN" | "BLOCKED"; "evidenceRefs": Array<{ "path": string; "sha256": string; "bytes": number }> }>; "verdict": "FAIL" | "INCOMPLETE"; "performance"?: { "policyVersion": string; "profile": string; "imageDelayMs": number; "viewports": Array<{ "width": 420 | 1040; "initial": { "readyMs": number; "blockingMs": number; "maxTaskMs": number; "layoutShift": number; "domElements": number; "renderedRows": number; "imageRequests": number; "hiddenImageRequests": number; "visibleImages": number; "lazyVisibleImages": number; "missingImageSpace": number; "unprioritizedFirstImage": number; "loadedScriptBytes": number; "feedbackMs": ((number) | (null)) }; "interactions": Array<{ "readyMs": number; "blockingMs": number; "maxTaskMs": number; "layoutShift": number; "domElements": number; "renderedRows": number; "imageRequests": number; "hiddenImageRequests": number; "visibleImages": number; "lazyVisibleImages": number; "missingImageSpace": number; "unprioritizedFirstImage": number; "loadedScriptBytes": number; "feedbackMs": ((number) | (null)); "id": string }> }>; "verdict": "PASS" | "FAIL" | "INCOMPLETE" } }));
 export function call6(client: AppsClient, ref: AppRef, input: Input6, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output6>> { return client.invoke(ref, catalog[6], input as JsonValue, options) as Promise<CapabilityResult<Output6>>; }
 
-export type Input7 = { "appId"?: string };
-export type Output7 = { "sources": Array<{ "id": string; "title": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": ({  } & { [key: string]: JsonValue }); "parameters": Array<{ "name": string; "label": string; "type": "string" | "number" | "integer" | "boolean"; "required"?: boolean; "default"?: JsonValue; "linked"?: boolean; "editable"?: boolean; "choices"?: Array<{ "label": string; "value": string | number | boolean }> }>; "fields": Array<{ "path": string; "role": string; "confirmed": boolean; "key"?: string; "origin"?: { "source": string; "label": string }; "label"?: string; "description"?: string; "unit"?: string; "currency"?: string; "currencyPath"?: string; "percentScale"?: "fraction" | "whole"; "numericScale"?: number }>; "rowsPath": string; "operations": { "search": { "scope": "server" | "loaded"; "param"?: string }; "sort": { "scope": "server" | "loaded"; "param"?: string; "directionParam"?: string }; "pagination"?: { "cursorParam": string; "limitParam"?: string; "nextCursorPath"?: string; "totalPath"?: string } }; "kind": "data_source"; "revision": number; "validation": { "status": "verified" | "failed" | "unverified"; "checkedAt": string; "sampleCount": number; "issues": Array<string>; "invocationId"?: string; "empty"?: boolean; "storeId"?: string }; "description"?: string; "storeScoped"?: boolean }> };
+export type Input7 = (({ "viewId": string; "expectedViewRevision": number; "userRequest": string; "mode": "save_as"; "title"?: string }) | ({ "viewId": string; "expectedViewRevision": number; "userRequest": string; "mode": "update"; "componentId": string; "expectedRevision": number; "title"?: string }));
+export type Output7 = ({ "componentId": string; "revision": number; "title": string; "view": ({  } & { [key: string]: JsonValue }); "userRequest": string; "savedAt": string } & { [key: string]: JsonValue });
 export function call7(client: AppsClient, ref: AppRef, input: Input7, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output7>> { return client.invoke(ref, catalog[7], input as JsonValue, options) as Promise<CapabilityResult<Output7>>; }
 
-export type Input8 = {  };
-export type Output8 = { "materials": Array<({  } & { [key: string]: JsonValue })>; "fieldRoles": Array<{ "key": string; "label": string; "description": string; "format": "text" | "currency" | "percent" | "integer" | "datetime" | "image"; "unit"?: string }> };
+export type Input8 = { "appId"?: string };
+export type Output8 = { "sources": Array<{ "id": string; "title": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": ({  } & { [key: string]: JsonValue }); "parameters": Array<{ "name": string; "label": string; "type": "string" | "number" | "integer" | "boolean"; "required"?: boolean; "default"?: JsonValue; "linked"?: boolean; "editable"?: boolean; "choices"?: Array<{ "label": string; "value": string | number | boolean }> }>; "fields": Array<{ "path": string; "role": string; "confirmed": boolean; "key"?: string; "origin"?: { "source": string; "label": string }; "label"?: string; "description"?: string; "unit"?: string; "currency"?: string; "currencyPath"?: string; "percentScale"?: "fraction" | "whole"; "numericScale"?: number }>; "rowsPath": string; "operations": { "search": { "scope": "server" | "loaded"; "param"?: string }; "sort": { "scope": "server" | "loaded"; "param"?: string; "directionParam"?: string }; "pagination"?: { "cursorParam": string; "limitParam"?: string; "nextCursorPath"?: string; "totalPath"?: string } }; "kind": "data_source"; "revision": number; "validation": { "status": "verified" | "failed" | "unverified"; "checkedAt": string; "sampleCount": number; "issues": Array<string>; "invocationId"?: string; "empty"?: boolean; "storeId"?: string }; "description"?: string; "storeScoped"?: boolean }> };
 export function call8(client: AppsClient, ref: AppRef, input: Input8, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output8>> { return client.invoke(ref, catalog[8], input as JsonValue, options) as Promise<CapabilityResult<Output8>>; }
 
 export type Input9 = {  };
-export type Output9 = { "components": Array<{ "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> }>; "assets": Array<((({ "assetId": string; "kind": "entry"; "title": string; "userRequest": string; "pinned": boolean; "order": number; "entryKind"?: "data" | "component"; "componentId"?: string; "binding"?: { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }; "legacyBinding"?: { "id": string; "fieldMap": ({  } & { [key: string]: JsonValue }); "datasetKey"?: string; "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }; "legacyFieldOrder"?: Array<string> }) & (({ "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string } }) | ({ "componentId": string }))) | ({ "assetId": string; "kind": "template"; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "userRequest": string; "description"?: string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "savedAt"?: string }))> };
+export type Output9 = { "materials": Array<({  } & { [key: string]: JsonValue })>; "fieldRoles": Array<{ "key": string; "label": string; "description": string; "format": "text" | "currency" | "percent" | "integer" | "datetime" | "image"; "unit"?: string }> };
 export function call9(client: AppsClient, ref: AppRef, input: Input9, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output9>> { return client.invoke(ref, catalog[9], input as JsonValue, options) as Promise<CapabilityResult<Output9>>; }
 
-export type Input10 = { "kind": "component" | "entry" | "template"; "id": string; "action": "rename" | "delete" | "pin" | "reorder"; "name"?: string; "order"?: number; "pinned"?: boolean; "expectedRevision"?: number };
-export type Output10 = (({ "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> }) | (({ "assetId": string; "kind": "entry"; "title": string; "userRequest": string; "pinned": boolean; "order": number; "entryKind"?: "data" | "component"; "componentId"?: string; "binding"?: { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }; "legacyBinding"?: { "id": string; "fieldMap": ({  } & { [key: string]: JsonValue }); "datasetKey"?: string; "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }; "legacyFieldOrder"?: Array<string> }) & (({ "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string } }) | ({ "componentId": string }))) | ({ "assetId": string; "kind": "template"; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "userRequest": string; "description"?: string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "savedAt"?: string }) | ({ "deleted": true; "id": string }));
+export type Input10 = {  };
+export type Output10 = { "components": Array<{ "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" | "preparing" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> }>; "assets": Array<((({ "assetId": string; "kind": "entry"; "title": string; "userRequest": string; "pinned": boolean; "order": number; "entryKind"?: "data" | "component"; "componentId"?: string; "binding"?: { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }; "legacyBinding"?: { "id": string; "fieldMap": ({  } & { [key: string]: JsonValue }); "datasetKey"?: string; "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }; "legacyFieldOrder"?: Array<string> }) & (({ "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string } }) | ({ "componentId": string }))) | ({ "assetId": string; "kind": "template"; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "userRequest": string; "description"?: string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "savedAt"?: string }))> };
 export function call10(client: AppsClient, ref: AppRef, input: Input10, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output10>> { return client.invoke(ref, catalog[10], input as JsonValue, options) as Promise<CapabilityResult<Output10>>; }
 
-export type Input11 = { "componentId": string; "revision"?: number; "directory"?: string; "context"?: { "storeId": string }; "newCopy"?: boolean };
-export type Output11 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
+export type Input11 = { "kind": "component" | "entry" | "template"; "id": string; "action": "rename" | "delete" | "pin" | "reorder"; "name"?: string; "order"?: number; "pinned"?: boolean; "expectedRevision"?: number };
+export type Output11 = (({ "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" | "preparing" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> }) | (({ "assetId": string; "kind": "entry"; "title": string; "userRequest": string; "pinned": boolean; "order": number; "entryKind"?: "data" | "component"; "componentId"?: string; "binding"?: { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }; "legacyBinding"?: { "id": string; "fieldMap": ({  } & { [key: string]: JsonValue }); "datasetKey"?: string; "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }; "legacyFieldOrder"?: Array<string> }) & (({ "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string } }) | ({ "componentId": string }))) | ({ "assetId": string; "kind": "template"; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "userRequest": string; "description"?: string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "savedAt"?: string }) | ({ "deleted": true; "id": string }));
 export function call11(client: AppsClient, ref: AppRef, input: Input11, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output11>> { return client.invoke(ref, catalog[11], input as JsonValue, options) as Promise<CapabilityResult<Output11>>; }
 
-export type Input12 = { "directory": string; "title"?: string; "viewId"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "legacyBindings"?: Array<{ "id": string; "fieldMap": ({  } & { [key: string]: JsonValue }); "datasetKey"?: string; "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }> };
-export type Output12 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
+export type Input12 = { "componentId": string; "revision"?: number; "directory"?: string; "context"?: { "storeId": string }; "newCopy"?: boolean };
+export type Output12 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" | "preparing" }> };
 export function call12(client: AppsClient, ref: AppRef, input: Input12, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output12>> { return client.invoke(ref, catalog[12], input as JsonValue, options) as Promise<CapabilityResult<Output12>>; }
 
-export type Input13 = { "definition": { "id": string; "title": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": ({  } & { [key: string]: JsonValue }); "parameters": Array<{ "name": string; "label": string; "type": "string" | "number" | "integer" | "boolean"; "required"?: boolean; "default"?: JsonValue; "linked"?: boolean; "editable"?: boolean; "choices"?: Array<{ "label": string; "value": string | number | boolean }> }>; "fields": Array<{ "path": string; "role": string; "confirmed": boolean; "key"?: string; "origin"?: { "source": string; "label": string }; "label"?: string; "description"?: string; "unit"?: string; "currency"?: string; "currencyPath"?: string; "percentScale"?: "fraction" | "whole"; "numericScale"?: number }>; "rowsPath": string; "operations": { "search": { "scope": "server" | "loaded"; "param"?: string }; "sort": { "scope": "server" | "loaded"; "param"?: string; "directionParam"?: string }; "pagination"?: { "cursorParam": string; "limitParam"?: string; "nextCursorPath"?: string; "totalPath"?: string } }; "description"?: string; "storeScoped"?: boolean }; "expectedRevision"?: number; "context"?: { "storeId": string }; "params"?: ({  } & { [key: string]: JsonValue }) };
-export type Output13 = { "id": string; "title": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": ({  } & { [key: string]: JsonValue }); "parameters": Array<{ "name": string; "label": string; "type": "string" | "number" | "integer" | "boolean"; "required"?: boolean; "default"?: JsonValue; "linked"?: boolean; "editable"?: boolean; "choices"?: Array<{ "label": string; "value": string | number | boolean }> }>; "fields": Array<{ "path": string; "role": string; "confirmed": boolean; "key"?: string; "origin"?: { "source": string; "label": string }; "label"?: string; "description"?: string; "unit"?: string; "currency"?: string; "currencyPath"?: string; "percentScale"?: "fraction" | "whole"; "numericScale"?: number }>; "rowsPath": string; "operations": { "search": { "scope": "server" | "loaded"; "param"?: string }; "sort": { "scope": "server" | "loaded"; "param"?: string; "directionParam"?: string }; "pagination"?: { "cursorParam": string; "limitParam"?: string; "nextCursorPath"?: string; "totalPath"?: string } }; "kind": "data_source"; "revision": number; "validation": { "status": "verified" | "failed" | "unverified"; "checkedAt": string; "sampleCount": number; "issues": Array<string>; "invocationId"?: string; "empty"?: boolean; "storeId"?: string }; "description"?: string; "storeScoped"?: boolean };
+export type Input13 = { "directory": string; "title"?: string; "viewId"?: string; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "legacyBindings"?: Array<{ "id": string; "fieldMap": ({  } & { [key: string]: JsonValue }); "datasetKey"?: string; "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }> };
+export type Output13 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" | "preparing" }> };
 export function call13(client: AppsClient, ref: AppRef, input: Input13, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output13>> { return client.invoke(ref, catalog[13], input as JsonValue, options) as Promise<CapabilityResult<Output13>>; }
 
-export type Input14 = { "title": string; "design"?: JsonValue; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "viewId"?: string; "legacyViewId"?: string; "templateId"?: string; "directory"?: string; "legacyBindings"?: Array<{ "id": string; "fieldMap": ({  } & { [key: string]: JsonValue }); "datasetKey"?: string; "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }>; "requiredBindingIds"?: Array<string>; "legacyNeedsSpecification"?: boolean };
-export type Output14 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
+export type Input14 = { "definition": { "id": string; "title": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": ({  } & { [key: string]: JsonValue }); "parameters": Array<{ "name": string; "label": string; "type": "string" | "number" | "integer" | "boolean"; "required"?: boolean; "default"?: JsonValue; "linked"?: boolean; "editable"?: boolean; "choices"?: Array<{ "label": string; "value": string | number | boolean }> }>; "fields": Array<{ "path": string; "role": string; "confirmed": boolean; "key"?: string; "origin"?: { "source": string; "label": string }; "label"?: string; "description"?: string; "unit"?: string; "currency"?: string; "currencyPath"?: string; "percentScale"?: "fraction" | "whole"; "numericScale"?: number }>; "rowsPath": string; "operations": { "search": { "scope": "server" | "loaded"; "param"?: string }; "sort": { "scope": "server" | "loaded"; "param"?: string; "directionParam"?: string }; "pagination"?: { "cursorParam": string; "limitParam"?: string; "nextCursorPath"?: string; "totalPath"?: string } }; "description"?: string; "storeScoped"?: boolean }; "expectedRevision"?: number; "context"?: { "storeId": string }; "params"?: ({  } & { [key: string]: JsonValue }) };
+export type Output14 = { "id": string; "title": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": ({  } & { [key: string]: JsonValue }); "parameters": Array<{ "name": string; "label": string; "type": "string" | "number" | "integer" | "boolean"; "required"?: boolean; "default"?: JsonValue; "linked"?: boolean; "editable"?: boolean; "choices"?: Array<{ "label": string; "value": string | number | boolean }> }>; "fields": Array<{ "path": string; "role": string; "confirmed": boolean; "key"?: string; "origin"?: { "source": string; "label": string }; "label"?: string; "description"?: string; "unit"?: string; "currency"?: string; "currencyPath"?: string; "percentScale"?: "fraction" | "whole"; "numericScale"?: number }>; "rowsPath": string; "operations": { "search": { "scope": "server" | "loaded"; "param"?: string }; "sort": { "scope": "server" | "loaded"; "param"?: string; "directionParam"?: string }; "pagination"?: { "cursorParam": string; "limitParam"?: string; "nextCursorPath"?: string; "totalPath"?: string } }; "kind": "data_source"; "revision": number; "validation": { "status": "verified" | "failed" | "unverified"; "checkedAt": string; "sampleCount": number; "issues": Array<string>; "invocationId"?: string; "empty"?: boolean; "storeId"?: string }; "description"?: string; "storeScoped"?: boolean };
 export function call14(client: AppsClient, ref: AppRef, input: Input14, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output14>> { return client.invoke(ref, catalog[14], input as JsonValue, options) as Promise<CapabilityResult<Output14>>; }
 
-export type Input15 = { "id": string; "revision": number; "bindingId": string; "context"?: { "storeId": string }; "params"?: ({  } & { [key: string]: JsonValue }) };
-export type Output15 = { "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }; "sourceRef": { "id": string; "revision": number; "params": ({  } & { [key: string]: JsonValue }) }; "fieldMap": ({  } & { [key: string]: JsonValue }); "fieldMeta": ({  } & { [key: string]: JsonValue }); "rowsPath": string };
+export type Input15 = { "title": string; "design"?: JsonValue; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "viewId"?: string; "legacyViewId"?: string; "templateId"?: string; "directory"?: string; "legacyBindings"?: Array<{ "id": string; "fieldMap": ({  } & { [key: string]: JsonValue }); "datasetKey"?: string; "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }>; "requiredBindingIds"?: Array<string>; "legacyNeedsSpecification"?: boolean };
+export type Output15 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" | "preparing" }> };
 export function call15(client: AppsClient, ref: AppRef, input: Input15, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output15>> { return client.invoke(ref, catalog[15], input as JsonValue, options) as Promise<CapabilityResult<Output15>>; }
 
-export type Input16 = { "viewId": string; "userRequest": string; "mode": "save_as" | "update"; "title"?: string; "componentId"?: string; "expectedRevision"?: number; "legacyComponentId"?: string; "legacyTemplate"?: JsonValue };
-export type Output16 = { "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> };
+export type Input16 = { "id": string; "revision": number; "bindingId": string; "context"?: { "storeId": string }; "params"?: ({  } & { [key: string]: JsonValue }) };
+export type Output16 = { "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }; "sourceRef": { "id": string; "revision": number; "params": ({  } & { [key: string]: JsonValue }) }; "fieldMap": ({  } & { [key: string]: JsonValue }); "fieldMeta": ({  } & { [key: string]: JsonValue }); "rowsPath": string };
 export function call16(client: AppsClient, ref: AppRef, input: Input16, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output16>> { return client.invoke(ref, catalog[16], input as JsonValue, options) as Promise<CapabilityResult<Output16>>; }
 
-export type Input17 = { "title": string; "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }; "userRequest": string; "legacyBinding"?: { "id": string; "fieldMap": ({  } & { [key: string]: JsonValue }); "datasetKey"?: string; "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }; "legacyFieldOrder"?: Array<string> };
-export type Output17 = ({ "assetId": string; "kind": "entry"; "title": string; "userRequest": string; "pinned": boolean; "order": number; "entryKind"?: "data" | "component"; "componentId"?: string; "binding"?: { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }; "legacyBinding"?: { "id": string; "fieldMap": ({  } & { [key: string]: JsonValue }); "datasetKey"?: string; "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }; "legacyFieldOrder"?: Array<string> }) & (({ "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string } }) | ({ "componentId": string }));
+export type Input17 = { "viewId": string; "userRequest": string; "mode": "save_as" | "update"; "title"?: string; "componentId"?: string; "expectedRevision"?: number; "legacyComponentId"?: string; "legacyTemplate"?: JsonValue };
+export type Output17 = { "componentId": string; "revision": number; "title": string; "view": { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" | "preparing" }> }; "userRequest": string; "savedAt": string; "legacyTemplate"?: JsonValue; "revisions"?: Array<{ "revision": number; "title": string; "savedAt": string; "buildId"?: string }> };
 export function call17(client: AppsClient, ref: AppRef, input: Input17, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output17>> { return client.invoke(ref, catalog[17], input as JsonValue, options) as Promise<CapabilityResult<Output17>>; }
 
-export type Input18 = { "viewId": string; "name": string; "userRequest": string; "description"?: string };
-export type Output18 = { "assetId": string; "kind": "template"; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "userRequest": string; "description"?: string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "savedAt"?: string };
+export type Input18 = { "title": string; "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }; "userRequest": string; "legacyBinding"?: { "id": string; "fieldMap": ({  } & { [key: string]: JsonValue }); "datasetKey"?: string; "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }; "legacyFieldOrder"?: Array<string> };
+export type Output18 = ({ "assetId": string; "kind": "entry"; "title": string; "userRequest": string; "pinned": boolean; "order": number; "entryKind"?: "data" | "component"; "componentId"?: string; "binding"?: { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }; "legacyBinding"?: { "id": string; "fieldMap": ({  } & { [key: string]: JsonValue }); "datasetKey"?: string; "query"?: { "tool": string; "params": ({  } & { [key: string]: JsonValue }) } }; "legacyFieldOrder"?: Array<string> }) & (({ "binding": { "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string } }) | ({ "componentId": string }));
 export function call18(client: AppsClient, ref: AppRef, input: Input18, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output18>> { return client.invoke(ref, catalog[18], input as JsonValue, options) as Promise<CapabilityResult<Output18>>; }
 
-export type Input19 = { "viewId": string; "title"?: string; "design"?: JsonValue; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string } };
-export type Output19 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" }> };
+export type Input19 = { "viewId": string; "name": string; "userRequest": string; "description"?: string };
+export type Output19 = { "assetId": string; "kind": "template"; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "userRequest": string; "description"?: string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "savedAt"?: string };
 export function call19(client: AppsClient, ref: AppRef, input: Input19, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output19>> { return client.invoke(ref, catalog[19], input as JsonValue, options) as Promise<CapabilityResult<Output19>>; }
 
-export type Input20 = { "definition": { "id": string; "title": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": ({  } & { [key: string]: JsonValue }); "parameters": Array<{ "name": string; "label": string; "type": "string" | "number" | "integer" | "boolean"; "required"?: boolean; "default"?: JsonValue; "linked"?: boolean; "editable"?: boolean; "choices"?: Array<{ "label": string; "value": string | number | boolean }> }>; "fields": Array<{ "path": string; "role": string; "confirmed": boolean; "key"?: string; "origin"?: { "source": string; "label": string }; "label"?: string; "description"?: string; "unit"?: string; "currency"?: string; "currencyPath"?: string; "percentScale"?: "fraction" | "whole"; "numericScale"?: number }>; "rowsPath": string; "operations": { "search": { "scope": "server" | "loaded"; "param"?: string }; "sort": { "scope": "server" | "loaded"; "param"?: string; "directionParam"?: string }; "pagination"?: { "cursorParam": string; "limitParam"?: string; "nextCursorPath"?: string; "totalPath"?: string } }; "description"?: string; "storeScoped"?: boolean }; "expectedRevision"?: number; "context"?: { "storeId": string }; "params"?: ({  } & { [key: string]: JsonValue }) };
-export type Output20 = { "status": "verified" | "failed" | "unverified"; "checkedAt": string; "sampleCount": number; "issues": Array<string>; "invocationId"?: string; "empty"?: boolean; "storeId"?: string };
+export type Input20 = { "viewId": string; "title"?: string; "design"?: JsonValue; "bindings"?: Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string } };
+export type Output20 = { "viewId": string; "ownerSessionId": string | null; "title": string; "design": JsonValue; "bindings": Array<{ "bindingId": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": JsonValue; "projection": Array<string>; "refresh": { "mode": "manual" | "scheduled"; "scheduleId"?: string }; "datasetId"?: string }>; "createdAt": string; "updatedAt": string; "sourceRefs"?: ({  } & { [key: string]: JsonValue }); "context"?: { "storeId": string }; "source"?: { "buildId": string; "directory": string; "entry": string; "files": Array<string>; "thumbnail"?: string; "preview"?: { "screenshotPath": string; "reportPath": string; "width"?: number; "height"?: number; "capturedAt"?: string } }; "panelState"?: "open" | "closed"; "closedAt"?: string; "sourceComponentId"?: string; "baseRevision"?: number; "baseRevisionAtOpen"?: number; "selectedSourceRevision"?: number; "viewRevision"?: number; "activeBuildId"?: string | null; "lastGoodBuildId"?: string | null; "previousGoodBuildId"?: string | null; "pendingPublicationId"?: string | null; "validationStatus"?: "draft_unpublished" | "legacy_unverified" | "verified" | "failed"; "initialData"?: Array<{ "bindingId": string; "datasetId": string; "status": "ready" | "failed" | "unavailable" | "empty" | "preparing" }> };
 export function call20(client: AppsClient, ref: AppRef, input: Input20, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output20>> { return client.invoke(ref, catalog[20], input as JsonValue, options) as Promise<CapabilityResult<Output20>>; }
 
-export type Input21 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
-export type Output21 = (({ "response"?: JsonValue; "httpStatus"?: number; "outcome"?: "pending" | "response_received" | "outcome_unknown"; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "response": JsonValue } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
+export type Input21 = { "definition": { "id": string; "title": string; "appId": string; "connectionId": string; "capabilityId": string; "capabilityMajor": number; "input": ({  } & { [key: string]: JsonValue }); "parameters": Array<{ "name": string; "label": string; "type": "string" | "number" | "integer" | "boolean"; "required"?: boolean; "default"?: JsonValue; "linked"?: boolean; "editable"?: boolean; "choices"?: Array<{ "label": string; "value": string | number | boolean }> }>; "fields": Array<{ "path": string; "role": string; "confirmed": boolean; "key"?: string; "origin"?: { "source": string; "label": string }; "label"?: string; "description"?: string; "unit"?: string; "currency"?: string; "currencyPath"?: string; "percentScale"?: "fraction" | "whole"; "numericScale"?: number }>; "rowsPath": string; "operations": { "search": { "scope": "server" | "loaded"; "param"?: string }; "sort": { "scope": "server" | "loaded"; "param"?: string; "directionParam"?: string }; "pagination"?: { "cursorParam": string; "limitParam"?: string; "nextCursorPath"?: string; "totalPath"?: string } }; "description"?: string; "storeScoped"?: boolean }; "expectedRevision"?: number; "context"?: { "storeId": string }; "params"?: ({  } & { [key: string]: JsonValue }) };
+export type Output21 = { "status": "verified" | "failed" | "unverified"; "checkedAt": string; "sampleCount": number; "issues": Array<string>; "invocationId"?: string; "empty"?: boolean; "storeId"?: string };
 export function call21(client: AppsClient, ref: AppRef, input: Input21, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output21>> { return client.invoke(ref, catalog[21], input as JsonValue, options) as Promise<CapabilityResult<Output21>>; }
 
 export type Input22 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
@@ -21598,27 +24591,27 @@ export type Input23 = { "storeId"?: string; "store"?: string; "body"?: ({  } & {
 export type Output23 = (({ "response"?: JsonValue; "httpStatus"?: number; "outcome"?: "pending" | "response_received" | "outcome_unknown"; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "response": JsonValue } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call23(client: AppsClient, ref: AppRef, input: Input23, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output23>> { return client.invoke(ref, catalog[23], input as JsonValue, options) as Promise<CapabilityResult<Output23>>; }
 
-export type Input24 = (object) & ((({ "mode": "search"; "q": string; "storeId"?: string; "store"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "show"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "template"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "values"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "storeId"?: string; "store"?: string; "q"?: string; "limit"?: number; "lastValueId"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "validate_value"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "valueId": string; "dictionaryId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "sync"; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))));
-export type Output24 = (({ "datasetKey": string; "query": { "tool": "hallmark_get_category_data"; "params": ({  } & { [key: string]: JsonValue }) }; "raw"?: ({  } & { [key: string]: JsonValue }); "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "raw": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
+export type Input24 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output24 = (({ "response"?: JsonValue; "httpStatus"?: number; "outcome"?: "pending" | "response_received" | "outcome_unknown"; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "response": JsonValue } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call24(client: AppsClient, ref: AppRef, input: Input24, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output24>> { return client.invoke(ref, catalog[24], input as JsonValue, options) as Promise<CapabilityResult<Output24>>; }
 
-export type Input25 = { "itemId": string };
-export type Output25 = (({ "id"?: string; "content"?: string; "truncated"?: boolean; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "id": string; "content": string; "truncated": boolean } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
+export type Input25 = (object) & ((({ "mode": "search"; "q": string; "storeId"?: string; "store"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "show"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "template"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "values"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "storeId"?: string; "store"?: string; "q"?: string; "limit"?: number; "lastValueId"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "validate_value"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "valueId": string; "dictionaryId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "sync"; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))));
+export type Output25 = (({ "datasetKey": string; "query": { "tool": "hallmark_get_category_data"; "params": ({  } & { [key: string]: JsonValue }) }; "raw"?: ({  } & { [key: string]: JsonValue }); "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "raw": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call25(client: AppsClient, ref: AppRef, input: Input25, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output25>> { return client.invoke(ref, catalog[25], input as JsonValue, options) as Promise<CapabilityResult<Output25>>; }
 
-export type Input26 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
-export type Output26 = (({ "response"?: JsonValue; "httpStatus"?: number; "outcome"?: "pending" | "response_received" | "outcome_unknown"; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "response": JsonValue } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
+export type Input26 = { "itemId": string };
+export type Output26 = (({ "id"?: string; "content"?: string; "truncated"?: boolean; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "id": string; "content": string; "truncated": boolean } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call26(client: AppsClient, ref: AppRef, input: Input26, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output26>> { return client.invoke(ref, catalog[26], input as JsonValue, options) as Promise<CapabilityResult<Output26>>; }
 
 export type Input27 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
 export type Output27 = (({ "response"?: JsonValue; "httpStatus"?: number; "outcome"?: "pending" | "response_received" | "outcome_unknown"; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "response": JsonValue } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call27(client: AppsClient, ref: AppRef, input: Input27, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output27>> { return client.invoke(ref, catalog[27], input as JsonValue, options) as Promise<CapabilityResult<Output27>>; }
 
-export type Input28 = ({ "body": (({ "offer_id"?: Array<string>; "product_id"?: Array<((string) | (number))>; "sku"?: Array<((string) | (number))> } & { [key: string]: JsonValue })) & ((({ "offer_id": Array<JsonValue> } & { [key: string]: JsonValue })) | (({ "product_id": Array<JsonValue> } & { [key: string]: JsonValue })) | (({ "sku": Array<JsonValue> } & { [key: string]: JsonValue }))); "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }));
+export type Input28 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
 export type Output28 = (({ "response"?: JsonValue; "httpStatus"?: number; "outcome"?: "pending" | "response_received" | "outcome_unknown"; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "response": JsonValue } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call28(client: AppsClient, ref: AppRef, input: Input28, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output28>> { return client.invoke(ref, catalog[28], input as JsonValue, options) as Promise<CapabilityResult<Output28>>; }
 
-export type Input29 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Input29 = ({ "body": (({ "offer_id"?: Array<string>; "product_id"?: Array<((string) | (number))>; "sku"?: Array<((string) | (number))> } & { [key: string]: JsonValue })) & ((({ "offer_id": Array<JsonValue> } & { [key: string]: JsonValue })) | (({ "product_id": Array<JsonValue> } & { [key: string]: JsonValue })) | (({ "sku": Array<JsonValue> } & { [key: string]: JsonValue }))); "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }));
 export type Output29 = (({ "response"?: JsonValue; "httpStatus"?: number; "outcome"?: "pending" | "response_received" | "outcome_unknown"; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "response": JsonValue } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call29(client: AppsClient, ref: AppRef, input: Input29, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output29>> { return client.invoke(ref, catalog[29], input as JsonValue, options) as Promise<CapabilityResult<Output29>>; }
 
@@ -21626,242 +24619,254 @@ export type Input30 = { "storeId"?: string; "store"?: string; "body"?: ({  } & {
 export type Output30 = (({ "response"?: JsonValue; "httpStatus"?: number; "outcome"?: "pending" | "response_received" | "outcome_unknown"; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "response": JsonValue } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call30(client: AppsClient, ref: AppRef, input: Input30, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output30>> { return client.invoke(ref, catalog[30], input as JsonValue, options) as Promise<CapabilityResult<Output30>>; }
 
-export type Input31 = ({ "storeId": string; "price": number; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "currency"?: string; "oldPrice"?: number; "actionId"?: number }) & (({ "offerIds": Array<string> }) | ({ "productIds": Array<string> }));
-export type Output31 = ({  } & { [key: string]: JsonValue });
+export type Input31 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output31 = (({ "response"?: JsonValue; "httpStatus"?: number; "outcome"?: "pending" | "response_received" | "outcome_unknown"; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "response": JsonValue } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call31(client: AppsClient, ref: AppRef, input: Input31, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output31>> { return client.invoke(ref, catalog[31], input as JsonValue, options) as Promise<CapabilityResult<Output31>>; }
 
-export type Input32 = {  };
-export type Output32 = (({ "products"?: Array<({  } & { [key: string]: JsonValue })>; "stores"?: Array<({  } & { [key: string]: JsonValue })>; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "products": Array<({  } & { [key: string]: JsonValue })>; "stores": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
+export type Input32 = ({ "storeId": string; "price": number; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "currency"?: string; "oldPrice"?: number; "actionId"?: number }) & (({ "offerIds": Array<string> }) | ({ "productIds": Array<string> }));
+export type Output32 = ({  } & { [key: string]: JsonValue });
 export function call32(client: AppsClient, ref: AppRef, input: Input32, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output32>> { return client.invoke(ref, catalog[32], input as JsonValue, options) as Promise<CapabilityResult<Output32>>; }
 
 export type Input33 = {  };
-export type Output33 = ({  } & { [key: string]: JsonValue });
+export type Output33 = (({ "products"?: Array<({  } & { [key: string]: JsonValue })>; "stores"?: Array<({  } & { [key: string]: JsonValue })>; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "products": Array<({  } & { [key: string]: JsonValue })>; "stores": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call33(client: AppsClient, ref: AppRef, input: Input33, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output33>> { return client.invoke(ref, catalog[33], input as JsonValue, options) as Promise<CapabilityResult<Output33>>; }
 
 export type Input34 = {  };
-export type Output34 = Array<(({ "id"?: string; "storeId"?: string; "store_id"?: string } & { [key: string]: JsonValue })) & ((({ "id": string } & { [key: string]: JsonValue })) | (({ "storeId": string } & { [key: string]: JsonValue })) | (({ "store_id": string } & { [key: string]: JsonValue })))>;
+export type Output34 = ({  } & { [key: string]: JsonValue });
 export function call34(client: AppsClient, ref: AppRef, input: Input34, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output34>> { return client.invoke(ref, catalog[34], input as JsonValue, options) as Promise<CapabilityResult<Output34>>; }
 
 export type Input35 = {  };
-export type Output35 = ({  } & { [key: string]: JsonValue });
+export type Output35 = Array<(({ "id"?: string; "storeId"?: string; "store_id"?: string } & { [key: string]: JsonValue })) & ((({ "id": string } & { [key: string]: JsonValue })) | (({ "storeId": string } & { [key: string]: JsonValue })) | (({ "store_id": string } & { [key: string]: JsonValue })))>;
 export function call35(client: AppsClient, ref: AppRef, input: Input35, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output35>> { return client.invoke(ref, catalog[35], input as JsonValue, options) as Promise<CapabilityResult<Output35>>; }
 
-export type Input36 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
-export type Output36 = (({ "response"?: JsonValue; "httpStatus"?: number; "outcome"?: "pending" | "response_received" | "outcome_unknown"; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "response": JsonValue } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
+export type Input36 = {  };
+export type Output36 = ({  } & { [key: string]: JsonValue });
 export function call36(client: AppsClient, ref: AppRef, input: Input36, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output36>> { return client.invoke(ref, catalog[36], input as JsonValue, options) as Promise<CapabilityResult<Output36>>; }
 
-export type Input37 = {  };
-export type Output37 = ({ "appId": "hallmark"; "instructions": string; "tools": Array<{ "name": string; "kind": string }>; "boundaries": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
+export type Input37 = { "storeId"?: string; "store"?: string; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output37 = (({ "response"?: JsonValue; "httpStatus"?: number; "outcome"?: "pending" | "response_received" | "outcome_unknown"; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "response": JsonValue } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call37(client: AppsClient, ref: AppRef, input: Input37, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output37>> { return client.invoke(ref, catalog[37], input as JsonValue, options) as Promise<CapabilityResult<Output37>>; }
 
-export type Input38 = (object) & ((({ "mode": "search"; "q": string; "storeId"?: string; "store"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "show"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "template"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "values"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "storeId"?: string; "store"?: string; "q"?: string; "limit"?: number; "lastValueId"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "validate_value"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "valueId": string; "dictionaryId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "sync"; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))));
-export type Output38 = (({ "datasetKey": string; "query": { "tool": "hallmark_get_category_data"; "params": ({  } & { [key: string]: JsonValue }) }; "raw"?: ({  } & { [key: string]: JsonValue }); "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "raw": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
+export type Input38 = {  };
+export type Output38 = ({ "appId": "hallmark"; "instructions": string; "tools": Array<{ "name": string; "kind": string }>; "boundaries": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
 export function call38(client: AppsClient, ref: AppRef, input: Input38, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output38>> { return client.invoke(ref, catalog[38], input as JsonValue, options) as Promise<CapabilityResult<Output38>>; }
 
-export type Input39 = { "itemId": string };
-export type Output39 = (({ "id"?: string; "content"?: string; "truncated"?: boolean; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "id": string; "content": string; "truncated": boolean } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
+export type Input39 = (object) & ((({ "mode": "search"; "q": string; "storeId"?: string; "store"?: string; "aspects"?: Array<string>; "requireAspects"?: boolean; "limit"?: number }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "show"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "template"; "descriptionCategoryId": string; "typeId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "values"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "storeId"?: string; "store"?: string; "q"?: string; "limit"?: number; "lastValueId"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "validate_value"; "descriptionCategoryId": string; "typeId": string; "attributeId": string; "valueId": string; "dictionaryId": string; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))) | (({ "mode": "sync"; "storeId"?: string; "store"?: string }) & (({ "storeId": string }) | ({ "store": string }))));
+export type Output39 = (({ "datasetKey": string; "query": { "tool": "hallmark_get_category_data"; "params": ({  } & { [key: string]: JsonValue }) }; "raw"?: ({  } & { [key: string]: JsonValue }); "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "raw": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call39(client: AppsClient, ref: AppRef, input: Input39, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output39>> { return client.invoke(ref, catalog[39], input as JsonValue, options) as Promise<CapabilityResult<Output39>>; }
 
-export type Input40 = { "cursor"?: string; "limit"?: number; "query"?: string };
-export type Output40 = ((({ "datasetKey": string; "items": Array<({  } & { [key: string]: JsonValue })>; "total": number; "cursor"?: string } & { [key: string]: JsonValue })) | (({ "datasetKey": string; "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "total": number; "cursor": string; "limit": number } & { [key: string]: JsonValue })));
+export type Input40 = { "itemId": string };
+export type Output40 = (({ "id"?: string; "content"?: string; "truncated"?: boolean; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "id": string; "content": string; "truncated": boolean } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call40(client: AppsClient, ref: AppRef, input: Input40, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output40>> { return client.invoke(ref, catalog[40], input as JsonValue, options) as Promise<CapabilityResult<Output40>>; }
 
-export type Input41 = { "itemId": string };
-export type Output41 = { "items": Array<({  } & { [key: string]: JsonValue })>; "total": number };
+export type Input41 = { "cursor"?: string; "limit"?: number; "query"?: string };
+export type Output41 = ((({ "datasetKey": string; "items": Array<({  } & { [key: string]: JsonValue })>; "total": number; "cursor"?: string } & { [key: string]: JsonValue })) | (({ "datasetKey": string; "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "total": number; "cursor": string; "limit": number } & { [key: string]: JsonValue })));
 export function call41(client: AppsClient, ref: AppRef, input: Input41, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output41>> { return client.invoke(ref, catalog[41], input as JsonValue, options) as Promise<CapabilityResult<Output41>>; }
 
-export type Input42 = ({ "id"?: string; "ids"?: Array<string>; "skuIds"?: Array<string>; "selections"?: Array<{ "id": string; "skuIds"?: Array<string>; "cursor"?: string; "revision"?: string }>; "cursor"?: string; "revision"?: string; "limit"?: number; "maxBytes"?: number; "refresh"?: boolean }) & (({ "id": string }) | ({ "ids": Array<string> }) | ({ "selections": Array<{ "id": string; "skuIds"?: Array<string>; "cursor"?: string; "revision"?: string }> }) | ({ "cursor": string }));
-export type Output42 = ({  } & { [key: string]: JsonValue });
+export type Input42 = { "itemId": string };
+export type Output42 = { "items": Array<({  } & { [key: string]: JsonValue })>; "total": number };
 export function call42(client: AppsClient, ref: AppRef, input: Input42, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output42>> { return client.invoke(ref, catalog[42], input as JsonValue, options) as Promise<CapabilityResult<Output42>>; }
 
-export type Input43 = { "id": string; "kind"?: "raw" | "description" | "images" | "image"; "path"?: string; "assetId"?: string; "role"?: "main" | "sku" | "detail"; "skuIds"?: Array<string>; "cursor"?: string; "revision"?: string; "limit"?: number; "maxBytes"?: number };
+export type Input43 = { "id": string; "storeId": string; "cursor"?: string; "limit"?: number; "refresh"?: boolean };
 export type Output43 = ({  } & { [key: string]: JsonValue });
 export function call43(client: AppsClient, ref: AppRef, input: Input43, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output43>> { return client.invoke(ref, catalog[43], input as JsonValue, options) as Promise<CapabilityResult<Output43>>; }
 
-export type Input44 = { "query"?: string; "source"?: string; "category"?: string; "price"?: { "meaning": "purchase_cost" | "source_display_price"; "currency": string; "min"?: number; "max"?: number }; "store"?: { "id": string; "listingRecord"?: "found" | "not_found" | "unavailable"; "status"?: "listed" | "partial" | "not_listed" | "unknown"; "saleState"?: "on_sale" | "out_of_stock" | "pending" | "archived" | "failed" | "not_sellable" | "unknown"; "association"?: "linked" | "none" | "unknown" }; "limit"?: number; "cursor"?: string; "refresh"?: boolean };
+export type Input44 = ({ "id"?: string; "ids"?: Array<string>; "skuIds"?: Array<string>; "selections"?: Array<{ "id": string; "skuIds"?: Array<string>; "cursor"?: string; "revision"?: string }>; "cursor"?: string; "revision"?: string; "limit"?: number; "maxBytes"?: number; "refresh"?: boolean }) & (({ "id": string }) | ({ "ids": Array<string> }) | ({ "selections": Array<{ "id": string; "skuIds"?: Array<string>; "cursor"?: string; "revision"?: string }> }) | ({ "cursor": string }));
 export type Output44 = ({  } & { [key: string]: JsonValue });
 export function call44(client: AppsClient, ref: AppRef, input: Input44, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output44>> { return client.invoke(ref, catalog[44], input as JsonValue, options) as Promise<CapabilityResult<Output44>>; }
 
-export type Input45 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
-export type Output45 = ({ "datasetKey": string; "snapshot": ({  } & { [key: string]: JsonValue }); "counts": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
+export type Input45 = { "id": string; "kind"?: "raw" | "description" | "images" | "image"; "path"?: string; "assetId"?: string; "role"?: "main" | "sku" | "detail"; "skuIds"?: Array<string>; "cursor"?: string; "revision"?: string; "limit"?: number; "maxBytes"?: number };
+export type Output45 = ({  } & { [key: string]: JsonValue });
 export function call45(client: AppsClient, ref: AppRef, input: Input45, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output45>> { return client.invoke(ref, catalog[45], input as JsonValue, options) as Promise<CapabilityResult<Output45>>; }
 
-export type Input46 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
-export type Output46 = ({ "datasetKey": string; "state": string; "lastSuccessAt": string | null; "lastError": JsonValue } & { [key: string]: JsonValue });
+export type Input46 = { "query"?: string; "source"?: string; "category"?: string; "price"?: { "meaning": "purchase_cost" | "source_display_price"; "currency": string; "min"?: number; "max"?: number }; "store"?: { "id": string; "listingRecord"?: "found" | "not_found" | "unavailable"; "status"?: "listed" | "partial" | "not_listed" | "unknown"; "saleState"?: "on_sale" | "out_of_stock" | "pending" | "archived" | "failed" | "not_sellable" | "unknown"; "association"?: "linked" | "none" | "unknown" }; "limit"?: number; "cursor"?: string; "refresh"?: boolean };
+export type Output46 = ({  } & { [key: string]: JsonValue });
 export function call46(client: AppsClient, ref: AppRef, input: Input46, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output46>> { return client.invoke(ref, catalog[46], input as JsonValue, options) as Promise<CapabilityResult<Output46>>; }
 
-export type Input47 = { "files": Array<{ "path": string; "skuIds"?: Array<string> }> };
-export type Output47 = ({  } & { [key: string]: JsonValue });
+export type Input47 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
+export type Output47 = ({ "datasetKey": string; "snapshot": ({  } & { [key: string]: JsonValue }); "counts": ({  } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue });
 export function call47(client: AppsClient, ref: AppRef, input: Input47, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output47>> { return client.invoke(ref, catalog[47], input as JsonValue, options) as Promise<CapabilityResult<Output47>>; }
 
-export type Input48 = { "storeId": string; "rows": Array<{ "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "rowId"?: string; "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "pricing"?: { "mode": "automatic" | "manual"; "planId"?: string }; "dependsOn"?: Array<string> }>; "title"?: string };
-export type Output48 = ({  } & { [key: string]: JsonValue });
+export type Input48 = { "datasetKey"?: string; "storeId"?: string; "store"?: string };
+export type Output48 = ({ "datasetKey": string; "state": string; "lastSuccessAt": string | null; "lastError": JsonValue } & { [key: string]: JsonValue });
 export function call48(client: AppsClient, ref: AppRef, input: Input48, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output48>> { return client.invoke(ref, catalog[48], input as JsonValue, options) as Promise<CapabilityResult<Output48>>; }
 
-export type Input49 = ({ "planId"?: string; "operationId"?: string; "includeEvidence"?: boolean; "rowIds"?: Array<string>; "cursor"?: string; "limit"?: number }) & (({ "planId": string }) | ({ "operationId": string }));
+export type Input49 = { "files": Array<{ "path": string }> };
 export type Output49 = ({  } & { [key: string]: JsonValue });
 export function call49(client: AppsClient, ref: AppRef, input: Input49, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output49>> { return client.invoke(ref, catalog[49], input as JsonValue, options) as Promise<CapabilityResult<Output49>>; }
 
-export type Input50 = { "planId": string; "expectedRevision": number; "rows": Array<{ "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "rowId"?: string; "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "pricing"?: { "mode": "automatic" | "manual"; "planId"?: string }; "dependsOn"?: Array<string> }> };
+export type Input50 = ({ "storeId": string; "descriptionCategoryId"?: string; "typeId"?: string; "scope"?: "required" | "all"; "attributeIds"?: Array<string>; "cursor"?: string; "limit"?: number; "refresh"?: boolean }) & (({ "descriptionCategoryId": string; "typeId": string }) | ({ "cursor": string }));
 export type Output50 = ({  } & { [key: string]: JsonValue });
 export function call50(client: AppsClient, ref: AppRef, input: Input50, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output50>> { return client.invoke(ref, catalog[50], input as JsonValue, options) as Promise<CapabilityResult<Output50>>; }
 
-export type Input51 = { "planId": string; "expectedRevision": number };
+export type Input51 = { "storeId": string; "rows": Array<{ "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "rowId"?: string; "saleId"?: string; "preparationRevision"?: string; "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "listingAssets"?: { "images": Array<string>; "richContentImages": Array<string> }; "pricing"?: { "mode": "automatic" | "manual"; "planId"?: string }; "dependsOn"?: Array<string> }>; "title"?: string; "preparationRevision"?: string };
 export type Output51 = ({  } & { [key: string]: JsonValue });
 export function call51(client: AppsClient, ref: AppRef, input: Input51, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output51>> { return client.invoke(ref, catalog[51], input as JsonValue, options) as Promise<CapabilityResult<Output51>>; }
 
-export type Input52 = ({ "storeId": string; "selections"?: Array<{ "id": string; "skuIds"?: Array<string>; "cursor"?: string; "revision"?: string }>; "compositions"?: Array<{ "id": string; "members": Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }> }>; "knownRevisions"?: ({  } & { [key: string]: JsonValue }); "categoryQuery"?: string; "categories"?: ({  } & { [key: string]: JsonValue }); "maxBytes"?: number; "salesLimit"?: number; "cursor"?: string; "refresh"?: boolean; "includeOptionalAttributes"?: boolean }) & (({ "selections": Array<{ "id": string; "skuIds"?: Array<string>; "cursor"?: string; "revision"?: string }> }) | ({ "cursor": string }));
+export type Input52 = ({ "planId"?: string; "operationId"?: string; "includeEvidence"?: boolean; "view"?: "summary" | "payload"; "rowIds"?: Array<string>; "cursor"?: string; "limit"?: number }) & (({ "planId": string }) | ({ "operationId": string }));
 export type Output52 = ({  } & { [key: string]: JsonValue });
 export function call52(client: AppsClient, ref: AppRef, input: Input52, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output52>> { return client.invoke(ref, catalog[52], input as JsonValue, options) as Promise<CapabilityResult<Output52>>; }
 
-export type Input53 = { "operationId": string };
-export type Output53 = ((({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })) | (({ "planId": string; "storeId": string; "status": string; "revision": number; "rows": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })));
+export type Input53 = { "planId": string; "expectedRevision": number; "rows": Array<{ "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "rowId"?: string; "saleId"?: string; "preparationRevision"?: string; "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "listingAssets"?: { "images": Array<string>; "richContentImages": Array<string> }; "pricing"?: { "mode": "automatic" | "manual"; "planId"?: string }; "dependsOn"?: Array<string> }>; "preparationRevision"?: string };
+export type Output53 = ({  } & { [key: string]: JsonValue });
 export function call53(client: AppsClient, ref: AppRef, input: Input53, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output53>> { return client.invoke(ref, catalog[53], input as JsonValue, options) as Promise<CapabilityResult<Output53>>; }
 
-export type Input54 = { "storeId"?: string; "since"?: string; "limit"?: number };
-export type Output54 = Array<({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })>;
+export type Input54 = { "planId": string; "expectedRevision": number };
+export type Output54 = ({  } & { [key: string]: JsonValue });
 export function call54(client: AppsClient, ref: AppRef, input: Input54, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output54>> { return client.invoke(ref, catalog[54], input as JsonValue, options) as Promise<CapabilityResult<Output54>>; }
 
-export type Input55 = { "storeId": string; "dateFrom": string; "dateTo": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "groupBy"?: "day" | "sku" };
-export type Output55 = { "items": Array<{ "sku": string | null; "title": string | null; "date": string | null; "impressions": number | null; "views": number | null; "cartEvents": number | null; "orderedUnits": number | null; "visitors": number | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input55 = ({ "storeId": string; "selections"?: Array<{ "id": string; "skuIds"?: Array<string>; "cursor"?: string; "revision"?: string }>; "compositions"?: Array<{ "id": string; "members": Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }> }>; "knownRevisions"?: ({  } & { [key: string]: JsonValue }); "categoryQuery"?: string; "categories"?: ({  } & { [key: string]: JsonValue }); "maxBytes"?: number; "salesLimit"?: number; "cursor"?: string; "refresh"?: boolean; "includeOptionalAttributes"?: boolean }) & (({ "selections": Array<{ "id": string; "skuIds"?: Array<string>; "cursor"?: string; "revision"?: string }> }) | ({ "cursor": string }));
+export type Output55 = ({  } & { [key: string]: JsonValue });
 export function call55(client: AppsClient, ref: AppRef, input: Input55, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output55>> { return client.invoke(ref, catalog[55], input as JsonValue, options) as Promise<CapabilityResult<Output55>>; }
 
-export type Input56 = { "storeId": string; "recipe": { "version": 1; "grain": "product" | "posting"; "fields": Array<"products.productId" | "products.offerId" | "products.sku" | "products.title" | "products.image" | "products.status" | "products.statusCode" | "products.statusRaw" | "products.errorReason" | "prices.productId" | "prices.offerId" | "prices.price" | "prices.ordinaryPrice" | "prices.oldPrice" | "prices.currency" | "warehouses.warehouseId" | "warehouses.warehouseName" | "warehouses.fulfillment" | "warehouses.status" | "warehouses.statusCode" | "warehouses.statusRaw" | "warehouses.deliveryMethods" | "stocks.productId" | "stocks.sku" | "stocks.offerId" | "stocks.warehouseId" | "stocks.warehouseName" | "stocks.stockPresent" | "stocks.stockReserved" | "stocks.stockAvailable" | "analytics.sku" | "analytics.title" | "analytics.date" | "analytics.impressions" | "analytics.views" | "analytics.cartEvents" | "analytics.orderedUnits" | "analytics.visitors" | "orders.orderId" | "orders.orderNumber" | "orders.postingNumber" | "orders.sku" | "orders.offerId" | "orders.title" | "orders.quantity" | "orders.orderPrice" | "orders.currency" | "orders.status" | "orders.statusCode" | "orders.statusRaw" | "orders.createdAt" | "orders.shipmentAt" | "orders.trackingNumber" | "weights.postingNumber" | "weights.sku" | "weights.offerId" | "weights.quantity" | "weights.actualWeight" | "weights.declaredWeight" | "weights.weightDifference" | "weights.weightScope" | "weights.shipmentAt" | "finance.accrualId" | "finance.unitNumber" | "finance.postingNumber" | "finance.date" | "finance.accrualType" | "finance.amount" | "finance.commission" | "finance.logisticsFee" | "finance.feeDetails" | "finance.currency" | "promotions.actionId" | "promotions.actionName" | "promotions.productId" | "promotions.participation" | "promotions.actionPrice" | "promotions.maxActionPrice" | "promotions.currency" | "promotions.startsAt" | "promotions.endsAt" | "returns.returnId" | "returns.postingNumber" | "returns.orderId" | "returns.orderNumber" | "returns.sku" | "returns.offerId" | "returns.title" | "returns.quantity" | "returns.returnReason" | "returns.status" | "returns.statusCode" | "returns.statusRaw" | "returns.createdAt" | "returns.orderPrice" | "returns.currency"> }; "dateFrom"?: string; "dateTo"?: string; "warehouseId"?: string; "actionId"?: string; "participation"?: "joined" | "eligible"; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean };
-export type Output56 = { "items": Array<{ "products"?: { "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "image": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "errorReason": string | null }; "prices"?: { "productId": string | null; "offerId": string | null; "price": number | null; "ordinaryPrice": number | null; "oldPrice": number | null; "currency": string | null }; "warehouses"?: { "warehouseId": string | null; "warehouseName": string | null; "fulfillment": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "deliveryMethods": string | null }; "stocks"?: { "productId": string | null; "sku": string | null; "offerId": string | null; "warehouseId": string | null; "warehouseName": string | null; "stockPresent": number | null; "stockReserved": number | null; "stockAvailable": number | null }; "analytics"?: { "sku": string | null; "title": string | null; "date": string | null; "impressions": number | null; "views": number | null; "cartEvents": number | null; "orderedUnits": number | null; "visitors": number | null }; "orders"?: { "orderId": string | null; "orderNumber": string | null; "postingNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "orderPrice": number | null; "currency": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "shipmentAt": string | null; "trackingNumber": string | null }; "weights"?: { "postingNumber": string | null; "sku": string | null; "offerId": string | null; "quantity": number | null; "actualWeight": number | null; "declaredWeight": number | null; "weightDifference": number | null; "weightScope": string | null; "shipmentAt": string | null }; "finance"?: { "accrualId": string | null; "unitNumber": string | null; "postingNumber": string | null; "date": string | null; "accrualType": string | null; "amount": number | null; "commission": number | null; "logisticsFee": number | null; "feeDetails": string | null; "currency": string | null }; "promotions"?: { "actionId": string | null; "actionName": string | null; "productId": string | null; "participation": string | null; "actionPrice": number | null; "maxActionPrice": number | null; "currency": string | null; "startsAt": string | null; "endsAt": string | null }; "returns"?: { "returnId": string | null; "postingNumber": string | null; "orderId": string | null; "orderNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "returnReason": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "orderPrice": number | null; "currency": string | null } }>; "total": number; "dataTime": string | null; "warnings": Array<string>; "sourceStates": Array<{ "source": string; "status": "ready" | "empty" | "missing"; "rowCount": number; "pageCount": number; "dataTime": string | null; "fetchedAt": string | null; "cacheHit": boolean; "freshness": "fresh" | "stale"; "cacheReason": "none" | "ttl" | "rate_limit" | "upstream_unavailable" | "refresh_due"; "nextRetryAt"?: string }>; "fieldMeta": Array<{ "key": string; "source": string; "label": string; "description": string; "format": string; "currencyPath"?: string; "unit"?: string }>; "cache": { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean }; "cursor"?: string; "period"?: { "dateFrom": string; "dateTo": string } };
+export type Input56 = { "operationId": string };
+export type Output56 = ((({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })) | (({ "planId": string; "storeId": string; "status": string; "revision": number; "rows": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })));
 export function call56(client: AppsClient, ref: AppRef, input: Input56, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output56>> { return client.invoke(ref, catalog[56], input as JsonValue, options) as Promise<CapabilityResult<Output56>>; }
 
-export type Input57 = { "storeId": string; "dateFrom": string; "dateTo": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean };
-export type Output57 = { "items": Array<{ "accrualId": string | null; "unitNumber": string | null; "postingNumber": string | null; "date": string | null; "accrualType": string | null; "amount": number | null; "commission": number | null; "logisticsFee": number | null; "feeDetails": string | null; "currency": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input57 = { "storeId"?: string; "since"?: string; "limit"?: number };
+export type Output57 = Array<({ "operationId": string; "kind": string; "storeId": string; "state": "pending" | "running" | "succeeded" | "failed" | "partial" | "unknown"; "targets": Array<string>; "input": ({  } & { [key: string]: JsonValue }); "items": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })>;
 export function call57(client: AppsClient, ref: AppRef, input: Input57, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output57>> { return client.invoke(ref, catalog[57], input as JsonValue, options) as Promise<CapabilityResult<Output57>>; }
 
-export type Input58 = { "storeId": string; "dateFrom": string; "dateTo": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "postingNumber"?: string; "status"?: string };
-export type Output58 = { "items": Array<{ "orderId": string | null; "orderNumber": string | null; "postingNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "orderPrice": number | null; "currency": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "shipmentAt": string | null; "trackingNumber": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input58 = { "storeId": string; "dateFrom": string; "dateTo": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "groupBy"?: "day" | "sku" };
+export type Output58 = { "items": Array<{ "sku": string | null; "title": string | null; "date": string | null; "impressions": number | null; "views": number | null; "cartEvents": number | null; "orderedUnits": number | null; "visitors": number | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call58(client: AppsClient, ref: AppRef, input: Input58, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output58>> { return client.invoke(ref, catalog[58], input as JsonValue, options) as Promise<CapabilityResult<Output58>>; }
 
-export type Input59 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "productId"?: string };
-export type Output59 = { "items": Array<{ "productId": string | null; "offerId": string | null; "price": number | null; "ordinaryPrice": number | null; "oldPrice": number | null; "currency": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input59 = { "storeId": string; "recipe": { "version": 1; "grain": "product" | "posting"; "fields": Array<"products.productId" | "products.offerId" | "products.sku" | "products.title" | "products.image" | "products.status" | "products.statusCode" | "products.statusRaw" | "products.errorReason" | "prices.productId" | "prices.offerId" | "prices.price" | "prices.ordinaryPrice" | "prices.oldPrice" | "prices.currency" | "warehouses.warehouseId" | "warehouses.warehouseName" | "warehouses.fulfillment" | "warehouses.status" | "warehouses.statusCode" | "warehouses.statusRaw" | "warehouses.deliveryMethods" | "stocks.productId" | "stocks.sku" | "stocks.offerId" | "stocks.warehouseId" | "stocks.warehouseName" | "stocks.stockPresent" | "stocks.stockReserved" | "stocks.stockAvailable" | "analytics.sku" | "analytics.title" | "analytics.date" | "analytics.impressions" | "analytics.views" | "analytics.cartEvents" | "analytics.orderedUnits" | "analytics.visitors" | "orders.orderId" | "orders.orderNumber" | "orders.postingNumber" | "orders.sku" | "orders.offerId" | "orders.title" | "orders.quantity" | "orders.orderPrice" | "orders.currency" | "orders.status" | "orders.statusCode" | "orders.statusRaw" | "orders.createdAt" | "orders.shipmentAt" | "orders.trackingNumber" | "weights.postingNumber" | "weights.sku" | "weights.offerId" | "weights.quantity" | "weights.actualWeight" | "weights.declaredWeight" | "weights.weightDifference" | "weights.weightScope" | "weights.shipmentAt" | "finance.accrualId" | "finance.unitNumber" | "finance.postingNumber" | "finance.date" | "finance.accrualType" | "finance.amount" | "finance.commission" | "finance.logisticsFee" | "finance.feeDetails" | "finance.currency" | "promotions.actionId" | "promotions.actionName" | "promotions.productId" | "promotions.participation" | "promotions.actionPrice" | "promotions.maxActionPrice" | "promotions.currency" | "promotions.startsAt" | "promotions.endsAt" | "returns.returnId" | "returns.postingNumber" | "returns.orderId" | "returns.orderNumber" | "returns.sku" | "returns.offerId" | "returns.title" | "returns.quantity" | "returns.returnReason" | "returns.status" | "returns.statusCode" | "returns.statusRaw" | "returns.createdAt" | "returns.orderPrice" | "returns.currency"> }; "dateFrom"?: string; "dateTo"?: string; "warehouseId"?: string; "actionId"?: string; "participation"?: "joined" | "eligible"; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean };
+export type Output59 = { "items": Array<{ "products"?: { "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "image": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "errorReason": string | null }; "prices"?: { "productId": string | null; "offerId": string | null; "price": number | null; "ordinaryPrice": number | null; "oldPrice": number | null; "currency": string | null }; "warehouses"?: { "warehouseId": string | null; "warehouseName": string | null; "fulfillment": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "deliveryMethods": string | null }; "stocks"?: { "productId": string | null; "sku": string | null; "offerId": string | null; "warehouseId": string | null; "warehouseName": string | null; "stockPresent": number | null; "stockReserved": number | null; "stockAvailable": number | null }; "analytics"?: { "sku": string | null; "title": string | null; "date": string | null; "impressions": number | null; "views": number | null; "cartEvents": number | null; "orderedUnits": number | null; "visitors": number | null }; "orders"?: { "orderId": string | null; "orderNumber": string | null; "postingNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "orderPrice": number | null; "currency": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "shipmentAt": string | null; "trackingNumber": string | null }; "weights"?: { "postingNumber": string | null; "sku": string | null; "offerId": string | null; "quantity": number | null; "actualWeight": number | null; "declaredWeight": number | null; "weightDifference": number | null; "weightScope": string | null; "shipmentAt": string | null }; "finance"?: { "accrualId": string | null; "unitNumber": string | null; "postingNumber": string | null; "date": string | null; "accrualType": string | null; "amount": number | null; "commission": number | null; "logisticsFee": number | null; "feeDetails": string | null; "currency": string | null }; "promotions"?: { "actionId": string | null; "actionName": string | null; "productId": string | null; "participation": string | null; "actionPrice": number | null; "maxActionPrice": number | null; "currency": string | null; "startsAt": string | null; "endsAt": string | null }; "returns"?: { "returnId": string | null; "postingNumber": string | null; "orderId": string | null; "orderNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "returnReason": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "orderPrice": number | null; "currency": string | null } }>; "total": number; "dataTime": string | null; "warnings": Array<string>; "sourceStates": Array<{ "source": string; "status": "ready" | "empty" | "missing"; "rowCount": number; "pageCount": number; "dataTime": string | null; "fetchedAt": string | null; "cacheHit": boolean; "freshness": "fresh" | "stale"; "cacheReason": "none" | "ttl" | "rate_limit" | "upstream_unavailable" | "refresh_due"; "nextRetryAt"?: string }>; "fieldMeta": Array<{ "key": string; "source": string; "label": string; "description": string; "format": string; "currencyPath"?: string; "unit"?: string }>; "cache": { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean }; "cursor"?: string; "period"?: { "dateFrom": string; "dateTo": string } };
 export function call59(client: AppsClient, ref: AppRef, input: Input59, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output59>> { return client.invoke(ref, catalog[59], input as JsonValue, options) as Promise<CapabilityResult<Output59>>; }
 
-export type Input60 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "productId"?: string; "sku"?: string };
-export type Output60 = { "items": Array<{ "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "image": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "errorReason": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input60 = { "storeId": string; "dateFrom": string; "dateTo": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean };
+export type Output60 = { "items": Array<{ "accrualId": string | null; "unitNumber": string | null; "postingNumber": string | null; "date": string | null; "accrualType": string | null; "amount": number | null; "commission": number | null; "logisticsFee": number | null; "feeDetails": string | null; "currency": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call60(client: AppsClient, ref: AppRef, input: Input60, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output60>> { return client.invoke(ref, catalog[60], input as JsonValue, options) as Promise<CapabilityResult<Output60>>; }
 
-export type Input61 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "actionId"?: string; "participation"?: "joined" | "eligible" };
-export type Output61 = { "items": Array<{ "actionId": string | null; "actionName": string | null; "productId": string | null; "participation": string | null; "actionPrice": number | null; "maxActionPrice": number | null; "currency": string | null; "startsAt": string | null; "endsAt": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input61 = { "storeId": string; "dateFrom": string; "dateTo": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "postingNumber"?: string; "status"?: string };
+export type Output61 = { "items": Array<{ "orderId": string | null; "orderNumber": string | null; "postingNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "orderPrice": number | null; "currency": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "shipmentAt": string | null; "trackingNumber": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call61(client: AppsClient, ref: AppRef, input: Input61, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output61>> { return client.invoke(ref, catalog[61], input as JsonValue, options) as Promise<CapabilityResult<Output61>>; }
 
-export type Input62 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "sku"?: string };
-export type Output62 = { "items": Array<{ "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "rating": number | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input62 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "productId"?: string };
+export type Output62 = { "items": Array<{ "productId": string | null; "offerId": string | null; "price": number | null; "ordinaryPrice": number | null; "oldPrice": number | null; "currency": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call62(client: AppsClient, ref: AppRef, input: Input62, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output62>> { return client.invoke(ref, catalog[62], input as JsonValue, options) as Promise<CapabilityResult<Output62>>; }
 
-export type Input63 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "returnId"?: string };
-export type Output63 = { "items": Array<{ "returnId": string | null; "postingNumber": string | null; "orderId": string | null; "orderNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "returnReason": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "orderPrice": number | null; "currency": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input63 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "productId"?: string; "sku"?: string };
+export type Output63 = { "items": Array<{ "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "image": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "errorReason": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call63(client: AppsClient, ref: AppRef, input: Input63, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output63>> { return client.invoke(ref, catalog[63], input as JsonValue, options) as Promise<CapabilityResult<Output63>>; }
 
-export type Input64 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "sku"?: string; "warehouseId"?: string };
-export type Output64 = { "items": Array<{ "productId": string | null; "sku": string | null; "offerId": string | null; "warehouseId": string | null; "warehouseName": string | null; "stockPresent": number | null; "stockReserved": number | null; "stockAvailable": number | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input64 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "actionId"?: string; "participation"?: "joined" | "eligible" };
+export type Output64 = { "items": Array<{ "actionId": string | null; "actionName": string | null; "productId": string | null; "participation": string | null; "actionPrice": number | null; "maxActionPrice": number | null; "currency": string | null; "startsAt": string | null; "endsAt": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call64(client: AppsClient, ref: AppRef, input: Input64, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output64>> { return client.invoke(ref, catalog[64], input as JsonValue, options) as Promise<CapabilityResult<Output64>>; }
 
-export type Input65 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "warehouseId"?: string };
-export type Output65 = { "items": Array<{ "warehouseId": string | null; "warehouseName": string | null; "fulfillment": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "deliveryMethods": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input65 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "sku"?: string };
+export type Output65 = { "items": Array<{ "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "rating": number | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call65(client: AppsClient, ref: AppRef, input: Input65, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output65>> { return client.invoke(ref, catalog[65], input as JsonValue, options) as Promise<CapabilityResult<Output65>>; }
 
-export type Input66 = { "storeId": string; "dateFrom": string; "dateTo": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean };
-export type Output66 = { "items": Array<{ "postingNumber": string | null; "sku": string | null; "offerId": string | null; "quantity": number | null; "actualWeight": number | null; "declaredWeight": number | null; "weightDifference": number | null; "weightScope": string | null; "shipmentAt": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
+export type Input66 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "returnId"?: string };
+export type Output66 = { "items": Array<{ "returnId": string | null; "postingNumber": string | null; "orderId": string | null; "orderNumber": string | null; "sku": string | null; "offerId": string | null; "title": string | null; "quantity": number | null; "returnReason": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "createdAt": string | null; "orderPrice": number | null; "currency": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call66(client: AppsClient, ref: AppRef, input: Input66, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output66>> { return client.invoke(ref, catalog[66], input as JsonValue, options) as Promise<CapabilityResult<Output66>>; }
 
-export type Input67 = { "storeId": string; "rows": Array<{ "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "rowId"?: string; "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "pricing"?: { "mode": "automatic" | "manual"; "planId"?: string }; "dependsOn"?: Array<string> }>; "title"?: string };
-export type Output67 = ({  } & { [key: string]: JsonValue });
+export type Input67 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "sku"?: string; "warehouseId"?: string };
+export type Output67 = { "items": Array<{ "productId": string | null; "sku": string | null; "offerId": string | null; "warehouseId": string | null; "warehouseName": string | null; "stockPresent": number | null; "stockReserved": number | null; "stockAvailable": number | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call67(client: AppsClient, ref: AppRef, input: Input67, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output67>> { return client.invoke(ref, catalog[67], input as JsonValue, options) as Promise<CapabilityResult<Output67>>; }
 
-export type Input68 = ({ "planId"?: string; "operationId"?: string; "includeEvidence"?: boolean; "rowIds"?: Array<string>; "cursor"?: string; "limit"?: number }) & (({ "planId": string }) | ({ "operationId": string }));
-export type Output68 = ({  } & { [key: string]: JsonValue });
+export type Input68 = { "storeId": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean; "warehouseId"?: string };
+export type Output68 = { "items": Array<{ "warehouseId": string | null; "warehouseName": string | null; "fulfillment": string | null; "status": string | null; "statusCode": string | null; "statusRaw": string | null; "deliveryMethods": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call68(client: AppsClient, ref: AppRef, input: Input68, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output68>> { return client.invoke(ref, catalog[68], input as JsonValue, options) as Promise<CapabilityResult<Output68>>; }
 
-export type Input69 = { "planId": string };
-export type Output69 = ({  } & { [key: string]: JsonValue });
+export type Input69 = { "storeId": string; "dateFrom": string; "dateTo": string; "limit"?: number; "cursor"?: string; "loadAll"?: boolean; "forceRefresh"?: boolean };
+export type Output69 = { "items": Array<{ "postingNumber": string | null; "sku": string | null; "offerId": string | null; "quantity": number | null; "actualWeight": number | null; "declaredWeight": number | null; "weightDifference": number | null; "weightScope": string | null; "shipmentAt": string | null }>; "dataTime": string | null; "warnings": Array<string>; "cursor"?: string; "total"?: number; "period"?: { "dateFrom": string; "dateTo": string }; "cache"?: { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean } };
 export function call69(client: AppsClient, ref: AppRef, input: Input69, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output69>> { return client.invoke(ref, catalog[69], input as JsonValue, options) as Promise<CapabilityResult<Output69>>; }
 
-export type Input70 = { "storeId"?: string };
+export type Input70 = { "storeId": string; "rows": Array<{ "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "rowId"?: string; "saleId"?: string; "preparationRevision"?: string; "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "listingAssets"?: { "images": Array<string>; "richContentImages": Array<string> }; "pricing"?: { "mode": "automatic" | "manual"; "planId"?: string }; "dependsOn"?: Array<string> }>; "title"?: string; "preparationRevision"?: string };
 export type Output70 = ({  } & { [key: string]: JsonValue });
 export function call70(client: AppsClient, ref: AppRef, input: Input70, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output70>> { return client.invoke(ref, catalog[70], input as JsonValue, options) as Promise<CapabilityResult<Output70>>; }
 
-export type Input71 = { "planId": string; "rowIds"?: Array<string> };
+export type Input71 = ({ "planId"?: string; "operationId"?: string; "includeEvidence"?: boolean; "view"?: "summary" | "payload"; "rowIds"?: Array<string>; "cursor"?: string; "limit"?: number }) & (({ "planId": string }) | ({ "operationId": string }));
 export type Output71 = ({  } & { [key: string]: JsonValue });
 export function call71(client: AppsClient, ref: AppRef, input: Input71, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output71>> { return client.invoke(ref, catalog[71], input as JsonValue, options) as Promise<CapabilityResult<Output71>>; }
 
-export type Input72 = { "planId": string; "expectedRevision": number; "rows": Array<{ "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "rowId"?: string; "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "pricing"?: { "mode": "automatic" | "manual"; "planId"?: string }; "dependsOn"?: Array<string> }> };
+export type Input72 = { "planId": string };
 export type Output72 = ({  } & { [key: string]: JsonValue });
 export function call72(client: AppsClient, ref: AppRef, input: Input72, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output72>> { return client.invoke(ref, catalog[72], input as JsonValue, options) as Promise<CapabilityResult<Output72>>; }
 
-export type Input73 = { "planId": string; "expectedRevision": number };
+export type Input73 = { "storeId"?: string; "cursor"?: string; "limit"?: number };
 export type Output73 = ({  } & { [key: string]: JsonValue });
 export function call73(client: AppsClient, ref: AppRef, input: Input73, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output73>> { return client.invoke(ref, catalog[73], input as JsonValue, options) as Promise<CapabilityResult<Output73>>; }
 
-export type Input74 = { "path": string; "storeId"?: string; "store"?: string; "method"?: "GET" | "POST"; "body"?: ({  } & { [key: string]: JsonValue }) };
-export type Output74 = (({ "response"?: JsonValue; "httpStatus"?: number; "outcome"?: "pending" | "response_received" | "outcome_unknown"; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "response": JsonValue } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
+export type Input74 = { "planId": string; "rowIds"?: Array<string> };
+export type Output74 = ({  } & { [key: string]: JsonValue });
 export function call74(client: AppsClient, ref: AppRef, input: Input74, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output74>> { return client.invoke(ref, catalog[74], input as JsonValue, options) as Promise<CapabilityResult<Output74>>; }
 
-export type Input75 = { "storeId": string; "row": { "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "rowId"?: string; "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "pricing"?: { "mode": "automatic" | "manual"; "planId"?: string }; "dependsOn"?: Array<string> } };
+export type Input75 = { "planId": string; "expectedRevision": number; "rows": Array<{ "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "rowId"?: string; "saleId"?: string; "preparationRevision"?: string; "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "listingAssets"?: { "images": Array<string>; "richContentImages": Array<string> }; "pricing"?: { "mode": "automatic" | "manual"; "planId"?: string }; "dependsOn"?: Array<string> }>; "preparationRevision"?: string };
 export type Output75 = ({  } & { [key: string]: JsonValue });
 export function call75(client: AppsClient, ref: AppRef, input: Input75, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output75>> { return client.invoke(ref, catalog[75], input as JsonValue, options) as Promise<CapabilityResult<Output75>>; }
 
-export type Input76 = { "storeId": string };
+export type Input76 = { "planId": string; "expectedRevision": number };
 export type Output76 = ({  } & { [key: string]: JsonValue });
 export function call76(client: AppsClient, ref: AppRef, input: Input76, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output76>> { return client.invoke(ref, catalog[76], input as JsonValue, options) as Promise<CapabilityResult<Output76>>; }
 
-export type Input77 = { "storeId"?: string; "store"?: string; "minMargin"?: number; "maxMargin"?: number; "minPrice"?: number; "maxPrice"?: number; "minStock"?: number; "maxStock"?: number; "status"?: string; "resultSetId"?: string };
-export type Output77 = ({ "resultSetId": string; "storeId": string; "expiresAt": string; "payload": (({ "total": number; "products"?: Array<({  } & { [key: string]: JsonValue })>; "unable"?: Array<({  } & { [key: string]: JsonValue })>; "matchedCount"?: number; "unableCount"?: number } & { [key: string]: JsonValue })) & ((({ "products": Array<({  } & { [key: string]: JsonValue })>; "unable": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })) | (({ "matchedCount": number; "unableCount": number } & { [key: string]: JsonValue }))) } & { [key: string]: JsonValue });
+export type Input77 = { "path": string; "storeId"?: string; "store"?: string; "method"?: "GET" | "POST"; "body"?: ({  } & { [key: string]: JsonValue }) };
+export type Output77 = (({ "response"?: JsonValue; "httpStatus"?: number; "outcome"?: "pending" | "response_received" | "outcome_unknown"; "spill"?: ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })) & ((({ "response": JsonValue } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }) } & { [key: string]: JsonValue })));
 export function call77(client: AppsClient, ref: AppRef, input: Input77, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output77>> { return client.invoke(ref, catalog[77], input as JsonValue, options) as Promise<CapabilityResult<Output77>>; }
 
-export type Input78 = { "storeId"?: string; "store"?: string; "cursor"?: string; "limit"?: number; "query"?: string; "status"?: string; "fields"?: Array<"title" | "imageUrl" | "sku" | "status" | "platformStatus" | "currency" | "price" | "pricing" | "profit" | "stock" | "metrics" | "sources" | "declaredWeight" | "storeName"> };
-export type Output78 = ((({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue })));
+export type Input78 = { "storeId": string; "row": { "action": "price" | "stock" | "archive" | "promotion.enroll" | "promotion.update" | "promotion.exit" | "listing"; "target": { "offerId": string; "productId"?: string | number; "sku"?: string | number }; "payload": ({  } & { [key: string]: JsonValue }); "rowId"?: string; "saleId"?: string; "preparationRevision"?: string; "procurement"?: Array<{ "itemId": string; "sourceSkuId": string; "quantity": number }>; "referenceSubjects"?: Array<{ "sourceImageUrl": string; "subject": string }>; "listingAssets"?: { "images": Array<string>; "richContentImages": Array<string> }; "pricing"?: { "mode": "automatic" | "manual"; "planId"?: string }; "dependsOn"?: Array<string> } };
+export type Output78 = ({  } & { [key: string]: JsonValue });
 export function call78(client: AppsClient, ref: AppRef, input: Input78, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output78>> { return client.invoke(ref, catalog[78], input as JsonValue, options) as Promise<CapabilityResult<Output78>>; }
 
-export type Input79 = { "storeId": string; "collectedItemId": string; "skuScope": Array<string>; "importItems": Array<({ "offer_id": string; "_sourceSkuId"?: ((string) | (null)) } & { [key: string]: JsonValue })>; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean };
+export type Input79 = { "storeId": string };
 export type Output79 = ({  } & { [key: string]: JsonValue });
 export function call79(client: AppsClient, ref: AppRef, input: Input79, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output79>> { return client.invoke(ref, catalog[79], input as JsonValue, options) as Promise<CapabilityResult<Output79>>; }
 
-export type Input80 = { "storeId": string; "query"?: string; "cursor"?: string; "limit"?: number; "loadAll"?: boolean; "planMode"?: "application" | "delivery" | "platform" | "custom"; "deliveryMethodId"?: string; "fixedFeeYuan"?: number; "logisticsYuanPerKg"?: number; "commissionPercent"?: number; "forceRefresh"?: boolean };
-export type Output80 = { "products": Array<{ "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "imageUrl": string | null; "currency": string | null; "productUrl": string | null; "salesSpecification": string | null; "purchaseSpecification": string | null; "purchaseLinks": Array<{ "url": string; "label": string }>; "purchaseMinor": number | null; "sellerMinor": number | null; "packageGrams": number | null; "referenceProfit": { "margin": number | null; "profitMinor": number | null; "logisticsMinor": number | null; "commissionMinor": number | null; "fixedMinor": number | null; "reason": string | null; "metricBasis": string; "configRevision"?: number | null; "planId"?: string | null; "selectionReason"?: string | null }; "logisticsMatch": { "status": "unique" | "choice" | "unavailable" | "unknown"; "candidatePlanIds": Array<string>; "label": string; "reason": string | null; "selectedPlanId"?: string } }>; "total": number; "dataTime": string | null; "warnings": Array<string>; "plan": { "mode": "application" | "delivery" | "platform" | "custom"; "label": string; "settingsRevision": number | null; "fixedFeeYuan": number | null; "logisticsYuanPerKg": number | null; "commissionPercent": number | null; "reason": string | null; "deliveryMethodId": string | null; "choices": Array<{ "id": string; "name": string; "warehouseId": string; "warehouseName": string | null; "active": boolean }>; "selectionNote": string }; "cache": { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean }; "cursor"?: string };
+export type Input80 = { "storeId"?: string; "store"?: string; "minMargin"?: number; "maxMargin"?: number; "minPrice"?: number; "maxPrice"?: number; "minStock"?: number; "maxStock"?: number; "status"?: string; "resultSetId"?: string };
+export type Output80 = ({ "resultSetId": string; "storeId": string; "expiresAt": string; "payload": (({ "total": number; "products"?: Array<({  } & { [key: string]: JsonValue })>; "unable"?: Array<({  } & { [key: string]: JsonValue })>; "matchedCount"?: number; "unableCount"?: number } & { [key: string]: JsonValue })) & ((({ "products": Array<({  } & { [key: string]: JsonValue })>; "unable": Array<({  } & { [key: string]: JsonValue })> } & { [key: string]: JsonValue })) | (({ "matchedCount": number; "unableCount": number } & { [key: string]: JsonValue }))) } & { [key: string]: JsonValue });
 export function call80(client: AppsClient, ref: AppRef, input: Input80, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output80>> { return client.invoke(ref, catalog[80], input as JsonValue, options) as Promise<CapabilityResult<Output80>>; }
 
-export type Input81 = { "storeId": string; "productId": string };
-export type Output81 = { "items": Array<({  } & { [key: string]: JsonValue })>; "total": number };
+export type Input81 = { "storeId"?: string; "store"?: string; "cursor"?: string; "limit"?: number; "query"?: string; "status"?: string; "fields"?: Array<"title" | "imageUrl" | "sku" | "status" | "platformStatus" | "currency" | "price" | "pricing" | "profit" | "stock" | "metrics" | "sources" | "declaredWeight" | "storeName"> };
+export type Output81 = ((({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue })));
 export function call81(client: AppsClient, ref: AppRef, input: Input81, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output81>> { return client.invoke(ref, catalog[81], input as JsonValue, options) as Promise<CapabilityResult<Output81>>; }
 
-export type Input82 = ({ "storeId": string; "price": number; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "currency"?: string; "oldPrice"?: number; "actionId"?: number }) & (({ "offerIds": Array<string> }) | ({ "productIds": Array<string> }));
+export type Input82 = { "storeId": string; "collectedItemId": string; "skuScope": Array<string>; "importItems": Array<({ "offer_id": string; "_sourceSkuId"?: ((string) | (null)) } & { [key: string]: JsonValue })>; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean };
 export type Output82 = ({  } & { [key: string]: JsonValue });
 export function call82(client: AppsClient, ref: AppRef, input: Input82, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output82>> { return client.invoke(ref, catalog[82], input as JsonValue, options) as Promise<CapabilityResult<Output82>>; }
 
-export type Input83 = ({ "storeId": string; "stock": number; "warehouseId": string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean }) & (({ "offerIds": Array<string> }) | ({ "productIds": Array<string> }));
-export type Output83 = ({  } & { [key: string]: JsonValue });
+export type Input83 = { "storeId": string; "query"?: string; "cursor"?: string; "limit"?: number; "loadAll"?: boolean; "planMode"?: "application" | "delivery" | "platform" | "custom"; "deliveryMethodId"?: string; "fixedFeeYuan"?: number; "logisticsYuanPerKg"?: number; "commissionPercent"?: number; "forceRefresh"?: boolean };
+export type Output83 = { "products": Array<{ "productId": string | null; "offerId": string | null; "sku": string | null; "title": string | null; "imageUrl": string | null; "currency": string | null; "productUrl": string | null; "salesSpecification": string | null; "purchaseSpecification": string | null; "purchaseLinks": Array<{ "url": string; "label": string }>; "purchaseMinor": number | null; "sellerMinor": number | null; "packageGrams": number | null; "referenceProfit": { "margin": number | null; "profitMinor": number | null; "logisticsMinor": number | null; "commissionMinor": number | null; "fixedMinor": number | null; "reason": string | null; "metricBasis": string; "configRevision"?: number | null; "planId"?: string | null; "selectionReason"?: string | null }; "logisticsMatch": { "status": "unique" | "choice" | "unavailable" | "unknown"; "candidatePlanIds": Array<string>; "label": string; "reason": string | null; "selectedPlanId"?: string } }>; "total": number; "dataTime": string | null; "warnings": Array<string>; "plan": { "mode": "application" | "delivery" | "platform" | "custom"; "label": string; "settingsRevision": number | null; "fixedFeeYuan": number | null; "logisticsYuanPerKg": number | null; "commissionPercent": number | null; "reason": string | null; "deliveryMethodId": string | null; "choices": Array<{ "id": string; "name": string; "warehouseId": string; "warehouseName": string | null; "active": boolean }>; "selectionNote": string }; "cache": { "ttlMs": 900000; "fetchedAt": string; "expiresAt": string; "nextRefreshAt": string; "stale": boolean; "refreshing"?: boolean }; "cursor"?: string };
 export function call83(client: AppsClient, ref: AppRef, input: Input83, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output83>> { return client.invoke(ref, catalog[83], input as JsonValue, options) as Promise<CapabilityResult<Output83>>; }
 
-export type Input84 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string> };
-export type Output84 = ((({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue })));
+export type Input84 = { "storeId": string; "productId": string };
+export type Output84 = { "items": Array<({  } & { [key: string]: JsonValue })>; "total": number };
 export function call84(client: AppsClient, ref: AppRef, input: Input84, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output84>> { return client.invoke(ref, catalog[84], input as JsonValue, options) as Promise<CapabilityResult<Output84>>; }
 
-export type Input85 = {  };
-export type Output85 = Array<(({ "id"?: string; "storeId"?: string; "store_id"?: string } & { [key: string]: JsonValue })) & ((({ "id": string } & { [key: string]: JsonValue })) | (({ "storeId": string } & { [key: string]: JsonValue })) | (({ "store_id": string } & { [key: string]: JsonValue })))>;
+export type Input85 = ({ "storeId": string; "price": number; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean; "currency"?: string; "oldPrice"?: number; "actionId"?: number }) & (({ "offerIds": Array<string> }) | ({ "productIds": Array<string> }));
+export type Output85 = ({  } & { [key: string]: JsonValue });
 export function call85(client: AppsClient, ref: AppRef, input: Input85, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output85>> { return client.invoke(ref, catalog[85], input as JsonValue, options) as Promise<CapabilityResult<Output85>>; }
 
-export type Input86 = { "query": string };
-export type Output86 = (({ "id"?: string; "storeId"?: string; "store_id"?: string } & { [key: string]: JsonValue })) & ((({ "id": string } & { [key: string]: JsonValue })) | (({ "storeId": string } & { [key: string]: JsonValue })) | (({ "store_id": string } & { [key: string]: JsonValue })));
+export type Input86 = ({ "storeId": string; "stock": number; "warehouseId": string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string>; "valueSource"?: string; "clientOperationKey"?: string; "userRequest"?: string; "scopeConfirmed"?: boolean }) & (({ "offerIds": Array<string> }) | ({ "productIds": Array<string> }));
+export type Output86 = ({  } & { [key: string]: JsonValue });
 export function call86(client: AppsClient, ref: AppRef, input: Input86, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output86>> { return client.invoke(ref, catalog[86], input as JsonValue, options) as Promise<CapabilityResult<Output86>>; }
 
-export type Input87 = { "title": string; "content": string; "id"?: string };
-export type Output87 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export type Input87 = { "storeId"?: string; "store"?: string; "offerIds"?: Array<string>; "productIds"?: Array<string> };
+export type Output87 = ((({ "products": Array<({  } & { [key: string]: JsonValue })>; "total": number } & { [key: string]: JsonValue })) | (({ "spill": ({ "path": string; "bytes": number; "summary": ({  } & { [key: string]: JsonValue }); "cursor": string } & { [key: string]: JsonValue }); "storeId": string; "total": number } & { [key: string]: JsonValue })));
 export function call87(client: AppsClient, ref: AppRef, input: Input87, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output87>> { return client.invoke(ref, catalog[87], input as JsonValue, options) as Promise<CapabilityResult<Output87>>; }
 
-export type Input88 = { "id": string };
-export type Output88 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export type Input88 = {  };
+export type Output88 = Array<(({ "id"?: string; "storeId"?: string; "store_id"?: string } & { [key: string]: JsonValue })) & ((({ "id": string } & { [key: string]: JsonValue })) | (({ "storeId": string } & { [key: string]: JsonValue })) | (({ "store_id": string } & { [key: string]: JsonValue })))>;
 export function call88(client: AppsClient, ref: AppRef, input: Input88, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output88>> { return client.invoke(ref, catalog[88], input as JsonValue, options) as Promise<CapabilityResult<Output88>>; }
 
-export type Input89 = { "query"?: string; "cursor"?: string; "limit"?: number };
-export type Output89 = { "items": Array<{ "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } }>; "total": number; "returned": number; "nextCursor": string | null; "completeness": "complete" | "partial" };
+export type Input89 = { "query": string };
+export type Output89 = (({ "id"?: string; "storeId"?: string; "store_id"?: string } & { [key: string]: JsonValue })) & ((({ "id": string } & { [key: string]: JsonValue })) | (({ "storeId": string } & { [key: string]: JsonValue })) | (({ "store_id": string } & { [key: string]: JsonValue })));
 export function call89(client: AppsClient, ref: AppRef, input: Input89, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output89>> { return client.invoke(ref, catalog[89], input as JsonValue, options) as Promise<CapabilityResult<Output89>>; }
 
-export type Input90 = ({ "id": string; "title"?: string; "content"?: string }) & (({ "title": string }) | ({ "content": string }));
+export type Input90 = { "title": string; "content": string; "id"?: string };
 export type Output90 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
 export function call90(client: AppsClient, ref: AppRef, input: Input90, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output90>> { return client.invoke(ref, catalog[90], input as JsonValue, options) as Promise<CapabilityResult<Output90>>; }
+
+export type Input91 = { "id": string };
+export type Output91 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export function call91(client: AppsClient, ref: AppRef, input: Input91, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output91>> { return client.invoke(ref, catalog[91], input as JsonValue, options) as Promise<CapabilityResult<Output91>>; }
+
+export type Input92 = { "query"?: string; "cursor"?: string; "limit"?: number };
+export type Output92 = { "items": Array<{ "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } }>; "total": number; "returned": number; "nextCursor": string | null; "completeness": "complete" | "partial" };
+export function call92(client: AppsClient, ref: AppRef, input: Input92, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output92>> { return client.invoke(ref, catalog[92], input as JsonValue, options) as Promise<CapabilityResult<Output92>>; }
+
+export type Input93 = ({ "id": string; "title"?: string; "content"?: string }) & (({ "title": string }) | ({ "content": string }));
+export type Output93 = { "note": { "id": string; "title": string; "content": string; "revision": string; "createdAt": string; "updatedAt": string }; "resource": { "appId": "notes"; "connectionId": string; "resourceType": "note"; "resourceId": string; "revision": string } };
+export function call93(client: AppsClient, ref: AppRef, input: Input93, options?: Parameters<AppsClient['invoke']>[3]): Promise<CapabilityResult<Output93>> { return client.invoke(ref, catalog[93], input as JsonValue, options) as Promise<CapabilityResult<Output93>>; }

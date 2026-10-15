@@ -8,10 +8,12 @@ import {HallmarkStorePort} from '../../packages/app-hallmark/src/store.ts';
 import {readOzonComposition} from '../../packages/app-hallmark/src/ozon-compose.ts';
 import {canonicalJson} from '../../packages/app-contracts/src/index.ts';
 import {OZON_COMPOSITION_SOURCE_FIELDS} from '../../packages/app-hallmark/src/ozon-composition.ts';
+import { realStoreProducts } from '../real-data/corpus.ts';
 test('identical fresh cache hit skips archive write; divergent/saved-only cache repairs archive and survives failure/restart',async()=>{
  const root=mkdtempSync(join(tmpdir(),'hallmark-cache-regression-')),db=join(root,'runtime.sqlite');let runtime=new RuntimeStore(db),port=new HallmarkStorePort(runtime,'fixture');
  const args={storeId:'synthetic',recipe:{version:1,grain:'product',fields:['products.title']},limit:100};
- const initialReader=async()=>({status:'ok',data:{items:[{...Object.fromEntries(OZON_COMPOSITION_SOURCE_FIELDS.products.map(k=>[k,null])),productId:'1',sku:'10',title:'retained'}],warnings:['retained warning'],dataTime:null}} as any);
+ const product=realStoreProducts().products[0];
+ const initialReader=async()=>({status:'ok',data:{items:[{...Object.fromEntries(OZON_COMPOSITION_SOURCE_FIELDS.products.map(k=>[k,null])),productId:product.productId,sku:product.sku,title:product.title}],warnings:['retained warning'],dataTime:null}} as any);
  try{
   const first:any=await readOzonComposition(args,port,{} as any,undefined,initialReader);assert.equal(first.status,'ok');
   let puts=0;const put=port.put.bind(port);port.put=(collection,id,value)=>{puts++;return put(collection,id,value);};

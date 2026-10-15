@@ -1,3 +1,4 @@
+import { browserOverview } from '../real-data/browser.ts';
 import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {AppRegistryPage,HallmarkToolView,SessionComponentsButton,SessionComponentsPane} from '../../packages/dsh-plugin/client/index.tsx';
@@ -6,7 +7,8 @@ import {COMPONENTS_SIDEBAR_KIND} from '../../packages/dsh-plugin/client/sidebar-
 import {INITIAL_TEMPLATES} from '../../packages/presentation/src/design.ts';
 import type {ViewSpec} from '../../packages/presentation/src/types.ts';
 import type {OverviewDto} from '../../packages/contracts/src/overview.ts';
-const populatedOverview:OverviewDto={fetchedAt:'2026-10-06T08:30:00Z',collected:{status:'ok',count:86},products:{status:'ok',count:128,lastSuccessAt:'2026-10-06T08:20:00Z'},stores:{status:'ok',count:2,rows:[{id:'fixture-shop-a',name:'合成店铺 A',productCount:84,lastSuccessAt:'2026-10-06T08:20:00Z',status:'ok'},{id:'fixture-shop-b',name:'合成店铺 B',productCount:44,lastSuccessAt:'2026-10-06T08:25:00Z',status:'ok'}]}};
+const populatedOverview:OverviewDto=browserOverview();
+const overviewCounts=[populatedOverview.collected.count,populatedOverview.products.count,populatedOverview.stores.count].join(',');
 const emptyOverview:OverviewDto={fetchedAt:'2026-10-06T08:30:00Z',collected:{status:'unavailable',count:null},products:{status:'unavailable',count:null,lastSuccessAt:null},stores:{status:'unavailable',count:null,rows:[]}};
 let currentOverview=populatedOverview;
 let firstVisit=false;
@@ -59,7 +61,7 @@ function FixtureShell(){
   const sidebarSignal=React.useMemo(()=>new AbortController().signal,[]);
   const tabActions=React.useMemo(()=>({openTab:sidebarRight.openTab}),[]);
   const useTabInfo=()=>({tab:{navigation:{params:side?.params??{},revision:side?.revision??0},signal:sidebarSignal,visible:true,actions:tabActions}});
- return <div style={{height:'100vh',display:'flex',overflow:'hidden'}}><aside className="fixture-sidebar" style={{width:210,flexShrink:0,padding:20,borderRight:'1px solid var(--dsw-alias-border-l1)',background:'var(--dsw-alias-bg-layer-1)'}}><strong style={{fontSize:16}}>DSH 页面测试</strong><p style={{fontSize:12,marginTop:8}}>隔离合成预览<br/>非用户业务数据</p><nav style={{display:'grid',gap:10,marginTop:30}}><span>原有聊天</span><span>插件</span><strong style={{borderRadius:8,padding:10,background:'var(--dsw-alias-bg-layer-2)'}}>▦ 应用</strong><span>工作区</span></nav></aside><main style={{flex:1,minWidth:0,minHeight:0}}>{panel==='apps'?<AppRegistryPage currentSessionId="fixture-session" onReturn={sessionId=>{if(!sessionId)throw new Error('Fixture navigation requires exact selected session');navigation.push(sessionId);setPanel('chat');}}/>:<section data-fixture-chat="true" className="fixture-chat-grid" style={{height:'100%',display:'flex',overflow:'auto'}}><div style={{flex:1,minWidth:0,padding:20}}><h2>原聊天：fixture-session</h2><p>隔离原生入口模拟，不是另一套聊天实现。</p><SessionComponentsButton sessionId="fixture-session" sidebarRight={sidebarRight}/><HallmarkToolView sessionId="fixture-session" phase="result" block={{meta:{hallmark:{viewId:chatView.id,status:'ok'}}}} sidebarRight={sidebarRight}/></div>{side?<aside data-fixture-rightbar="true" style={{width:420,minWidth:0,borderLeft:'1px solid var(--dsw-alias-border-l1)',overflow:'auto'}}><SessionComponentsPane sessionId="fixture-session" useTabInfo={useTabInfo} onOpenWorkspace={view=>{ownedWorkspaceIntent.open(view);setPanel('apps');}}/></aside>:null}</section>}</main><style>{'@media(max-width:600px){.fixture-sidebar{display:none}}'}</style></div>;
+ return <div style={{height:'100vh',display:'flex',overflow:'hidden'}}><aside className="fixture-sidebar" style={{width:210,flexShrink:0,padding:20,borderRight:'1px solid var(--dsw-alias-border-l1)',background:'var(--dsw-alias-bg-layer-1)'}}><strong style={{fontSize:16}}>DSH 页面测试</strong><p style={{fontSize:12,marginTop:8}}>真实快照隔离预览<br/>使用本次只读业务快照</p><nav style={{display:'grid',gap:10,marginTop:30}}><span>原有聊天</span><span>插件</span><strong style={{borderRadius:8,padding:10,background:'var(--dsw-alias-bg-layer-2)'}}>▦ 应用</strong><span>工作区</span></nav></aside><main style={{flex:1,minWidth:0,minHeight:0}}>{panel==='apps'?<AppRegistryPage currentSessionId="fixture-session" onReturn={sessionId=>{if(!sessionId)throw new Error('Fixture navigation requires exact selected session');navigation.push(sessionId);setPanel('chat');}}/>:<section data-fixture-chat="true" className="fixture-chat-grid" style={{height:'100%',display:'flex',overflow:'auto'}}><div style={{flex:1,minWidth:0,padding:20}}><h2>原聊天：fixture-session</h2><p>隔离原生入口模拟，不是另一套聊天实现。</p><SessionComponentsButton sessionId="fixture-session" sidebarRight={sidebarRight}/><HallmarkToolView sessionId="fixture-session" phase="result" block={{meta:{hallmark:{viewId:chatView.id,status:'ok'}}}} sidebarRight={sidebarRight}/></div>{side?<aside data-fixture-rightbar="true" style={{width:420,minWidth:0,borderLeft:'1px solid var(--dsw-alias-border-l1)',overflow:'auto'}}><SessionComponentsPane sessionId="fixture-session" useTabInfo={useTabInfo} onOpenWorkspace={view=>{ownedWorkspaceIntent.open(view);setPanel('apps');}}/></aside>:null}</section>}</main><style>{'@media(max-width:600px){.fixture-sidebar{display:none}}'}</style></div>;
 }
 createRoot(document.getElementById('root')!).render(<FixtureShell/>);
 (async()=>{
@@ -71,9 +73,9 @@ createRoot(document.getElementById('root')!).render(<FixtureShell/>);
   await wait(()=>workbenchTab('组件设计'),'single-click workbench controls');await wait(()=>calls.some(call=>call.resource==='datasets'),'local workbench loaded');
   check(!calls.some(call=>call.action==='activate'),'pointer single click opens workbench without activating chat');
   check(!!document.querySelector('.hm-app-rail')&&!document.querySelector('dialog'),'workbench is a permanent two-column page, not a modal');
-  await wait(()=>Array.from(document.querySelectorAll('.hm-metric-value')).map(value=>value.textContent).join(',')==='86,128,2','populated overview cards');
+  await wait(()=>Array.from(document.querySelectorAll('.hm-metric-value')).map(value=>value.textContent).join(',')===overviewCounts,'populated overview cards');
   check(document.querySelectorAll('.hm-metric-card').length===3,'workbench renders three business overview cards from the mocked overview DTO');
-  check(document.querySelectorAll('.hm-store-table tbody tr').length===2&&document.querySelector('.hm-store-table')?.textContent?.includes('84')&&document.querySelector('.hm-store-table')?.textContent?.includes('44'),'store overview shows the two synthetic stores and exact source counts');
+  check(document.querySelectorAll('.hm-store-table tbody tr').length===2&&populatedOverview.stores.rows.every(row=>document.querySelector('.hm-store-table')?.textContent?.includes(row.name)),'store overview shows the two captured stores and derived real product counts');
   const primary=getComputedStyle(document.querySelector('.hm-header-actions .hm-action-primary')!);const secondary=getComputedStyle(document.querySelector('.hm-header-actions .hm-action-secondary')!);const muted=getComputedStyle(document.querySelector('.hm-metric-label')!);
   check(getComputedStyle(document.documentElement).getPropertyValue('--dsw-alias-brand-primary').trim()==='#0f1115'&&primary.backgroundColor==='rgb(37, 99, 235)'&&primary.color==='rgb(255, 255, 255)','primary action stays product blue under actual monochrome DSH brand tokens');
   check(secondary.backgroundColor==='rgb(255, 255, 255)'&&muted.color==='rgb(97, 102, 107)','secondary action and supporting text use the real light DSH surface and label colors');
@@ -122,7 +124,7 @@ createRoot(document.getElementById('root')!).render(<FixtureShell/>);
   check(errors.length===0,'no browser runtime errors');
   (window as any).__UI_SHOW_CATALOG__=()=>button('应用列表')?.click();
   (window as any).__UI_SHOW_OVERVIEW__=async()=>{if(!dockTab('工作台')){openButton()?.click();await wait(()=>dockTab('工作台'),'overview app selected');}dockTab('工作台')?.click();await delay(40);workbenchTab('工作台')?.click();await wait(()=>document.querySelector('.hm-overview-grid'),'overview visible');};
-  (window as any).__UI_SET_OVERVIEW__=async(populated:boolean)=>{currentOverview=populated?populatedOverview:emptyOverview;window.dispatchEvent(new CustomEvent('hallmark:workspace-refresh'));await wait(()=>Array.from(document.querySelectorAll('.hm-metric-value')).filter(visible).map(value=>value.textContent).join(',')===(populated?'86,128,2':'—,—,—'),'overview snapshot scenario');};
+  (window as any).__UI_SET_OVERVIEW__=async(populated:boolean)=>{currentOverview=populated?populatedOverview:emptyOverview;window.dispatchEvent(new CustomEvent('hallmark:workspace-refresh'));await wait(()=>Array.from(document.querySelectorAll('.hm-metric-value')).filter(visible).map(value=>value.textContent).join(',')===(populated?overviewCounts:'—,—,—'),'overview snapshot scenario');};
   (window as any).__UI_SET_FIRST_VISIT__=async(enabled:boolean)=>{
     firstVisit=enabled;currentOverview=populatedOverview;
     await (window as any).__UI_SHOW_OVERVIEW__();
@@ -131,7 +133,7 @@ createRoot(document.getElementById('root')!).render(<FixtureShell/>);
     await wait(()=>!refresh.disabled,'first-visit refresh available');refresh.click();
     await wait(()=>calls.filter(call=>call.resource==='saved').length>previousReads,'first-visit saved state read');
     await wait(()=>enabled?document.querySelector('.hm-component-welcome')?.textContent?.includes('把常用工作，变成你的组件')&&document.querySelector('.hm-connection-state')?.getAttribute('data-status')==='connected':Array.from(document.querySelectorAll('.hm-entry-open')).some(item=>visible(item)&&item.textContent?.includes(saved.entries[0].title)),'first-visit scenario visible');
-    await wait(()=>Array.from(document.querySelectorAll('.hm-metric-value')).filter(visible).map(value=>value.textContent).join(',')==='86,128,2','first-visit overview data');
+    await wait(()=>Array.from(document.querySelectorAll('.hm-metric-value')).filter(visible).map(value=>value.textContent).join(',')===overviewCounts,'first-visit overview data');
   };
   (window as any).__UI_SHOW_LIBRARY__=async()=>{await (window as any).__UI_SHOW_OVERVIEW__();workbenchTab('组件库')?.click();await wait(()=>document.querySelector('.hm-library-content .hm-entry-row .hm-actions'),'saved library action controls');};
   (window as any).__UI_SHOW_BUILDER__=()=>workbenchTab('组件设计')?.click();

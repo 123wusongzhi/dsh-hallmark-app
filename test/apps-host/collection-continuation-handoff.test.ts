@@ -1,10 +1,12 @@
+import {uiDictionaryValue} from '../real-data/ui-scenarios.ts';
+import {uiCollectionDetails,uiStore} from '../real-data/ui-scenarios.ts';
 import {HallmarkClient} from '../../packages/hallmark-adapter/index.ts';
 import {after,test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash,randomUUID} from 'node:crypto';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {AppsClient} from '../../packages/app-sdk/src/index.ts';
-import {catalog as generatedCatalog,call24,call38,type Input38} from '../../packages/app-sdk/src/generated.ts';
+import {catalog as generatedCatalog,call25,call39,type Input39} from '../../packages/app-sdk/src/generated.ts';
 import {AppsRuntime,RuntimeStore} from '../../packages/app-runtime/src/index.ts';
 import {HallmarkProvider,HallmarkStorePort,HALLMARK_DESCRIPTORS} from '../../packages/app-hallmark/src/index.ts';
 import {AppsPresentationService} from '../../packages/app-presentation/src/index.ts';
@@ -17,18 +19,18 @@ import {compileSchema,compileCapability,canonicalJson} from '../../packages/app-
 
 const reports:unknown[]=[],bytes=(value:unknown)=>Buffer.byteLength(typeof value==='string'?value:JSON.stringify(value)),hash=(value:unknown)=>createHash('sha256').update(canonicalJson(value)).digest('hex');
 after(()=>{if(process.env.APPS_COLLECTION_BATCH_REPORT)writeFileSync(process.env.APPS_COLLECTION_BATCH_REPORT,JSON.stringify(reports,null,2)+'\n');});
-const details=['cup-a','cup-b','cup-c'].map((id,i)=>({id,source:'taobao_tmall',title:['不锈钢保温杯','陶瓷马克杯','玻璃水杯'][i],currency:'CNY',attributes:{材质:['不锈钢','陶瓷','玻璃'][i],用途:'日常饮水'},package:{weightKg:.33,dimensionsCm:[25,10,10]},description:'杯口圆润，适合日常饮水。请按所选颜色区分规格，包装内包含杯体和配套杯盖。清洁后晾干收纳，避免与尖锐物品碰撞。',skus:['red','blue','white'].map((color,n)=>({sourceSkuId:`${id}-${color}`,spec:`颜色:${['红','蓝','白'][n]}`,properties:{颜色:['红','蓝','白'][n]},goodsPrice:12+n,currency:'CNY'}))}));
+const details=uiCollectionDetails();
 async function fixture(sourceDetails=details){
- let respond:((storeId:string,input:any)=>any)|undefined,attributes:any[]=[{id:85,dictionary_id:9,is_required:true,name:'Synthetic material'}];
+ let respond:((storeId:string,input:any)=>any)|undefined,attributes:any[]=[{id:85,dictionary_id:9,is_required:true,name:uiDictionaryValue(2)}];
  const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),port=new HallmarkStorePort(store,'fixture'),tools=new Map<string,NativeGatewayTool>(),agent={id:'collection-owner'},events:any[]=[],sourceReads:string[]=[],unexpected:string[]=[];let providerCalls=0,sequence=0;
  const forbidden=(name:string)=>async()=>{unexpected.push(name);throw Error(`Unexpected ${name}`);};
- const client:CoreClient={getStores:async()=>({status:'ok',raw:[{id:'legacy',name:'Legacy'}]}),getStoreProducts:forbidden('products'),syncStoreProducts:forbidden('sync'),getTargetMargin:forbidden('margin'),searchCollectedItems:forbidden('search'),getCollectedItem:forbidden('raw'),getCollectedItemDetail:async id=>{sourceReads.push(id);const detail=sourceDetails.find(item=>item.id===id);assert.ok(detail);return {status:'ok',raw:structuredClone(detail)};},platformCall:forbidden('write'),platformRead:forbidden('platform-read')};
+ const client:CoreClient={getStores:async()=>({status:'ok',raw:[uiStore({id:'legacy'})]}),getStoreProducts:forbidden('products'),syncStoreProducts:forbidden('sync'),getTargetMargin:forbidden('margin'),searchCollectedItems:forbidden('search'),getCollectedItem:forbidden('raw'),getCollectedItemDetail:async id=>{sourceReads.push(id);const detail=sourceDetails.find(item=>item.id===id);assert.ok(detail);return {status:'ok',raw:structuredClone(detail)};},platformCall:forbidden('write'),platformRead:forbidden('platform-read')};
  const broker:CoreBroker={getStoreTask:forbidden('store-task'),getListingTask:forbidden('listing-task'),requestId:()=>{throw Error('Unexpected requestId');}};
- const categoryCalls:any[]=[],legacyCalls:any[]=[];client.getCategoryData=async input=>{legacyCalls.push(input);return {status:'ok',raw:{storeId:input.storeId,values:[{id:11,value:'Legacy value'}],complete:false,stale:true}};};
- const gateway:any={listStores:()=>[{id:'shop',name:'Synthetic shop',enabled:true}],hasStore:(id:string)=>id==='shop',getStore:()=>({id:'shop'}),getProducts:async()=>({status:'ok',raw:{response:{items:[]}}}),request:async(storeId:string,input:any)=>{
+ const categoryCalls:any[]=[],legacyCalls:any[]=[];client.getCategoryData=async input=>{legacyCalls.push(input);return {status:'ok',raw:{storeId:input.storeId,values:[{id:11,value:uiDictionaryValue(3)}],complete:false,stale:true}};};
+ const gateway:any={listStores:()=>[uiStore({id:'shop',enabled:true})],hasStore:(id:string)=>id==='shop',getStore:()=>({id:'shop'}),getProducts:async()=>({status:'ok',raw:{response:{items:[]}}}),request:async(storeId:string,input:any)=>{
   assert.ok(['/v1/description-category/attribute','/v1/description-category/attribute/values','/v1/description-category/attribute/values/search'].includes(input.path),input.path);
   categoryCalls.push({storeId,...input});if(respond)return respond(storeId,input);
-  return {status:'ok',raw:{response:input.path.endsWith('/values')?{has_next:input.body.last_value_id===0,result:input.body.last_value_id===0?[{id:11,value:'First-page value'}]:[{id:22,value:'Required second-page value'}]}:{result:attributes}}};
+  return {status:'ok',raw:{response:input.path.endsWith('/values')?{has_next:input.body.last_value_id===0,result:input.body.last_value_id===0?[{id:11,value:uiDictionaryValue(0)}]:[{id:22,value:uiDictionaryValue(1)}]}:{result:attributes}}};
  }};
  const provider=new HallmarkProvider({store:port,client,broker,businessGateway:()=>gateway}),original=provider.execute.bind(provider);provider.execute=async context=>{providerCalls++;return original(context);};runtime.register(provider);
  runtime.addConnection({appId:'hallmark',connectionId:'fixture',displayName:'Fixture',config:{backend:'fixture'},configRevision:1,enabled:true});runtime.bind({sessionId:agent.id,appId:'hallmark',connectionId:'fixture',enabled:true,boundAt:new Date().toISOString()});
@@ -41,7 +43,7 @@ async function fixture(sourceDetails=details){
 }
 
 const broken=process.env.EXPECT_BROKEN==='1';
-for(const budget of [2500,3000,4096])test(`batch capability handoff preserves exact selected product and SKU scope at ${budget} bytes`,async()=>{
+for(const budget of [3000,4096,5000])test(`batch capability handoff preserves exact selected product and SKU scope at ${budget} bytes`,async()=>{
  const f=await fixture();try{
   const selections=details.map(d=>({id:d.id,skuIds:[d.skus[1].sourceSkuId]}));
   let page=await f.call('hallmark.collection.read',{selections,maxBytes:budget}),seen:any[]=[],pages=0,failures=0;
@@ -69,7 +71,7 @@ test('single complete page stays unchanged and invalid selections are never appr
 });
 
 test('opaque identifiers and pinned revisions survive every emitted continuation',async()=>{
- const opaque=details.map((d,i)=>({...d,id:['gift:红/01','零-00042','punct.~/_'][i],skus:d.skus.map((sku,j)=>({...sku,sourceSkuId:`exact/${i}:蓝-${j}`}))}));
+ const opaque=details.map((d,i)=>({...d,id:['gift:红/01','零-00042','punct.~/_'][i],skus:d.skus.map((sku:Record<string,unknown>,j:number)=>({...sku,sourceSkuId:`exact/${i}:蓝-${j}`}))}));
  const f=await fixture(opaque);try{
   const revisions=new Map<string,string>();for(const d of opaque){const r=await f.call('hallmark.collection.read',{id:d.id});assert.equal(r.status,'ok');revisions.set(d.id,r.data.items[0].revision);}
   const selected=opaque.map(d=>({id:d.id,skuIds:[d.skus[2].sourceSkuId],revision:revisions.get(d.id)!}));

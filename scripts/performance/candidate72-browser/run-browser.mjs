@@ -25,7 +25,7 @@ if(mode==='build'){
   for(const file of readdirSync(here).filter(f=>f.endsWith('.tsx')||f==='fixture-data.ts'))copyFileSync(join(here,file),join(entry,file));
   writeFileSync(join(entry,'index.html'),'<!doctype html><html lang="zh-CN"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Collected products browser validation</title><div id="root"></div><script type="module" src="./fixture.tsx"></script></html>');
   const dir=join(out,arm);
-  await build({...config,configFile:false,root:entry,logLevel:'warn',resolve:{alias:{PROFILE_COMPONENT:join(root,component,'src/Component.tsx'),PROFILE_CSS:join(root,component,'src/styles.css'),react:join(deps,'react'),'react-dom':join(deps,'react-dom')}},build:{outDir:dir,emptyOutDir:false,sourcemap:true,target:'es2022'}});
+  await build({...config,configFile:false,root:entry,logLevel:'warn',resolve:{alias:{REAL_SOURCE_DATA:resolve(here,'../../../test/real-data/browser-data.ts'),PROFILE_COMPONENT:join(root,component,'src/Component.tsx'),PROFILE_CSS:join(root,component,'src/styles.css'),react:join(deps,'react'),'react-dom':join(deps,'react-dom')}},build:{outDir:dir,emptyOutDir:false,sourcemap:true,target:'es2022'}});
   const files=[...readdirSync(join(dir,'assets')).map(f=>'assets/'+f),'index.html'];
   manifests.push({arm,root,dir,production:sources.map(path=>({path,sha256:hash(readFileSync(join(root,component,path)))})),files:files.map(path=>({path,sha256:hash(readFileSync(join(dir,path)))}))});
  }

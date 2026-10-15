@@ -12,7 +12,7 @@ export class BusinessOperationPoller {
   start():void {if(this.timer||this.closed)return;this.timer=setTimeout(()=>{this.timer=undefined;this.active=this.tick().finally(()=>{this.active=undefined;this.start();});},2000);this.timer.unref();}
   async tick():Promise<void>{
     if(this.closed)return;
-    const pending=this.runtime.store.list<RuntimeOperation>('operations').filter(op=>op.appId==='hallmark'&&['pending','unknown'].includes(op.state)&&/^(?:hallmark\.plan\.|hallmark\.listing\.draft\.|hallmark\.(?:api\.)?products\.(?:update_price|update_stock|list_product)$)/.test(op.capabilityId));
+    const pending=this.runtime.store.operationsInStates(['pending','unknown'],{appId:'hallmark'}).filter(op=>/^(?:hallmark\.plan\.|hallmark\.listing\.draft\.|hallmark\.(?:api\.)?products\.(?:update_price|update_stock|list_product)$)/.test(op.capabilityId));
     for(const op of pending){
       if(this.closed)return;const progress=this.attempts.get(op.operationId)??{count:0,next:0};if(progress.next>Date.now())continue;
       try{

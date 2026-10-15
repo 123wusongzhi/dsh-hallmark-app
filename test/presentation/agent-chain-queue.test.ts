@@ -26,17 +26,17 @@ function setup(){
  for(const [appId,connectionId] of [['apps','presentation'],['slowfixture','business']]){runtime.addConnection({appId,connectionId,displayName:connectionId,config:{},configRevision:1,enabled:true});runtime.bind({sessionId:session,appId,connectionId,enabled:true,boundAt:new Date().toISOString()});}
  const project=join(directory,'project');mkdirSync(join(project,'dist'),{recursive:true});writeFileSync(join(project,'dist','index.html'),'<main>queue fixture</main>');
  const view=presentation.openSource(session,project,{title:'Slow component',bindings:[binding]});
- return {store,runtime,presentation,started,release,cancelled,deny:()=>{denied=true;},render:()=>runtime.invoke(request('apps.presentation.render_view',{viewId:view.viewId,title:view.title})),async close(){release.resolve();await runtime.dispose();store.close();assert.ok(resolve(directory).startsWith(resolve(tmpdir())+sep+'agent-chain-queue-'));rmSync(directory,{recursive:true,force:true});}};
+ return {store,runtime,presentation,started,release,cancelled,deny:()=>{denied=true;},render:(required=false)=>runtime.invoke(request('apps.presentation.render_view',{viewId:view.viewId,title:view.title,...(required?{bindings:[binding as unknown as JsonValue],requiredBindingIds:['rows']}:{})})),async close(){release.resolve();await runtime.dispose();store.close();assert.ok(resolve(directory).startsWith(resolve(tmpdir())+sep+'agent-chain-queue-'));rmSync(directory,{recursive:true,force:true});}};
 }
 async function promptly<T>(work:Promise<T>):Promise<T>{let timer:ReturnType<typeof setTimeout>|undefined;try{return await Promise.race([work,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('Local metadata waited behind slow business hydration')),600);})]);}finally{clearTimeout(timer);}}
 
-test('local lists, inspection and cancellation finish during slow hydration while saved-asset writes stay queued',async t=>{
+test('background hydration frees the presentation lane for metadata and explicit saved-asset writes',async t=>{
  const f=setup();let rendering:Promise<CapabilityResult>|undefined,saving:Promise<CapabilityResult>|undefined,nextBegin:Promise<CapabilityResult>|undefined;
  try{
   const begun=await f.runtime.invoke(request('apps.authoring.begin',{mode:'new',title:'Cancelable draft'}));assert.equal(begun.status,'ok');
   const begin=(begun as unknown as {data:{attempt:{attemptId:string;epoch:number}}}).data;
   f.presentation.authoring!.markBuilding(session,begin.attempt);
-  rendering=f.render();await f.started.promise;assert.equal(f.runtime.connectionState('apps','presentation').active,1);
+  rendering=f.render();const opened=await promptly(rendering);assert.equal(opened.status,'ok');assert.equal((opened as unknown as {data:{initialData:{status:string}[]}}).data.initialData[0].status,'preparing');await f.started.promise;assert.equal(f.runtime.connectionState('apps','presentation').active,0);assert.equal(f.runtime.connectionState('slowfixture','business').active,1);
   let saved=false;saving=f.runtime.invoke(request('apps.presentation.save_entry',{title:'Explicit save',binding:binding as unknown as JsonValue,userRequest:'Save fixture'},{idempotencyKey:'save-fixture'})).then(result=>{saved=true;return result;});
   let begunAgain=false;nextBegin=f.runtime.invoke(request('apps.authoring.begin',{mode:'new',title:'Later draft'})).then(result=>{begunAgain=true;return result;});
   const localStarted=performance.now(),results=await promptly(Promise.all([
@@ -45,15 +45,15 @@ test('local lists, inspection and cancellation finish during slow hydration whil
    f.runtime.invoke(request('apps.authoring.cancel',{attemptId:begin.attempt.attemptId,expectedEpoch:begin.attempt.epoch,reason:'Stop only this draft'})),
   ]));
   t.diagnostic(`list_saved + inspect + cancel completed in ${(performance.now()-localStarted).toFixed(2)} ms while business hydration remained gated`);
-  assert.deepEqual(results.map(result=>result.status),['ok','ok','ok']);assert.equal(saved,false);assert.equal(begunAgain,false);assert.equal(f.store.list('saved_assets').length,0);
+  assert.deepEqual(results.map(result=>result.status),['ok','ok','ok']);await promptly(Promise.all([saving,nextBegin]));assert.equal(saved,true);assert.equal(begunAgain,true);assert.equal(f.store.list('saved_assets').length,1);
   assert.equal(f.presentation.authoring!.inspect(session,{attemptId:begin.attempt.attemptId}).attempt.state,'cancelled');assert.deepEqual(f.cancelled,[{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch}]);
-  assert.equal(f.runtime.connectionState('apps','presentation').active,1);f.release.resolve();assert.equal((await rendering).status,'ok');assert.equal((await saving).status,'ok');assert.equal((await nextBegin).status,'ok');assert.equal(f.store.list('saved_assets').length,1);
+  assert.equal(f.runtime.connectionState('apps','presentation').active,0);assert.equal(f.runtime.connectionState('slowfixture','business').active,1);f.release.resolve();assert.equal((await rendering).status,'ok');assert.equal((await saving).status,'ok');assert.equal((await nextBegin).status,'ok');assert.equal(f.store.list('saved_assets').length,1);
  }finally{f.release.resolve();await Promise.allSettled([rendering,saving,nextBegin]);await f.close();}
 });
 
 test('resource-scoped metadata declarations are explicit and do not relax other authoring paths',()=>{
  const independent=[...APP_PRESENTATION_DESCRIPTORS,...APP_AUTHORING_DESCRIPTORS].filter(item=>item.execution.lockScope==='resources').map(item=>item.capabilityId).sort();
- assert.deepEqual(independent,['apps.authoring.cancel','apps.authoring.inspect','apps.presentation.list_data_sources','apps.presentation.list_materials','apps.presentation.list_saved']);
+ assert.deepEqual(independent,['apps.authoring.await_display','apps.authoring.cancel','apps.authoring.inspect','apps.presentation.list_data_sources','apps.presentation.list_materials','apps.presentation.list_saved']);
  const quote=BUSINESS_PRICING_DESCRIPTORS.find(item=>item.capabilityId==='hallmark.pricing.quote')!;
  assert.equal(quote.effect,'compute');assert.equal(quote.execution.concurrency,'declared_safe');assert.equal(quote.execution.lockScope,'resources');
 });
@@ -62,7 +62,8 @@ test('metadata bypass still honors session authorization, global admission and c
  const f=setup();let rendering:Promise<CapabilityResult>|undefined,update:Promise<unknown>|undefined;
  try{
   const unauthorized=await f.runtime.invoke(request('apps.presentation.list_saved',{}, {source:{kind:'agent',sessionId:'unbound-session',nativeCallId:randomUUID()}}));assert.equal('error' in unauthorized?unauthorized.error.code:null,'APP_NOT_ACTIVE');
-  rendering=f.render();await f.started.promise;update=f.runtime.updateConnection({appId:'apps',connectionId:'presentation',expectedConfigRevision:1,config:{generation:'next'}});await immediate();
+  // Explicit required bindings remain synchronous; use that path to test connection drain, not background open.
+  rendering=f.render(true);await f.started.promise;update=f.runtime.updateConnection({appId:'apps',connectionId:'presentation',expectedConfigRevision:1,config:{generation:'next'}});await immediate();
   assert.equal(f.runtime.connectionState('apps','presentation').state,'draining');const blocked=await f.runtime.invoke(request('apps.presentation.list_saved'));assert.equal('error' in blocked?blocked.error.code:null,'CONNECTION_UPDATING');
   f.release.resolve();await rendering;await update;assert.equal(f.runtime.connectionState('apps','presentation').configRevision,2);
   const active=await f.runtime.invoke(request('apps.presentation.list_saved'));assert.equal(active.status,'ok');

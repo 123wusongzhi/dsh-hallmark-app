@@ -1,3 +1,4 @@
+import { recordedNormalizedProduct, recordedProduct } from '../adapter/real-scenarios.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyExistingPackaging, readExistingCategoryHint } from '../../packages/app-hallmark/src/packaging-evidence.ts';
@@ -16,14 +17,14 @@ function memory(): CoreStore {
 }
 const blank = () => ({ weightGrams: null, dimensionsMm: null, original: {}, basis: 'source' });
 function product(): CollectionProduct {
-  return {
+  return recordedNormalizedProduct({
     id: 'source-cup', sourceId: 'source-a', revision: 'source-1', fetchedAt: '2026-10-10T00:00:00.000Z', source: 'taobao_tmall', title: 'Cup', originalTitle: null, sourceUrl: null, category: { id: null, path: [] }, attributes: {}, package: blank(), unit: 'piece', minimumOrder: null, customsCodes: [], description: '', assets: [], mapping: { version: '1', coverage: 'verified_structure' },
     unknowns: [{ field: 'package.weightGrams', reason: 'missing', skuIds: ['red'] }, { field: 'package.dimensionsMm', reason: 'missing', skuIds: ['red'] }, { field: 'purchaseCost', reason: 'missing', skuIds: ['red'] }],
     skus: [{ id: 'red', spec: 'red', attributes: {}, purchaseCost: null, sourceDisplayPrice: null, package: null, imageRef: null, stock: null, enabled: null }],
-  };
+  });
 }
 function catalog(store: CoreStore, patch: RecordData = {}) {
-  const row = { storeId: 'bill', offerId: 'cup-red', productId: '123', sources: [{ productId: 'source-cup', skuCode: 'red', sourceSkuMatched: true }], ...patch };
+  const row = recordedProduct({ storeId: 'bill', offerId: 'cup-red', productId: '123', sources: [{ productId: 'source-cup', skuCode: 'red', sourceSkuMatched: true }], ...patch });
   store.put('business_catalog', `${row.storeId}/${row.offerId}`, row);
 }
 const attr = (patch: RecordData = {}) => ({ offer_id: 'cup-red', id: 123, weight: 330, weight_unit: 'g', depth: 250, width: 100, height: 100, dimension_unit: 'mm', ...patch });

@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiStore,uiListingPayload,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {AppsRuntime,RuntimeStore} from '../../packages/app-runtime/src/index.ts';
@@ -11,7 +12,7 @@ test('native operation inspection over real HTTP renders a compact plan and reta
   const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),tools=new Map<string,NativeGatewayTool>(),agent={id:'inspect-session'},token='fixture-token-'.repeat(5);
   let writes=0,inspections=0;
   const attributes=[{id:4191,values:[{value:'Полное описание\nБез потери текста'}]}];
-  const plan={planId:'plan-11',revision:2,storeId:'bill',status:'done',rows:Array.from({length:11},(_,index)=>({rowId:`row-${index}`,revision:1,action:'listing',target:{offerId:`offer-${index}`,productId:100+index,sku:200+index},status:'succeeded',issues:[],payload:{name:'Source content '.repeat(3000),attributes},review:[{evidence:'Full review evidence '.repeat(2000)}],receipt:{importTaskId:300+index,completion:'imported; moderation and sellability are separate'}}))};
+  const plan={planId:'plan-11',revision:2,storeId:'bill',status:'done',rows:Array.from({length:11},(_,index)=>({rowId:`row-${index}`,revision:1,action:'listing',target:{offerId:`offer-${index}`,productId:100+index,sku:200+index},status:'succeeded',issues:[],payload:uiListingPayload({description:uiListingPayload().description.repeat(3000),attributes},index),review:[{evidence:'Full review evidence '.repeat(2000)}],receipt:{importTaskId:300+index,completion:'imported; moderation and sellability are separate'}}))};
   runtime.register({manifest:{manifestVersion:1,appId:'hallmark',displayName:'Fixture',providerPackage:'fixture',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:['product']},descriptors:BUSINESS_DESCRIPTORS,
     async execute(context){writes++;return {invocationId:context.request.invocationId,traceId:context.request.traceId,status:'pending',operation:{operationId:context.operationId!,state:'pending'},pollAfterMs:5000};},
     async inspect(_id,context){inspections++;return {invocationId:context.request.invocationId,traceId:context.request.traceId,status:'ok',data:plan};},async dispose(){}});

@@ -7,7 +7,7 @@ import {readFileSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {performance} from 'node:perf_hooks';
 import {prepareRun} from './validate-artifact.mjs';
-import {configuration, draft, quote, invocation} from './fixture.mjs';
+import {configuration, draft, quote, invocation,recordedPackagingDetail} from './fixture.mjs';
 
 export async function measureHttpProcess(root, {diagnostic = false, rounds = 30, measure = true} = {}) {
   const run = prepareRun(root, {provisionDiagnosticZod: diagnostic});
@@ -65,7 +65,7 @@ export async function measureHttpProcess(root, {diagnostic = false, rounds = 30,
     const bind = {sessionId: 's', appId: 'notes', connectionId: 'n', enabled: true, boundAt: new Date().toISOString()};
     await call('setup-bind', '/v1/session-bindings', bind);
     const created = await call('setup-note', '/v1/invocations', invocation('create', 'notes.notes.create',
-      {id: 'note', title: 'Packaging benchmark', content: 'synthetic local only'}, {idempotencyKey: 'create'}));
+      {id: 'note', title: recordedPackagingDetail.title, content: recordedPackagingDetail.sourceUrl}, {idempotencyKey: 'create'}));
     assert.equal(created.status, 'ok');
     const settings = (operation, input) => ({connectionId: 'h', operation, input});
     const store = (await call('setup-store', '/v1/business-settings', settings('store.save',

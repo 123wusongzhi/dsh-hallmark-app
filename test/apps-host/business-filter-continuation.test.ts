@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiStore,uiListingPayload,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {AppsRuntime,RuntimeStore} from '../../packages/app-runtime/src/index.ts';
@@ -9,7 +10,7 @@ import {compileSchema} from '../../packages/app-contracts/src/index.ts';
 
 async function fixture(large=false){
  const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),tools=new Map<string,NativeGatewayTool>(),agent={id:'filter-session'},token='filter-token-'.repeat(5);
- const rows=Array.from({length:80},(_,i)=>({rowId:`row-${i}`,revision:1,action:'listing',target:{offerId:`offer-${i}`,sku:`sku-${i}`},...(i%2===0?{retryAt:null}:{}),status:'blocked',issues:large?[{code:'CHECK',message:'精确字段说明'.repeat(120)}]:[],payload:{name:`Product ${i}`}}));
+ const rows=Array.from({length:80},(_,i)=>({rowId:`row-${i}`,revision:1,action:'listing',target:{offerId:`offer-${i}`,sku:`sku-${i}`},...(i%2===0?{retryAt:null}:{}),status:'blocked',issues:large?[{code:'CHECK',message:'精确字段说明'.repeat(120)}]:[],payload:{name:uiProduct({},i%41).title}}));
  const plan={planId:'filter-plan',revision:2,storeId:'shop',status:'blocked',rows};let gets=0;const requests:any[]=[];const operations={get(id:string){assert.equal(id,plan.planId);gets++;return structuredClone(plan);}};
  const businessStore={get(_namespace:string,id:string){assert.equal(id,'original-operation');return {planId:plan.planId};},put(){throw Error('No business operation permitted');}};
  runtime.register({manifest:{manifestVersion:1,appId:'hallmark',displayName:'Fixture',providerPackage:'fixture',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:['product']},descriptors:BUSINESS_DESCRIPTORS,execute:context=>{requests.push(structuredClone(context.request));return executeBusiness(operations as any,businessStore as any,context);},async dispose(){}});

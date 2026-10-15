@@ -9,6 +9,10 @@ import {SourceComponentStore} from '../../packages/source-components/src/index.t
 import {FileVerificationCache} from '../../packages/source-components/src/file-verification-cache.ts';
 import {queryRows} from '../../packages/app-presentation/src/store-query.ts';
 import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
+import {AppsRuntime} from '../../packages/app-runtime/src/index.ts';
+import {HallmarkStorePort,StableHallmarkBusinessStore} from '../../packages/app-hallmark/src/store.ts';
+import {BusinessOperationPoller} from '../../packages/service/src/business-poller.ts';
+import {DatabaseSync} from 'node:sqlite';
 import {DataSourceLibrary} from '../../packages/app-presentation/src/data-sources.ts';
 import {AppsAuthoringService} from '../../packages/app-presentation/src/authoring.ts';
 import {AppsPresentationService} from '../../packages/app-presentation/src/index.ts';
@@ -59,4 +63,82 @@ test('collection version is stable on reads and advances for writes, deletes, ro
   store.put('views','view',{ownerSessionId:'A',title:'first'});const written=store.collectionVersion('views');assert.notEqual(written,empty);assert.equal(store.delete('views','missing'),false);assert.equal(store.collectionVersion('views'),written);
   assert.throws(()=>store.transaction(()=>{store.put('views','view',{ownerSessionId:'A',title:'rolled back'});throw new Error('rollback');}),/rollback/);assert.notEqual(store.collectionVersion('views'),written);assert.equal(store.get<{title:string}>('views','view')!.title,'first');
   const beforeExternal=store.collectionVersion('views');other.put('views','other',{ownerSessionId:'B'});assert.notEqual(store.collectionVersion('views'),beforeExternal);const beforeDelete=store.collectionVersion('views');assert.equal(store.delete('views','view'),true);assert.notEqual(store.collectionVersion('views'),beforeDelete);assert.throws(()=>store.collectionVersion('invalid'),/UNKNOWN_RUNTIME_COLLECTION/);
+});
+
+// B5: indexed namespace / state / build lookups. Control inputs only: no commodity or store facts are consumed.
+function countParses<T>(work:()=>T){const original=JSON.parse;let parsed=0;JSON.parse=((...args:Parameters<typeof JSON.parse>)=>{parsed++;return original(...args);}) as typeof JSON.parse;try{return {result:work(),parsed};}finally{JSON.parse=original;}}
+function seedNoise(store:RuntimeStore,count:number){const payload='x'.repeat(2000);for(let i=0;i<count;i++)store.put('provider_records','noise:'+i,{appId:'hallmark',connectionId:i%2?'other':'c',namespace:'snapshots',recordId:String(i),configRevision:1,value:{payload}});}
+function legacyHallmarkList(store:RuntimeStore,connectionId:string,collection:string,revision:number,caches:boolean){return store.list<any>('provider_records').filter(row=>row.appId==='hallmark'&&row.connectionId===connectionId&&row.namespace===collection&&(!caches||(row.configRevision??1)===revision)).map(row=>row.value);}
+test('hallmark ports list a namespace through the index and keep legacy results, ordering and revision filtering',t=>{
+  const store=new RuntimeStore(':memory:');t.after(()=>store.close());seedNoise(store,1500);
+  const port=new HallmarkStorePort(store,'c',2),old=new HallmarkStorePort(store,'c',1),other=new HallmarkStorePort(store,'other',2),business=new StableHallmarkBusinessStore(store,{connectionId:'c',scopeId:'s1'}),foreign=new StableHallmarkBusinessStore(store,{connectionId:'c',scopeId:'s2'});
+  for(let i=0;i<5;i++){port.put('snapshots','k'+i,{n:i});old.put('snapshots','k'+i,{n:-i});other.put('snapshots','k'+i,{n:100+i});port.put('operations','o'+i,{clientKey:'key'+i,n:i});business.put('business_catalog','a'+i,{storeId:i%2?'s':'t',offerId:'a'+i});foreign.put('business_catalog','a'+i,{storeId:'s',offerId:'foreign'+i});business.put('business_runtime_operations','r'+i,{clientKey:'run'+i});}
+  const stub={get:store.get.bind(store),put:store.put.bind(store),list:store.list.bind(store),transaction:store.transaction.bind(store)};
+  const legacyBusiness=(scope:string,collection:string)=>store.list<any>('provider_records').filter(row=>row.connectionId==='c'&&row.scopeId===scope&&row.namespace===collection).map(row=>row.value);
+  const cases:[string,()=>unknown,unknown][]=[
+    ['port snapshots rev2',()=>port.list('snapshots'),legacyHallmarkList(store,'c','snapshots',2,true)],
+    ['port snapshots rev1',()=>old.list('snapshots'),legacyHallmarkList(store,'c','snapshots',1,true)],
+    ['port operations',()=>port.list('operations'),legacyHallmarkList(store,'c','operations',2,false)],
+    ['business catalog',()=>business.list('business_catalog'),legacyBusiness('s1','business_catalog')],
+    ['foreign scope catalog',()=>foreign.list('business_catalog'),legacyBusiness('s2','business_catalog')],
+    ['port by client key',()=>port.getOperationByClientKey('key3'),legacyHallmarkList(store,'c','operations',2,false).find(row=>row.clientKey==='key3')],
+    ['port missing client key',()=>port.getOperationByClientKey('absent'),undefined],
+    ['business by client key',()=>business.getOperationByClientKey('run2'),legacyBusiness('s1','business_runtime_operations').find(row=>row.clientKey==='run2')],
+    ['stub port snapshots',()=>new HallmarkStorePort(stub,'c',2).list('snapshots'),legacyHallmarkList(store,'c','snapshots',2,true)],
+    ['stub business catalog',()=>new StableHallmarkBusinessStore(stub,{connectionId:'c',scopeId:'s1'}).list('business_catalog'),legacyBusiness('s1','business_catalog')],
+    ['stub client key',()=>new HallmarkStorePort(stub,'c',2).getOperationByClientKey('key4'),legacyHallmarkList(store,'c','operations',2,false).find(row=>row.clientKey==='key4')],
+  ];
+  for(const [name,run,expected] of cases)assert.deepEqual(run(),expected,name);
+  assert.equal(port.list('snapshots').length,5);assert.equal(business.list('business_catalog').length,5);
+  for(const [name,matching,run] of [['port snapshots',5,()=>port.list('snapshots')],['business catalog',5,()=>business.list('business_catalog')],['client key',1,()=>port.getOperationByClientKey('key3')]] as const){const {parsed}=countParses(run);assert.ok(parsed<=matching,name+' parsed '+parsed);}
+  console.log(JSON.stringify({metric:'hallmark-namespace-list',unrelatedRows:1500,parsedForSnapshots:countParses(()=>port.list('snapshots')).parsed}));
+});
+test('scheduler scope candidates parse only scoped and irregular rows',t=>{
+  const store=new RuntimeStore(':memory:');t.after(()=>store.close());seedNoise(store,1500);
+  for(const name of ['a','b'])store.put('provider_records','plan:'+name,{appId:'apps',connectionId:'presentation',namespace:'apps_schedules',value:{scheduleId:name}});
+  store.db.prepare('INSERT INTO provider_records(id,value_json,created_at,updated_at) VALUES(?,?,?,?)').run('dup','{"appId":"x","connectionId":"presentation","namespace":"apps_schedules","appId":"apps"}','2000','2000');
+  const {result,parsed}=countParses(()=>store.providerRecordScopeCandidates<any>('apps','presentation','apps_schedules'));
+  assert.equal(result.length,3);assert.equal(parsed,3);
+  assert.deepEqual(result.filter(row=>row.appId==='apps'&&row.connectionId==='presentation'&&row.namespace==='apps_schedules'),store.list<any>('provider_records').filter(row=>row.appId==='apps'&&row.connectionId==='presentation'&&row.namespace==='apps_schedules'));
+});
+function operation(id:string,state:string,appId='hallmark',connectionId='c',capabilityId='hallmark.plan.apply'){return {operationId:id,appId,connectionId,capabilityId,capabilityVersion:'1',idempotencyKey:id,requestHash:id,request:{},state,createdAt:'2026-10-15T00:00:00Z',updatedAt:'2026-10-15T00:00:00Z'};}
+test('operation state queries and the business poller never parse terminal operations',async t=>{
+  const store=new RuntimeStore(':memory:');t.after(()=>store.close());
+  store.transaction(()=>{for(let i=0;i<1200;i++)store.put('operations','done:'+i,operation('done:'+i,['succeeded','failed','cancelled','partial'][i%4],i%3?'hallmark':'other'));});
+  store.put('operations','p1',operation('p1','pending'));store.put('operations','u1',operation('u1','unknown','hallmark','d'));store.put('operations','q1',operation('q1','queued','other'));store.put('operations','d1',operation('d1','dispatching'));
+  const legacy=(states:string[],appId?:string,connectionId?:string)=>store.list<any>('operations').filter(row=>states.includes(row.state)&&(appId===undefined||row.appId===appId)&&(connectionId===undefined||row.connectionId===connectionId));
+  for(const [states,filters] of [[['pending','unknown'],{appId:'hallmark'}],[['unknown','pending','dispatching'],{appId:'hallmark',connectionId:'c'}],[['queued'],{}],[['succeeded'],{appId:'other'}]] as const)assert.deepEqual(store.operationsInStates([...states] as never,filters),legacy([...states],filters.appId,(filters as {connectionId?:string}).connectionId));
+  const {result,parsed}=countParses(()=>store.operationsInStates(['pending','unknown'],{appId:'hallmark'}));assert.equal(result.length,2);assert.equal(parsed,2);
+  assert.throws(()=>store.operationsInStates(['bogus' as never]),/INVALID_RUNTIME_QUERY/);assert.throws(()=>store.operationsInStates(['pending'],{state:'x'} as never),/INVALID_RUNTIME_QUERY/);
+  const clean=new RuntimeStore(':memory:');t.after(()=>clean.close());clean.transaction(()=>{for(let i=0;i<1200;i++)clean.put('operations','done:'+i,operation('done:'+i,'succeeded'));});
+  const poller=new BusinessOperationPoller(new AppsRuntime(clean));const tick=countParses(()=>poller.tick());await tick.result;assert.equal(tick.parsed,0);
+});
+test('view revisions resolve by session, view and build through the index with legacy results',t=>{
+  const store=new RuntimeStore(':memory:');t.after(()=>store.close());seedNoise(store,1000);
+  for(let i=0;i<300;i++)store.put('provider_records','view-revision:'+i,{appId:'apps',connectionId:'presentation',namespace:'view_revisions',value:{ownerSessionId:'s'+i%3,viewId:'v'+i%2,viewRevision:i,source:{buildId:'b'+i%50}}});
+  store.put('provider_records','not-a-revision',{appId:'apps',connectionId:'presentation',namespace:'component_displays',value:{ownerSessionId:'s0',viewId:'v0',source:{buildId:'b0'}}});
+  const legacy=(sessionId:string,viewId:string,buildId?:string)=>store.list<any>('provider_records').filter(row=>row.namespace==='view_revisions').map(row=>row.value).filter(view=>view.ownerSessionId===sessionId&&view.viewId===viewId&&(!buildId||view.source?.buildId===buildId));
+  for(const [session,view,build] of [['s0','v0','b0'],['s1','v1','b7'],['s2','v0','b49'],['s0','v1',undefined],['s0','v0','missing'],['absent','v0','b0']] as const)assert.deepEqual(store.viewRevisionsForBuild(session,view,build),legacy(session,view,build));
+  const {result,parsed}=countParses(()=>store.viewRevisionsForBuild('s0','v0','b0'));assert.ok(result.length>0);assert.equal(parsed,result.length);
+  assert.match(JSON.stringify(store.db.prepare("EXPLAIN QUERY PLAN SELECT value_json FROM provider_records WHERE json_extract(value_json,'$.namespace')='view_revisions' AND json_extract(value_json,'$.value.ownerSessionId')=? AND json_extract(value_json,'$.value.viewId')=? AND json_extract(value_json,'$.value.source.buildId')=? ORDER BY created_at,id").all('s','v','b')),/provider_records_view_revisions/);
+});
+test('existing schema 3 and 4 databases without the B5 indexes gain them on open and return identical results',t=>{
+  const root=fixture(t),b5Indexes=['provider_records_namespace_connection','provider_records_irregular','provider_records_view_revisions','operations_state'];
+  for(const schemaVersion of [3,4] as const){
+    const path=join(root,'legacy-'+schemaVersion+'.db'),first=new RuntimeStore(path,{schemaVersion});
+    first.put('provider_records','a',{appId:'hallmark',connectionId:'c',namespace:'snapshots',recordId:'a',value:{n:1}});first.put('provider_records','b',{appId:'hallmark',connectionId:'c',namespace:'snapshots',recordId:'b',value:{n:2}});
+    first.put('provider_records','view-revision:1',{namespace:'view_revisions',value:{ownerSessionId:'s',viewId:'v',source:{buildId:'b1'}}});first.put('operations','p',operation('p','pending'));first.put('operations','s',operation('s','succeeded'));
+    for(const name of b5Indexes)first.db.exec('DROP INDEX '+name);
+    first.close();
+    const raw=new DatabaseSync(path),names=()=>raw.prepare("SELECT name FROM sqlite_master WHERE type='index'").all().map(row=>String(row.name));assert.ok(!names().includes('operations_state'));raw.close();
+    const reopened=new RuntimeStore(path,{schemaVersion});
+    try{
+      const present=reopened.db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all().map(row=>String(row.name));for(const name of b5Indexes)assert.ok(present.includes(name),name);
+      assert.equal(reopened.db.prepare('PRAGMA user_version').get()?.user_version,schemaVersion);
+      assert.deepEqual(new HallmarkStorePort(reopened,'c',1).list('snapshots'),[{n:1},{n:2}]);
+      assert.deepEqual(reopened.operationsInStates(['pending']).map(op=>op.operationId),['p']);
+      assert.equal(reopened.viewRevisionsForBuild('s','v','b1').length,1);
+      assert.equal(reopened.providerRecordScopeCandidates('hallmark','c','snapshots').length,2);
+    }finally{reopened.close();}
+  }
 });

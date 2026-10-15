@@ -1,3 +1,4 @@
+import { browserOverview } from '../real-data/browser.ts';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { HallmarkWorkbench, type WorkbenchBridge } from '../../packages/dsh-plugin/client/workbench.tsx';
@@ -20,7 +21,7 @@ function controlled() {
   const configuration = (index: number) => { requests.saved[index].resolve({ components: [], entries: [], templates: [] }); requests.templates[index].resolve([]); requests.datasets[index].resolve([]); };
   return { bridge, requests, configuration };
 }
-function overview(count: number): OverviewDto { return { fetchedAt: `2026-10-06T01:${String(count).padStart(2, '0')}:00Z`, collected: { status: 'ok', count }, products: { status: 'ok', count: count * 2, lastSuccessAt: '2026-10-05T01:00:00Z' }, stores: { status: 'ok', count: 1, rows: [{ id: 'shop-a', name: `测试店铺 ${count}`, productCount: count * 2, lastSuccessAt: '2026-10-05T01:00:00Z', status: 'ok' }] } }; }
+function overview(count: number): OverviewDto { return browserOverview(count, count * 2, 1); }
 const values = () => [...document.querySelectorAll('.hm-metric-value')].map(node => node.textContent).join(',');
 const text = () => document.getElementById('root')?.textContent ?? '';
 const busy = () => document.querySelector('.hm-overview-grid')?.getAttribute('aria-busy') === 'true';
@@ -43,7 +44,7 @@ async function run() {
   a.configuration(1); a.requests.overview[1].reject(new Error('synthetic overview unavailable'));
   await wait(() => text().includes('概览未更新，当前显示上次读取的数据。'), 'refresh error notice');
   check(values() === '11,22,1' && !busy(), 'failed refresh retains old counts and explicitly reports not updated');
-  check(document.querySelector('.hm-store-table')?.textContent?.includes('测试店铺 11'), 'failed refresh retains the old store snapshot');
+  check(document.querySelector('.hm-store-table')?.textContent?.includes(overview(11).stores.rows[0].name), 'failed refresh retains the old store snapshot');
   check(document.querySelector('.hm-panel-footnote')?.textContent === previousReadTime, 'failed refresh never advances the displayed successful read time');
 
   refresh(); await wait(() => a.requests.overview.length === 3, 'recovery request');

@@ -1,4 +1,5 @@
 import {migrateSchema4} from '../../packages/app-migration/src/schema4.ts';
+import {realScenarioProduct} from '../real-data/corpus.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -29,7 +30,7 @@ function fixture(){
  store.put('session_apps','s',{sessionId:'s',appId:'hallmark',active:true,activatedAt:at});
  const operation={operationId:'legacy-price',kind:'update_price',sessionId:'s',clientKey:'original-intent',storeId:'shop',targets:['A'],input:{storeId:'shop',offerIds:['A'],price:100,currency:'RUB',valueSource:'user',clientOperationKey:'original-intent',userRequest:'把 A 价格改为 100 RUB',fingerprint:'original-hash'},state:'succeeded',hallmarkRefs:[{taskId:'task',requestId:'original-request'}],items:[{target:'A',state:'succeeded'}],createdAt:at,updatedAt:at};store.put('operations',operation.operationId,operation);
  const spill=join(source,'data','spill','source.json');mkdirSync(dirname(spill),{recursive:true});writeFileSync(spill,'{"source":"complete data"}');
- store.updateSnapshotSuccess('store_products:shop',{products:[{storeId:'shop',offerId:'A',price:100,originalField:{preserved:true}}]},null,{provenance:{source:'hallmark_snapshot',fetchedAt:at},sourceSpill:{path:spill,bytes:26,summary:{kind:'products'},cursor:'0'}});
+ store.updateSnapshotSuccess('store_products:shop',{products:[realScenarioProduct({storeId:'shop',offerId:'A',price:100,originalField:{preserved:true}})]},null,{provenance:{source:'hallmark_snapshot',fetchedAt:at},sourceSpill:{path:spill,bytes:26,summary:{kind:'products'},cursor:'0'}});
  store.put('internal_tasks','shop:store_operation',{storeId:'shop',purpose:'store_operation',taskId:'task'});store.put('result_sets','expired',{resultSetId:'expired',expiresAt:'2026-10-06T02:00:00Z',payload:{products:[],unable:[],total:0}});
  store.put('queries','q',{id:'q',datasetKey:'query:q',tool:'hallmark_list_store_products',params:{storeId:'shop'},userRequest:'保存查询'});
  store.put('views','draft:draft',{kind:'component-draft',spec:spec('draft')});store.put('views','owner:draft',{kind:'component-owner',owner:{sessionId:'s',viewId:'draft',title:'Draft',createdAt:at,updatedAt:at,widgetTypes:[]}});

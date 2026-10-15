@@ -2,8 +2,89 @@ param(
   [string]$PackageManifestPath = '',
   [string]$DesktopDirectory = (Join-Path $env:LOCALAPPDATA 'Programs/DeepSeek Harness'),
   [string]$ProfileDirectory = '',
-  [switch]$ValidateOnly
+  [switch]$ValidateOnly,
+  [switch]$ManageRuntime,
+  [string]$RuntimeNodeExecutable = '',
+  [string]$RuntimeDataDirectory = '',
+  [string]$RuntimeWorkingDirectory = '',
+  [string]$RuntimeConnectionsFile = '',
+  [string]$RuntimeServiceUrl = '',
+  [string]$RuntimeOperatorTokenFile = '',
+  [switch]$RuntimeOperatorTokenJson,
+  [string]$RuntimeRouterKeyEnvironment = 'openrouter'
 )
+# These functions only validate paths and persist credential sources; they never launch Runtime.
+function New-RuntimeLaunchManifest {
+  param(
+    [switch]$ManageRuntime,
+    [switch]$ValidateOnly,
+    [string]$InstalledDirectory = '',
+    [string]$RuntimeNodeExecutable = '',
+    [string]$RuntimeDataDirectory = '',
+    [string]$RuntimeWorkingDirectory = '',
+    [string]$RuntimeConnectionsFile = '',
+    [string]$RuntimeServiceUrl = '',
+    [string]$RuntimeOperatorTokenFile = '',
+    [switch]$RuntimeOperatorTokenJson,
+    [string]$RuntimeRouterKeyEnvironment = 'openrouter'
+  )
+  if (-not $ManageRuntime) { return }
+  $missing = @()
+  foreach ($parameter in @('InstalledDirectory', 'RuntimeNodeExecutable', 'RuntimeDataDirectory', 'RuntimeWorkingDirectory', 'RuntimeServiceUrl', 'RuntimeOperatorTokenFile', 'RuntimeRouterKeyEnvironment')) {
+    if (-not (Get-Variable -Name $parameter -ValueOnly)) { $missing += $parameter }
+  }
+  if ($missing.Count -gt 0) {
+    Write-Warning ('Skipping runtime-launch.json: missing ' + ($missing -join ', ') + '. Existing manifests are unchanged; without a valid manifest automatic restart is disabled.')
+    return
+  }
+  if (-not $RuntimeConnectionsFile) { $RuntimeConnectionsFile = Join-Path $RuntimeDataDirectory 'connections.json' }
+  foreach ($runtimePath in @($InstalledDirectory, $RuntimeNodeExecutable, $RuntimeDataDirectory, $RuntimeWorkingDirectory, $RuntimeConnectionsFile, $RuntimeOperatorTokenFile)) {
+    $runtimeRoot = [IO.Path]::GetPathRoot($runtimePath)
+    if (-not $runtimeRoot -or $runtimeRoot -eq '\' -or $runtimeRoot -eq '/' -or $runtimeRoot.EndsWith(':')) { throw 'Runtime launch paths must be absolute.' }
+  }
+  foreach ($runtimeFile in @($RuntimeNodeExecutable, $RuntimeConnectionsFile, $RuntimeOperatorTokenFile, (Join-Path $RuntimeDataDirectory 'service-key'))) {
+    if (-not (Test-Path -LiteralPath $runtimeFile -PathType Leaf)) { throw 'A required Runtime launch file is missing.' }
+  }
+  foreach ($runtimeFolder in @($RuntimeDataDirectory, $RuntimeWorkingDirectory)) {
+    if (-not (Test-Path -LiteralPath $runtimeFolder -PathType Container)) { throw 'A required Runtime launch directory is missing.' }
+  }
+  if ([IO.Path]::GetFileName($RuntimeNodeExecutable) -notmatch '^node(?:\.exe)?$') { throw 'RuntimeNodeExecutable must be node.exe, not Electron.' }
+  if ($RuntimeServiceUrl -notmatch '^http://127\.0\.0\.1(?::[0-9]{1,5})?/?$') { throw 'RuntimeServiceUrl must match the plugin IPv4 loopback serviceUrl.' }
+  $runtimeUri = [Uri]$RuntimeServiceUrl
+  if ($runtimeUri.Port -lt 1 -or $runtimeUri.Port -gt 65535) { throw 'Invalid Runtime service port.' }
+  if ($RuntimeRouterKeyEnvironment -notmatch '^[A-Za-z_][A-Za-z0-9_]{0,127}$') { throw 'Invalid Runtime credential environment name.' }
+  $operatorSource = [ordered]@{ name = 'HALLMARK_OPERATOR_TOKEN'; fromFile = [IO.Path]::GetFullPath($RuntimeOperatorTokenFile) }
+  if ($RuntimeOperatorTokenJson) { $operatorSource.jsonField = 'token' }
+  $runtimeLaunch = [ordered]@{
+    schemaVersion = 1; managedBy = 'dsh-plugin-apps-bundle'; serviceUrl = $runtimeUri.GetLeftPart([UriPartial]::Authority)
+    nodeExecutable = [IO.Path]::GetFullPath($RuntimeNodeExecutable); entry = (Join-Path $InstalledDirectory 'lib/runtime.js'); cwd = [IO.Path]::GetFullPath($RuntimeWorkingDirectory)
+    env = [ordered]@{ APPS_DATA_DIR = [IO.Path]::GetFullPath($RuntimeDataDirectory); APPS_CONNECTIONS_FILE = [IO.Path]::GetFullPath($RuntimeConnectionsFile); APPS_PORT = [string]$runtimeUri.Port }
+    credentials = @($operatorSource, [ordered]@{ name = 'openrouter'; fromEnv = $RuntimeRouterKeyEnvironment })
+  }
+  if (-not $ValidateOnly) { return $runtimeLaunch }
+}
+
+function Write-RuntimeLaunchManifest {
+  param(
+    [switch]$ManageRuntime,
+    [switch]$ValidateOnly,
+    [System.Collections.IDictionary]$RuntimeLaunch,
+    [string]$BackupDirectory = ''
+  )
+  if (-not $ManageRuntime -or $ValidateOnly -or $null -eq $RuntimeLaunch) { return }
+  if (-not $BackupDirectory -or -not (Test-Path -LiteralPath $BackupDirectory -PathType Container)) { throw 'Runtime manifest backup directory is missing.' }
+  $runtimeLaunchPath = Join-Path $runtimeLaunch.env.APPS_DATA_DIR 'runtime-launch.json'
+  if (-not (Test-Path -LiteralPath $runtimeLaunch.entry -PathType Leaf)) { throw 'Installed Runtime entry is missing.' }
+  if (Test-Path -LiteralPath $runtimeLaunchPath -PathType Leaf) { Copy-Item -LiteralPath $runtimeLaunchPath -Destination (Join-Path $BackupDirectory 'runtime-launch.previous.json') }
+  # Sources only: never read credentials, copy their contents, or invoke the Runtime here.
+  $runtimeLaunchTemp = $runtimeLaunchPath + '.' + [Guid]::NewGuid().ToString('N') + '.tmp'
+  try {
+    [IO.File]::WriteAllText($runtimeLaunchTemp, ($runtimeLaunch | ConvertTo-Json -Depth 8), (New-Object Text.UTF8Encoding($false)))
+    Move-Item -LiteralPath $runtimeLaunchTemp -Destination $runtimeLaunchPath -Force
+  } finally { if (Test-Path -LiteralPath $runtimeLaunchTemp) { Remove-Item -LiteralPath $runtimeLaunchTemp } }
+  Write-Output 'Plugin-managed runtime-launch.json written. Match plugin dataDirectory/serviceUrl, ensure Desktop inherits the named router environment variable, and reopen Desktop. No Runtime was launched.'
+}
+
 # The official plugin manager replaces the same plugin. This script never stops Desktop or migrates app.db.
 $ErrorActionPreference = 'Stop'
 $projectDirectory = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
@@ -67,6 +148,9 @@ if (-not $oldDependency) { throw 'The original same-name desktop plugin is not i
 $installedDirectory = Join-Path $profile ('node_modules/' + $packageName)
 $oldManifest = Get-Content -LiteralPath (Join-Path $installedDirectory 'package.json') -Raw | ConvertFrom-Json
 if ($oldManifest.name -ne $packageName) { throw 'Installed original plugin identity mismatch.' }
+# Explicit opt-in declares this Runtime plugin-managed, not an external service to take over.
+$runtimeLaunch = New-RuntimeLaunchManifest -ManageRuntime:$ManageRuntime -ValidateOnly:$ValidateOnly -InstalledDirectory $installedDirectory -RuntimeNodeExecutable $RuntimeNodeExecutable -RuntimeDataDirectory $RuntimeDataDirectory -RuntimeWorkingDirectory $RuntimeWorkingDirectory -RuntimeConnectionsFile $RuntimeConnectionsFile -RuntimeServiceUrl $RuntimeServiceUrl -RuntimeOperatorTokenFile $RuntimeOperatorTokenFile -RuntimeOperatorTokenJson:$RuntimeOperatorTokenJson -RuntimeRouterKeyEnvironment $RuntimeRouterKeyEnvironment
+if (-not $ManageRuntime) { Write-Output 'Runtime launch manifest not requested; existing manifests and service management are unchanged.' }
 $cliVersion = (& $cli --version | Out-String).Trim()
 if ($LASTEXITCODE -ne 0 -or $cliVersion -ne '0.2.0-rc.2') { throw 'Unexpected official Desktop CLI version.' }
 $desktopRunning = @(Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue).Count -gt 0
@@ -128,6 +212,7 @@ if ($installedManifest.version -ne $candidateVersion) { throw 'Disk package vers
 foreach ($artifact in $artifactProperties) {
   if ((Get-FileHash -LiteralPath (Join-Path $installedDirectory $artifact.Name) -Algorithm SHA256).Hash.ToLowerInvariant() -cne $artifact.Value) { throw ('Installed artifact hash mismatch: ' + $artifact.Name) }
 }
+Write-RuntimeLaunchManifest -ManageRuntime:$ManageRuntime -ValidateOnly:$ValidateOnly -RuntimeLaunch $runtimeLaunch -BackupDirectory $resolvedBackup
 $record.installed = $true
 $record | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $resolvedBackup 'backup.json') -Encoding utf8
 Write-Output ('Updated the original desktop plugin to ' + $candidateVersion + '. Reopen and verify matching Host/Runtime/schema4; rollback: ' + (Join-Path $resolvedBackup 'rollback.ps1'))

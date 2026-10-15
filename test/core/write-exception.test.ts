@@ -1,3 +1,4 @@
+import { recordedPlatformProduct } from '../adapter/real-scenarios.ts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {AppStore} from '../../packages/store/index.ts';
@@ -14,7 +15,7 @@ function setup(writeStatus:'ok'|'unknown'|'throw'='ok'){
  const calls:Array<{kind:'write'|'read';taskId:string;input:any}>=[];
  const client:CoreOptions['client']={getStores:async()=>ok([{id:'shop',shopName:'Shop'}]),getStoreProducts:async()=>ok({stores:[],products:[]}),syncStoreProducts:async()=>ok({}),getTargetMargin:async()=>ok({}),searchCollectedItems:async()=>ok([]),getCollectedItem:async()=>ok({}),
   platformCall:async(taskId,input)=>{calls.push({kind:'write',taskId,input});if(writeStatus==='throw')throw new Error('mock transport disconnected after sending');return writeStatus==='unknown'?{status:'unknown',raw:{outcome:'outcome_unknown'},error:{code:'SOURCE_OUTCOME_UNKNOWN',message:'mock source has no definitive response',retryable:false}}:ok({outcome:'response_received',httpStatus:200,response:{result:[{offer_id:'A',updated:true,errors:[]}]}});},
-  platformRead:async(taskId,input)=>{calls.push({kind:'read',taskId,input});return ok({outcome:'response_received',httpStatus:200,response:{result:{items:[{offer_id:'A',product_id:1,price:{price:'100',currency_code:'RUB'}}]}}});}};
+  platformRead:async(taskId,input)=>{calls.push({kind:'read',taskId,input});return ok({outcome:'response_received',httpStatus:200,response:{result:{items:[recordedPlatformProduct({offer_id:'A',product_id:1,price:{price:'100',currency_code:'RUB'}})]}}});}};
  const broker:CoreOptions['broker']={getStoreTask:async()=>ok({taskId:'task'}),getListingTask:async()=>ok({taskId:'listing'}),requestId:(kind,id,sequence)=>`${kind}-${id}-${sequence}`};
  const core=new AppCore({store,client,broker,presentation:new PresentationManager(store)});
  return {store,core,calls};

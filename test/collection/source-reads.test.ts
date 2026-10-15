@@ -1,3 +1,4 @@
+import { recordedSample, recordedRaw, recordedDetail, recordedSku } from '../adapter/real-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CollectionService } from '../../packages/collection/src/index.ts';
@@ -12,7 +13,7 @@ function fixture(options: Partial<CollectionOptions> = {}) {
   const values = new Map<string, any>();
   const calls = { detail: [] as string[], raw: [] as string[], index: 0, listing: [] as string[][] };
   let rawValue: any = { note: 'before', rows: Array.from({ length: 70 }, (_, i) => i) };
-  const details = new Map(['a', 'b'].map(id => [id, { id, title: 'terminal', source: 'taobao_tmall', currency: 'CNY', skus: [{ sourceSkuId: `${id}-sku`, goodsPrice: 1 }] }]));
+  const details = new Map(['a', 'b'].map(id => [id, recordedDetail({ id, title: 'terminal', source: 'taobao_tmall', currency: 'CNY', skus: [recordedSku({ sourceSkuId: `${id}-sku`, goodsPrice: 1 }, recordedSample({id:id,source:'taobao_tmall',nonempty:true}), undefined, ["id","code"])] }, recordedSample({id:id,source:'taobao_tmall',nonempty:true}))]));
   let rows: any[] = [...details.values()].map((item, i) => ({ id: item.id, title: item.title, source: item.source, currency: 'CNY', goodsMinPrice: i + 1, goodsMaxPrice: i + 1, skuCount: 1 }));
   const store: CollectionStore = {
     get: <T>(collection: string, id: string) => values.get(`${collection}/${id}`) as T | undefined,
@@ -20,7 +21,7 @@ function fixture(options: Partial<CollectionOptions> = {}) {
   };
   const client: CollectionClient = {
     async getCollectedItemDetail(id) { calls.detail.push(id); return { status: 'ok', raw: details.get(id) }; },
-    async getCollectedItem(id) { calls.raw.push(id); return { status: 'ok', raw: { id, content: JSON.stringify(rawValue), truncated: false } }; },
+    async getCollectedItem(id) { calls.raw.push(id); return { status: 'ok', raw: recordedRaw({ id, content: JSON.stringify(rawValue), truncated: false }) }; },
     async searchCollectedItems() { calls.index++; return { status: 'ok', raw: rows }; },
   };
   const service = new CollectionService({ client, store, listingStates: async ids => { calls.listing.push([...ids]); return {}; }, ...options });
@@ -69,7 +70,7 @@ test('old original read finishing after a refresh cannot replace the new cache g
   f.client.getCollectedItem = async id => {
     const sequence = ++calls;
     if (sequence === 1) { started.resolve(); await release.promise; }
-    return { status: 'ok', raw: { id, content: JSON.stringify({ note: sequence === 1 ? 'old-inflight' : 'new-generation' }), truncated: false } };
+    return { status: 'ok', raw: recordedRaw({ id, content: JSON.stringify({ note: sequence === 1 ? 'old-inflight' : 'new-generation' }), truncated: false }) };
   };
   const old = readNote(f.service); await started.promise;
   await f.service.getProduct('a', { refresh: true });
@@ -82,7 +83,7 @@ test('old original read finishing after a refresh cannot replace the new cache g
 test('concurrent paths for one original snapshot share a fetch, but each result remains independent', async () => {
   const f = fixture(), started = deferred(), release = deferred();
   let calls = 0;
-  f.client.getCollectedItem = async id => { calls++; started.resolve(); await release.promise; return { status: 'ok', raw: { id, content: '{"note":"same","other":"field"}', truncated: false } }; };
+  f.client.getCollectedItem = async id => { calls++; started.resolve(); await release.promise; return { status: 'ok', raw: recordedRaw({ id, content: '{"note":"same","other":"field"}', truncated: false }) }; };
   const reads = Array.from({ length: 8 }, (_, i) => f.service.resourceRead({ id: 'a', path: i % 2 ? '/source/other' : '/source/note' }));
   await started.promise; await Promise.resolve(); release.resolve();
   const results = await Promise.all(reads);
@@ -94,7 +95,7 @@ test('concurrent paths for one original snapshot share a fetch, but each result 
 test('failed shared original reads are evicted so a later request can recover', async () => {
   const f = fixture(), started = deferred(), release = deferred();
   let calls = 0;
-  f.client.getCollectedItem = async id => { const first = ++calls === 1; if (first) { started.resolve(); await release.promise; return { status: 'unavailable', error: { code: 'OFFLINE', message: 'fixture offline', retryable: true } }; } return { status: 'ok', raw: { id, content: '{"note":"recovered"}', truncated: false } }; };
+  f.client.getCollectedItem = async id => { const first = ++calls === 1; if (first) { started.resolve(); await release.promise; return { status: 'unavailable', error: { code: 'OFFLINE', message: 'fixture offline', retryable: true } }; } return { status: 'ok', raw: recordedRaw({ id, content: '{"note":"recovered"}', truncated: false }) }; };
   const pending = Array.from({ length: 4 }, () => readNote(f.service));
   const outcomes = Promise.allSettled(pending); await started.promise; await Promise.resolve(); release.resolve();
   assert((await outcomes).every(outcome => outcome.status === 'rejected'));
@@ -129,8 +130,8 @@ test('a failed directory fetch is shared and does not poison the next attempt', 
 
 test('original fetches remain isolated by product and service/connection scope', async () => {
   const a = fixture({ sourceId: 'connection-a' }), b = fixture({ sourceId: 'connection-b' });
-  a.client.getCollectedItem = async id => { a.calls.raw.push(id); return { status: 'ok', raw: { id, content: JSON.stringify({ note: `A:${id}` }), truncated: false } }; };
-  b.client.getCollectedItem = async id => { b.calls.raw.push(id); return { status: 'ok', raw: { id, content: JSON.stringify({ note: `B:${id}` }), truncated: false } }; };
+  a.client.getCollectedItem = async id => { a.calls.raw.push(id); return { status: 'ok', raw: recordedRaw({ id, content: JSON.stringify({ note: `A:${id}` }), truncated: false }) }; };
+  b.client.getCollectedItem = async id => { b.calls.raw.push(id); return { status: 'ok', raw: recordedRaw({ id, content: JSON.stringify({ note: `B:${id}` }), truncated: false }) }; };
   const results = await Promise.all([readNote(a.service, 'a'), readNote(a.service, 'b'), readNote(b.service, 'a')]);
   assert.deepEqual(results.map(r => r.value), ['A:a', 'A:b', 'B:a']);
   assert.deepEqual(a.calls.raw, ['a', 'b']); assert.deepEqual(b.calls.raw, ['a']);
@@ -188,7 +189,7 @@ test('price-filtered store record counts exclude unavailable records outside the
 
 test('declared original product identity mismatch is rejected before caching and can recover', async () => {
   const f = fixture(); let calls = 0;
-  f.client.getCollectedItem = async id => { calls++; return { status: 'ok', raw: { id: calls === 1 ? 'wrong-product' : id, content: '{"note":"verified"}', truncated: false } }; };
+  f.client.getCollectedItem = async id => { calls++; return { status: 'ok', raw: recordedRaw({ id: calls === 1 ? 'wrong-product' : id, content: '{"note":"verified"}', truncated: false }) }; };
   await assert.rejects(readNote(f.service), (error: any) => error.code === 'COLLECTION_ID_MISMATCH');
   assert.equal([...f.values.keys()].filter(key => key.startsWith('collection_raw/')).length, 0);
   assert.equal((await readNote(f.service)).value, 'verified'); assert.equal(calls, 2);

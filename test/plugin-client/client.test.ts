@@ -1,3 +1,4 @@
+import {uiProduct} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -29,11 +30,11 @@ test('pending activation loses authority after target switch; old finally cannot
   const gate=new MutationGate();let busy=false;const old=gate.begin();busy=true;gate.reset();busy=false;assert.equal(old.controller.signal.aborted,true);assert.equal(gate.current(old),false);const next=gate.begin();busy=true;if(gate.current(old))busy=false;assert.equal(busy,true);assert.equal(gate.current(next),true);gate.reset();busy=false;assert.equal(gate.current(next),false);assert.equal(busy,false);const later=gate.begin();assert.equal(gate.current(later),true);
 });
 test('fieldMap/nested source paths are real and prototype traversal is blocked',()=>{
-  const row={offer_id:'oz-12',profit:{margin:.173},referenceProfit:{costMissing:true}};const binding={id:'b',datasetKey:'profit:1',fieldMap:{sku:'offer_id',margin:'profit.margin'}};
+  const row=uiProduct({offer_id:'oz-12',profit:{margin:.173},referenceProfit:{costMissing:true}},16);const binding={id:'b',datasetKey:'profit:1',fieldMap:{sku:'offer_id',margin:'profit.margin'}};
   assert.equal(mappedValue(row,'sku',binding),'oz-12');assert.equal(mappedValue(row,'margin',binding),.173);assert.equal(missingCost(row),true);assert.equal(valueAt(row,'__proto__.polluted'),undefined);assert.equal(valueAt(row,'constructor.name'),undefined);assert.equal(formatValue(mappedValue(row,'margin',binding),'percent'),'17.30%');
 });
 test('real sortable tables are stable, null and missing-cost profits stay last both directions',()=>{
-  const rows=[{id:'a',margin:.2},{id:'b',margin:.1},{id:'unknown',margin:0,costMissing:true},{id:'null',margin:null},{id:'tie',margin:.2}];
+  const rows=[uiProduct({id:'a',margin:.2},4),uiProduct({id:'b',margin:.1},6),uiProduct({id:'unknown',margin:0,costMissing:true},20),uiProduct({id:'null',margin:null},40),uiProduct({id:'tie',margin:.2},7)];
   assert.deepEqual(sortRows(rows,{field:'margin',direction:'desc'}).map(r=>r.id),['a','tie','b','unknown','null']);assert.deepEqual(sortRows(rows,{field:'margin',direction:'asc'}).map(r=>r.id),['b','a','tie','unknown','null']);assert.equal(rows[0].id,'a');
   const mapped=sortRows([{priceMinor:50},{priceMinor:20}],{field:'price',direction:'asc'},{id:'b',fieldMap:{price:'priceMinor'},datasetKey:'store_products:1'});assert.equal(mapped[0].priceMinor,20);
 });

@@ -1,4 +1,5 @@
 import {APPS_DATA_REQUEST_TIMEOUT_MS,appsInvocationTimeout,HttpRuntimeTransport, type RuntimeTransport} from '../../app-sdk/src/index.ts';
+import {randomUUID} from 'node:crypto';
 import {loopbackHttpFetch} from '../../app-sdk/src/loopback-http.ts';
 import type {AppManifest, BridgeRequest, CapabilityDescriptor, CapabilityResult, ComponentAgentIntent, ComponentContextSnapshot, InvocationRequest, JsonValue, SessionAppBinding} from '../../app-contracts/src/index.ts';
 import type {ToolResult} from '../../contracts/src/index.ts';
@@ -14,10 +15,15 @@ export interface ModelProjection {content: string;fullResultRef?: JsonValue}
 export interface PresentationInvocation {invocationId:string;request:InvocationRequest;state:'received'|'dispatching'|'settled';result?:CapabilityResult}
 export interface InvocationDiagnostic {invocationId: string;traceId: string;operationId: string | null;runId: string | null;appId: string;connectionId: string;capabilityId: string;capabilityVersion: string;status: string;durationMs: number | null}
 export interface AppsHostTransport extends RuntimeTransport {
+  associationOverview?(query:Record<string,string>,signal?:AbortSignal):Promise<JsonValue>;
   businessSettingsRead?(connectionId?:string,storeId?:string,signal?:AbortSignal):Promise<JsonValue>;
   businessSettingsWrite?(input:{connectionId:string;operation:string;input:JsonValue},signal?:AbortSignal):Promise<JsonValue>;
   reviewNext?(owner:ReviewOwner,signal?:AbortSignal):Promise<ReviewTicket|null>;
   reviewComplete?(ticket:ReviewTicket,completion:ReviewCompletion,signal?:AbortSignal):Promise<void>;
+  /** Cheap liveness probe (`/health?shallow=1`): never waits on the business backend. */
+  health?(signal?:AbortSignal):Promise<JsonValue>;
+  dataHealth?(signal?:AbortSignal):Promise<JsonValue>;
+  restartRuntime?(signal?:AbortSignal):Promise<void>;
   listApps(signal?: AbortSignal): Promise<RuntimeApp[]>;
   discover(options?: {appId?: string;query?: string;cursor?: string;limit?: number}, signal?: AbortSignal): Promise<DiscoveryPage>;
   listConnections(appId?: string, signal?: AbortSignal): Promise<RuntimeConnection[]>;
@@ -54,8 +60,26 @@ export interface AppsHostTransport extends RuntimeTransport {
   workbenchAction?(input:{appId:string;operation:string;params:JsonValue;sessionId?:string},signal?:AbortSignal):Promise<JsonValue>;
   legacyInvoke(input: {name: string;arguments: JsonValue;sessionId: string;invocationId: string;traceId: string;deadlineAt: string}, signal?: AbortSignal): Promise<ToolResult>;
 }
+/** Empty or non-JSON bodies become a typed failure that keeps the HTTP status and request id. A non-2xx status stays a server response (statusCode); a 2xx one is an uncertain read. */
+function invalidResponse(httpStatus: number, requestId: string, text: string, rejected: boolean): Error {
+  const message = text.length === 0 ? 'Runtime 返回了空白响应。' : 'Runtime 返回了无效 JSON 响应。';
+  const details = {status: 'failed', error: {code: 'RUNTIME_INVALID_RESPONSE', message, retryPolicy: 'read_retry', details: {httpStatus, requestId, ...(text.length ? {cause: text.slice(0, 200)} : {})}}};
+  return Object.assign(new SyntaxError('RUNTIME_INVALID_RESPONSE'), {code: 'RUNTIME_INVALID_RESPONSE', httpStatus, requestId, details, ...(rejected ? {statusCode: httpStatus} : {})});
+}
+/** Records how many attempts produced a server response, without altering the response itself. */
+function withAttempts(error: unknown, attempts: number): unknown {
+  const details = (error as {details?: {error?: {details?: unknown}}}).details, failure = details?.error;
+  if (!failure || typeof failure !== 'object') return error;
+  const inner = failure.details && typeof failure.details === 'object' && !Array.isArray(failure.details) ? failure.details : {};
+  return Object.assign(error as object, {details: {...details, error: {...failure, details: {...inner, attempts}}}});
+}
+function describeCause(error: unknown): string {
+  const cause = (error as {cause?: {code?: string; message?: string}}).cause, base = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  return (cause?.code || cause?.message ? `${base} (${[cause.code, cause.message].filter(Boolean).join(' ')})` : base).slice(0, 300);
+}
 /** Adds project catalogue/binding endpoints to the shared SDK transport, with no business dispatch implementation. */
 export class HttpAppsHostTransport extends HttpRuntimeTransport implements AppsHostTransport {
+  async associationOverview(query:Record<string,string>,signal?:AbortSignal):Promise<JsonValue>{return await this.request(`/v1/associations?${new URLSearchParams(query)}`,undefined,signal) as JsonValue;}
   async businessSettingsRead(connectionId?:string,storeId?:string,signal?:AbortSignal):Promise<JsonValue>{return await this.request(`/v1/business-settings?${new URLSearchParams({...connectionId?{connectionId}:{},...storeId?{storeId}:{}})}`,undefined,signal) as JsonValue;}
   async businessSettingsWrite(input:{connectionId:string;operation:string;input:JsonValue},signal?:AbortSignal):Promise<JsonValue>{return await this.request('/v1/business-settings',input,signal) as JsonValue;}
   async reviewNext(owner:ReviewOwner,signal?:AbortSignal):Promise<ReviewTicket|null>{return (await this.request('/v1/review-requests/next',owner,signal,25000) as {ticket:ReviewTicket|null}).ticket;}
@@ -63,11 +87,27 @@ export class HttpAppsHostTransport extends HttpRuntimeTransport implements AppsH
   private async request(path: string, body?: unknown, signal?: AbortSignal,timeoutMs=90000): Promise<unknown> {
     const combined = AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(signal ? [signal] : [])]);
     const send=this.nativeHttp&&timeoutMs>300000?loopbackHttpFetch:this.fetcher;
-    const response = await send(new URL(path, this.url), {method: body === undefined ? 'GET' : 'POST', headers: {Authorization: `Bearer ${this.token}`, ...(body === undefined ? {} : {'Content-Type': 'application/json'})}, ...(body === undefined ? {} : {body: JSON.stringify(body)}), redirect: 'error', signal: combined});
-    const value: unknown = await response.json();
-    if (!response.ok) throw Object.assign(new Error('RUNTIME_TRANSPORT_ERROR'), {statusCode: response.status, details: value});
+    const requestId = randomUUID();
+    let response: Response, text: string;
+    // A network or timeout failure keeps its original shape (callers classify it); only the request id is attached.
+    try {
+      response = await send(new URL(path, this.url), {method: body === undefined ? 'GET' : 'POST', headers: {Authorization: `Bearer ${this.token}`, 'X-Request-Id': requestId, ...(body === undefined ? {} : {'Content-Type': 'application/json'})}, ...(body === undefined ? {} : {body: JSON.stringify(body)}), redirect: 'error', signal: combined});
+      text = typeof response.text === 'function' ? await response.text() : JSON.stringify(await response.json());
+    } catch (error) {if (error !== null && typeof error === 'object') try {Object.assign(error, {requestId});} catch {}throw error;}
+    const echoed = response.headers?.get?.('x-request-id') ?? requestId;
+    let value: unknown, parsed = true;
+    try {value = JSON.parse(text);} catch {parsed = false;}
+    // Status is checked before the body is trusted: an empty 408 from the server's own timeout is not a parse error.
+    if (!response.ok) {
+      if (parsed) throw Object.assign(new Error('RUNTIME_TRANSPORT_ERROR'), {statusCode: response.status, requestId: echoed, details: value});
+      throw invalidResponse(response.status, echoed, text, true);
+    }
+    if (!parsed) throw invalidResponse(response.status, echoed, text, false);
     return value;
   }
+  async dataHealth(signal?:AbortSignal){return await this.request('/health',undefined,signal,10000) as JsonValue;}
+  async restartRuntime(signal?:AbortSignal){await this.request('/v1/runtime/restart',{},signal,5000);}
+  async health(signal?:AbortSignal){return await this.request('/health?shallow=1',undefined,signal,3000) as JsonValue;}
   async listApps(signal?: AbortSignal) {return (await this.request('/v1/apps', undefined, signal) as {apps: RuntimeApp[]}).apps;}
   override async describe(id: string, version?: string): Promise<CapabilityDescriptor | undefined> {try {return await super.describe(id,version);} catch (error) {if ((error as {statusCode?: number}).statusCode === 404) return undefined;throw error;}}
   async discover(options: {appId?: string;query?: string;cursor?: string;limit?: number} = {}, signal?: AbortSignal) {
@@ -112,7 +152,23 @@ export class HttpAppsHostTransport extends HttpRuntimeTransport implements AppsH
   async inspectNativeBinding(sessionId:string,bindRequestId:string,referenceId:string,signal?:AbortSignal){return await this.request(`/v1/native-bindings?${new URLSearchParams({sessionId,bindRequestId,referenceId})}`,undefined,signal) as NativeBindingReceipt|null;}
   async serializeNativeReference(referenceId:string,sessionId:string,signal?:AbortSignal){return await this.request('/v1/native-references/serialize',{referenceId,sessionId},signal) as {text:string};}
   async componentFeatures(signal?:AbortSignal){return await this.request('/v1/authoring/features',undefined,signal) as {features:string[]};}
-  async componentExtension(request:ComponentExtensionRequest,signal?:AbortSignal){return await this.request('/v1/component-extension',request,signal,['bindingPagesV1','dataTransferV1'].includes(request.feature)?APPS_DATA_REQUEST_TIMEOUT_MS:90000) as JsonValue;}
+  async componentExtension(request:ComponentExtensionRequest,signal?:AbortSignal){
+    const params=request.params as {method?:string}|null;
+    const readOnly=request.feature==='dataTransferV1'&&(request.action==='read'||request.action==='prepare'&&['getData','readBindingPage'].includes(params?.method??''));
+    for(let attempt=0;;attempt++)try{return await this.request('/v1/component-extension',request,signal,['bindingPagesV1','dataTransferV1'].includes(request.feature)?APPS_DATA_REQUEST_TIMEOUT_MS:90000) as JsonValue;}
+    catch(error){
+      const statusCode=(error as {statusCode?:number}).statusCode,again=readOnly&&attempt===0&&!signal?.aborted;
+      if(statusCode!==undefined){
+        // A server response is evidence. Only a transient or unreadable status on an idempotent read earns one more attempt.
+        if(again&&(statusCode===408||statusCode===502||statusCode===503||statusCode===504||(error as {code?:string}).code==='RUNTIME_INVALID_RESPONSE'))continue;
+        throw attempt>0?withAttempts(error,attempt+1):error;
+      }
+      if(again&&(error as Error).name!=='TimeoutError')continue;
+      const code=signal?.aborted?'RUNTIME_REQUEST_CANCELLED':(error as Error).name==='TimeoutError'?'RUNTIME_REQUEST_TIMEOUT':error instanceof SyntaxError?'RUNTIME_INVALID_RESPONSE':'RUNTIME_CONNECTION_LOST';
+      const message=code==='RUNTIME_REQUEST_CANCELLED'?'组件请求已取消。':code==='RUNTIME_REQUEST_TIMEOUT'?'组件请求超时，不能据此认定 Runtime 进程已退出。':code==='RUNTIME_INVALID_RESPONSE'?'Runtime 返回了空白或无效 JSON 响应。':'与 Runtime 的连接中断，进程是否退出尚未确认。';
+      throw Object.assign(new Error(code),{cause:error,statusCode:code==='RUNTIME_REQUEST_TIMEOUT'?504:502,details:{status:'failed',error:{code,message,retryPolicy:readOnly&&!signal?.aborted?'read_retry':'inspect_only',details:{requestId:request.requestId,runtimeRequestId:(error as {requestId?:string}).requestId,feature:request.feature,action:request.action,attempts:attempt+1,cause:describeCause(error)}}}});
+    }
+  }
   async authoringAction(operation:string,sessionId:string,params:JsonValue,signal?:AbortSignal){return await this.request(`/v1/authoring/${encodeURIComponent(operation)}`,{sessionId,params},signal,operation==='preview'?APPS_DATA_REQUEST_TIMEOUT_MS:90000) as JsonValue;}
   async presentationAction(input:{sessionId:string;capabilityId:string;input:JsonValue;requestId:string},signal?:AbortSignal){return await this.request('/v1/presentation-actions',input,signal,APPS_DATA_REQUEST_TIMEOUT_MS) as JsonValue;}
   async presentationRequest(requestId:string,signal?:AbortSignal){try{return await this.request(`/v1/invocations/${encodeURIComponent(requestId)}`,undefined,signal) as PresentationInvocation;}catch(error){if((error as {statusCode?:number}).statusCode===404)return null;throw error;}}

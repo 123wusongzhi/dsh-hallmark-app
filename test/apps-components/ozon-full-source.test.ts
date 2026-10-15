@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiStore,uiListingPayload,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
@@ -15,7 +16,7 @@ test('historical Ozon sources read full snapshots without rewriting shop filters
  const store=new RuntimeStore(':memory:');t.after(()=>store.close());
  const descriptors=[...OZON_DESCRIPTORS,OZON_COMPOSE_DESCRIPTOR],calls:InvocationRequest[]=[];
  const runtime={describe:(id:string)=>descriptors.find(d=>d.capabilityId===id),getConnection:()=>({enabled:true}),invoke:async(request:InvocationRequest):Promise<CapabilityResult>=>{
-  calls.push(request);return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{items:Array.from({length:31},(_,i)=>({productId:String(i)})),total:31}};
+  calls.push(request);return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{items:uiProducts(31),total:31}};
  }};
  const presentation=new AppsPresentationService({store,runtime}),sources=new DataSourceLibrary({store,runtime});
  const board=new WorkbenchLibrary({store,runtime,dataSources:sources,refreshBinding:(...args)=>presentation.refreshBinding(...args)});

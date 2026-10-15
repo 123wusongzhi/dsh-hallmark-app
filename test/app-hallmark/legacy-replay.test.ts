@@ -1,3 +1,4 @@
+import { recordedSample, recordedRaw, recordedPlatformProduct, recordedProduct, recordedDetail, recordedSku } from '../adapter/real-scenarios.ts';
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -23,11 +24,11 @@ function sourceEvidence(result: Data, source: string, endpoint: string | undefin
 }
 const token = 'r'.repeat(64), sourceAt = '2026-10-04T00:00:00Z';
 const originalProducts = [
-  { storeId: 's', offerId: 'A', productId: 1, price: 100, stock: 2, profit: { costMinor: 5000, profitMinor: 1000, actualMargin: 0.1 }, unknownSourceField: { foo: 'preserved' } },
-  { storeId: 's', offerId: 'B', productId: 2, price: 200, stock: 0, profit: { costMinor: null, actualMargin: 0 } },
-  { storeId: 'other', offerId: 'C', productId: 3, price: 1, stock: 0, profit: { costMinor: 1, actualMargin: 0.05 } },
+  recordedProduct({ storeId: 's', offerId: 'A', productId: 1, price: 100, stock: 2, sources: [], profit: { costMinor: 5000, profitMinor: 1000, actualMargin: 0.1 }, unknownSourceField: { foo: 'preserved' } }),
+  recordedProduct({ storeId: 's', offerId: 'B', productId: 2, price: 200, stock: 0, sources: [], profit: { costMinor: null, actualMargin: 0 } }),
+  recordedProduct({ storeId: 'other', offerId: 'C', productId: 3, price: 1, stock: 0, sources: [], profit: { costMinor: 1, actualMargin: 0.05 } }),
 ];
-const rawItem = { id: 'item', content: '{"original":"raw source"}', truncated: false, originalSourceField: 'preserved' };
+const rawItem = recordedRaw({ id: 'item', content: '{"original":"raw source"}', truncated: false, originalSourceField: 'preserved' });
 const categoryRaw = { storeId: 's', partial: true, stale: true, fetchedAt: sourceAt, candidates: [{ descriptionCategoryId: '100', verified: false }], originalSourceField: { preserved: true } };
 const image = 'https://example.invalid/source.jpg';
 // This fixture owns only its synthetic image; all service and adapter HTTP remains real loopback I/O.
@@ -67,7 +68,7 @@ async function fixture(options: { deferHallmarkRegistration?: boolean } = {}) {
       if (url.pathname === '/api/target-margin') return send({ targetMargin: 0.2 });
       if (url.pathname === '/api/items') return send([{ id: 'item', title: 'Existing Source item', skuCount: 1, originalSummaryField: 'preserved' }, { id: 'other-item', title: 'Another item', skuCount: 1 }]);
       if (url.pathname === '/api/items/item/raw') { assert.equal(url.searchParams.get('full'), '1'); return send(rawItem); }
-      if (url.pathname === '/api/items/item') return send({ id: 'item', currency:'CNY', skus: [{ sourceSkuId: 'sku1', price:10, image }], images: [image] });
+      if (url.pathname === '/api/items/item') return send(recordedDetail({ id: 'item', currency:'CNY', skus: [recordedSku({ sourceSkuId: 'sku1', price:10, image }, recordedSample({id:'item',source:undefined,nonempty:true}), undefined, ["goodsPrice","sourceSellingPrice","id","code"])], images: [image] }, recordedSample({id:'item',source:undefined,nonempty:true})));
       if (url.pathname === '/api/catalog/search') { assert.equal(url.searchParams.get('storeId'), 's'); assert.equal(url.searchParams.get('q'), 'lamp'); return send(categoryRaw); }
       if (url.pathname === '/api/tasks') return send([task]);
       if (url.pathname === '/api/tasks/task') return send(task);
@@ -78,13 +79,13 @@ async function fixture(options: { deferHallmarkRegistration?: boolean } = {}) {
         if (call.path === '/v1/product/import/prices') { price = unknownPrice ? 50 : Number(call.body.prices[0].price); payload = { result: [{ updated: true }] }; if(direct&&unknownPrice){req.socket.destroy();return;} }
         else if (call.path === '/v2/products/stocks') { stock = Number(call.body.stocks[0].stock); payload = { result: [{ updated: true }] }; }
         else if (call.path === '/v3/product/import') {imported = true; payload = { result: { task_id: 99 } };}
-        else if (call.path === '/v5/product/info/prices') payload = { result: { items: [{ offer_id: 'A', product_id: 1, price: { price: String(price), currency_code: 'RUB' } }] } };
-        else if (call.path === '/v3/product/info/list') payload = { items: call.body.offer_id?.includes('new-offer') ? (imported ? [{offer_id:'new-offer',id:22,sku:522}] : []) : [{ offer_id: 'A', id: 1, sku: 501,price:{price:String(price),currency_code:'RUB'},stocks:{has_stock:stock>0},unknownSourceField:{foo:'preserved'} },...(call.body.product_id?.includes(2)?[{offer_id:'B',id:2,sku:502,price:{price:'200',currency_code:'RUB'}}]:[])] };
+        else if (call.path === '/v5/product/info/prices') payload = { result: { items: [recordedPlatformProduct({ offer_id: 'A', product_id: 1, price: { price: String(price), currency_code: 'RUB' } })] } };
+        else if (call.path === '/v3/product/info/list') payload = { items: call.body.offer_id?.includes('new-offer') ? (imported ? [recordedPlatformProduct({offer_id:'new-offer',id:22,sku:522})] : []) : [recordedPlatformProduct({ offer_id: 'A', id: 1, sku: 501,price:{price:String(price),currency_code:'RUB'},stocks:{has_stock:stock>0},unknownSourceField:{foo:'preserved'} }),...(call.body.product_id?.includes(2)?[recordedPlatformProduct({offer_id:'B',id:2,sku:502,price:{price:'200',currency_code:'RUB'}})]:[])] };
         else if (call.path === '/v4/product/info/attributes') payload = { result: [] };
         else if (call.path === '/v3/product/list') payload={result:{items:[{product_id:1},{product_id:2}],last_id:''}};
         else if (call.path === '/v1/description-category/tree') payload={result:[{description_category_id:100,category_name:'Fixture category',children:[{type_id:200,type_name:'lamp'}]}]};
         else if (call.path === '/v2/product/info/stocks-by-warehouse/fbs') payload = { result: { items: [{ offer_id: 'A', sku: 501, warehouse_id: 1, present: stock }] } };
-        else if (call.path === '/v1/product/import/info') payload = { result: { items: [{ offer_id: 'new-offer', product_id: 22, status: 'imported', errors: [] }] } };
+        else if (call.path === '/v1/product/import/info') payload = { result: { items: [recordedPlatformProduct({ offer_id: 'new-offer', product_id: 22, status: 'imported', errors: [] })] } };
         else if (call.path === '/v2/warehouse/list') payload = { result: [{ warehouse_id: 1, name: 'Fixture warehouse' }] };
         else return send({ error: 'Unregistered fixture platform path' }, 500);
         if(direct)return send(payload);

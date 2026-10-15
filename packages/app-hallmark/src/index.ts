@@ -1,3 +1,4 @@
+import {readCollectionAssociations} from './collection-associations.ts';
 import { canonicalJson, validateResult } from '../../app-contracts/src/index.ts';
 import type { AppProvider, AppManifest, AppRef, ResourceRef, CapabilityDescriptor, CapabilityResult, ExecutionContext, InvocationRequest, JsonSchema, JsonValue, DataProvenance, FailureInfo, OperationState } from '../../app-contracts/src/index.ts';
 import { TOOL_DEFINITIONS } from '../../contracts/src/index.ts';
@@ -17,11 +18,11 @@ import type {BusinessPricingRepository} from '../../business-pricing/src/index.t
 import {DYNAMIC_PROFIT_BASIS} from './dynamic-profit.ts';
 import {CollectionService} from '../../collection/src/index.ts';
 import {BusinessPackagingRepository} from '../../business-packaging/src/index.ts';
-import {COLLECTION_DESCRIPTORS,LISTING_PREPARE_DESCRIPTOR} from './collection-provider.ts';
-import {prepareListing,collectionListingStates} from './listing-prepare.ts';
+import {COLLECTION_DESCRIPTORS,LISTING_PREPARE_DESCRIPTOR,LISTING_CATEGORY_DESCRIPTOR} from './collection-provider.ts';
+import {prepareListing,collectionListingStates,readListingCategory} from './listing-prepare.ts';
 import {applyExistingPackaging} from './packaging-evidence.ts';
 import {LISTING_ASSET_DESCRIPTOR,type ListingAssetPublisher} from './listing-assets.ts';
-import {BUSINESS_PRICING_DESCRIPTORS,BUSINESS_DESCRIPTORS,businessOperation,legacyBusinessKind,executeBusiness,executeLegacyBusiness,businessResult,publicPlan} from './operations-provider.ts';
+import {BUSINESS_PRICING_DESCRIPTORS,BUSINESS_DESCRIPTORS,businessOperation,legacyBusinessKind,executeBusiness,executeLegacyBusiness,resolveListingRows,businessResult,publicPlan} from './operations-provider.ts';
 export {hallmarkOzonSources} from './ozon-data.ts';
 export {createOzonCompositionDraft,OZON_COMPOSITION_FIELDS,OZON_COMPOSITION_SOURCES,DEFAULT_PRODUCT_FIELDS} from './ozon-composition.ts';
 import { validateLoopbackUrl } from '../../hallmark-adapter/client.ts';
@@ -75,7 +76,7 @@ function descriptor(suffix:string):CapabilityDescriptor{
  }
 
  inputSchema=refineInput(suffix,inputSchema);
- return {capabilityId:domainCapabilityIds[suffix],version:'1.0.0',title:tool.name,description:mutation?`${tool.description} 现由统一经营变更审核执行；不要求检查声明或用户值证明。`:tool.description,effect:mutation?'mutation':tool.kind==='compute'?'compute':'query',inputSchema,outputSchema:mutation?rawObject:outputSchemas[suffix],execution:{mode:mutation?'async':'sync',timeoutMs:mutation?300000:60000,concurrency:mutation?'exclusive':'declared_safe',lockScope:'connection',idempotency:mutation?'upstream_supported':'not_applicable',completionEvidence:mutation?'readback':'response'},discovery:{defaultVisible:['app_info','list_stores','list_store_products'].includes(suffix),keywords:['hallmark',suffix]},aliases:[tool.name]};
+ return {capabilityId:domainCapabilityIds[suffix],version:'1.0.0',title:tool.name,description:suffix==='list_product'?'旧上品兼容入口：内部创建并提交；新任务统一使用 hallmark.listing.prepare → hallmark.listing.draft.create/revise → hallmark.listing.draft.submit。':mutation?`${tool.description} 现由统一经营变更审核执行；不要求检查声明或用户值证明。`:tool.description,effect:mutation?'mutation':tool.kind==='compute'?'compute':'query',inputSchema,outputSchema:mutation?rawObject:outputSchemas[suffix],execution:{mode:mutation?'async':'sync',timeoutMs:mutation?300000:60000,concurrency:mutation?'exclusive':'declared_safe',lockScope:'connection',idempotency:mutation?'upstream_supported':'not_applicable',completionEvidence:mutation?'readback':'response'},discovery:{defaultVisible:['app_info','list_stores','list_store_products'].includes(suffix),keywords:['hallmark',suffix]},aliases:[tool.name]};
 }
 interface ApiRoute { apiOperationId:string;capabilityId:string;description?:string;legacyName?:string;path?:string;method?:'GET'|'POST';sourceMethod?:'getStores'|'getStoreProducts'|'syncStoreProducts'|'getTargetMargin' }
 /** Only interfaces already verified in HallmarkClient enter this catalogue; unknown URLs cannot dispatch. */
@@ -105,7 +106,7 @@ function apiDescriptor(route:ApiRoute):CapabilityDescriptor{
  return {...inherited,capabilityId:route.capabilityId,title:route.apiOperationId,description:route.description??`已登记接口 ${route.apiOperationId}；使用 Hallmark 原实现并保留请求/响应证据`,inputSchema:inputSchema as JsonSchema,outputSchema,aliases:[],apiOperationId:route.apiOperationId,discovery:{defaultVisible:false,keywords:['hallmark','api',route.apiOperationId]}};
 }
 const skuDescriptors:CapabilityDescriptor[]=['products','collected'].map(kind=>({...descriptor('get_collected_item'),capabilityId:`hallmark.${kind}.skus`,title:kind==='products'?'商品 SKU 明细':'采集商品 SKU 明细',description:kind==='products'?'按店铺及商品编号精确读取当前商品对应SKU的已有规格、售价与币种，不推测其他规格。':'读取已有采集商品的结构化SKU规格、价格与币种，不进行选品评估或业务写入。',aliases:[],inputSchema:{type:'object',properties:kind==='products'?{storeId:text,productId:text}:{itemId:text},required:kind==='products'?['storeId','productId']:['itemId'],additionalProperties:false} as JsonSchema,outputSchema:{type:'object',properties:{items:{type:'array',items:rawObject},total:count},required:['items','total'],additionalProperties:false},discovery:{defaultVisible:false,keywords:['sku','规格','素材库']}}));
-export const HALLMARK_DESCRIPTORS:readonly CapabilityDescriptor[]=[...Object.keys(domainCapabilityIds).map(descriptor),...HALLMARK_API_OPERATIONS.map(apiDescriptor),...skuDescriptors,...OZON_DESCRIPTORS,OZON_COMPOSE_DESCRIPTOR,PROCUREMENT_DESCRIPTOR,...BUSINESS_DESCRIPTORS,...BUSINESS_PRICING_DESCRIPTORS,...COLLECTION_DESCRIPTORS,LISTING_PREPARE_DESCRIPTOR,LISTING_ASSET_DESCRIPTOR];
+export const HALLMARK_DESCRIPTORS:readonly CapabilityDescriptor[]=[...Object.keys(domainCapabilityIds).map(descriptor),...HALLMARK_API_OPERATIONS.map(apiDescriptor),...skuDescriptors,...OZON_DESCRIPTORS,OZON_COMPOSE_DESCRIPTOR,PROCUREMENT_DESCRIPTOR,...BUSINESS_DESCRIPTORS,...BUSINESS_PRICING_DESCRIPTORS,...COLLECTION_DESCRIPTORS,LISTING_PREPARE_DESCRIPTOR,LISTING_CATEGORY_DESCRIPTOR,LISTING_ASSET_DESCRIPTOR];
 export interface HallmarkProviderOptions {
  store:CoreStore|((connectionId:string,configRevision?:number)=>CoreStore);
  client:CoreClient|((connectionId:string,configRevision?:number)=>CoreClient);
@@ -177,15 +178,28 @@ export class HallmarkProvider implements AppProvider {
    const publisher=this.resolve(this.options.assetPublisher,request.connectionId,context.configRevision);if(!publisher)return this.failure(context,'ASSET_PUBLISHER_UNAVAILABLE','未配置图片交付服务');
    try{const data=await publisher.publish(args as any,context.signal);const result=this.convert({status:data.status==='failed'?'failed':data.status==='partial'?'partial':'ok',data,...(data.failureCount?{error:{code:'ASSET_PUBLISH_INCOMPLETE',message:'部分图片未交付，具体原因见逐文件结果；已成功图片无需重发。',retryable:true}}:{})},context,descriptor);if(result.status==='failed')result.error.details=data;return result;}catch(error){return this.failure(context,'ASSET_PUBLISH_FAILED',error instanceof Error?error.message:'图片交付未完成');}
   }
+  if(request.capabilityId==='hallmark.collection.associations'){
+   const gateway=this.resolve(this.options.businessGateway,request.connectionId,context.configRevision),configured=gateway&&connectionBusinessGateway(gateway,request.connectionId).listStores().some(s=>s.id===args.storeId);
+   if(!configured)return this.failure(context,'STORE_CONNECTION_MISMATCH','店铺不属于当前经营连接，无法读取关联。');
+   if(this.resolve(this.options.collectionSourceMatches,request.connectionId,context.configRevision)===false)return this.failure(context,'COLLECTION_SOURCE_MISMATCH','采集来源身份已变化，不能使用旧来源的商品关联。');
+   try{if(!args.cursor)await this.refreshCollectionStates(request.connectionId,context.configRevision,args.storeId,args.refresh===true,context.signal);
+    checkPreparationCancelled(context.signal);
+    const data=readCollectionAssociations(this.businessStore(request.connectionId,context.configRevision),args as any);
+    return this.convert({status:'ok',data},context,descriptor);
+   }catch(error){return this.failure(context,typeof (error as any)?.code==='string'?(error as any).code:'COLLECTION_ASSOCIATION_FAILED',error instanceof Error?error.message:'关联查询未完成');}
+  }
   if(request.capabilityId.startsWith('hallmark.collection.')||request.capabilityId==='hallmark.listing.prepare'){
    try{if(request.capabilityId==='hallmark.collection.search'||request.capabilityId==='hallmark.listing.prepare'&&!args.cursor)await this.refreshCollectionStates(request.connectionId,context.configRevision,args.storeId??args.store?.id,args.refresh===true,request.capabilityId==='hallmark.listing.prepare'?context.signal:undefined);
    const collection=this.collection(request.connectionId,context.configRevision),gateway=this.resolve(this.options.businessGateway,request.connectionId,context.configRevision),scoped=gateway?connectionBusinessGateway(gateway,request.connectionId):undefined,data=request.capabilityId==='hallmark.collection.search'?await collection.search(args):request.capabilityId==='hallmark.collection.read'?await collection.read(args):request.capabilityId==='hallmark.collection.resource.read'?await collection.resourceRead(args as any):await prepareListing(args as any,{signal:context.signal,collection,packaging:this.packaging(request.connectionId,context.configRevision),pricing:this.resolve(this.options.pricing,request.connectionId,context.configRevision),client:domain.options.client,store:this.businessStore(request.connectionId,context.configRevision),listingStates:ids=>this.collectionStates(request.connectionId,context.configRevision,ids),prepareProducts:async products=>scoped&&this.resolve(this.options.collectionSourceMatches,request.connectionId,context.configRevision)!==false?applyExistingPackaging(products,this.businessStore(request.connectionId,context.configRevision),({storeId,path,body})=>scoped.request(storeId,{path,body},context.signal),{storeIds:scoped.listStores().map(s=>s.id),signal:context.signal}):products});return this.convert({status:'ok',data},context,descriptor);}catch(error){return this.failure(context,typeof (error as any)?.code==='string'?(error as any).code:'COLLECTION_PREPARATION_FAILED',error instanceof Error?error.message:'资料读取未完成');}
   }
   if(request.capabilityId==='hallmark.pricing.read')return {invocationId:request.invocationId,traceId:request.traceId,status:'ok',data:{config:this.resolve(this.options.pricing,request.connectionId,context.configRevision)?.read(args.storeId)??null} as unknown as JsonValue};
   if(request.capabilityId==='hallmark.pricing.quote'){
-   try{const quote=await this.adapter(request.connectionId,context.configRevision).load({storeId:args.storeId,row:args.row,fresh:false,signal:context.signal});return {invocationId:request.invocationId,traceId:request.traceId,status:'ok',data:{quote:quote.pricingQuote??null,issues:quote.issues??[],normalizedPayload:quote.normalizedPayload??null} as unknown as JsonValue};}catch(error){return this.failure(context,'PRICING_QUOTE_UNAVAILABLE',error instanceof Error?error.message:'试算未完成');}
+   try{const [row]=await resolveListingRows(this.businessStore(request.connectionId,context.configRevision),args.storeId,[args.row],undefined,async id=>(await this.collection(request.connectionId,context.configRevision).getProduct(id)).revision);const quote=await this.adapter(request.connectionId,context.configRevision).load({storeId:args.storeId,row,fresh:false,signal:context.signal});return {invocationId:request.invocationId,traceId:request.traceId,status:'ok',data:{quote:quote.pricingQuote??null,issues:quote.issues??[],normalizedPayload:quote.normalizedPayload??null} as unknown as JsonValue};}catch(error){return this.failure(context,'PRICING_QUOTE_UNAVAILABLE',error instanceof Error?error.message:'试算未完成');}
   }
-  if(businessOperation(request.capabilityId))return executeBusiness(this.business(request.connectionId,context.configRevision),this.businessStore(request.connectionId,context.configRevision),context);
+  if(request.capabilityId==='hallmark.listing.category.read'){
+   try{return {invocationId:request.invocationId,traceId:request.traceId,status:'ok',data:await readListingCategory(args,{client:domain.options.client,store:this.businessStore(request.connectionId,context.configRevision),signal:context.signal})};}catch(error){return this.failure(context,'LISTING_CATEGORY_READ_FAILED',error instanceof Error?error.message:'类目读取失败');}
+  }
+  if(businessOperation(request.capabilityId))return executeBusiness(this.business(request.connectionId,context.configRevision),this.businessStore(request.connectionId,context.configRevision),context,async id=>(await this.collection(request.connectionId,context.configRevision).getProduct(id)).revision);
   if(legacyBusinessKind(request.capabilityId)){
    if(legacyBusinessKind(request.capabilityId)==='listing'){const issue=legacyListingIssue(args);if(issue)return {invocationId:request.invocationId,traceId:request.traceId,status:'failed',error:issue};}
    try{return await executeLegacyBusiness(this.business(request.connectionId,context.configRevision),this.businessStore(request.connectionId,context.configRevision),domain.options.client,context);}catch(error){return this.failure(context,'BUSINESS_OPERATION_FAILED',error instanceof Error?error.message:'经营操作无法完成。');}

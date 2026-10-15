@@ -9,6 +9,7 @@ import {previewTestPlan} from './authoring-preview-plan.ts';
 import type {PreviewTestPlan} from './authoring-preview-plan.ts';
 import {buildEnvironmentSignature} from './authoring-build-input.ts';
 import type {BuildEnvironmentInput,BuildEnvironmentSignature} from './authoring-build-input.ts';
+import {requirePassingPerformance,verifyPerformanceEvidence} from './authoring-performance.ts';
 
 export interface EvidenceFile {path:string;sha256:string;bytes:number}
 export interface BuildExecutionReport {
@@ -160,7 +161,7 @@ export class AuthoringEvidenceRunner {
   verifyPreview(reference:EvidenceFile,sources:SourceComponentStore,options:{allowDraft?:boolean}={}):PreviewValidationEvidence {
     const report=this.readReport<Omit<PreviewValidationEvidence,'viewportResults'>&{validationProfile?:'draft';draftViewport?:number;testPlan?:PreviewTestPlan;viewportResults:(PreviewValidationEvidence['viewportResults'][number]&{interactionCaseIds?:string[];interactiveControlCount?:number})[]}>(reference);
     if(report.validationProfile!==undefined&&report.validationProfile!=='draft')throw new Error('PREVIEW_PROFILE_INVALID');
-    if(report.runnerVersion!=='dsh-authoring-preview/1'||report.schemaVersion!==1||report.protocol!=='dsh.apps.component.v2'||!['fixture','live_readonly'].includes(report.mode)||!sources.verify(report.buildId).valid)throw new Error('PREVIEW_BUILD_MISMATCH');
+    if(!['dsh-authoring-preview/1','dsh-authoring-preview/2'].includes(report.runnerVersion)||report.schemaVersion!==1||report.protocol!=='dsh.apps.component.v2'||!['fixture','live_readonly'].includes(report.mode)||!sources.verify(report.buildId).valid)throw new Error('PREVIEW_BUILD_MISMATCH');
     if(!Array.isArray(report.viewportResults)||!Array.isArray(report.assertionResults))throw new Error('PREVIEW_INCOMPLETE');
     for(const view of report.viewportResults){this.verifyFile(view.screenshot);if(!Array.isArray(view.assertionIds)||view.assertionIds.some(id=>!report.assertionResults.some(assertion=>assertion.id===id)))throw new Error('PREVIEW_INCOMPLETE');}
     for(const assertion of report.assertionResults)for(const file of assertion.evidenceRefs)this.verifyFile(file);
@@ -174,6 +175,8 @@ export class AuthoringEvidenceRunner {
       if(!plan||plan.version!==1||plan.errors.length||validated.errors.length||canonicalJson(plan)!==canonicalJson(validated))throw new Error('PREVIEW_INCOMPLETE');
       if(![420,1040].every(width=>report.viewportResults.some(view=>view.contentWidthCssPx===width&&view.deviceScaleFactor===1&&view.bridgeReady&&!view.pageErrors.length&&!view.unhandledRejections.length&&!view.failedRequests.length&&Number.isSafeInteger(view.interactiveControlCount)&&Number(view.interactiveControlCount)>=0&&(plan.mode!=='noninteractive'||view.interactiveControlCount===0)&&plan.cases.filter(item=>!item.viewports||item.viewports.includes(width)).every(item=>report.assertionResults.some(assertion=>assertion.id===`${view.id}:${item.id}`&&assertion.required===(item.required!==false)&&(item.required===false||assertion.status==='PASS'))&&(!item.action||view.interactionCaseIds?.includes(item.id)))))||report.assertionResults.some(assertion=>assertion.required&&assertion.status!=='PASS'))throw new Error('PREVIEW_EVIDENCE_INVALID');
     }
+    const interactions=Object.fromEntries(report.viewportResults.map(view=>[String(view.contentWidthCssPx),view.interactionCaseIds??[]]));
+    if(report.verdict==='PASS')requirePassingPerformance(report.performance,interactions);else verifyPerformanceEvidence(report.performance,interactions);
     return report;
   }
 }

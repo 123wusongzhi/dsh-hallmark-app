@@ -4,11 +4,12 @@ import { AppStore } from '../../packages/store/index.ts';
 import { AppCore } from '../../packages/core/src/index.ts';
 import { PresentationManager, bindingDatasetKey } from '../../packages/presentation/src/index.ts';
 import type { AdapterResponse, CoreClient } from '../../packages/core/src/types.ts';
+import { recordedSummary } from '../adapter/real-scenarios.ts';
 
 const context={sessionId:'session'};
 function setup(){
  const store=new AppStore(':memory:'),presentation=new PresentationManager(store);store.put('session_apps',context.sessionId,{appId:'hallmark',active:true});
- const calls:string[]=[],items=[{id:'newer-by-source',future:{raw:true}},{id:'older-by-source'},{id:'tail'}];
+ const calls:string[]=[],items=[recordedSummary({id:'newer-by-source',future:{raw:true}},0),recordedSummary({id:'older-by-source'},1),recordedSummary({id:'tail'},2)];
  let response:AdapterResponse={status:'ok',raw:items,provenance:{source:'collected_item',endpoint:'/api/items',fetchedAt:'2026-10-06T00:00:00Z'}};
  const forbidden=async()=>{throw Error('No store, task or business calls are allowed');};
  const client:CoreClient={searchCollectedItems:async(query='')=>{calls.push(query);return response;},getStores:forbidden,getStoreProducts:forbidden,syncStoreProducts:forbidden,getTargetMargin:forbidden,getCollectedItem:forbidden,platformCall:forbidden,platformRead:forbidden};

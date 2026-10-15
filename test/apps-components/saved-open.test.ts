@@ -1,3 +1,4 @@
+import {uiProduct} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
@@ -15,7 +16,7 @@ async function setup(t:{after:(action:()=>unknown)=>void},multiple=false){
  const directory=mkdtempSync(join(tmpdir(),'saved-open-')),store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),calls:InvocationRequest[]=[];
  const descriptor:CapabilityDescriptor={capabilityId:'shop.products.list',version:'1.0.0',title:'Products',description:'Saved connection fixture',effect:'query',inputSchema:{type:'object',properties:{storeId:{type:'string'},status:{type:'string'},limit:{type:'integer'},cursor:{type:'string'}},additionalProperties:false},outputSchema:{type:'object'},execution:{mode:'sync',timeoutMs:1000,concurrency:'declared_safe',lockScope:'connection',idempotency:'not_applicable',completionEvidence:'response'},discovery:{defaultVisible:false,keywords:[]},aliases:[]};
  runtime.register({manifest:{manifestVersion:1,appId:'shop',displayName:'Shop',providerPackage:'fixture',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:['product']},descriptors:[descriptor],execute:async context=>{
-  calls.push(context.request);const input=context.request.input as {cursor?:string;limit:number},offset=Number(input.cursor??0),products=[{id:'A',status:'on_sale'},{id:'B',status:'on_sale'}];
+  calls.push(context.request);const input=context.request.input as {cursor?:string;limit:number},offset=Number(input.cursor??0),products=[uiProduct({id:'A',status:'on_sale'},4),uiProduct({id:'B',status:'on_sale'},20)];
   return {status:'ok',invocationId:context.request.invocationId,traceId:context.request.traceId,data:{products:products.slice(offset,offset+input.limit),total:products.length,...(offset+input.limit<products.length?{cursor:String(offset+input.limit)}:{})}};
  },dispose:async()=>{}});
  const sources=new SourceComponentStore(join(directory,'archive'),join(directory,'workspaces')),service=new AppsPresentationService({store,runtime,sources});service.configureAuthoring();runtime.register(service.provider());

@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiStore,uiListingPayload,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {AppsRuntime,RuntimeStore} from '../../packages/app-runtime/src/index.ts';
@@ -12,7 +13,7 @@ test('oversized create, revise and submit issue output supplies executable origi
   const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),tools=new Map<string,NativeGatewayTool>(),agent={id:'error-session'},token='fixture-token-'.repeat(5);
   let creates=0,revises=0,submits=0,gets=0;
   const issues=[{code:'ATTRIBUTE_VALUE_INVALID',field:'attributes.85',message:'字段不匹配 🧩'.repeat(3500),suggestion:'使用字典中的精确值',requiresUser:false},{code:'SECOND',field:'name',message:'保持问题顺序',suggestion:'修正标题',requiresUser:false}];
-  const row={rowId:'stable-row',revision:1,action:'listing',target:{offerId:'offer'},status:'blocked',issues,payload:{name:'fixture'}};
+  const row={rowId:'stable-row',revision:1,action:'listing',target:{offerId:'offer'},status:'blocked',issues,payload:uiListingPayload()};
   const plan={planId:'plan-error',revision:2,storeId:'bill',status:'blocked',rows:[row]};
   const operations={get(){gets++;return structuredClone(plan);},async submit(){submits++;return structuredClone(plan);},async create(){creates++;return structuredClone(plan);},async revise(){revises++;return structuredClone(plan);}};
   runtime.register({manifest:{manifestVersion:1,appId:'hallmark',displayName:'Fixture',providerPackage:'fixture',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:['product']},descriptors:BUSINESS_DESCRIPTORS,
@@ -28,7 +29,7 @@ test('oversized create, revise and submit issue output supplies executable origi
     const validate=compileSchema(inspect.parameters);
     const inspectExact=async(args:any):Promise<any>=>{assert.deepEqual(validate(args),[]);const page:any=await inspect.execute(args,execution);assert.ok(Buffer.byteLength(JSON.stringify(page))<=14000);return page;};
     for(const operation of ['create','revise','submit']){
-      const input={...(operation==='create'?{storeId:'bill'}:{planId:plan.planId,expectedRevision:2}),...(operation==='submit'?{}:{rows:[{action:'listing',target:{offerId:'offer'},payload:{name:'fixture'}}]})};
+      const input={...(operation==='create'?{storeId:'bill'}:{planId:plan.planId,expectedRevision:2}),...(operation==='submit'?{}:{rows:[{action:'listing',target:{offerId:'offer'},payload:uiListingPayload()}]})};
       const result=await invoke.execute({appId:'hallmark',connectionId:'C1',capabilityId:`hallmark.plan.${operation}`,capabilityVersion:'1.0.0',input},execution) as any;
       assert.equal(result.result.status,'ok');const getsBeforeRead=gets;
       const rendered=invoke.output.render({},result) as Array<{text:string}>,view=JSON.parse(rendered[0].text);

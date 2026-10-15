@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {HallmarkClient} from '../../packages/hallmark-adapter/client.ts';
+import { realStoreProducts } from '../real-data/corpus.ts';
 test('store query gateway uses exact read-only whitelist and never asks for listing task or credentials',async()=>{
  const calls:{path:string;body:any}[]=[];
  const client=new HallmarkClient({fetchImpl:async(url,init)=>{const path=new URL(String(url)).pathname;if(path==='/api/health')return Response.json({service:'hallmark-control'});calls.push({path,body:JSON.parse(String(init?.body))});assert.equal(new Headers(init?.headers).has('Authorization'),false);return Response.json({storeId:'shop',outcome:'response_received',httpStatus:200,response:{items:[]}});}});
@@ -22,7 +23,8 @@ test('separate store data gateway never redirects legacy queries, task platform 
  }});
  const input={path:'/v5/product/info/prices',requestId:'read',agentId:'fixture',body:{limit:20}};
  await client.getStores();await client.getTasks();await client.platformRead('task',input);await client.platformCall('task',{...input,path:'/v1/product/import/prices'});
- await client.submitOrdinaryCnyPrice({operationId:'11111111-1111-4111-8111-111111111111',storeId:'shop',products:[{productId:1,offerId:'offer',price:'12.34'}]});
+ const product=realStoreProducts().products[0];
+ await client.submitOrdinaryCnyPrice({operationId:'11111111-1111-4111-8111-111111111111',storeId:'shop',products:[{productId:Number(product.productId),offerId:product.offerId,price:product.price}]});
  await client.storeDataRead('shop',input);await client.readOrderWeights('shop',{dateFrom:'2026-09-01',dateTo:'2026-09-02'});
  assert.deepEqual(calls.map(({url,method})=>({url,method})),[
   {url:`${baseUrl}/api/health`,method:'GET'},

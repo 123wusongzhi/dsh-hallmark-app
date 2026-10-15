@@ -1,3 +1,4 @@
+import {uiProduct,uiTask} from '../real-data/ui-scenarios.ts';
 // Isolated synthetic receipt fixtures; this verifies actual React markup, not live business data.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -16,7 +17,7 @@ const {ViewRenderer,resolvedBadgeStatus}=compiled.exports;
 const binding:DataBinding={id:'b',datasetKey:'operation:synthetic-test',fieldMap:{}};
 const widget:WidgetSpec={id:'badge',type:'status_badge',bindingId:'b'};
 const metric='操作账本记录时间，不是商品/价格源时间；imported不代表on_sale。';
-function receipt(state:string,items:unknown[]=[]):BindingData{return {bindingId:'b',datasetKey:'operation:synthetic-test',state:'ready',payload:{operationId:'synthetic-test',kind:'list_product',state,items},provenance:{source:'app_snapshot',timeBasis:'operation_record_updated_at'},metricBasis:metric,dataTime:'2026-01-01T00:00:00Z'};}
+function receipt(state:string,items:unknown[]=[]):BindingData{return {bindingId:'b',datasetKey:'operation:synthetic-test',state:'ready',payload:{...uiTask({operationId:'recorded-derived-receipt',kind:'list_product',state,status:state,items})},provenance:{source:'app_snapshot',timeBasis:'operation_record_updated_at'},metricBasis:metric,dataTime:'2026-01-01T00:00:00Z'};}
 function markup(widgets:WidgetSpec[],data:BindingData){const spec:ViewSpec={id:'test',title:'合成回执测试',bindings:[binding],widgets,layout:{type:'column',children:widgets.map(item=>item.id)}};return renderToStaticMarkup(React.createElement(ViewRenderer,{spec,data:[data]}));}
 test('actual status badge uses receipt root partial, not first succeeded item, and preserves raw item table states',()=>{
   const data=receipt('partial',[{target:'a',state:'succeeded',message:''},{target:'b',state:'failed',message:'原始失败'}]);const original=structuredClone(data.payload);const html=markup([widget,{id:'items',type:'table',bindingId:'b',columns:[{field:'target',label:'目标'},{field:'state',label:'逐项状态'}]}],data);
@@ -33,7 +34,7 @@ test('receipt root alias mappings and explicit status override root state withou
   const data=receipt('partial',[{state:'succeeded'}]);(data.payload as Record<string,unknown>).status='unknown';assert.equal(resolvedBadgeStatus(widget,binding,data),'unknown');assert.equal(resolvedBadgeStatus({...widget,fields:{status:'aggregate'}},{...binding,fieldMap:{aggregate:'state'}},data),'partial');delete (data.payload as Record<string,unknown>).status;delete (data.payload as Record<string,unknown>).state;assert.equal(resolvedBadgeStatus(widget,binding,data),'未知');
 });
 test('nonreceipt datasets retain first-row mapped status and normal snapshot-state fallback',()=>{
-  const data:BindingData={bindingId:'b',datasetKey:'store_products:real',state:'ready',payload:{products:[{lifecycle:'available'}]},provenance:{source:'hallmark_snapshot'}};assert.equal(resolvedBadgeStatus({...widget,fields:{status:'badge'}},{...binding,fieldMap:{badge:'lifecycle'}},data),'available');assert.equal(resolvedBadgeStatus(widget,binding,{...data,payload:{items:[]}}),'ready');assert.match(markup([widget],data),/数据时间：未知/);assert.ok(!markup([widget],data).includes('操作记录时间：'));
+  const data:BindingData={bindingId:'b',datasetKey:'store_products:real',state:'ready',payload:{products:[uiProduct({lifecycle:'available'},16)]},provenance:{source:'hallmark_snapshot'}};assert.equal(resolvedBadgeStatus({...widget,fields:{status:'badge'}},{...binding,fieldMap:{badge:'lifecycle'}},data),'available');assert.equal(resolvedBadgeStatus(widget,binding,{...data,payload:{items:[]}}),'ready');assert.match(markup([widget],data),/数据时间：未知/);assert.ok(!markup([widget],data).includes('操作记录时间：'));
 });
 test('all seven widget footers show receipt metric/time basis with no price-time or on-sale conflation',()=>{
   const types:WidgetType[]=['stat_card','table','bar_chart','line_chart','product_card','status_badge','text'];const widgets=types.map((type,index):WidgetSpec=>({id:`w${index}`,type,bindingId:'b',text:'合成测试',columns:type==='table'?[{field:'state',label:'状态'}]:undefined}));const html=markup(widgets,receipt('partial',[{state:'succeeded'}]));assert.equal((html.match(/操作记录时间：/g)??[]).length,7);assert.equal((html.match(/operation_record_updated_at/g)??[]).length,7);assert.equal((html.match(/imported不代表on_sale/g)??[]).length,7);assert.ok(!html.includes('>数据时间：'));assert.equal((html.match(/不是平台商品\/价格源数据时间/g)??[]).length,7);

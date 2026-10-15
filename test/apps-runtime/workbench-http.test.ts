@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiStore,uiListingPayload,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {AppsRuntime,RuntimeStore} from '../../packages/app-runtime/src/index.ts';
@@ -9,7 +10,7 @@ import type {DataSourceDraft} from '../../packages/app-presentation/src/types.ts
 
 test('Host UI workbench endpoints preview, persist, reload without session and keep saved library compatible',async()=>{
  const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),token='test-workbench-token'.repeat(3);let reads=0;
- runtime.register({manifest:{manifestVersion:1,appId:'sample',displayName:'Sample',providerPackage:'sample',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:['product']},descriptors:[{capabilityId:'sample.products.list',version:'1.0.0',title:'Products',description:'Products',effect:'query',inputSchema:{type:'object',properties:{},additionalProperties:false},outputSchema:{type:'object'},execution:{mode:'sync',timeoutMs:1000,concurrency:'declared_safe',lockScope:'connection',idempotency:'not_applicable',completionEvidence:'response'},discovery:{defaultVisible:true,keywords:[]},aliases:[]}],execute:async context=>{reads++;return {status:'ok',invocationId:context.request.invocationId,traceId:context.request.traceId,data:{items:[{id:'p1',title:'杯子',price:1299,currency:'CNY'}],total:1}};},dispose:async()=>{}});
+ runtime.register({manifest:{manifestVersion:1,appId:'sample',displayName:'Sample',providerPackage:'sample',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:['product']},descriptors:[{capabilityId:'sample.products.list',version:'1.0.0',title:'Products',description:'Products',effect:'query',inputSchema:{type:'object',properties:{},additionalProperties:false},outputSchema:{type:'object'},execution:{mode:'sync',timeoutMs:1000,concurrency:'declared_safe',lockScope:'connection',idempotency:'not_applicable',completionEvidence:'response'},discovery:{defaultVisible:true,keywords:[]},aliases:[]}],execute:async context=>{reads++;return {status:'ok',invocationId:context.request.invocationId,traceId:context.request.traceId,data:{items:[uiProduct({id:'p1',price:1299,currency:'CNY'},9)],total:1}};},dispose:async()=>{}});
  runtime.addConnection({appId:'sample',connectionId:'shop',displayName:'Shop',config:{},configRevision:1,enabled:true});
  runtime.bind({sessionId:'s',appId:'sample',connectionId:'shop',enabled:true,boundAt:new Date().toISOString()});
  const presentation=new AppsPresentationService({store,runtime}),server=createAppsServer({runtime,presentation,token});
@@ -23,7 +24,7 @@ test('Host UI workbench endpoints preview, persist, reload without session and k
   const get=await host.ui(new Request('http://localhost/api/dsh-apps?resource=dataSources&appId=sample'));assert.equal(get.status,200);assert.equal((await get.json()).dataSources[0].title,'商品');
   const instance={instanceId:'one',title:'常用商品',materialId:'product-list',materialVersion:1,design:createMaterialView('product-list'),dataSources:{products:{id:'products',revision:1,params:{}}},position:{order:0,span:2}};
   runtime.bind({sessionId:'s',appId:'sample',connectionId:'shop',enabled:false,boundAt:new Date().toISOString()});
-  const preview=await ui({action:'workbench',operation:'preview',appId:'sample',sessionId:'s',params:{instance}});assert.equal(preview.status,200);assert.equal((await preview.json()).data.bindings[0].payload.items[0].title,'杯子');
+  const preview=await ui({action:'workbench',operation:'preview',appId:'sample',sessionId:'s',params:{instance}});assert.equal(preview.status,200);assert.equal((await preview.json()).data.bindings[0].payload.items[0].title,uiProduct({},9).title);
   assert.equal(presentation.getWorkbench('sample').instances.length,0,'preview must not persist a workbench instance');
   const save=await ui({action:'workbench',operation:'save',appId:'sample',params:{expectedRevision:0,instances:[instance]}});assert.equal(save.status,200);assert.equal((await save.json()).revision,1);
   runtime.bind({sessionId:'s',appId:'sample',connectionId:'shop',enabled:false,boundAt:new Date().toISOString()});

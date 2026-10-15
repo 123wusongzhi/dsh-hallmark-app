@@ -49,6 +49,46 @@
 
 现场检查覆盖真实进程、认证 Host/Runtime 接口、实际返回的页面脚本、元数据缓存及旧数据。没有将这些检查表述为桌面窗口逐项点击验收。旧组件归档中的 SDK 保持原版本；能力声明证明服务提供新协议，已有组件是否协商分块仍由其 SDK 决定。验收脚本没有执行真实业务能力调用或创建组件展示授权。
 
+## 下次安装：可选 Runtime 托管（2026-10-15 源码新增，尚未安装）
+
+这部分不是上文已安装产物的现场结论。本轮只修改源码、执行临时进程测试和 PowerShell 语法解析，没有执行安装器，也没有启停正式 DSH 或 Runtime。
+
+- 默认仍由外部管理 Runtime。只有明确决定由本插件管理的实例，才使用 `scripts/install-desktop-apps.ps1 -ManageRuntime`。安装器不自动推断现有进程归属，不接管服务管理器/任务计划启动的实例；先由操作者停用重复的外部启动机制。
+- 同时显式传入绝对路径参数 `-RuntimeNodeExecutable`（真实 `node.exe`，不是 Electron）、`-RuntimeDataDirectory`、`-RuntimeWorkingDirectory`、`-RuntimeServiceUrl`（与插件配置相同的 `http://127.0.0.1:<port>`）、`-RuntimeOperatorTokenFile`。连接文件默认是数据目录下的 `connections.json`，可以用 `-RuntimeConnectionsFile` 覆盖。
+- 令牌文件若是既有 `{ "token": "…" }` 格式，增加 `-RuntimeOperatorTokenJson`；否则读取既有纯文本令牌文件。路由 key 只引用环境变量名：`-RuntimeRouterKeyEnvironment` 默认 `openrouter`，启动时映射到 Runtime 的 `openrouter`。Host 在每次启动前读取来源，不把值写入清单、Host 日志或安装输出。
+- 环境变量必须由启动 DSH 的父进程传入。与旧现场 PowerShell 脚本不同，Host 不自行查询 Windows User/Machine 环境变量；修改持久环境变量后需确认新的 DSH/Host 进程实际继承。若不能继承，可在清单中将该凭据改为引用已有纯文本文件。缺失或空凭据会拒绝启动，不回退到未知来源。
+- 缺少参数时明确跳过写清单；错误路径会在安装前拒绝。`-ValidateOnly` 不写清单。已有清单不会因省略 `-ManageRuntime` 或缺参而删除；撤销托管需操作者移除清单并重启 Host，不能把“未重写”误当作“已禁用”。
+
+清单位于 **插件配置指向的 Apps 数据目录下 `runtime-launch.json`**，不放进安装包，不含凭据值。schema v1 的完整键为：
+
+```json
+{
+  "schemaVersion": 1,
+  "managedBy": "dsh-plugin-apps-bundle",
+  "serviceUrl": "http://127.0.0.1:4181",
+  "nodeExecutable": "C:/Program Files/nodejs/node.exe",
+  "entry": "C:/path/to/desktop/node_modules/dsh-plugin-apps-bundle/lib/runtime.js",
+  "cwd": "C:/path/to/runtime-working-directory",
+  "env": {
+    "APPS_DATA_DIR": "C:/path/to/apps-data",
+    "APPS_CONNECTIONS_FILE": "C:/path/to/apps-data/connections.json",
+    "APPS_PORT": "4181"
+  },
+  "credentials": [
+    {"name": "HALLMARK_OPERATOR_TOKEN", "fromFile": "C:/path/to/existing/operator.json", "jsonField": "token"},
+    {"name": "openrouter", "fromEnv": "openrouter"}
+  ]
+}
+```
+
+Host 严格拒绝未知键、内联 secret、注入型环境项（如 `NODE_OPTIONS`）、非绝对/不存在路径、非 node 可执行文件、错误管理者、entry 非本插件已安装 `lib/runtime.js`、与插件不一致的数据目录/服务地址/端口。`APPS_PORT` 是环境变量字符串，但必须是 1–65535 的规范整数，且与 URL 端口相同。清单、所引用文件与安装目录属于本地执行信任边界，应限制写权限，不加载来路不明的清单。已有清单被重写前备份为本次安装回滚目录中的 `runtime-launch.previous.json`；包回滚脚本不会自动恢复该数据目录文件，需要操作者核对后处理。
+
+监控每 5 秒浅检查，连续 3 次失败进入 down。仅有效清单启用重启；等待退避时仍是 `RUNTIME_DOWN`，真正启动到健康确认期间才是 `RUNTIME_RESTARTING`。启动前再次浅检查，收到真实 HTTP 回答（包括 503、无效 JSON）则不启动；TCP connect 不能证明端口空闲也不启动。不会杀任何占端口进程，也不会因健康检查慢而强杀旧实例。多 Host 用数据目录 `runtime-launch.lock` 串行化启动；超时但子进程仍存活且未确认健康时继续持锁，只有确认健康或子进程退出才释放。Host 在启动尚未完成时卸载/异常退出会保守保留锁文件，避免另一个 Host 启动副本；操作者确认没有活着的未就绪子进程、没有启动在途且端口空闲后，才可手动移除遗留锁。
+
+退避为 5、10、20、40、60 秒封顶（实际时机还受 5 秒采样间隔影响）。每次启动等健康约 30 秒（在后续采样时检查截止），10 分钟窗口内连续 5 次失败停止尝试并报告 `RESTART_LIMIT_REACHED`；仅连续健康 5 分钟重置。超时但自建子进程仍存活时，只记录 `OWNED_CHILD_STILL_RUNNING`，不杀它、不再启动副本；故仍需人工诊断挂死进程。Host 卸载/退出只停监控和待启动任务，已启动 Runtime 作为独立进程继续服务，不因插件卸载被杀。
+
+子进程 stdout/stderr 追加到数据目录 `logs/runtime-child.log`（未做轮转，需运维控制大小，勿在 Runtime 自己的输出中打印密钥）；每个重启决策写既有 `logs/host-YYYY-MM-DD.jsonl`。没有有效清单时 `restart.enabled=false`，只显示未连接/等待外部恢复，不声称自动恢复。Runtime 离线不再阻断插件注册：工具和资源返回 `RUNTIME_DOWN`/`RUNTIME_RESTARTING` 与只读 `read_retry`；恢复健康后重新加载初始目录/协议能力，并且仅挂载一次原生应用投影。原有变更请求不自动重发；无效 service-key/URL/协议仍报配置错误。
+
 ## 本机证据
 
 - [冻结构建清单](E:/project/deepseek_h/dsh-hallmark-app/artifacts/desktop-performance-20261010/frozen/build-manifest.json)

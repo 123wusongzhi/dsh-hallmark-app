@@ -4,7 +4,9 @@ import {readOzonComposition} from '../../packages/app-hallmark/src/ozon-compose.
 import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
 import {HallmarkStorePort} from '../../packages/app-hallmark/src/store.ts';
 import {OZON_COMPOSITION_SOURCE_FIELDS} from '../../packages/app-hallmark/src/ozon-composition.ts';
-const normalize=(kind:string,row:any)=>({...Object.fromEntries((OZON_COMPOSITION_SOURCE_FIELDS as any)[kind].map((key:string)=>[key,null])),...row});
+import { realStoreProducts } from '../real-data/corpus.ts';
+const realSales = realStoreProducts().products;
+const normalize=(kind:string,row:any)=>({...Object.fromEntries((OZON_COMPOSITION_SOURCE_FIELDS as any)[kind].map((key:string)=>[key,null])),...(kind==='products'?{title:realSales[Number(row.productId??0)%realSales.length].title}:{}),...row});
 async function run(sources:any,fields:string[],grain='product'){
  const runtime=new RuntimeStore(':memory:');try{return await readOzonComposition({storeId:'fixture',dateFrom:'2026-09-01',dateTo:'2026-09-02',limit:100,recipe:{version:1,grain,fields}},new HallmarkStorePort(runtime,'fixture'),{} as any,undefined,async(kind,input)=>({status:'ok',data:{items:(sources[kind]??[]).map((r:any)=>normalize(kind,r)),warnings:[],dataTime:null}}));}finally{runtime.close();}
 }

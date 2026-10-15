@@ -1,3 +1,4 @@
+import {uiProduct} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
@@ -21,7 +22,7 @@ function setup(t:{after:(action:()=>void)=>void}) {
     calls.push(request);
     if(offline.has(request.appId))return {invocationId:request.invocationId,traceId:request.traceId,status:'unavailable',error:{code:'BACKEND_OFFLINE',message:'Fixture backend is offline',retryPolicy:'read_retry'}};
     const resource:ResourceRef={appId:request.appId,connectionId:request.connectionId,resourceType:request.appId==='notes'?'note':'product',resourceId:`${request.appId}-record`};
-    return {invocationId:request.invocationId,traceId:request.traceId,status:'ok',data:{items:[{title:'Isolated resource'}],resources:[{...resource}]} as JsonValue};
+    return {invocationId:request.invocationId,traceId:request.traceId,status:'ok',data:{items:[request.appId==='notes'?{title:'Isolated resource'}:uiProduct({id:resource.resourceId},8)],resources:[{...resource}]} as JsonValue};
   }};
   const service=new AppsPresentationService({store,runtime});
   return {store,calls,offline,runtime,service,providerUnavailable:()=>{providerAvailable=false;}};

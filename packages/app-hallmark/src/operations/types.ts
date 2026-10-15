@@ -14,8 +14,13 @@ export interface BusinessRowInput {
   /** Native action fields, written once. Source costs and before values are never accepted here. */
   payload: Record<string, unknown>;
   procurement?: ProcurementSelection[];
+  /** Frozen preparation identity; resolved by the provider, never sent to Ozon. */
+  preparationRevision?: string;
+  saleId?: string;
   /** Application-only image comparison targets, never sent to Ozon. */
   referenceSubjects?: ReferenceSubject[];
+  /** Ordered published URLs; the application assembles gallery and attribute 11254. Never sent to Ozon. */
+  listingAssets?: {images:string[];richContentImages:string[]};
   dependsOn?: string[];
   /** Application rule selection; never sent as an Ozon product field. */
   pricing?: {planId?:string;mode:'automatic'|'manual'};

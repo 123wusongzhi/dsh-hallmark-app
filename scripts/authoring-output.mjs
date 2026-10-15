@@ -2,6 +2,7 @@ import {inspectAttempt} from './authoring-resume.mjs';
 import {mkdirSync,readFileSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {evaluatePerformance} from '../packages/source-components/src/authoring-performance.ts';
 
 export function writeSummary(input,stage,summary){
  const base=input.summaryPath??join(input.evidenceRoot,`${input.attemptId}-${input.epoch}-${stage}-summary.json`);
@@ -24,6 +25,7 @@ export function previewSummary(result){
  const report=result.report;
  return {verdict:report.verdict,validationProfile:report.validationProfile??'formal',draftViewport:report.draftViewport??null,verifiedAt:report.finishedAt,reportRef:result.reportRef,buildId:report.buildId,buildReceiptId:report.buildReceiptId,timings:result.diagnostics.timings,diagnosticsPath:result.diagnosticsPath,
   failures:report.assertionResults.filter(item=>item.status!=='PASS').map(({id,status,required,expected,actual})=>({id,status,required,expected,actual})),
+  performance:{...report.performance,...evaluatePerformance(report.performance)},
   testPlanErrors:report.testPlan.errors,
   viewports:report.viewportResults.map(view=>({id:view.id,bridgeCalls:view.bridgeCalls??[],screenshot:view.screenshot.path,screenshots:(view.screenshots??[]).map(shot=>({afterCase:shot.afterCase,selector:shot.selector,path:shot.file.path})),pageErrors:view.pageErrors,unhandledRejections:view.unhandledRejections,failedRequests:view.failedRequests}))};
 }

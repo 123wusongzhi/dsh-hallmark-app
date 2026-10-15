@@ -1,3 +1,4 @@
+import { recordedPlatformProduct } from '../adapter/real-scenarios.ts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readOzonData,OZON_DESCRIPTORS,hallmarkOzonSources} from '../../packages/app-hallmark/src/ozon-data.ts';
@@ -22,7 +23,7 @@ const range={dateFrom:'2026-09-01',dateTo:'2026-09-02'};
 
 test('platform SKU normalization keeps exact positive IDs and represents invalid IDs as unknown',async()=>{
  const rawSkus=[0,'0',-1,'-1',1.5,'1.5','source-A','01','',null,Number.MAX_SAFE_INTEGER+1,1,'22','900719925474099312345'];
- const original=rawSkus.map((sku,index)=>({id:index+1,offer_id:`source-${index}`,sku,name:'Title',statuses:{status_name:'Не продается',status_description:'ORIGINAL_PLATFORM_REASON'}}));
+ const original=rawSkus.map((sku,index)=>(recordedPlatformProduct({id:index+1,offer_id:`source-${index}`,sku,name:'Title',statuses:{status_name:'Не продается',status_description:'ORIGINAL_PLATFORM_REASON'}})));
  const before=structuredClone(original),f=fixture(path=>path==='/v3/product/list'?{result:{items:original.map(row=>({product_id:row.id})),total:original.length}}:{items:original});
  const result=data(await readOzonData('products',{storeId:'s',limit:100},f.store,f.client));
  assert.deepEqual(result.items.map((row:any)=>row.sku),[...Array(11).fill(null),'1','22','900719925474099312345']);
@@ -34,7 +35,7 @@ test('platform SKU normalization keeps exact positive IDs and represents invalid
 });
 
 test('valid platform SKU filters are forwarded exactly without converting large string identifiers',async()=>{
- const sku='900719925474099312345',f=fixture((_path,body)=>{assert.deepEqual(body,{sku:[sku]});return {items:[{id:1,offer_id:'source-code-A',sku}]};});
+ const sku='900719925474099312345',f=fixture((_path,body)=>{assert.deepEqual(body,{sku:[sku]});return {items:[recordedPlatformProduct({id:1,offer_id:'source-code-A',sku})]};});
  const result=data(await readOzonData('products',{storeId:'s',sku},f.store,f.client));assert.equal(result.items[0].sku,sku);assert.equal(result.items[0].offerId,'source-code-A');assert.deepEqual(result.warnings,[]);
 });
 
@@ -129,7 +130,7 @@ test('eleven sources are store-neutral, all row schemas compile and accept a leg
 test('content rating joins exact SKU and status, preserves missing rating as unknown across pages',async()=>{
  const f=fixture((path,body)=>{
   if(path==='/v3/product/list')return {result:{items:body.last_id?[{product_id:3}]:[{product_id:1},{product_id:2}],last_id:body.last_id?'':'next',total_items:3}};
-  if(path==='/v3/product/info/list')return {items:body.product_id?.includes('3')?[{id:3,sku:33,offer_id:'third',name:'Third',statuses:{status_name:'Продается'}}]:[{id:1,sku:11,offer_id:'one',name:'One',statuses:{status_name:'Продается'}},{id:2,sku:22,offer_id:'two',name:'Two',statuses:{status_name:'Не продается'}}]};
+  if(path==='/v3/product/info/list')return {items:body.product_id?.includes('3')?[recordedPlatformProduct({id:3,sku:33,offer_id:'third',name:'Third',statuses:{status_name:'Продается'}})]:[recordedPlatformProduct({id:1,sku:11,offer_id:'one',name:'One',statuses:{status_name:'Продается'}}),recordedPlatformProduct({id:2,sku:22,offer_id:'two',name:'Two',statuses:{status_name:'Не продается'}})]};
   assert.equal(path,'/v1/product/rating-by-sku');return {products:body.skus.includes('33')?[{sku:33,rating:0}]:[{sku:11,rating:79.5,groups:[{key:'media'}]}]};
  });
  const args={storeId:'bill',limit:2},first=data(await readOzonData('ratings',args,f.store,f.client));
@@ -144,7 +145,7 @@ test('content rating rejects foreign SKU and invalid scores rather than claiming
  }
 });
 test('prices preserve seller price versus ordinary price, nulls and declared currency',async()=>{
- const f=fixture(()=>({items:[{product_id:10,offer_id:'offer',price:{price:'100',marketing_seller_price:'90',old_price:'120',currency_code:'CNY'}},{product_id:11,price:{price:'20'}}],total:2}));
+ const f=fixture(()=>({items:[recordedPlatformProduct({product_id:10,offer_id:'offer',price:{price:'100',marketing_seller_price:'90',old_price:'120',currency_code:'CNY'}}),{product_id:11,price:{price:'20'}}],total:2}));
  const result=data(await readOzonData('prices',{storeId:'shop',limit:2},f.store,f.client));
  assert.deepEqual(result.items[0],{productId:'10',offerId:'offer',price:90,ordinaryPrice:100,oldPrice:120,currency:'CNY'});assert.equal(result.items[1].price,null);assert.equal(result.items[1].currency,null);assert.equal(result.cursor,undefined);
  assert.equal(result.dataTime,null);
@@ -219,7 +220,7 @@ test('rFBS returns preserve raw state and missing fields, and unsupported connec
 test('current inventory products shape retains SKU-zero identities and buffers all known warehouse rows',async()=>{
  const f=fixture((path,body)=>{
   if(path==='/v3/product/list')return {result:{items:[{product_id:1},{product_id:2}],total_items:2}};
-  if(path==='/v3/product/info/list')return {items:[{id:1,offer_id:'missing',sku:0},{id:2,offer_id:'valid',sku:22}]};
+  if(path==='/v3/product/info/list')return {items:[recordedPlatformProduct({id:1,offer_id:'missing',sku:0}),recordedPlatformProduct({id:2,offer_id:'valid',sku:22})]};
   assert.deepEqual(body.sku,['22']);return {products:[{product_id:2,sku:22,offer_id:'valid',warehouse_id:4,present:5,free_stock:4,reserved:1},{product_id:2,sku:22,offer_id:'valid',warehouse_id:6,present:7,free_stock:7,reserved:0}],has_next:false,cursor:''};
  });
  const first=data(await readOzonData('stocks',{storeId:'s',limit:2},f.store,f.client));assert.deepEqual(first.items.map((r:any)=>r.warehouseId),['4','6']);assert.ok(first.cursor);assert.match(first.warnings[0],/1 个商品/);

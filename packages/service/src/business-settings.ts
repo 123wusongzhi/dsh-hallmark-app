@@ -48,7 +48,7 @@ export class BusinessSettingsService {
     if (operation === 'store.save') {
       only(input, ['id', 'name', 'enabled', 'currency', 'legacyStoreId', 'expectedRevision', 'credentials']);
       if (input.id) this.store(connectionId, text(input.id, '店铺'));
-      if (input.credentials && this.runtime.store.list<any>('operations').some(row => row.appId === 'hallmark' && row.connectionId === connectionId && ['pending', 'unknown', 'queued', 'dispatching', 'running', 'verifying'].includes(row.state))) fail('此连接有尚未结束的经营操作，请核查完成后更换店铺凭据。', 'OPERATION_UNRESOLVED', 409);
+      if (input.credentials && this.runtime.store.operationsInStates(['pending', 'unknown', 'queued', 'dispatching'], { appId: 'hallmark', connectionId }).length > 0) fail('此连接有尚未结束的经营操作，请核查完成后更换店铺凭据。', 'OPERATION_UNRESOLVED', 409);
       const saved = this.gateway.saveStore({ ...input, sourceConnectionId: connectionId } as Parameters<OzonBusinessGateway['saveStore']>[0]);
       return { store: saved };
     }

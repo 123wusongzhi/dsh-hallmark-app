@@ -1,3 +1,4 @@
+import {uiStore} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {compileSchema} from '../../packages/app-contracts/src/index.ts';
@@ -8,7 +9,7 @@ import {dataSourceDefinitionIssues,DATA_SOURCE_DRAFT_SCHEMA} from '../../package
 import type {DataSourceDraft,DataSourceParameter} from '../../packages/app-presentation/src/types.ts';
 
 const descriptor=HALLMARK_DESCRIPTORS.find(item=>item.capabilityId==='hallmark.products.list')!;
-const source=hallmarkProductSources('connection',{id:'store',name:'店铺'})[0];
+const source=hallmarkProductSources('connection',uiStore({id:'store'}))[0];
 function choiceDefinition(parameter:DataSourceParameter,property:JsonSchema):{definition:DataSourceDraft;capability:CapabilityDescriptor}{
  return {
   definition:{...source,parameters:[...source.parameters.filter(item=>item.name!==parameter.name),parameter]},

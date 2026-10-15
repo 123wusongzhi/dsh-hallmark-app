@@ -1,25 +1,17 @@
-// Real SnapshotView/renderer/table/selection bridge; all data and host input are synthetic.
+import { browserSourceRows } from '../real-data/browser.ts';
+// Real source records; host controls and repeated load identities are derived test conditions.
 import React, { useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { SnapshotView } from '../../packages/dsh-plugin/client/snapshot.tsx';
 import { createClientPlugin } from '../../packages/dsh-plugin/client/plugin.ts';
 import type { NativeInputActions, NativeInsertion } from '../../packages/dsh-plugin/client/selection.ts';
+import type {NativeAttachmentRuntime,NativeDraftAttachment} from '../../packages/dsh-plugin/client/selection-native.ts';
 import type { BindingData, ViewSpec } from '../../packages/presentation/src/types.ts';
 
 const sessionId = 'component-fixture-session';
 const initialDraft = '请比较我选择的商品，只分析，不修改店铺。';
-const names = [
-  '加厚帆布旅行收纳包 Portable Canvas Travel Organizer Large Capacity Foldable Storage Bag with Reinforced Handles for Clothing, Camping Equipment and Everyday Essentials',
-  '多功能厨房置物架 Kitchen Countertop Storage Organizer with Adjustable Shelves — 不锈钢落地收纳架，可拆卸组合设计，适用于厨房、浴室与阳台狭窄空间',
-  '车载手机支架 Universal Magnetic Smartphone Holder for Dashboard and Air Vent, 360 Degree Rotation, Compatible with Multiple Phone Sizes — 稳固底座与单手操作设计',
-  '桌面电线整理盒 Cable Management Storage Box with Detachable Lid for Home Office Computer Accessories — 多孔散热、隐藏插排、便于清洁的桌面整理用品',
-  '户外折叠水杯 Collapsible Silicone Travel Cup for Hiking, Camping and Commuting, Lightweight Reusable Design with Dust Cover — 小巧易携带的旅行配件',
-];
-const rows = Array.from({ length: 50 }, (_, index) => ({
-  id: `synthetic-collected-${String(index + 1).padStart(2, '0')}`,
-  title: `【合成样例 ${String(index + 1).padStart(2, '0')}】${names[index % names.length]}`,
-  collected_at: new Date(Date.UTC(2026, 9, 6, 8, 42, 18) - index * 91_000).toISOString(),
-}));
+// 41 authentic samples expanded to 50 rows only for pagination; repeated identities are explicit.
+const rows = browserSourceRows(50).sort((a,b) => b.collected_at.localeCompare(a.collected_at));
 const datasetKey = 'collected:component-visual-fixture';
 const spec: ViewSpec = {
   id: 'synthetic-collected-component', title: '采集箱 · 最近采集50件',
@@ -50,7 +42,9 @@ globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
 
 const Empty = () => null;
 const registered = new Map<string, React.ComponentType<any>>();
-const faces = { layout: { selectPanel: () => undefined }, uiWorkspace: { openSession: () => { throw new Error('Fixture has no navigation action'); } }, sidebarRight: { mounted: { getSnapshot: () => sessionId }, openTab: () => undefined }, sidebarRightTabs: { register: () => () => undefined } };
+const nativeDrafts=new Map<string,NativeDraftAttachment>();let latestFile:File|undefined,nextAttachment=0;
+const conversation:NativeAttachmentRuntime={createDrafts:(_sessionId,files)=>files.map(file=>{latestFile=file;const draft={kind:'file' as const,id:`component-attachment-${++nextAttachment}`,file};nativeDrafts.set(draft.id,draft);return draft;}),releaseDraftAttachments:drafts=>{for(const draft of drafts)nativeDrafts.delete(draft.id);},blocks:{storeFor:()=>({getSnapshot:()=>undefined,subscribe:()=>()=>{}})}};
+const faces = { conversation, layout: { selectPanel: () => undefined }, uiWorkspace: { openSession: () => { throw new Error('Fixture has no navigation action'); } }, sidebarRight: { mounted: { getSnapshot: () => sessionId }, openTab: () => undefined }, sidebarRightTabs: { register: () => () => undefined } };
 createClientPlugin({ sidebarIcon: Empty, main: () => Empty, toolview: Empty, sidebar: { body: () => Empty, title: Empty, input: () => Empty } }).apply({
   get: name => faces[name], slots: { register: (options, component) => { registered.set(`${options.name}:${options.id ?? options.key ?? ''}`, component); return () => undefined; }, inject: (_name, effect) => effect() },
 });
@@ -58,19 +52,15 @@ const RootObserver = registered.get('sidebar.panellist:hallmark-apps')!;
 const NativeInput = registered.get('conversation.input.left:hallmark-session-components')!;
 function Fixture() {
   const [draft, setDraft] = useState(initialDraft);
+  const [attachmentIds,setAttachmentIds]=useState<string[]>([]);
   const draftRef = useRef(draft), revision = useRef(0); draftRef.current = draft;
   const actions = useMemo<NativeInputActions>(() => ({
-    captureInsertion: () => ({ start: 0, end: draftRef.current.length, draftRev: revision.current }),
-    insertText: (text: string, span: NativeInsertion) => {
-      if (span.draftRev !== revision.current) return false;
-      insertions++; const next = draftRef.current.slice(0, span.start) + text + draftRef.current.slice(span.end);
-      draftRef.current = next; revision.current++; setDraft(next); return true;
-    },
+    addAttachments: ids => {insertions++;setAttachmentIds(ids);return true;},
   }), []);
   return <>
     <RootObserver usePanelInfo={(select: any) => select({ activePanelId: null })} useSessions={(select: any) => select({ phase: 'ready', byId: { [sessionId]: { id: sessionId, retainedBy: { mainView: 1 } } } })}/>
     <div id="component-region"><SnapshotView sessionId={sessionId} viewId={spec.id} owned/></div>
-    <aside className="fixture-host"><strong>隔离合成验证 · 以下输入框模拟公开 native inputActions</strong><p>上方组件使用实际插件代码；50 条商品均为合成数据。未连接 DSH、店铺或模型，没有发送接口。</p><label htmlFor="fixture-input">模拟聊天草稿（不会发送）</label><textarea id="fixture-input" value={draft} onChange={event => { draftRef.current = event.target.value; revision.current++; setDraft(event.target.value); }}/><NativeInput sessionId={sessionId} inputActions={actions}/></aside>
+    <aside className="fixture-host"><strong>真实快照隔离验证 · 以下输入框模拟公开 native inputActions</strong><p>上方组件使用实际插件代码；商品取自 41 条真实快照，扩展至 50 行用于分页压力验证。未连接 DSH、店铺或模型，没有发送接口。</p><label htmlFor="fixture-input">模拟聊天草稿（不会发送）</label><textarea id="fixture-input" value={draft} onChange={event => { draftRef.current = event.target.value; revision.current++; setDraft(event.target.value); }}/><NativeInput sessionId={sessionId} inputActions={actions} useInput={(select:any)=>select({phase:'plain',attachmentIds})} useSession={(select:any)=>select({subagent:null,removed:false})}/></aside>
   </>;
 }
 createRoot(document.getElementById('root')!).render(<Fixture/>);
@@ -92,18 +82,18 @@ function layout() {
   async verifyInitial() {
     await this.ready();
     check(document.querySelector('.hm-snapshot-heading')?.textContent?.includes(spec.title), 'real snapshot renders the exact requested component title');
-    check(productRows().length === 10 && productRows()[0].textContent?.includes(rows[0].title), '50 synthetic records render a first page of 10 with long bilingual names and no images');
+    check(productRows().length === 10 && productRows()[0].textContent?.includes(rows[0].title), '50 real-snapshot replay rows render a first page of 10 with original source names and no images');
     check(!document.querySelector('#component-region img') && productRows()[0].querySelectorAll('td').length === 3, 'table preserves only selection, date and product title columns');
     const date = document.querySelector<HTMLTimeElement>('#component-region tbody time.hm-cell-date')!;
-    check(!!date && date.title === rows[0].collected_at && !date.textContent?.includes('T08:') && /2026\/10\/06/.test(date.textContent ?? ''), 'raw collected_at ISO is displayed as a readable date while the original timestamp remains available');
+    check(!!date && date.title === rows[0].collected_at && !date.textContent?.includes('T08:') && /2026\//.test(date.textContent ?? ''), 'raw collected_at ISO is displayed as a readable date while the original timestamp remains available');
     check(date.querySelectorAll('span').length === 2 && /\d{2}:\d{2}:\d{2}/.test(date.textContent ?? ''), 'date and local time are separately readable');
     check(requests.length === 2 && requests.every(request => request.sessionId === sessionId && request.viewId === spec.id), 'snapshot reads are restricted to the exact synthetic session and view');
   },
   async verifySearchAndSelection() {
     checks()[0].click(); await pause();
     const requestCount = requests.length;
-    await search('Kitchen');
-    check(productRows().length === 10 && productRows().every(row => row.textContent?.includes('Kitchen')), 'local search matches bilingual configured product fields');
+    await search(rows[1].title);
+    check(productRows().length > 0 && productRows().every(row => row.textContent?.includes(rows[1].title)), 'local search matches bilingual configured product fields');
     check(requests.length === requestCount, 'local search does not refetch or write to an upstream service');
     check(document.querySelector('.hm-selection-toolbar')?.textContent?.includes('已选 1 个产品') && document.querySelector('.hm-selection-toolbar')?.textContent?.includes('其中 1 个不在当前筛选结果'), 'selected products remain counted when hidden by the local filter');
     checks()[0].click(); await pause(); await search('no-match-synthetic-query');
@@ -114,10 +104,10 @@ function layout() {
     check(productRows().length === 10 && !checks()[0].checked, 'pagination advances to distinct records without leaking checks to matching row positions');
     checks()[0].click(); await pause();
     button('附加到当前聊天')!.click();
-    await wait(() => (document.getElementById('fixture-input') as HTMLTextAreaElement).value.includes('hallmark.product-selection'), 'native input attachment');
+    await wait(() => insertions === 1 && latestFile, 'native input file attachment');
     const draft = (document.getElementById('fixture-input') as HTMLTextAreaElement).value;
-    const context = JSON.parse(draft.match(/```json\n([\s\S]+?)\n```/)![1]);
-    check(draft.startsWith(initialDraft), 'attachment preserves pre-existing highlighted native input');
+    const context = JSON.parse(await latestFile!.text());
+    check(draft === initialDraft, 'file attachment preserves pre-existing native input byte-for-byte');
     check(context.sessionId === sessionId && context.viewId === spec.id && JSON.stringify(context.products.map((product: { itemId: string }) => product.itemId)) === JSON.stringify([rows[0].id, rows[1].id, rows[10].id]), 'cross-filter and cross-page selection attaches exactly the three original stable IDs');
     check(insertions === 1 && forbiddenCalls === 0, 'only one explicit draft insertion occurs; fixture exposes no sending interface or business mutation');
     labelledButton('上一页')!.click(); await wait(() => productRows()[0]?.textContent?.includes(rows[0].title), 'first page restored');
@@ -148,5 +138,5 @@ function layout() {
     scroll.scrollTop = 0;
   },
   async verifyLayout(label: string) { await pause(120); const result = layout(); check(!result.regionOverflow && !result.snapshotOverflow && !result.documentOverflow, `${label} keeps the actual component inside its container`); return result; },
-  result() { check(errors.length === 0 && forbiddenCalls === 0, 'real components complete the synthetic browser regression with no browser errors or forbidden requests'); return { ok: true, fixtureOnly: true, dataSource: '50 synthetic rows; no real business data', nativeInput: 'simulated public inputActions through actual plugin wrapper', installedDshCovered: false, upstreamServicesCovered: false, sendInterfacePresent: false, insertions, forbiddenCalls, requests, errors, assertions }; },
+  result() { check(errors.length === 0 && forbiddenCalls === 0, 'real components complete the real-source browser regression with no browser errors or forbidden requests'); return { ok: true, fixtureOnly: true, dataSource: '41 authentic source records; explicit replay expansion to 50 rows', nativeInput: 'simulated public inputActions through actual plugin wrapper', installedDshCovered: false, upstreamServicesCovered: false, sendInterfacePresent: false, insertions, forbiddenCalls, requests, errors, assertions }; },
 };

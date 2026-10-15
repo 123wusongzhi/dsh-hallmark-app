@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { createDecisionReviewer } from '../../packages/service/src/decision-review.ts';
 import { createDecisionImageProtocol } from '../../packages/service/src/decision-image-protocol.ts';
 import type { IndependentReviewRequest, IndependentReviewResult, SemanticReviewQuestion, SemanticReviewRequest } from '../../packages/app-contracts/src/business-review.ts';
+import { realCollection } from '../real-data/corpus.ts';
+
+const recorded = realCollection(), draftVersion = `draft:${recorded.revision}`;
 
 const question = (id = 'consistent'): SemanticReviewQuestion => ({
   id, version: 'q1', instructions: 'Is the stated quantity consistent with the source?',
@@ -10,8 +13,8 @@ const question = (id = 'consistent'): SemanticReviewQuestion => ({
   issue: { field: 'quantity', message: 'The sales quantity differs from the source.', suggestion: 'Correct the quantity.' },
 });
 const input = (questions = [question()]): SemanticReviewRequest => ({
-  source: { title: 'Cup', quantity: 1 }, draft: { title: 'One cup', quantity: 1 },
-  versions: { source: 'source-hash', draft: 'draft-hash', policy: 'policy-v1' }, questions,
+  source: { ...realCollection(), quantity: 1 }, draft: { title: recorded.title, quantity: 1 },
+  versions: { source: recorded.revision, draft: draftVersion, policy: 'policy-v1' }, questions,
 });
 const resultResponse = (answers: unknown, extra = {}) => new Response(JSON.stringify({
   model: 'openai/gpt-6-luna-decisions-20261006', answers, usage: { input_tokens: 100, cost: 0.00001 }, ...extra,
@@ -239,8 +242,8 @@ test('editing the caller draft while review runs cannot alter the reviewer snaps
   let release: () => void = () => {};
   const barrier = new Promise<void>(resolve => { release = resolve; });
   const reviewer = createDecisionReviewer({ key: 'test', fetchImpl: async () => { await barrier; return resultResponse({}); }, fallback: async snapshot => {
-    assert.deepEqual(snapshot.draft, { title: 'One cup', quantity: 1 });
-    assert.equal(snapshot.versions.draft, 'draft-hash');
+    assert.deepEqual(snapshot.draft, { title: recorded.title, quantity: 1 });
+    assert.equal(snapshot.versions.draft, draftVersion);
     return fallbackResult(snapshot);
   } });
   const resultPromise = reviewer.review(request);
@@ -249,7 +252,7 @@ test('editing the caller draft while review runs cannot alter the reviewer snaps
   release();
   const result = await resultPromise;
   assert.equal(result.status, 'passed');
-  assert.equal(result.evidence.versions.draft, 'draft-hash');
+  assert.equal(result.evidence.versions.draft, draftVersion);
 });
 
 test('an explicit cancellation never starts fallback; invalid question identities never reach a provider', async () => {

@@ -50,7 +50,7 @@ class ConnectionQueue {
 
 export class AppsRuntime {
   readonly store: RuntimeStore;
-  readonly runtimeVersion = '1.0.0-candidate.72';
+  readonly runtimeVersion = '1.0.0-candidate.76';
   readonly transportMajor = 1;
   readonly catalogSchemaVersion = 1;
   #providers = new Map<string, RegisteredProvider>();
@@ -134,7 +134,7 @@ export class AppsRuntime {
     const timeout=input.drainTimeoutMs??30000;if(!Number.isSafeInteger(timeout)||timeout<1||timeout>90000)throw new Error('INVALID_DRAIN_TIMEOUT');
     const next:AppConnection={...previous,...(input.displayName!==undefined?{displayName:input.displayName}:{}),...(input.config!==undefined?{config:structuredClone(input.config)}:{}),...(input.enabled!==undefined?{enabled:input.enabled}:{}),configRevision:previous.configRevision+1};
     this.validateConnection(next);
-    const unresolved=()=>this.store.list<RuntimeOperation>('operations').some(row=>row.appId===input.appId&&row.connectionId===input.connectionId&&['unknown','pending','dispatching'].includes(row.state));
+    const unresolved=()=>this.store.operationsInStates(['unknown','pending','dispatching'],{appId:input.appId,connectionId:input.connectionId}).length>0;
     if(unresolved())throw new Error('OPERATION_UNRESOLVED');
     const gate=this.lifecycle(input.appId,input.connectionId);gate.pause();let committed=false;
     try {
@@ -257,7 +257,7 @@ export class AppsRuntime {
       if(this.getConnection(request.appId,request.connectionId)?.configRevision!==connection.configRevision)throw new Error('CONNECTION_REVISION_CHANGED');
       releaseConnection=this.lifecycle(request.appId,request.connectionId).enter();
       if(mutation){
-        const unresolved=this.store.list<RuntimeOperation>('operations').find(row=>row.operationId!==operation!.operationId&&row.appId===request.appId&&row.connectionId===request.connectionId&&['unknown','pending','dispatching'].includes(row.state)&&(!resourceScope||!row.resourceScope?.length||resourceScope.some(id=>row.resourceScope!.includes(id))));
+        const unresolved=this.store.operationsInStates(['unknown','pending','dispatching'],{appId:request.appId,connectionId:request.connectionId}).find(row=>row.operationId!==operation!.operationId&&(!resourceScope||!row.resourceScope?.length||resourceScope.some(id=>row.resourceScope!.includes(id))));
         if(unresolved){const result={...failure(request,'OPERATION_UNRESOLVED','Inspect the unresolved operation before another mutation.'),operation:{operationId:operation!.operationId,state:'failed' as const}};this.store.updateOperation(operation!.operationId,'failed',result,{blockedBy:unresolved.operationId});return result;}
         operation=this.store.updateOperation(operation!.operationId,'dispatching',undefined,{event:'dispatch_intent',traceId:request.traceId,invocationId:request.invocationId});
       }
@@ -379,7 +379,7 @@ export class AppsRuntime {
       if(!connection?.enabled||operation.configRevision===undefined||connection.configRevision!==operation.configRevision)return failure(request,'CONNECTION_REVISION_CHANGED','Continuation requires the original enabled backend configuration.');
       if(provider.state!=='ready')return failure(request,'PROVIDER_STOPPING','Provider is not accepting background work.','unavailable','read_retry');
       const latest=this.store.get<RuntimeOperation>('operations',operationId)!;if(!['pending','unknown'].includes(latest.state))return operationResult(latest,request);
-      const conflict=this.store.list<RuntimeOperation>('operations').find(row=>row.operationId!==operationId&&row.appId===operation.appId&&row.connectionId===operation.connectionId&&['unknown','pending','dispatching'].includes(row.state)&&(!operation.resourceScope?.length||!row.resourceScope?.length||operation.resourceScope.some(id=>row.resourceScope!.includes(id))));
+      const conflict=this.store.operationsInStates(['unknown','pending','dispatching'],{appId:operation.appId,connectionId:operation.connectionId}).find(row=>row.operationId!==operationId&&(!operation.resourceScope?.length||!row.resourceScope?.length||operation.resourceScope.some(id=>row.resourceScope!.includes(id))));
       if(conflict)return failure(request,'OPERATION_UNRESOLVED','Another unresolved operation overlaps this continuation.');
       releaseConnection=this.lifecycle(operation.appId,operation.connectionId).enter();
       this.store.appendEvent(operationId,{event:'continuation_intent',invocationId:request.invocationId,traceId:request.traceId,configRevision:operation.configRevision});this.log(request,'continuation_intent',{operationId});
@@ -401,14 +401,14 @@ export class AppsRuntime {
     }finally{const idle=()=>{release?.();releaseConnection?.();};if(providerWork)providerWork.finally(idle).catch(()=>{});else idle();clearTimeout(timer);signal?.removeEventListener('abort',abort);}
   }
   async recover(): Promise<CapabilityResult[]> {
-    const queued=this.store.list<RuntimeOperation>('operations').filter(op=>op.state==='queued');
+    const queued=this.store.operationsInStates(['queued']);
     for(const op of queued){
       const result:CapabilityResult={...failure(op.request,'CANCELLED_BEFORE_DISPATCH','Process stopped before dispatch intent.','cancelled'),operation:{operationId:op.operationId,state:'cancelled'}};
       this.store.updateOperation(op.operationId,'cancelled',result,{event:'recovered_before_dispatch',dispatched:false});
       const row=this.store.get<InvocationRecord>('invocations',op.request.invocationId);
       if(row)this.store.put('invocations',row.invocationId,{...row,state:'settled',result,durationMs:Date.now()-Date.parse(row.startedAt)});
     }
-    const pending=this.store.list<RuntimeOperation>('operations').filter(op=>['dispatching','unknown','pending'].includes(op.state));
+    const pending=this.store.operationsInStates(['dispatching','unknown','pending']);
     for(const op of pending)if(op.state==='dispatching')this.store.updateOperation(op.operationId,'unknown',this.unknown(op.request,op.operationId,'OUTCOME_UNKNOWN','Process stopped after dispatch intent.'));
     return Promise.all(pending.map(op=>this.inspect(op.operationId)));
   }

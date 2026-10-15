@@ -1,3 +1,4 @@
+import {uiProduct,uiOzonProduct,uiStore,uiDictionaryValue,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
@@ -39,15 +40,15 @@ async function run(details:any[],kind='stocks',options:{multiWarehouse?:boolean;
   return {result,rendered,calls,snapshots:port.list('complete_snapshots')};
  }finally{await host.dispose();server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));await runtime.dispose();store.close();}
 }
-const first={id:1,sku:11,offer_id:'one'},second={id:2,sku:22,offer_id:'two'};
+const first=uiOzonProduct({id:1,sku:11,offer_id:'one'}),second=uiOzonProduct({id:2,sku:22,offer_id:'two'},1);
 for(const [name,details,expected] of [
  ['duplicate-details',[first,first],'failed'],
  ['missing-detail',[first],'failed'],
  ['duplicate-full-coverage',[first,first,second],'failed'],
- ['duplicate-conflicting-detail',[first,{id:1,sku:99,offer_id:'conflict'}],'failed'],
- ['foreign-detail',[first,{id:3,sku:33,offer_id:'three'}],'failed'],
+ ['duplicate-conflicting-detail',[first,uiOzonProduct({id:1,sku:99,offer_id:'conflict'},2)],'failed'],
+ ['foreign-detail',[first,uiOzonProduct({id:3,sku:33,offer_id:'three'},3)],'failed'],
  ['reordered-details',[second,first],'ok'],
- ['no-sku-detail',[first,{id:2,offer_id:'two'}],'ok'],
+ ['no-sku-detail',[first,{...uiOzonProduct({id:2,offer_id:'two'},1),sku:undefined}],'ok'],
 ] as const)test(`real Host stock completeness: ${name}`,async()=>{
  const evidence=await run([...details]);
  writeEvidence(name,evidence);
@@ -74,9 +75,9 @@ test('normal multi-warehouse stock rows are not treated as duplicate product det
  assert.deepEqual(view.data.items.map((r:any)=>[r.sku,r.warehouseId]),[['11','8'],['11','9'],['22','8'],['22','9']]);
 });
 for(const [name,details,expected] of [
- ['cross-page-duplicate',[{id:3,sku:33},{id:3,sku:33}],'failed'],
- ['cross-page-foreign',[first,{id:4,sku:44}],'failed'],
- ['cross-page-valid',[{id:4,sku:44},{id:3,sku:33}],'ok'],
+ ['cross-page-duplicate',[uiOzonProduct({id:3,sku:33},3),uiOzonProduct({id:3,sku:33},3)],'failed'],
+ ['cross-page-foreign',[first,uiOzonProduct({id:4,sku:44},4)],'failed'],
+ ['cross-page-valid',[uiOzonProduct({id:4,sku:44},4),uiOzonProduct({id:3,sku:33},3)],'ok'],
 ] as const)test(name,async()=>{
  const evidence=await run([first,second],'stocks',{secondDetails:[...details]});
  writeEvidence(name,evidence);

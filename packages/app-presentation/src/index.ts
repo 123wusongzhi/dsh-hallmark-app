@@ -28,8 +28,17 @@ type SourceViewInput={bindings?:DatasetBinding[];sourceRefs?:Record<string,Workb
 const storeLocalParams=new Set(['storeId','store','productId','productIds','sku','skus','offerId','offerIds','warehouseId','actionId','postingNumber','returnId','cursor']);
 const clearLocalParams=(params:Record<string,JsonValue>)=>Object.fromEntries(Object.entries(params).filter(([key])=>!storeLocalParams.has(key)));
 const recordInput=(value:JsonValue):Record<string,JsonValue>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value:{};
-type RefreshOptions={forceRefresh?:boolean};
+type RefreshOptions={forceRefresh?:boolean;beforeCommit?:()=>void;preferNewer?:boolean;preparationOwner?:string};
+type Preparation=NonNullable<AppsBindingData['preparation']>;
+type PreparationJob={preparedExpiry?:string|null;failedRevision?:string|null;startedRevision?:string;observedFailure?:boolean;state:Omit<Preparation,'elapsedMs'>;controller:AbortController;work:Promise<void>;guard:()=>void};
+function preparationFailure(reason:unknown):FailureInfo {
+  const value=reason as {code?:string;message?:string;failure?:FailureInfo;retryPolicy?:FailureInfo['retryPolicy']};if(value?.failure)return clone(value.failure);
+  const code=value?.code??'RUNTIME_INTERNAL_ERROR',message=reason instanceof Error?reason.message:String(reason);
+  const busy=/SQLITE_BUSY|SQLITE_LOCKED/.test(code)||/database is (locked|busy)/i.test(message);
+  return {code:busy?'RUNTIME_STORE_BUSY':code,message,retryPolicy:value?.retryPolicy??(busy||!value?.code||/TIMEOUT|UNAVAILABLE|BUSY|INTERNAL|ABORTED|APP_STOPPING|CONNECTION_UPDATING/.test(code)?'read_retry':'never')};
+}
 const refreshAdmissionErrors=new Set(['APP_NOT_ACTIVE','CONNECTION_NOT_FOUND','WORKBENCH_BINDING_REQUIRED','WORKBENCH_STORE_MISMATCH']);
+const cacheExpiry=(payload:JsonValue):string|null=>{const value=recordInput(recordInput(payload).cache??null).expiresAt;return typeof value==='string'?value:null;};
 const cacheExpired=(payload:JsonValue):boolean=>{const cache=recordInput(recordInput(payload).cache??null),expires=typeof cache.expiresAt==='string'?Date.parse(cache.expiresAt):NaN;return cache.stale===true||Number.isFinite(expires)&&expires<=Date.now();};
 
 export class AppsPresentationError extends Error {
@@ -70,6 +79,41 @@ export class AppsPresentationService {
   private refreshes=new Map<string,{work:Promise<DatasetSnapshot>;forceRefresh:boolean}>();
   private refreshSignalIds=new WeakMap<AbortSignal,string>();
   private pages=new Map<string,Map<string,{token:string;data?:AppsBindingData}>>();
+  private preparations=new Map<string,PreparationJob>();
+  private preparationKey(view:AppsView,binding:DatasetBinding,publicationId=view.pendingPublicationId??undefined):string {
+    return canonicalJson([view.ownerSessionId,view.viewId,binding.datasetId??datasetId(binding),publicationId??view.source?.buildId??null,this.runtime.getConnection?.(binding.appId,binding.connectionId)?.configRevision??null,this.runtime.describe(binding.capabilityId)?.version??null]);
+  }
+  /** Preparation belongs to this session/view generation; it is never borrowed from another caller. */
+  prepareViewData(view:AppsView,publicationId=view.pendingPublicationId??undefined):void {
+    const source:InvocationSource=view.ownerSessionId?{kind:'component',sessionId:view.ownerSessionId,viewId:view.viewId,frameInstanceId:'data-preparation'}:{kind:'scheduler',scheduleId:'view-data-preparation',runId:view.viewId};
+    const design=recordInput(view.design),legacy=Array.isArray(design.bindings)?design.bindings as unknown as {id?:string;query?:unknown}[]:undefined;
+    for(const binding of view.bindings){
+      if(legacy&&!legacy.find(value=>value.id===binding.bindingId)?.query)continue;
+      const id=binding.datasetId??datasetId(binding),key=this.preparationKey(view,binding,publicationId),snapshot=this.store.get<DatasetSnapshot>('datasets',id),previous=this.preparations.get(key);
+      if(previous?.state.state==='preparing')continue;
+      // Retained scheduler/cache failures are already prepared data, not a missing initial read.
+      if(snapshot&&snapshot.state!=='ready'&&snapshot.payload!==null&&previous?.state.state!=='failed')continue;
+      if(previous?.state.state==='failed'&&(!previous.observedFailure||previous.state.error?.retryPolicy!=='read_retry'||Date.now()-Date.parse(previous.state.finishedAt!)<400))continue;
+      if(!previous&&snapshot?.state==='ready'&&!cacheExpired(snapshot.payload))continue;
+      const expiry=cacheExpiry(snapshot?.payload??null),expires=Date.parse(expiry??'');
+      if(previous?.state.state==='ready'&&snapshot?.state==='ready'&&(!cacheExpired(snapshot.payload)||previous.preparedExpiry===expiry&&(!Number.isFinite(expires)||expires<=Date.parse(previous.state.finishedAt!))))continue;
+      const controller=new AbortController(),config=this.runtime.getConnection?.(binding.appId,binding.connectionId)?.configRevision,version=this.runtime.describe(binding.capabilityId)?.version;
+      const guard=()=>{
+        this.assertRefreshAccess(binding,source);
+        const current=this.ownedView(view.ownerSessionId,view.viewId),publication=publicationId?this.store.get<ViewPublication>('view_publications',publicationId):undefined;
+        if(publicationId&&(!publication||publication.ownerSessionId!==view.ownerSessionId||publication.viewId!==view.viewId||publication.candidateBuildId!==view.source?.buildId||!['prepared','mounting','mounted','failed_mount','interrupted'].includes(publication.state)))fail('PREPARATION_SUPERSEDED','数据准备所属发布已取消或替换。');
+        if(publication?.state!=='mounted'&&!current.bindings.some(value=>(value.datasetId??datasetId(value))===id)||this.runtime.getConnection?.(binding.appId,binding.connectionId)?.configRevision!==config||this.runtime.describe(binding.capabilityId)?.version!==version)fail('PREPARATION_SUPERSEDED','数据绑定或连接配置已变化。');
+      };
+      const job:PreparationJob={startedRevision:snapshot?.revision,state:{state:'preparing',phase:'queued',startedAt:new Date().toISOString()},controller,guard,work:Promise.resolve()};
+      this.preparations.set(key,job);
+      // Yield past the open/publish request before invoking a cold provider.
+      job.work=new Promise<void>(resolve=>setTimeout(resolve,0)).then(async()=>{
+        if(job.state.state==='ready')return;guard();job.state.phase='query';const next=await this.refreshBinding(binding,source,controller.signal,{preferNewer:true,preparationOwner:key,beforeCommit:()=>{if(controller.signal.aborted)fail('PREPARATION_SUPERSEDED','数据准备已被新的快照取代。');guard();}});guard();
+        job.state={...job.state,state:next.state==='ready'?'ready':'failed',phase:'settled',finishedAt:new Date().toISOString(),...(next.state!=='ready'?{error:next.error??problem('DATASET_NOT_READY','数据准备失败。')}:{})};if(job.state.state==='failed')job.failedRevision=this.store.get<DatasetSnapshot>('datasets',id)?.revision??null;else job.preparedExpiry=cacheExpiry(next.payload);
+      }).catch(reason=>{if(job.state.state==='ready')return;controller.abort();job.state={...job.state,state:'failed',phase:'settled',finishedAt:new Date().toISOString(),error:preparationFailure(reason)};try{job.failedRevision=this.store.get<DatasetSnapshot>('datasets',id)?.revision??null;}catch{job.failedRevision=null;}});
+      for(const [oldKey,old] of this.preparations)if(this.preparations.size>256&&old.state.state!=='preparing'&&oldKey!==key)this.preparations.delete(oldKey);
+    }
+  }
   private dataTransfers=new DataTransfers();
   /** A page belongs to one iframe/preview, never to the shared saved binding. */
   clearBindingPages(scope:string,bindingIds?:string[]):void {
@@ -77,16 +121,16 @@ export class AppsPresentationService {
     const pages=this.pages.get(scope);for(const id of bindingIds)pages?.delete(id);if(!pages?.size)this.pages.delete(scope);
   }
   clearDataTransfers(scope:string):void {this.dataTransfers.clearOwner(scope);}
-  scopedData(view:AppsView,scope:string):AppsViewData {
-    const data=this.dataForView(view),pages=this.pages.get(scope);
+  scopedData(view:AppsView,scope:string,publicationId?:string):AppsViewData {
+    const data=this.dataForView(view,publicationId),pages=this.pages.get(scope);
     return {...data,bindings:data.bindings.map(binding=>{const value=clone(pages?.get(binding.bindingId)?.data??binding);return cacheExpired(value.payload)?{...value,freshness:'stale' as const}:value;})};
   }
-  async readBindingPage(view:AppsView,scope:string,input:{bindingId:string;cursor?:string|null},source:InvocationSource,stillCurrent:()=>void=()=>{},signal?:AbortSignal,maxBytes=250000):Promise<AppsViewData> {
+  async readBindingPage(view:AppsView,scope:string,input:{bindingId:string;cursor?:string|null},source:InvocationSource,stillCurrent:()=>void=()=>{},signal?:AbortSignal,maxBytes=250000,publicationId?:string):Promise<AppsViewData> {
     const binding=view.bindings.find(item=>item.bindingId===input.bindingId);
     if(!binding)fail('BINDING_NOT_FOUND','Requested binding is not part of this view.');
     const original=binding.input as Record<string,JsonValue>;
     const query={...original};if(input.cursor===null||input.cursor===undefined)delete query.cursor;else query.cursor=text(input.cursor,'cursor');
-    return this.readScopedBinding(view,scope,binding,query,source,stillCurrent,signal,maxBytes);
+    return this.readScopedBinding(view,scope,binding,query,source,stillCurrent,signal,maxBytes,publicationId);
   }
   async readLinkedBinding(view:AppsView,scope:string,bindingId:string,params:Record<string,JsonValue>,source:InvocationSource,stillCurrent:()=>void=()=>{},signal?:AbortSignal):Promise<AppsViewData> {
     const binding=view.bindings.find(item=>item.bindingId===bindingId);if(!binding)fail('BINDING_NOT_FOUND','Requested binding is not part of this view.');
@@ -96,7 +140,7 @@ export class AppsPresentationService {
     const query={...binding.input as Record<string,JsonValue>,...params};
     return this.readScopedBinding(view,scope,binding,query,source,stillCurrent,signal);
   }
-  private async readScopedBinding(view:AppsView,scope:string,binding:DatasetBinding,query:Record<string,JsonValue>,source:InvocationSource,stillCurrent:()=>void,signal?:AbortSignal,maxBytes=250000):Promise<AppsViewData> {
+  private async readScopedBinding(view:AppsView,scope:string,binding:DatasetBinding,query:Record<string,JsonValue>,source:InvocationSource,stillCurrent:()=>void,signal?:AbortSignal,maxBytes=250000,publicationId?:string):Promise<AppsViewData> {
     const descriptor=this.runtime.describe(binding.capabilityId);if(!descriptor)fail('CAPABILITY_UNAVAILABLE','Binding capability is unavailable.');
     const errors=compileSchema(descriptor.inputSchema)(query);if(errors.length)fail('INVALID_INPUT',errors.join('; '));
     let pages=this.pages.get(scope);if(!pages){pages=new Map();this.pages.set(scope,pages);}
@@ -106,11 +150,11 @@ export class AppsPresentationService {
     if(this.pages.get(scope)?.get(binding.bindingId)!==entry)fail('PAGE_SUPERSEDED','A newer page request replaced this response.');
     if(result.status!=='ok'&&result.status!=='partial')fail('error' in result?result.error.code:'DATASET_NOT_READY','error' in result?result.error.message:'Page data is not ready.');
     const resources=this.options.resources?this.options.resources({...binding,input:query},result):declaredResources(result);this.checkResources(binding,resources);
-    const base=this.dataForView(view).bindings.find(item=>item.bindingId===binding.bindingId)!;
+    const base=this.dataForView(view,publicationId).bindings.find(item=>item.bindingId===binding.bindingId)!;
     const provenance=result.provenance??[],now=new Date().toISOString();
     const next:AppsBindingData={...base,revision:`page:${token}`,payload:json(result.data),resources:clone(resources),state:'ready',freshness:cacheExpired(result.data)||provenance.some(item=>item.freshness==='stale')?'stale':provenance.length&&provenance.every(item=>item.freshness==='fresh')?'fresh':'unknown',provenance:clone(provenance),lastSuccessAt:now,sourceDataTime:provenance.find(item=>item.sourceDataTime)?.sourceDataTime??null,query:base.query?{...base.query,input:query}:undefined};
     if(result.status==='partial')next.error=clone(result.errors[0]);else delete next.error;
-    const data=this.scopedData(view,scope);data.bindings=data.bindings.map(item=>item.bindingId===binding.bindingId?next:item);
+    const data=this.scopedData(view,scope,publicationId);data.bindings=data.bindings.map(item=>item.bindingId===binding.bindingId?next:item);
     // Do not advance selection state to a page that cannot reach the iframe.
     if(Buffer.byteLength(JSON.stringify(data),'utf8')>maxBytes)fail('BRIDGE_MESSAGE_TOO_LARGE','Page is too large; reduce binding limit or select fewer fields.');
     entry.data=next;return clone(data);
@@ -218,15 +262,27 @@ export class AppsPresentationService {
   }
   getData(sessionId:string|null,viewId:string,display?:{publicationId:string;buildId:string;displayId:string;displayGeneration:number}):AppsViewData {
     const view=display?this.authoring!.display(sessionId!,{...display,viewId}).view:this.ownedView(sessionId,viewId);
-    return this.dataForView(view);
+    return this.dataForView(view,display?.publicationId);
   }
-  private dataForView(view:AppsView):AppsViewData {
+  private dataForView(view:AppsView,publicationId=view.pendingPublicationId??undefined):AppsViewData {
+    if(view.source)this.prepareViewData(view,publicationId);
     return {viewId:view.viewId,bindings:view.bindings.map(binding=>{
       const id=binding.datasetId??datasetId(binding),snapshot=this.store.get<DatasetSnapshot>('datasets',id);
       const descriptor=this.runtime.describe(binding.capabilityId);
       const query=descriptor&&Number(descriptor.version.split('.')[0])===binding.capabilityMajor?{appId:binding.appId,connectionId:binding.connectionId,capabilityId:binding.capabilityId,capabilityVersion:descriptor.version,input:clone(binding.input),projection:clone(binding.projection)}:undefined;
       const base:AppsBindingData={bindingId:binding.bindingId,appId:binding.appId,connectionId:binding.connectionId,datasetId:id,revision:null,payload:null,resources:[],freshness:'unknown',state:'empty',lastSuccessAt:null,sourceDataTime:null,provenance:[]};
       if(query)base.query=query;
+      const job=this.preparations.get(this.preparationKey(view,binding,publicationId));
+      if(job){
+        const recovery=job.state.state==='failed'&&snapshot?.state==='ready'&&snapshot.preparationOwner===this.preparationKey(view,binding,publicationId)&&job.failedRevision!==undefined&&Number.isSafeInteger(Number(snapshot.revision))&&Number(snapshot.revision)>Number(job.failedRevision??0);
+        let authorized=true;
+        if(job.state.state!=='failed'||recovery)try{job.guard();}catch(reason){authorized=false;job.controller.abort();job.failedRevision=snapshot?.revision??null;job.state={...job.state,state:'failed',phase:'settled',finishedAt:job.state.finishedAt??new Date().toISOString(),error:preparationFailure(reason)};}
+        if(authorized&&(recovery||job.state.state==='preparing'&&snapshot?.state==='ready'&&snapshot.revision!==job.startedRevision)){job.state={state:'ready',phase:'settled',startedAt:job.state.startedAt,finishedAt:new Date().toISOString()};job.preparedExpiry=cacheExpiry(snapshot!.payload);job.controller.abort();}
+        const preparation={...clone(job.state),elapsedMs:Math.max(0,Date.parse(job.state.finishedAt??new Date().toISOString())-Date.parse(job.state.startedAt))};
+        if(job.state.state==='failed')job.observedFailure=true;
+        if(job.state.state!=='ready')return {...base,state:job.state.state==='preparing'?'preparing' as const:'failed' as const,preparation,...(job.state.error?{error:clone(job.state.error)}:{})};
+        base.preparation=preparation;
+      }
       if(!snapshot)return base;
       return {...base,revision:snapshot.revision,payload:clone(snapshot.payload),resources:clone(snapshot.resources),freshness:cacheExpired(snapshot.payload)?'stale':snapshot.freshness,state:snapshot.state,lastSuccessAt:snapshot.lastSuccessAt,sourceDataTime:snapshot.sourceDataTime,provenance:clone(snapshot.provenance),...(snapshot.error?{error:clone(snapshot.error)}:{})};
     })};
@@ -235,7 +291,7 @@ export class AppsPresentationService {
     const view=this.ownedView(sessionId,viewId),selected=bindingIds?new Set(bindingIds):undefined;
     if(selected&&[...selected].some(id=>!view.bindings.some(binding=>binding.bindingId===id)))fail('BINDING_NOT_FOUND','Requested binding is not part of this view.');
     await Promise.all(view.bindings.filter(binding=>!selected||selected.has(binding.bindingId)).map(async binding=>{
-      try{await this.refreshBinding(binding,source,signal,options);}catch(error){
+      try{await this.refreshBinding(binding,source,signal,{...options,...('sessionId' in source&&source.sessionId===sessionId?{preparationOwner:this.preparationKey(view,binding)}:{})});}catch(error){
         if(refreshAdmissionErrors.has((error as AppsPresentationError).code))throw error;
         const id=binding.datasetId??datasetId(binding),previous=this.store.get<DatasetSnapshot>('datasets',id);
         const snapshot:DatasetSnapshot={datasetId:id,canonicalBinding:json(canonicalBinding(binding)),revision:previous?.revision??'0',payload:previous?.payload??null,resources:previous?.resources??[],fetchedAt:previous?.fetchedAt??new Date().toISOString(),sourceDataTime:previous?.sourceDataTime??null,lastSuccessAt:previous?.lastSuccessAt??'',provenance:previous?.provenance??[],state:'unavailable',freshness:previous?'stale':'unknown',error:problem((error as AppsPresentationError).code??'REFRESH_FAILED',error instanceof Error?error.message:String(error))};
@@ -265,11 +321,13 @@ export class AppsPresentationService {
     if(options.forceRefresh&&recordInput(recordInput(descriptor.inputSchema.properties??null).forceRefresh??null).type==='boolean'&&input!==null&&typeof input==='object'&&!Array.isArray(input))input.forceRefresh=true;
     const request:InvocationRequest={protocolVersion:'1.0',appId:binding.appId,connectionId:binding.connectionId,invocationId:randomUUID(),traceId:randomUUID(),capabilityId:binding.capabilityId,capabilityVersion:descriptor.version,input,source:clone(source),deadlineAt:new Date(Date.now()+descriptor.execution.timeoutMs).toISOString()};
     let result:CapabilityResult;
-    try{result=await this.runtime.invoke(request,signal);}catch(error){result={status:'unavailable',invocationId:request.invocationId,traceId:request.traceId,error:problem('REFRESH_FAILED',error instanceof Error?error.message:String(error))};}
+    try{result=await this.runtime.invoke(request,signal);}catch(error){result={status:'unavailable',invocationId:request.invocationId,traceId:request.traceId,error:preparationFailure(error)};}
+    options.beforeCommit?.();
     if('error' in result&&refreshAdmissionErrors.has(result.error.code))fail(result.error.code,result.error.message);
     return this.store.transaction(()=>{
       const previous=this.store.get<DatasetSnapshot>('datasets',id),now=new Date().toISOString(),canonical=json(canonicalBinding(binding));
       if(previous&&canonicalJson(previous.canonicalBinding)!==canonicalJson(canonical))fail('DATASET_HASH_CONFLICT','Stored dataset has a different canonical binding.');
+      if(options.preferNewer&&previous?.state==='ready'&&previous.revision!==startedRevision)return clone(previous);
       if(result.status!=='ok'&&result.status!=='partial'){
         const error='error' in result?result.error:problem('DATASET_NOT_READY',`Query returned ${result.status}.`);
         const failed:DatasetSnapshot={datasetId:id,canonicalBinding:canonical,revision:previous?.revision??'0',payload:previous?.payload??null,resources:previous?.resources??[],fetchedAt:previous?.fetchedAt??now,sourceDataTime:previous?.sourceDataTime??null,lastSuccessAt:previous?.lastSuccessAt??'',freshness:previous?'stale':'unknown',state:result.status==='unavailable'?'unavailable':'failed',provenance:previous?.provenance??[],error};
@@ -281,7 +339,7 @@ export class AppsPresentationService {
       const resources=this.options.resources?this.options.resources(binding,result):declaredResources(result);
       this.checkResources(binding,resources);
       const provenance=result.provenance??[],sourceDataTime=provenance.find(item=>item.sourceDataTime!==null)?.sourceDataTime??null;
-      const snapshot:DatasetSnapshot={datasetId:id,canonicalBinding:canonical,revision:String(Number(previous?.revision??0)+1),payload:json(result.data),resources:clone(resources),fetchedAt:now,sourceDataTime,lastSuccessAt:now,freshness:cacheExpired(result.data)||provenance.some(item=>item.freshness==='stale')?'stale':provenance.length&&provenance.every(item=>item.freshness==='fresh')?'fresh':'unknown',state:'ready',provenance:clone(provenance),...(result.status==='partial'?{error:result.errors[0]}:{})};
+      const snapshot:DatasetSnapshot={...(options.preparationOwner?{preparationOwner:options.preparationOwner}:{}),datasetId:id,canonicalBinding:canonical,revision:String(Number(previous?.revision??0)+1),payload:json(result.data),resources:clone(resources),fetchedAt:now,sourceDataTime,lastSuccessAt:now,freshness:cacheExpired(result.data)||provenance.some(item=>item.freshness==='stale')?'stale':provenance.length&&provenance.every(item=>item.freshness==='fresh')?'fresh':'unknown',state:'ready',provenance:clone(provenance),...(result.status==='partial'?{error:result.errors[0]}:{})};
       return clone(this.store.put('datasets',id,snapshot));
     });
   }
@@ -294,11 +352,12 @@ export class AppsPresentationService {
     return this.selectionForView(this.ownedView(sessionId,viewId),envelope);
   }
   validateDisplaySelection(sessionId:string,identity:CandidateFrameIdentity,envelope:SelectionEnvelope):SelectionEnvelope {
-    if(identity.sessionId!==sessionId||!identity.displayId||!identity.displayGeneration||!this.authoring?.acceptsDisplayFrame(identity))fail('BRIDGE_IDENTITY_STALE','Selection is not from the current display document.');
-    return this.selectionForView(this.authoring.display(sessionId,{...identity,displayId:identity.displayId,displayGeneration:identity.displayGeneration}).view,envelope);
+    const display=identity.sessionId===sessionId&&identity.displayId&&identity.displayGeneration?this.authoring?.acceptedDisplay(identity):undefined;
+    if(!display)fail('BRIDGE_IDENTITY_STALE','Selection is not from the current display document.');
+    return this.selectionForView(display.view,envelope,display.publicationId);
   }
-  private selectionForView(view:AppsView,envelope:SelectionEnvelope):SelectionEnvelope {
-    return validateDataSelection(this.dataForView(view),envelope);
+  private selectionForView(view:AppsView,envelope:SelectionEnvelope,publicationId?:string):SelectionEnvelope {
+    return validateDataSelection(this.dataForView(view,publicationId),envelope);
   }
   private sameSourceContent(view:AppsView,reference:AppsView):boolean {
     return !!view.source&&view.source.buildId===reference.source?.buildId&&view.activeBuildId===view.source.buildId&&reference.activeBuildId===reference.source.buildId&&canonicalJson([view.source.entry,view.source.files,view.design,view.bindings])===canonicalJson([reference.source.entry,reference.source.files,reference.design,reference.bindings]);
@@ -419,19 +478,17 @@ export class AppsPresentationService {
       return this.createView(sessionId,{title,...resolved,design});
     });
   }
-  async hydrateSourceView(view:AppsView,source:InvocationSource,signal?:AbortSignal):Promise<AppsView & {initialData?:{bindingId:string;datasetId:string;status:string}[]}> {
+  async hydrateSourceView(view:AppsView,_source:InvocationSource,_signal?:AbortSignal):Promise<AppsView & {initialData?:{bindingId:string;datasetId:string;status:string}[]}> {
     if(!view.source)return view;
-    const design=view.design&&typeof view.design==='object'&&!Array.isArray(view.design)?view.design:{},legacy=Array.isArray(design.bindings)?design.bindings as unknown as {id?:string;query?:unknown}[]:undefined;
-    const missing=this.getData(view.ownerSessionId,view.viewId).bindings.filter(binding=>binding.payload===null&&(!legacy||legacy.find(value=>value.id===binding.bindingId)?.query)).map(binding=>binding.bindingId);
-    if(!missing.length)return view;
-    const data=await this.refreshView(view.ownerSessionId,view.viewId,source,missing,signal);
-    return {...view,initialData:data.bindings.filter(binding=>missing.includes(binding.bindingId)).map(binding=>({bindingId:binding.bindingId,datasetId:binding.datasetId,status:binding.state}))};
+    this.prepareViewData(view);
+    const data=this.dataForView(view),pending=data.bindings.filter(binding=>binding.state==='preparing'||binding.preparation?.state==='failed');
+    return pending.length?{...view,initialData:pending.map(binding=>({bindingId:binding.bindingId,datasetId:binding.datasetId,status:binding.state}))}:view;
   }
   createHost(identity:BridgeIdentity,options:{signal?:AbortSignal;attachSelection?:NonNullable<AppsPresentationOptions['attachSelection']>;candidate?:CandidateFrameIdentity;clientFeatures?:string[]}={}):ComponentHost {
     const displayIdentity=options.candidate?.displayId&&options.candidate.displayGeneration?{...options.candidate,displayId:options.candidate.displayId,displayGeneration:options.candidate.displayGeneration}:undefined;
     let bindingSignature:string|undefined;
-    const current=()=>{const view=this.ownedView(identity.sessionId,identity.viewId);if(displayIdentity){if(!this.authoring?.acceptsDisplayFrame(displayIdentity))fail('BRIDGE_IDENTITY_STALE','The display document was replaced; reopen the component.');return this.authoring.display(identity.sessionId,displayIdentity).view;}if((view.source&&view.source.buildId!==identity.buildId||view.validationStatus==='draft_unpublished')&&!this.authoring?.acceptsFrame(options.candidate??identity as CandidateFrameIdentity))fail('BRIDGE_IDENTITY_STALE','View build changed. Reopen the component.');if(bindingSignature&&bindingSignature!==canonicalJson(view.bindings))fail('BRIDGE_IDENTITY_STALE','The bound data or selected shop changed. Reopen the component.');return view;};
-    const initial=current(),pageScope=canonicalJson(identity),data=()=>this.scopedData(current(),pageScope);
+    const current=()=>{const view=this.ownedView(identity.sessionId,identity.viewId);if(displayIdentity){const display=this.authoring?.acceptedDisplay(displayIdentity);if(!display)fail('BRIDGE_IDENTITY_STALE','The display document was replaced; reopen the component.');return display.view;}if((view.source&&view.source.buildId!==identity.buildId||view.validationStatus==='draft_unpublished')&&!this.authoring?.acceptsFrame(options.candidate??identity as CandidateFrameIdentity))fail('BRIDGE_IDENTITY_STALE','View build changed. Reopen the component.');if(bindingSignature&&bindingSignature!==canonicalJson(view.bindings))fail('BRIDGE_IDENTITY_STALE','The bound data or selected shop changed. Reopen the component.');return view;};
+    const initial=current(),pageScope=canonicalJson(identity),data=()=>this.scopedData(current(),pageScope,displayIdentity?.publicationId);
     bindingSignature=canonicalJson(initial.bindings);
     // A fixed historical display gets its own build context pointer; immutable evidence
     // and the session's active context remain in the existing Runtime-owned store.
@@ -443,7 +500,7 @@ export class AppsPresentationService {
       const view=current(),bindingIds=params?.bindingIds,refreshOptions={forceRefresh:params?.forceRefresh??true};this.clearBindingPages(pageScope,bindingIds);
       if(!displayIdentity)return this.refreshView(identity.sessionId,identity.viewId,source,bindingIds,options.signal,refreshOptions).then(json);
       if(bindingIds?.some(id=>!view.bindings.some(binding=>binding.bindingId===id)))fail('BINDING_NOT_FOUND','Requested binding is not part of this fixed display.');
-      await Promise.all(view.bindings.filter(binding=>!bindingIds||bindingIds.includes(binding.bindingId)).map(binding=>this.refreshBinding(binding,source,options.signal,refreshOptions)));return json(this.dataForView(current()));
+      await Promise.all(view.bindings.filter(binding=>!bindingIds||bindingIds.includes(binding.bindingId)).map(binding=>this.refreshBinding(binding,source,options.signal,{...refreshOptions,preparationOwner:this.preparationKey(view,binding,displayIdentity.publicationId)})));return json(this.dataForView(current(),displayIdentity.publicationId));
     };
     return new ComponentHost(identity,{
       getData:()=>json(data()),
@@ -476,10 +533,10 @@ export class AppsPresentationService {
         else if(params.method==='refresh'){
           if(params.options&&(typeof params.options!=='object'||Array.isArray(params.options)||Object.keys(params.options).some(key=>!['bindingIds','forceRefresh'].includes(key))||(params.options.forceRefresh!==undefined&&typeof params.options.forceRefresh!=='boolean')||params.options.bindingIds!==undefined&&(!Array.isArray(params.options.bindingIds)||params.options.bindingIds.some(id=>typeof id!=='string'||!id))))fail('INVALID_INPUT','Invalid refresh options.');
           try{value=await refreshData(params.options??null);}catch(error){guard();throw error;}
-        }else if(params.method==='readBindingPage')value=json(await this.readBindingPage(current(),pageScope,{bindingId:String(params.bindingId),cursor:params.cursor},source,current,options.signal,DATA_TRANSFER_MAX_BYTES));
+        }else if(params.method==='readBindingPage')value=json(await this.readBindingPage(current(),pageScope,{bindingId:String(params.bindingId),cursor:params.cursor},source,current,options.signal,DATA_TRANSFER_MAX_BYTES,displayIdentity?.publicationId));
         else fail('INVALID_INPUT','Only snapshot reads and refreshes use data transfers.');
         current();if(guard()!==initialGuard)fail('BRIDGE_IDENTITY_STALE','The binding changed while preparing data. Read it again.');return this.dataTransfers.prepare(pageScope,value,params.knownRevision,initialGuard);
-      },bindingPagesV1:async request=>{if(request.action!=='read')fail('INVALID_INPUT','Unknown binding page action.');return json(await this.readBindingPage(current(),pageScope,request.params as unknown as {bindingId:string;cursor?:string|null},source,current,options.signal));},...(this.authoring?{
+      },bindingPagesV1:async request=>{if(request.action!=='read')fail('INVALID_INPUT','Unknown binding page action.');return json(await this.readBindingPage(current(),pageScope,request.params as unknown as {bindingId:string;cursor?:string|null},source,current,options.signal,250000,displayIdentity?.publicationId));},...(this.authoring?{
       renderReadyV1:request=>{if(request.action!=='ready'||!options.candidate)fail('FRAME_NOT_READY','No authorized candidate publication.');const params=request.params as unknown as {checks:Parameters<AppsAuthoringService['confirmReady']>[1]['checks']};return json(displayIdentity?this.authoring!.confirmDisplayReady(identity.sessionId,{...displayIdentity,...identity,checks:params.checks}):this.authoring!.confirmReady(identity.sessionId,{...options.candidate,...identity,checks:params.checks}));},
       uiStateV1:request=>{const params=request.params as unknown as {uiStateSchemaVersion:number;expectedStateRevision?:number;value?:JsonValue;state?:JsonValue;selectionEvidence?:Parameters<AppsAuthoringService['exportUiState']>[1]['selectionEvidence']};current();const validateFrameSelection=(selection:SelectionEnvelope)=>{validateDataSelection(data(),selection);};if(request.action==='read')return json(this.authoring!.restoreUiState(identity.sessionId,{viewId:identity.viewId,targetBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion},options.candidate,validateFrameSelection));if(request.action==='write')return json(this.authoring!.exportUiState(identity.sessionId,{viewId:identity.viewId,sourceBuildId:identity.buildId,uiStateSchemaVersion:params.uiStateSchemaVersion,expectedStateRevision:params.expectedStateRevision??0,value:params.value??params.state??null,selectionEvidence:params.selectionEvidence??[]},displayIdentity,validateFrameSelection));fail('INVALID_INPUT','Unknown UI state action.');},
     }:{})}});
@@ -507,8 +564,9 @@ export class AppsPresentationService {
           case 'begin':return output(this.authoring.begin(sessionId,{...params,invocationId:request.invocationId} as never));
           case 'record_build':return output(await this.authoring.recordBuild(sessionId,params as never));
           case 'record_preview':return output(await this.authoring.recordPreview(sessionId,params as never));
-          case 'publish':return output(this.authoring.publish(sessionId,params as never));
+          case 'publish':return output(this.authoring.publishWithOutcome(sessionId,params as never));
           case 'inspect':return output(this.authoring.inspect(sessionId,params as never));
+          case 'await_display':return output(await this.authoring.awaitDisplay(sessionId,params as never,context.signal));
           case 'cancel':return output(this.authoring.cancel(sessionId,params as never));
           default:fail('CAPABILITY_NOT_FOUND','Unknown authoring action.');
         }

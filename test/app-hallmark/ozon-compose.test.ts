@@ -1,3 +1,4 @@
+import { recordedPlatformProduct } from '../adapter/real-scenarios.ts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,rm} from 'node:fs/promises';
@@ -16,7 +17,7 @@ import type {CoreStore,CoreClient} from '../../packages/core/src/types.ts';
 import type {ToolResult} from '../../packages/contracts/src/index.ts';
 const range={dateFrom:'2026-09-01',dateTo:'2026-09-02'};
 const recipe=(fields:string[]=DEFAULT_PRODUCT_FIELDS,grain:'product'|'posting'='product'):OzonCompositionRecipe=>({version:1,grain,fields});
-const normalize=(source:OzonCompositionSource,row:any)=>({...Object.fromEntries(OZON_COMPOSITION_SOURCE_FIELDS[source].map(key=>[key,null])),...row});
+const normalize=(source:OzonCompositionSource,row:any)=>({...Object.fromEntries(OZON_COMPOSITION_SOURCE_FIELDS[source].map(key=>[key,null])),...(source==='products'?{title:recordedPlatformProduct().name}:{}),...row});
 function fixture(respond:(source:OzonCompositionSource,input:any)=>any){
  const records=new Map<string,any>(),calls:{source:OzonCompositionSource;input:any}[]=[];
  const store={get:(collection:string,id:string)=>records.get(`${collection}:${id}`),put:(collection:string,id:string,value:any)=>{records.set(`${collection}:${id}`,structuredClone(value));return value;}} as CoreStore;
@@ -124,7 +125,7 @@ test('Runtime invokes real normalized child reads and validates nested output fo
  const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),calls:any[]=[];
  const client={storeDataRead:async(storeId:string,input:any)=>{calls.push({storeId,path:input.path});let response:any;
   if(input.path==='/v3/product/list')response={result:{items:[{product_id:1}],total:1}};
-  else if(input.path==='/v3/product/info/list')response={items:[{id:1,sku:101,name:storeId,offer_id:'o'}]};
+  else if(input.path==='/v3/product/info/list')response={items:[recordedPlatformProduct({id:1,sku:101,name:storeId,offer_id:'o'})]};
   else if(input.path==='/v5/product/info/prices')response={items:[{product_id:1,price:{marketing_seller_price:storeId==='bill'?'20':'30',currency_code:'CNY'}}],total:1};
   else throw new Error(`unexpected ${input.path}`);
   return {status:'ok',raw:{storeId,outcome:'response_received',httpStatus:200,response}};}} as unknown as CoreClient;

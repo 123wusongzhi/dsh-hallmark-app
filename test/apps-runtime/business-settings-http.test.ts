@@ -1,3 +1,4 @@
+import {uiCollectionDetails,uiProduct,uiStore} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync} from 'node:fs';
@@ -19,10 +20,10 @@ test('ERP settings retain store ownership, private credentials, pricing revision
  runtime.register({manifest:{manifestVersion:1,appId:'hallmark',displayName:'Hallmark',providerPackage:'hallmark',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:['product']},descriptors:[],execute:async()=>{throw Error('not expected');},dispose:async()=>{}});
  for(const id of ['local','other'])runtime.addConnection({appId:'hallmark',connectionId:id,displayName:id,enabled:true,configRevision:1,config:{}});
  runtime.bind({sessionId:'s',appId:'hallmark',connectionId:'local',enabled:true,boundAt:new Date().toISOString()});
- const gateway=new OzonBusinessGateway(directory,{fetchImpl:async()=>{reads++;return Response.json({name:'Fixture store'});}});
+ const gateway=new OzonBusinessGateway(directory,{fetchImpl:async()=>{reads++;return Response.json({name:uiStore().name});}});
  const pricing=new BusinessPricingRepository(new StableHallmarkBusinessStore(store,{connectionId:'local',scopeId:'fixture'}));
  const packaging=new BusinessPackagingRepository(new StableHallmarkBusinessStore(store,{connectionId:'local',scopeId:'fixture'}));
- const collection=new CollectionService({store:new HallmarkStorePort(store,'local'),client:{searchCollectedItems:async()=>({status:'ok',raw:[{id:'source-product',title:'测试杯',source:'taobao_tmall',skuCount:1}]}),getCollectedItem:async()=>{throw Error('Raw collection is not needed');},getCollectedItemDetail:async()=>({status:'ok',raw:{id:'source-product',title:'测试杯',source:'taobao_tmall',currency:'CNY',package:{weightKg:.33,dimensionsCm:{length:25,width:10,height:10}},skus:[{sourceSkuId:'red',spec:'红色',goodsPrice:3,currency:'CNY'}]}})}});
+ const collection=new CollectionService({store:new HallmarkStorePort(store,'local'),client:{searchCollectedItems:async()=>({status:'ok',raw:[{id:'source-product',title:uiProduct({},20).title,source:'alibaba_com',skuCount:1}]}),getCollectedItem:async()=>{throw Error('Raw collection is not needed');},getCollectedItemDetail:async()=>({status:'ok',raw:{...uiCollectionDetails()[1],id:'source-product',package:uiProduct({},20).sourcePackage,skus:[{...uiCollectionDetails()[1].skus[0],sourceSkuId:'red'}]}})}});
  const settings=new BusinessSettingsService(runtime,gateway,()=>pricing,{packagingFor:()=>packaging,collectionFor:()=>collection}),presentation=new AppsPresentationService({store,runtime});
  const token='fixture-token'.repeat(4),server=createAppsServer({runtime,presentation,businessSettings:settings,token});
  await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));const address=server.address();assert.ok(address&&typeof address!=='string');const base=`http://127.0.0.1:${address.port}`;
@@ -54,7 +55,7 @@ test('ERP settings retain store ownership, private credentials, pricing revision
   assert.equal(settings.read(undefined,'legacy-not-imported').store,null);assert.equal(settings.read(undefined,'legacy-not-imported').connections.length,2);
   assert.throws(()=>settings.read('local',second.id),/店铺不属于/);
   const sourceSearch=await post('packaging.search',{query:''});assert.equal(sourceSearch.status,200);assert.equal((await sourceSearch.json()).items[0].id,'source-product');
-  const sourceRead=await post('packaging.read',{itemIds:['source-product']});assert.equal(sourceRead.status,200,await sourceRead.clone().text());const packageRow=(await sourceRead.json()).rows[0];assert.equal(packageRow.result.weightKg,.33);
+  const sourceRead=await post('packaging.read',{itemIds:['source-product']});assert.equal(sourceRead.status,200,await sourceRead.clone().text());const packageRow=(await sourceRead.json()).rows[0];assert.equal(packageRow.result.weightKg,uiProduct({},20).sourcePackage.weightKg);
   const savedPackage=await post('packaging.save',{rows:[{target:packageRow.target,values:{weightKg:.45},expectedRevision:0}]});assert.equal(savedPackage.status,200);assert.equal(packaging.readOverride(packageRow.target)?.values.weightKg,.45,'Host forwards maintenance through the real Runtime repository');
   const stalePackage=await post('packaging.save',{rows:[{target:packageRow.target,values:{weightKg:.5},expectedRevision:0}]});assert.notEqual(stalePackage.status,200);assert.equal(packaging.readOverride(packageRow.target)?.values.weightKg,.45);
   const resetPackage=await post('packaging.remove',{rows:[{target:packageRow.target,expectedRevision:1}]});assert.equal(resetPackage.status,200);assert.equal(packaging.readOverride(packageRow.target)?.values.weightKg,undefined);

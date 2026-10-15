@@ -4,8 +4,10 @@ import type {AuthoringAssertion,UiSelectionEvidence,UiStateSnapshot} from '../..
 import {createAppsClient,ComponentBridgeError} from './apps-client.ts';
 import type {AppsComponentClient,AppsRefreshOptions,ComponentHello} from './apps-client.ts';
 import {createLatestStateSaver} from './latest-state-saver.ts';
+import {createVisibleDeadline,dataProgressKey,DISPLAY_NO_PROGRESS_MS} from './visible-deadline.ts';
 export interface AppsUiStateContract {uiStateSchemaVersion:number;exportState():{value:JsonValue;selectionEvidence:UiSelectionEvidence[]};importState(value:JsonValue,selectionEvidence:UiSelectionEvidence[]):void|Promise<void>;migrateState?(snapshot:UiStateSnapshot,targetSchemaVersion:number):{value:JsonValue;selectionEvidence:UiSelectionEvidence[]}|Promise<{value:JsonValue;selectionEvidence:UiSelectionEvidence[]}>;subscribe?(listener:()=>void):()=>void}
-export interface AppsHookOptions {uiState?:AppsUiStateContract;assertionResults?:()=>AuthoringAssertion[]|Promise<AuthoringAssertion[]>}
+/** `initialReadRetryDelaysMs` replaces the default backoff (500 ms, 1500 ms: three attempts) of the first data and context reads; at most two delays, each capped at 5s. Readiness has its own idle/absolute cap. */
+export interface AppsHookOptions {uiState?:AppsUiStateContract;assertionResults?:()=>AuthoringAssertion[]|Promise<AuthoringAssertion[]>;initialReadRetryDelaysMs?:number[]}
 
 /** Local sorting, selection and display state belong in the component's ordinary React state. */
 export function useApps(options:AppsHookOptions={}){
@@ -38,9 +40,15 @@ export function useApps(options:AppsHookOptions={}){
   const [uiStateNotice,setUiStateNotice]=useState(''),[contextNotice,setContextNotice]=useState(''),[stateSettled,setStateSettled]=useState(false),stateRevision=useRef(0),stateSaver=useRef<ReturnType<typeof createLatestStateSaver>>(),stateReadiness=useRef<{resolve:()=>void;reject:(reason:unknown)=>void}>(),readyPublication=useRef<string>(),pageErrors=useRef<string[]>([]),migratedState=useRef(false);
   const saveUiState=useCallback(async()=>{if(!liveOptions.current.uiState)return;if(!stateSaver.current)throw new Error('UI状态连接尚未准备好。');return stateSaver.current.save();},[]);
   useEffect(()=>{
-    const connection=createAppsClient({clientFeatures:liveOptions.current.uiState?['renderReadyV1','uiStateV1','bindingPagesV1','dataTransferV1']:['renderReadyV1','bindingPagesV1','dataTransferV1']});client.current=connection;let active=true,unsubscribeState=()=>{},localStateChanges=0,importing=false,lastSaved:string|undefined;
+    let readProgress:(milestone:string)=>void=()=>{};
+    const connection=createAppsClient({onReadProgress:milestone=>readProgress(milestone),clientFeatures:liveOptions.current.uiState?['renderReadyV1','uiStateV1','bindingPagesV1','dataTransferV1']:['renderReadyV1','bindingPagesV1','dataTransferV1']});client.current=connection;let active=true,unsubscribeState=()=>{},localStateChanges=0,importing=false,lastSaved:string|undefined;
     const initialSequence=beginDataRead();dataRequests.current++;
-    const visibility=connection.subscribeVisibility(visible=>{visibleHost.current=visible;if(active)setHostVisible(visible);});visibleHost.current=connection.isVisible();setHostVisible(visibleHost.current);
+    let rejectBudget!:(reason:unknown)=>void;const budgetExpired=new Promise<never>((_resolve,reject)=>{rejectBudget=reject;});
+    const budget=createVisibleDeadline(()=>rejectBudget(new ComponentBridgeError({code:'DISPLAY_READY_TIMEOUT',message:'数据准备长时间没有实质进展或已达到最长等待时间。',retryPolicy:'never'})),DISPLAY_NO_PROGRESS_MS);void budgetExpired.catch(()=>{});
+    const within=<T,>(promise:Promise<T>):Promise<T>=>Promise.race([promise,budgetExpired]);
+    readProgress=milestone=>{if(active)budget.progress(milestone);};
+    budget.visible(connection.isVisible());
+    const visibility=connection.subscribeVisibility(visible=>{budget.visible(visible);visibleHost.current=visible;if(active)setHostVisible(visible);});visibleHost.current=connection.isVisible();setHostVisible(visibleHost.current);
     const pendingVisibility=new Set<()=>void>();
     const waitVisible=(afterPause=false)=>new Promise<void>((resolve,reject)=>{
       if(!active){reject(new Error('Component host is not connected.'));return;}
@@ -48,8 +56,23 @@ export function useApps(options:AppsHookOptions={}){
       let off=()=>{};const cancel=()=>{off();pendingVisibility.delete(cancel);reject(new Error('Component host is not connected.'));};
       off=connection.subscribeVisibility(visible=>{if(!visible)return;off();pendingVisibility.delete(cancel);if(active)resolve();else reject(new Error('Component host is not connected.'));});pendingVisibility.add(cancel);
     });
+    const retryDelays=(liveOptions.current.initialReadRetryDelaysMs??[500,1500]).slice(0,2).map(ms=>Number.isFinite(ms)?Math.min(5000,Math.max(0,ms)):500),pendingPauses=new Set<()=>void>();
+    const pause=(ms:number)=>new Promise<void>((resolve,reject)=>{
+      if(!active){reject(new Error('Component host is not connected.'));return;}
+      const cancel=()=>{clearTimeout(timer);pendingPauses.delete(cancel);reject(new Error('Component host is not connected.'));},timer=setTimeout(()=>{pendingPauses.delete(cancel);resolve();},ms);pendingPauses.add(cancel);
+    });
+    // A transient failure of the first read is retried within a small budget; identity, binding and validation errors are terminal at once.
     const readInitially=async<T,>(read:()=>Promise<T>):Promise<T>=>{
-      await waitVisible();while(active){try{return await read();}catch(reason){if(object(reason).code!=='BRIDGE_PAUSED')throw reason;await waitVisible(true);}}
+      await within(waitVisible());let attempts=0;
+      while(active){
+        try{return await within(read());}
+        catch(reason){
+          if(object(reason).code==='BRIDGE_PAUSED'){await within(waitVisible(true));continue;}
+          attempts++;
+          if(!active||attempts>retryDelays.length||!retryableFailure(reason)){if(reason!==null&&typeof reason==='object')try{(reason as {attempts?:number}).attempts=attempts;}catch{}throw reason;}
+          await within(pause(retryDelays[attempts-1]));await within(waitVisible());
+        }
+      }
       throw new Error('Component host is not connected.');
     };
     let resolveState:()=>void,rejectState:(reason:unknown)=>void;
@@ -64,8 +87,8 @@ export function useApps(options:AppsHookOptions={}){
     const capture=(event:Event)=>{const item=event as ErrorEvent&PromiseRejectionEvent;if(item.reason instanceof ComponentBridgeError)return;const message=String(item.message??item.reason??'Unhandled component error').slice(0,512);if(pageErrors.current.length<20)pageErrors.current.push(message);if(active)connection.reportFrameError({phase:'script',code:event.type==='error'?'COMPONENT_SCRIPT_ERROR':'COMPONENT_UNHANDLED_REJECTION',message});};
     window.addEventListener('error',capture);window.addEventListener('unhandledrejection',capture);
     const unsubscribe=connection.subscribe(event=>{if(active){if(event.event==='data')acceptData(event.data,beginDataRead());else setContext(event.data);}});
-    const initial=<T,>(phase:string,promise:Promise<T>)=>promise.catch(reason=>{if(active)connection.reportFrameError({phase,code:String(object(reason).code??'COMPONENT_INITIALIZATION_FAILED'),message:reason instanceof Error?reason.message:String(reason)});throw reason;});
-    const handshake=initial('handshake',connection.hello()).then(identity=>{if(active){setHello(identity);if(!identity.features?.includes('renderReadyV1'))stateReadiness.current?.resolve();}return identity;});
+    const initial=<T,>(phase:string,promise:Promise<T>)=>promise.catch(reason=>{if(active)connection.reportFrameError({phase,code:String(object(reason).code??'COMPONENT_INITIALIZATION_FAILED'),message:reason instanceof Error?reason.message:String(reason),...reportDetails(reason)});throw reason;});
+    const handshake=initial('handshake',connection.hello()).then(identity=>{if(active){budget.progress('bridge:authorized');setHello(identity);if(!identity.features?.includes('renderReadyV1'))stateReadiness.current?.resolve();}return identity;});
     const restoreState=handshake.then(async identity=>{
       const contract=liveOptions.current.uiState;
       if(!contract)return;
@@ -92,13 +115,43 @@ export function useApps(options:AppsHookOptions={}){
     void restoreState.then(()=>resolveState!(),reason=>{rejectState!(reason);if(active)setUiStateNotice(`界面状态恢复失败，当前数据仍可查看：${reason instanceof Error?reason.message:String(reason)}`);}).finally(()=>{if(active)setStateSettled(true);});
     // Context is optional for display, but readiness still requires its publication identity.
     void readInitially(()=>connection.getContext()).then(next=>{if(active){setContext(next);if(typeof object(object(next).publication).publicationId!=='string')stateReadiness.current?.resolve();}},reason=>{if(active){stateReadiness.current?.reject(reason);setContextNotice(`组件上下文暂不可用：${reason instanceof Error?reason.message:String(reason)}`);}});
-    Promise.all([handshake,readInitially(()=>connection.getData())]).then(([,nextData])=>{if(active)acceptData(nextData,initialSequence);}).catch(reason=>{if(active&&initialSequence===dataSequence.current){rejectState!(reason);stateReadiness.current?.reject(reason);connection.reportFrameError({phase:'data',code:String(object(reason).code??'COMPONENT_INITIALIZATION_FAILED'),message:reason instanceof Error?reason.message:String(reason)});setError(reason instanceof Error?reason:new Error(String(reason)));}}).finally(()=>{dataRequests.current--;if(active)setLoading(dataRequests.current>0);});
-    return()=>{active=false;for(const cancel of [...pendingVisibility])cancel();unsubscribe();visibility();unsubscribeState();saver.dispose();rejectState!(new Error('UI状态连接已关闭。'));stateReadiness.current?.reject(new Error('UI状态连接已关闭。'));stateReadiness.current=undefined;window.removeEventListener('error',capture);window.removeEventListener('unhandledrejection',capture);connection.dispose();if(client.current===connection)client.current=undefined;if(stateSaver.current===saver)stateSaver.current=undefined;};
+    let preparationPoll=0;
+    const readPrepared=async():Promise<JsonValue>=>{
+      while(active){
+        const next=await connection.getData();budget.progress(dataProgressKey(next));
+        const failure=initialDataFailure(next);if(failure){if(active&&!retryableFailure(failure))acceptData(next,initialSequence);throw failure;}
+        if(!snapshotPreparing(next))return next;
+        if(active)acceptData(next,initialSequence);
+        await within(pause(Math.min(3000,1000+preparationPoll++*500)));await within(waitVisible());
+      }
+      throw new Error('Component host is not connected.');
+    };
+    Promise.all([handshake,readInitially(readPrepared)]).then(([,nextData])=>{if(active)acceptData(nextData,initialSequence);}).catch(reason=>{if(active&&initialSequence===dataSequence.current){rejectState!(reason);stateReadiness.current?.reject(reason);connection.reportFrameError({phase:'data',code:String(object(reason).code??'COMPONENT_INITIALIZATION_FAILED'),message:reason instanceof Error?reason.message:String(reason),...reportDetails(reason)});setError(reason instanceof Error?reason:new Error(String(reason)));}}).finally(()=>{budget.stop();dataRequests.current--;if(active)setLoading(dataRequests.current>0);});
+    return()=>{active=false;readProgress=()=>{};budget.stop();for(const cancel of [...pendingVisibility])cancel();for(const cancel of [...pendingPauses])cancel();unsubscribe();visibility();unsubscribeState();saver.dispose();rejectState!(new Error('UI状态连接已关闭。'));stateReadiness.current?.reject(new Error('UI状态连接已关闭。'));stateReadiness.current=undefined;window.removeEventListener('error',capture);window.removeEventListener('unhandledrejection',capture);connection.dispose();if(client.current===connection)client.current=undefined;if(stateSaver.current===saver)stateSaver.current=undefined;};
   },[]);
+  const pushedPreparationPoll=useRef(0);
+  // A later pushed preparing state also needs snapshot polling, never a provider refresh.
+  useEffect(()=>{
+    if(!snapshotPreparing(data)){pushedPreparationPoll.current=0;return;}
+    if(loading||error||!hostVisible)return;
+    const owner=client.current;if(!owner)return;
+    let disposed=false,failures=0,timer:ReturnType<typeof setTimeout>|undefined;
+    const schedule=(delay:number)=>{timer=setTimeout(()=>void poll(),delay);};
+    const poll=async()=>{
+      if(disposed||client.current!==owner)return;
+      if(dataRequests.current||!visibleHost.current||typeof document!=='undefined'&&document.hidden){schedule(1000);return;}
+      const sequence=beginDataRead();dataRequests.current++;
+      try{const next=await owner.getData();if(disposed)return;const failure=initialDataFailure(next);if(failure)throw failure;acceptData(next,sequence);}
+      catch(reason){if(disposed)return;if(retryableFailure(reason)&&failures++<2){schedule(failures===1?500:1500);return;}owner.reportFrameError({phase:'data',code:String(object(reason).code??'DATASET_NOT_READY'),message:reason instanceof Error?reason.message:String(reason),...reportDetails(reason)});setError(reason instanceof Error?reason:new Error(String(reason)));}
+      finally{dataRequests.current--;}
+    };
+    schedule(Math.min(3000,1000+pushedPreparationPoll.current++*500));
+    return()=>{disposed=true;if(timer!==undefined)clearTimeout(timer);};
+  },[data,loading,error,hostVisible]);
   // This effect runs after the React root committed data/context, never from iframe onLoad.
   useEffect(()=>{
     const publication=object(object(context).publication),display=object(object(context).display),readyKey=JSON.stringify([publication.publicationId,display.displayId]);
-    if(loading||!stateSettled||error||data===undefined||!hello?.features?.includes('renderReadyV1')||typeof publication.publicationId!=='string'||typeof publication.attemptId!=='string'||!Number.isSafeInteger(publication.attemptEpoch)||readyPublication.current===readyKey)return;
+    if(loading||snapshotPreparing(data)||!stateSettled||error||data===undefined||!hello?.features?.includes('renderReadyV1')||typeof publication.publicationId!=='string'||typeof publication.attemptId!=='string'||!Number.isSafeInteger(publication.attemptEpoch)||readyPublication.current===readyKey)return;
     const owner=client.current;if(!owner)return;readyPublication.current=readyKey;
     void Promise.resolve().then(()=>liveOptions.current.assertionResults?.()??[]).then(assertionResults=>owner.renderReady({publicationId:String(publication.publicationId),attemptId:String(publication.attemptId),attemptEpoch:Number(publication.attemptEpoch),checks:{rendered:true,bridgeReady:true,dataRead:true,unhandledErrors:[...pageErrors.current],assertionResults}})).then(()=>{
       if(client.current===owner)stateReadiness.current?.resolve();
@@ -135,12 +188,25 @@ export function useApps(options:AppsHookOptions={}){
   // Existing components commonly render a loading screen when `loading` is true.
   // A refresh must keep their last snapshot visible; expose it separately instead.
   const refreshing=data!==undefined&&(loading||snapshotRefreshing(data));
-  return {data,context,hello,loading:loading&&data===undefined,refreshing,error,uiStateNotice,contextNotice,saveUiState,flushUiState:saveUiState,refresh,readBindingPage,attachSelection:useCallback((selection:SelectionEnvelope)=>connection().attachSelection(selection),[]),invokeCapability:useCallback((input:JsonValue)=>connection().invokeCapability(input),[]),updateContext,requestAgent:useCallback((input:ComponentAgentRequest)=>connection().requestAgent(input),[]),resize:useCallback((height:number)=>connection().resize(height),[])};
+  return {data,context,hello,loading:!error&&(loading&&data===undefined||snapshotPreparing(data)),preparing:snapshotPreparing(data),preparationNotice:snapshotPreparing(data)?'数据准备中…':'',refreshing,error,uiStateNotice,contextNotice,saveUiState,flushUiState:saveUiState,refresh,readBindingPage,attachSelection:useCallback((selection:SelectionEnvelope)=>connection().attachSelection(selection),[]),invokeCapability:useCallback((input:JsonValue)=>connection().invokeCapability(input),[]),updateContext,requestAgent:useCallback((input:ComponentAgentRequest)=>connection().requestAgent(input),[]),resize:useCallback((height:number)=>connection().resize(height),[])};
 }
 
 function object(value:unknown):Record<string,unknown> {return value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};}
+const RETRYABLE_CODES=new Set(['BRIDGE_TIMEOUT','BRIDGE_PROXY_UNAVAILABLE','RUNTIME_UNAVAILABLE','RUNTIME_CONNECTION_LOST','RUNTIME_INVALID_RESPONSE','RUNTIME_STORE_BUSY','RUNTIME_INTERNAL_ERROR','RUNTIME_REQUEST_TIMEOUT']);
+function retryableFailure(reason:unknown):boolean {const value=object(reason),failure=object(value.failure);return failure.retryPolicy==='read_retry'||value.retryPolicy==='read_retry'||RETRYABLE_CODES.has(String(value.code));}
+/** The evidence a terminal failure report carries: attempts made, the last retry policy, request id and cause. */
+function reportDetails(reason:unknown):{attempts?:number;retryPolicy?:string;requestId?:string;cause?:string} {
+  const value=object(reason),failure=Object.keys(object(value.failure)).length?object(value.failure):value,details=object(failure.details),text=(item:unknown,max:number)=>typeof item==='string'&&item?item.slice(0,max):undefined;
+  const attempts=Number.isSafeInteger(value.attempts)?Number(value.attempts):Number.isSafeInteger(details.attempts)?Number(details.attempts):undefined,retryPolicy=text(failure.retryPolicy,32),requestId=text(details.runtimeRequestId,128)??text(details.requestId,128),cause=text(details.cause,500);
+  return {...(attempts!==undefined?{attempts:Math.min(10,Math.max(1,attempts))}:{}),...(retryPolicy?{retryPolicy}:{}),...(requestId?{requestId}:{}),...(cause?{cause}:{})};
+}
 function cacheDeadlines(data:unknown):{id:string;at:number}[]{const bindings=object(data).bindings;return Array.isArray(bindings)?bindings.flatMap(value=>{const binding=object(value),cache=object(object(binding.payload).cache),at=Date.parse(String(cache.nextRefreshAt??cache.expiresAt??''));return typeof binding.bindingId==='string'&&Number.isFinite(at)?[{id:binding.bindingId,at}]:[];}):[];}
 function snapshotRefreshing(data:unknown,bindingIds?:string[]):boolean {const bindings=object(data).bindings;return Array.isArray(bindings)&&bindings.some(value=>{const binding=object(value);return (!bindingIds||bindingIds.includes(String(binding.bindingId)))&&object(object(binding.payload).cache).refreshing===true;});}
+function snapshotPreparing(data:unknown):boolean {const bindings=object(data).bindings;return Array.isArray(bindings)&&bindings.some(value=>object(value).state==='preparing');}
+function initialDataFailure(data:unknown):ComponentBridgeError|undefined {
+  const bindings=object(data).bindings;if(!Array.isArray(bindings))return;
+  for(const item of bindings){const binding=object(item);if(!['failed','unavailable'].includes(String(binding.state)))continue;const error=object(binding.error);return new ComponentBridgeError({code:String(error.code??'DATASET_NOT_READY'),message:String(error.message??'数据准备失败。'),retryPolicy:(error.retryPolicy??'never') as 'never',...(error.details?{details:error.details as JsonValue}:{})});}
+}
 function boundDataError(data:unknown):Error|undefined {const bindings=object(data).bindings;if(!Array.isArray(bindings))return;for(const binding of bindings){const value=object(binding),message=object(value.error).message;if(typeof message==='string'&&message)return new Error(message);}return;}
 function failureInfo(error:unknown):Record<string,unknown> {const value=object(error);return Object.keys(object(value.failure)).length?object(value.failure):value;}
 function invalidatesCache(error:unknown):boolean {const value=failureInfo(error),code=String(value.code??''),status=Number(value.httpStatus??value.statusCode);return status===401||status===403||code==='PLATFORM_ERROR'&&value.retryPolicy==='never'||/AUTH|PERMISSION|FORBIDDEN|ACCESS_DENIED|CONNECTION|BINDING|IDENTITY|OWNER|INVALID|NOT_FOUND|HTTP_40[13]/.test(code);}

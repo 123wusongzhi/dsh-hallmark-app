@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiOzonProduct,uiStore,uiListingPayload,uiFixturePrelude,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import type {TestContext} from 'node:test';
 import assert from 'node:assert/strict';
@@ -30,9 +31,9 @@ function setup(t:TestContext){
   runtime.register({manifest:{manifestVersion:1,appId:'hallmark',displayName:'Fixture',providerPackage:'fixture',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:[]},descriptors:[OZON_COMPOSE_DESCRIPTOR],execute:async({request})=>{
     calls.push(request);const input=record(request.input),page=Number(input.cursor??0),selected=input.recipe.fields as string[];
     const row=Object.fromEntries([...new Set(selected.map(key=>key.split('.')[0]))].map(source=>[source,Object.fromEntries(OZON_COMPOSITION_SOURCE_FIELDS[source as keyof typeof OZON_COMPOSITION_SOURCE_FIELDS].map(field=>[field,null]))]));
-    if(row.products)Object.assign(row.products,{title:`${input.storeId} 商品 ${page}`,productId:String(page+1)});
+    if(row.products)Object.assign(row.products,{title:uiProduct({},page===0?6:40).title,productId:String(page+1)});
     if(row.prices)Object.assign(row.prices,{price:49.9,currency:'CNY'});
-    if(row.orders)Object.assign(row.orders,{title:'下单时商品名称'});
+    if(row.orders)Object.assign(row.orders,{title:uiProduct({},20).title});
     return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{items:[row],total:2,dataTime:null,warnings:[],sourceStates:[],cache:{ttlMs:900000,fetchedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+900000).toISOString(),stale:false,nextRefreshAt:new Date(Date.now()+900000).toISOString()},...(page===0?{cursor:'1'}:{}),fieldMeta:selected.map(key=>{const field=COMPOSITION_FIELD_MAP.get(key)!;return {key,source:field.source,label:field.label,description:field.description,format:field.format,...(field.format==='currency'?{currencyPath:`${field.source}.currency`}:{})};})}};
   },dispose:async()=>{}});
   const presentation=new AppsPresentationService({store,runtime,sources});runtime.register(presentation.provider());
@@ -99,9 +100,9 @@ test('the actual component SDK reads, pages and refreshes the same resolved sour
   const parent={postMessage:(message:unknown)=>{void host.handle(message).then(response=>{if(response)for(const listener of listeners)listener({data:response,source:parent,origin:'http://apps.test'} as MessageEvent);});}};
   const window={parent,location:{origin:'http://apps.test'},addEventListener:(_type:string,listener:(event:MessageEvent)=>void)=>listeners.add(listener),removeEventListener:(_type:string,listener:(event:MessageEvent)=>void)=>listeners.delete(listener)} as unknown as Window;
   const client=createAppsClient({window,clientFeatures:['bindingPagesV1']});t.after(()=>{client.dispose();host.dispose();});
-  const initial=composedData(await client.getData());assert.equal(initial.rows[0].products&&record(initial.rows[0].products).title,'A 商品 0');assert.equal(formatValue(initial.rows[0],initial.fields.find(field=>field.key==='prices.price')!),'¥49.90');
-  const next=composedData(await client.readBindingPage('main',initial.cursor));assert.equal(record(next.rows[0].products).title,'A 商品 1');assert.equal(next.cursor,null);
-  const refreshed=composedData(await client.refresh(['main']));assert.equal(record(refreshed.rows[0].products).title,'A 商品 0');
+  const initial=composedData(await client.getData());assert.equal(initial.rows[0].products&&record(initial.rows[0].products).title,uiProduct({},6).title);assert.equal(formatValue(initial.rows[0],initial.fields.find(field=>field.key==='prices.price')!),'¥49.90');
+  const next=composedData(await client.readBindingPage('main',initial.cursor));assert.equal(record(next.rows[0].products).title,uiProduct({},40).title);assert.equal(next.cursor,null);
+  const refreshed=composedData(await client.refresh(['main']));assert.equal(record(refreshed.rows[0].products).title,uiProduct({},6).title);
   assert.ok(f.calls.every(call=>call.capabilityId==='hallmark.ozon.compose'));assert.ok(f.calls.slice(1).every(call=>call.source.kind==='component'));assert.equal(record(f.presentation.getView(view.viewId)!.bindings[0].input).cursor,undefined);
 });
 

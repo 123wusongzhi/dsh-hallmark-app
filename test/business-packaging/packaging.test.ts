@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BusinessPackagingError, BusinessPackagingRepository, packagingTarget } from '../../packages/business-packaging/src/index.ts';
 import type { PackagingMember, PackagingStore, PackagingTarget } from '../../packages/business-packaging/src/index.ts';
+import { realCollection } from '../real-data/corpus.ts';
+
+const recorded = realCollection('package:sku-logistics');
 
 function memory(): PackagingStore {
   let records = new Map<string, unknown>();
@@ -12,7 +15,7 @@ function memory(): PackagingStore {
     transaction<T>(fn: (store: any) => T) { const before = structuredClone(records); try { return fn(this); } catch (error) { records = before; throw error; } },
   };
 }
-const dimensions = { length: 25, width: 10, height: 10 };
+const dimensions = { length: recorded.package.dimensionsMm!.length / 10, width: recorded.package.dimensionsMm!.width / 10, height: recorded.package.dimensionsMm!.height / 10 };
 
 test('draft fills only missing package fields for the whole sale without persisting rules', () => {
   const packaging = repo();
@@ -35,19 +38,19 @@ test('draft fills only missing package fields for the whole sale without persist
   assert.equal(known.origin.weight, 'quantity-sum');
   assert.equal(known.origin.dimensions, 'draft');
 });
-const single: PackagingMember = { itemId: 'cup', sourceSkuId: 'red', quantity: 1, commonPackage: { weightKg: 0.33, dimensionsCm: dimensions }, sourceRevision: 'source-1' };
-const singleTarget: PackagingTarget = { kind: 'sku', itemId: 'cup', sourceSkuId: 'red' };
+const single: PackagingMember = { itemId: recorded.id, sourceSkuId: recorded.skus[0].id!, quantity: 1, commonPackage: { weightKg: recorded.package.weightGrams! / 1000, dimensionsCm: dimensions }, sourceRevision: recorded.revision };
+const singleTarget: PackagingTarget = { kind: 'sku', itemId: single.itemId, sourceSkuId: single.sourceSkuId };
 const repo = () => new BusinessPackagingRepository(memory(), 'source-a', () => '2026-10-10T12:00:00.000Z');
 const isCode = (code: string) => (error: unknown) => error instanceof BusinessPackagingError && error.code === code;
 
 test('one common package applies to every SKU and converts cm/kg to mm/g once', () => {
   const packaging = repo();
-  for (const sourceSkuId of ['red', 'blue', 'black']) {
+  for (const sourceSkuId of recorded.skus.map(sku => sku.id!)) {
     const result = packaging.resolve({ members: [{ ...single, sourceSkuId }] });
-    assert.equal(result.weightKg, 0.33);
-    assert.equal(result.weightGrams, 330);
+    assert.equal(result.weightKg, 0.17);
+    assert.equal(result.weightGrams, 170);
     assert.deepEqual(result.dimensionsCm, dimensions);
-    assert.deepEqual(result.dimensionsMm, { length: 250, width: 100, height: 100 });
+    assert.deepEqual(result.dimensionsMm, { length: 145, width: 85, height: 100 });
     assert.deepEqual(result.origin, { weight: 'product-common', dimensions: 'product-common' });
     assert.deepEqual(result.missing, []);
   }
@@ -127,14 +130,14 @@ test('combination manual values take precedence independently and null clears on
   assert.equal(packaging.resolve(input).weightKg, 0.9);
   packaging.saveOverride(target, { weightKg: null }, 1);
   const result = packaging.resolve(input);
-  assert.equal(result.weightKg, 0.66);
+  assert.equal(result.weightKg, 0.34);
   assert.equal(result.dimensionsCm?.length, 40);
   assert.deepEqual(result.origin, { weight: 'quantity-sum', dimensions: 'user' });
 });
 
 test('known combination dimensions are used before a member but existing combination weight does not replace sum', () => {
   const result = repo().resolve({ members: [{ ...single, quantity: 2 }], existingPackage: { weightKg: 99, dimensionsCm: { length: 12, width: 12, height: 12 } } });
-  assert.equal(result.weightKg, 0.66);
+  assert.equal(result.weightKg, 0.34);
   assert.equal(result.dimensionsCm?.length, 12);
   assert.equal(result.origin.dimensions, 'existing-combination');
 });
@@ -144,13 +147,13 @@ test('composition changes do not inherit a named combination override or change 
   const original = { combinationId: 'bundle', members: [{ ...single, quantity: 2 }] };
   const changed = { combinationId: 'bundle', members: [{ ...single, quantity: 3 }] };
   packaging.saveOverride(packagingTarget(original), { weightKg: 5, dimensionsCm: { length: 2, width: 2, height: 2 } }, 0);
-  assert.equal(packaging.resolve(changed).weightKg, 0.99);
+  assert.equal(packaging.resolve(changed).weightKg, 0.51);
   assert.equal(packaging.readOverride(packagingTarget(changed)), undefined);
   assert.equal(packaging.resolve(original).weightKg, 5);
   assert.equal(packaging.readRevision(packagingTarget(changed)), 0);
   packaging.saveOverride(packagingTarget(changed), {}, 0);
   assert.equal(packaging.list().length, 2);
-  assert.equal(packaging.resolve(changed).weightKg, 0.99);
+  assert.equal(packaging.resolve(changed).weightKg, 0.51);
   assert.equal(packaging.resolve(original).weightKg, 5);
 });
 
@@ -180,11 +183,11 @@ test('stable composition order governs dimension selection, and repeated member 
   const other: PackagingMember = { itemId: 'other', sourceSkuId: 'one', quantity: 1, commonPackage: { weightKg: 0.1, dimensionsCm: { length: 2, width: 3, height: 4 } } };
   const forward = packaging.resolve({ members: [single, other] });
   const reverse = packaging.resolve({ members: [other, single] });
-  assert.equal(forward.dimensionsCm?.length, 25);
+  assert.equal(forward.dimensionsCm?.length, 14.5);
   assert.equal(reverse.dimensionsCm?.length, 2);
   assert.notEqual(forward.version, reverse.version);
   assert.deepEqual(packagingTarget({ members: [single, single] }), packagingTarget({ members: [{ ...single, quantity: 2 }] }));
-  assert.equal(packaging.resolve({ members: [single, single] }).weightKg, 0.66);
+  assert.equal(packaging.resolve({ members: [single, single] }).weightKg, 0.34);
 });
 
 test('versions are deterministic, track relevant source and overrides, and results are detached', () => {
@@ -192,7 +195,7 @@ test('versions are deterministic, track relevant source and overrides, and resul
   const first = packaging.resolve({ members: [single] });
   assert.equal(first.version, packaging.resolve({ members: [structuredClone(single)] }).version);
   first.dimensionsCm!.length = 999;
-  assert.equal(packaging.resolve({ members: [single] }).dimensionsCm?.length, 25);
+  assert.equal(packaging.resolve({ members: [single] }).dimensionsCm?.length, 14.5);
   assert.notEqual(first.version, packaging.resolve({ members: [{ ...single, sourceRevision: 'source-2' }] }).version);
   packaging.saveOverride({ kind: 'sku', itemId: 'unrelated', sourceSkuId: 'one' }, { weightKg: 1 }, 0);
   assert.equal(first.version, packaging.resolve({ members: [single] }).version);
@@ -204,7 +207,7 @@ test('persistence namespaces and cloned records prevent cross-source contaminati
   const store = memory(), a = new BusinessPackagingRepository(store, 'a'), b = new BusinessPackagingRepository(store, 'b');
   const saved = a.saveOverride(singleTarget, { dimensionsCm: dimensions }, 0);
   saved.values.dimensionsCm!.length = 999;
-  assert.equal(a.readOverride(singleTarget)?.values.dimensionsCm?.length, 25);
+  assert.equal(a.readOverride(singleTarget)?.values.dimensionsCm?.length, 14.5);
   assert.equal(b.readOverride(singleTarget), undefined);
   assert.equal(b.list().length, 0);
 });

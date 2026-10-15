@@ -12,7 +12,7 @@ import type { AppsComponent, AppsPresentationService, AppsView } from '../../app
 import type { Operation } from '../../core/src/types.ts';
 import { createLegacyPresentationAdapter, normalizeLegacyPresentationInput, projectLegacyPresentationResult, projectLegacySpec } from './apps-legacy-presentation.ts';
 import {NativeAppBindings} from './native-bindings.ts';
-import type {CandidateFrameIdentity} from '../../app-presentation/src/authoring-types.ts';
+import type {CandidateFrameIdentity,ViewPublication} from '../../app-presentation/src/authoring-types.ts';
 import type {AppsSnapshotScheduler} from './apps-scheduler.ts';
 import {workbenchRoutes} from './workbench-routes.ts';
 import type {BusinessSettingsService} from './business-settings.ts';
@@ -20,6 +20,7 @@ import {componentFavorites} from './component-favorites.ts';
 import {DATA_TRANSFER_MAX_BYTES} from '../../app-presentation/src/data-transfers.ts';
 import {componentReviewInvocationId,type ReviewBridge} from './review-bridge.ts';
 import {reviewRoutes} from './review-routes.ts';
+import type {RequestObserver} from './request-log.ts';
 
 function strict(value:Record<string,unknown>,keys:readonly string[],required:readonly string[]=[]):void {
   const invalid=Object.keys(value).filter(key=>!keys.includes(key));const missing=required.filter(key=>!Object.hasOwn(value,key));
@@ -31,11 +32,30 @@ function legacyResult(result:CapabilityResult):ToolResult {
   if(result.status==='needs_clarification')return {status:'needs_clarification',clarification:{missing:result.missing,candidates:result.candidates,question:result.question}};
   return {status:result.status==='cancelled'?'failed':result.status,...('data' in result?{data:result.data}:{}),...(result.operation?{operation:{operationId:result.operation.operationId,state:result.operation.state==='dispatching'?'running':result.operation.state==='queued'?'pending':result.operation.state==='cancelled'?'failed':result.operation.state}}:{}),...('error' in result?{error:{code:result.error.code,message:result.error.message,retryable:result.error.retryPolicy==='read_retry'}}:{}),...(result.provenance?.[0]?{provenance:{source:result.provenance[0].sourceKind==='derived'?'hallmark_compute':'app_snapshot',fetchedAt:result.provenance[0].fetchedAt,...(result.provenance[0].sourceDataTime?{dataTime:result.provenance[0].sourceDataTime}:{}),endpoint:result.provenance[0].sourceRef}}:{})};
 }
-export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsPresentationService;token:string;port?:number;allowedOrigins?:string[];health?:()=>Promise<unknown>;scheduler?:AppsSnapshotScheduler;reviewBridge?:ReviewBridge;businessSettings?:BusinessSettingsService}) {
-  const {runtime,presentation}=options;if(options.token.length<32)throw new Error('SERVICE_KEY_TOO_SHORT');
+const REQUEST_ID_PATTERN=/^[-\w.:]{1,128}$/;
+const READ_BRIDGE_METHODS=['getData','getContext','readBindingPage'];
+/** Reads that are safe to repeat: view data, bridge data reads and data-transfer reads. */
+function readOnlyExtension(input:Record<string,unknown>):boolean {
+  const params=input.params&&typeof input.params==='object'&&!Array.isArray(input.params)?input.params as Record<string,unknown>:{};
+  return input.feature==='dataTransferV1'&&(input.action==='read'||input.action==='prepare'&&['getData','readBindingPage'].includes(String(params.method)))||input.feature==='bindingPagesV1'&&input.action==='read';
+}
+export interface ServerFailure {status:number;code:string;message:string;retryPolicy:'never'|'read_retry'|'inspect_only';cause?:string}
+/** Known errors keep their explicit status and code. Store contention and unexpected exceptions are transient server faults, never permanent validation errors. */
+export function classifyServerError(error:unknown,readOnly:boolean):ServerFailure {
+  const item=error as {statusCode?:number;code?:unknown;name?:string},text=error instanceof Error?error.message:String(error),code=typeof item?.code==='string'?item.code:undefined;
+  const retryPolicy=readOnly?'read_retry' as const:'inspect_only' as const;
+  if(/SQLITE_BUSY|SQLITE_LOCKED|database is locked|database table is locked/i.test(`${code??''} ${text}`))return {status:503,code:'RUNTIME_STORE_BUSY',message:'Runtime数据库繁忙，请稍后重试。',retryPolicy,cause:text.slice(0,500)};
+  const explicit=Number.isInteger(item?.statusCode);
+  const unexpected=!explicit&&(error instanceof TypeError&&code!=='ERR_INVALID_URL'||error instanceof RangeError||error instanceof ReferenceError||error instanceof SyntaxError||!!code&&/^(SQLITE_|ERR_SQLITE|E(NOENT|ACCES|PERM|IO|MFILE|NFILE|BUSY|XIST|NOSPC|ISDIR|NOTDIR))/.test(code));
+  if(unexpected)return {status:503,code:'RUNTIME_INTERNAL_ERROR',message:'Runtime内部错误，可稍后重试。',retryPolicy,cause:`${(error as Error)?.name??'Error'}: ${text}`.slice(0,500)};
+  return {status:item?.statusCode??400,code:code??'INVALID_REQUEST',message:text,retryPolicy:'never'};
+}
+import type {AssociationOverviewService} from './association-overview.ts';
+export function createAppsServer(options:{associations?:AssociationOverviewService;runtime:AppsRuntime;presentation:AppsPresentationService;token:string;port?:number;allowedOrigins?:string[];health?:()=>Promise<unknown>;restart?:()=>void;scheduler?:AppsSnapshotScheduler;reviewBridge?:ReviewBridge;businessSettings?:BusinessSettingsService;log?:(row:Record<string,unknown>)=>void;observer?:RequestObserver}) {
+  const {runtime,presentation}=options,log=options.log??((row:Record<string,unknown>)=>console.error(JSON.stringify(row)));if(options.token.length<32)throw new Error('SERVICE_KEY_TOO_SHORT');
   const workbench=workbenchRoutes(runtime,presentation,options.businessSettings?.gateway);
   const favorites=componentFavorites(runtime);
-  const body=async(req:Parameters<typeof readBody>[0])=>{const input=await readBody(req);runtime.assertAdmission();return input;};
+  const body=async(req:Parameters<typeof readBody>[0])=>{const input=await readBody(req);options.observer?.noteBody(req,input);runtime.assertAdmission();return input;};
   const nativeBindings=new NativeAppBindings(runtime);
   const frameKey=(value:{sessionId:string;viewId:string;frameInstanceId:string})=>canonicalJson(['apps','presentation','frame_grants',value.sessionId,value.viewId,value.frameInstanceId]);
   type Grant={identity:BridgeIdentity;documentNonce:string;features:string[];candidate?:CandidateFrameIdentity;retired?:boolean};
@@ -43,11 +63,12 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
     for(const route of [{appId:'apps',connectionId:'presentation'},...view.bindings])if('status' in runtime.resolveConnection(route.appId,sessionId,route.connectionId))throw Object.assign(new Error('Display connection is not enabled in this session.'),{code:'CONNECTION_NOT_BOUND'});
   };
   const validateClientFeatures=(params:Record<string,unknown>)=>{if(params.clientFeatures!==undefined&&(!Array.isArray(params.clientFeatures)||params.clientFeatures.some(feature=>typeof feature!=='string')))throw Object.assign(new Error('INVALID_CLIENT_FEATURES'),{code:'INVALID_CLIENT_FEATURES'});};
-  const usesDisplay=(sessionId:string,viewId:string)=>runtime.store.list<{namespace:string;value:{ownerSessionId?:string;viewId?:string}}>('provider_records').some(row=>row.namespace==='component_displays'&&row.value.ownerSessionId===sessionId&&row.value.viewId===viewId);
+  const usesDisplay=(sessionId:string,viewId:string)=>runtime.store.query<{namespace:string;value:{ownerSessionId?:string;viewId?:string}}>('provider_records',{namespace:'component_displays','value.viewId':viewId}).some(row=>row.value.ownerSessionId===sessionId);
   const frameGrant=(identity:BridgeIdentity)=>{
     const grant=runtime.store.get<{value:Grant}>('provider_records',frameKey(identity))?.value;
     if(!grant||grant.retired||canonicalJson(grant.identity)!==canonicalJson(identity))throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});
-    if(grant.candidate?.displayId){if(!presentation.authoring?.acceptsDisplayFrame(grant.candidate))throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});assertDisplayBindings(identity.sessionId,presentation.authoring.display(identity.sessionId,{...grant.candidate,displayId:grant.candidate.displayId,displayGeneration:grant.candidate.displayGeneration!}).view);}return grant;
+    // One accepted-display lookup per request: it reuses the verification made when the document was granted unless a record it depends on changed.
+    if(grant.candidate?.displayId){const display=presentation.authoring?.acceptedDisplay(grant.candidate);if(!display)throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});assertDisplayBindings(identity.sessionId,display.view);}return grant;
   };
   const grantFrame=(sessionId:string,params:Record<string,unknown>,candidate?:CandidateFrameIdentity)=>{
     const identity:BridgeIdentity={protocolVersion:'2.0',sessionId,viewId:String(params.viewId),buildId:String(params.buildId),frameInstanceId:String(params.frameInstanceId)},view=presentation.ownedView(sessionId,identity.viewId);
@@ -119,6 +140,8 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
   };
   const server=createServer(async(req,res)=>{
     const controller=new AbortController();req.once('aborted',()=>controller.abort());res.once('close',()=>{if(!res.writableEnded)controller.abort();});
+    const incomingRequestId=req.headers['x-request-id'],requestId=typeof incomingRequestId==='string'&&REQUEST_ID_PATTERN.test(incomingRequestId)?incomingRequestId:randomUUID();res.setHeader('X-Request-Id',requestId);options.observer?.begin(req,res,requestId);
+    let readOnly=req.method==='GET';
     try {
       if(!loopback(req.socket.remoteAddress))return send(res,403,{error:'LOCAL_ONLY'});
       const address=server.address(),port=address&&typeof address==='object'?address.port:options.port;
@@ -139,6 +162,7 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       const legacyTool=path.match(/^\/tools\/(hallmark_[a-z_]+)$/);
       if(req.method==='POST'&&legacyTool){const input=await body(req);strict(input,['arguments','sessionId','userRequest'],['arguments','sessionId']);return send(res,200,await legacyInvoke({name:legacyTool[1],...input,invocationId:randomUUID(),traceId:randomUUID(),deadlineAt:new Date(Date.now()+(['hallmark_update_price','hallmark_update_stock','hallmark_list_product'].includes(legacyTool[1])?300000:90000)).toISOString()},controller.signal));}
       if(req.method==='POST'&&path.startsWith('/v1/review-requests/')&&options.reviewBridge){const response=await reviewRoutes(options.reviewBridge,path,await body(req),controller.signal);if(response!==undefined)return send(res,200,response);}
+      if(req.method==='GET'&&path==='/v1/associations'&&options.associations)return send(res,200,await options.associations.read(Object.fromEntries(url.searchParams),controller.signal));
       if(req.method==='GET'&&path==='/v1/business-settings'&&options.businessSettings)return send(res,200,options.businessSettings.read(url.searchParams.get('connectionId')??undefined,url.searchParams.get('storeId')??undefined));
       if(req.method==='POST'&&path==='/v1/business-settings'&&options.businessSettings)return send(res,200,await options.businessSettings.write(await body(req),controller.signal));
       if(req.method==='GET'&&path==='/v1/runtime')return send(res,200,{...runtime.identity(),hostFeatures:['routedInvocationsV1','viewsEtagV1',...(options.reviewBridge?['independentReviewBridgeV1']:[])]});
@@ -260,7 +284,13 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       if(req.method==='GET'&&path==='/v1/capabilities')return send(res,200,runtime.discover({appId:url.searchParams.get('appId')??undefined,query:url.searchParams.get('query')??undefined,cursor:url.searchParams.get('cursor')??undefined,limit:url.searchParams.has('limit')?Number(url.searchParams.get('limit')):undefined}));
       if(req.method==='GET'&&path==='/v1/component-contexts'){
         const sessionId=url.searchParams.get('sessionId');if(!sessionId||[...url.searchParams.keys()].some(key=>key!=='sessionId'))throw new Error('EXPLICIT_SESSION_REQUIRED');
-        return send(res,200,presentation.contexts.active(sessionId));
+        const active=presentation.contexts.active(sessionId);
+        if(active.snapshot){
+          const history=presentation.contexts.history(sessionId,active.snapshot.snapshotId),bindings=runtime.sessionBindings(sessionId);
+          // A snapshot's summary can combine sources, so omit it whole when any source is deselected.
+          if(!history||!history.evidence.every(source=>bindings.some(binding=>binding.enabled&&binding.appId===source.appId&&binding.connectionId===source.connectionId)))active.snapshot=null;
+        }
+        return send(res,200,active);
       }
       const contextSnapshot=path.match(/^\/v1\/component-contexts\/([-a-zA-Z0-9_.:]+)$/);
       if(req.method==='GET'&&contextSnapshot){
@@ -296,14 +326,14 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       }
       if(req.method==='POST'&&path==='/v1/invocations'){const input=await body(req),result=await runtime.invoke(input as unknown as InvocationRequest,controller.signal);return send(res,input.protocolVersion!=='1.0'?409:result.status==='pending'?202:200,result);}
       if(req.method==='POST'&&path==='/v1/component-extension'){
-        const input=await body(req);strict(input,['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','type','feature','action','params'],['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','type','feature','action','params']);
+        const input=await body(req);strict(input,['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','type','feature','action','params'],['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','type','feature','action','params']);readOnly=readOnlyExtension(input);
         const identity:BridgeIdentity={protocolVersion:input.protocolVersion as '2.0',sessionId:String(input.sessionId),viewId:String(input.viewId),buildId:String(input.buildId),frameInstanceId:String(input.frameInstanceId)},grant=frameGrant(identity);
         if(input.type!=='extension'||!grant.features.includes(String(input.feature)))throw new Error('UNSUPPORTED_HOST_CAPABILITY');
         const params=input.params as Record<string,unknown>;if(!params||typeof params!=='object'||Array.isArray(params))throw new Error('INVALID_EXTENSION_PARAMS');if((grant.candidate?.displayId||input.feature==='dataTransferV1'||params.documentNonce!==undefined)&&params.documentNonce!==grant.documentNonce)throw Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'});
-        const host=presentation.createHost(identity,{signal:controller.signal,candidate:grant.candidate,clientFeatures:grant.features});try{return send(res,200,await host.handle(input));}finally{host.dispose();}
+        const host=presentation.createHost(identity,{signal:controller.signal,candidate:grant.candidate,clientFeatures:grant.features});try{const response=await host.handle(input);return send(res,response?200:400,response??{status:'failed',error:{code:'INVALID_BRIDGE_MESSAGE',message:'Extension envelope does not identify the authorized component.',retryPolicy:'never'}});}finally{host.dispose();}
       }
       if(req.method==='POST'&&path==='/v1/component-bridge'){
-        const input=await body(req);strict(input,['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','method','params'],['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','method','params']);
+        const input=await body(req);strict(input,['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','method','params'],['channel','protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId','method','params']);readOnly=READ_BRIDGE_METHODS.includes(String(input.method));
         const view=presentation.ownedView(String(input.sessionId),String(input.viewId));
         const identity:BridgeIdentity={protocolVersion:input.protocolVersion as '2.0',sessionId:String(input.sessionId),viewId:String(input.viewId),buildId:String(input.buildId),frameInstanceId:String(input.frameInstanceId)};
         const storedGrant=runtime.store.get<{value:Grant}>('provider_records',frameKey(identity))?.value;
@@ -340,11 +370,20 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
         }
         if(buildId||revision!==undefined){
           const record=revision===undefined?undefined:runtime.store.get<{namespace:string;value:AppsView}>('provider_records','view-revision:'+canonicalJson([sessionId,viewId,revision]));
-          const records=revision===undefined?runtime.store.list<{namespace:string;value:AppsView}>('provider_records'):record?[record]:[];
-          const historical=records.filter(row=>row.namespace==='view_revisions').map(row=>row.value).find(view=>view.ownerSessionId===sessionId&&view.viewId===viewId&&(revision===undefined||view.viewRevision===revision)&&(!buildId||view.source?.buildId===buildId));
+          // Without a revision the build index selects this view's snapshots (list order); other provider records are never parsed.
+          const snapshots=revision===undefined?runtime.store.viewRevisionsForBuild<AppsView>(sessionId,viewId,buildId!):record&&record.namespace==='view_revisions'?[record.value]:[];
+          const historical=snapshots.find(view=>view.ownerSessionId===sessionId&&view.viewId===viewId&&(revision===undefined||view.viewRevision===revision)&&(!buildId||view.source?.buildId===buildId));
           if(historical)return send(res,200,historical);
           if((!buildId||current.source?.buildId===buildId)&&(revision===undefined||current.viewRevision===revision))return send(res,200,current);
           throw Object.assign(new Error('The message names an unavailable historical view; current source is not substituted.'),{code:'VIEW_REVISION_NOT_FOUND'});
+        }
+        // A plain session-list open may resume only this exact committed view, never whichever publication happened last.
+        if(presentation.authoring&&current.panelState!=='closed'&&!current.pendingPublicationId&&current.source&&current.activeBuildId===current.source.buildId&&Number.isSafeInteger(current.viewRevision)){
+          const publications=runtime.store.query<ViewPublication>('view_publications',{ownerSessionId:sessionId,viewId,state:'mounted',candidateBuildId:current.source.buildId,committedViewRevision:current.viewRevision!});
+          if(publications.length===1){
+            const publication=publications[0],record=runtime.store.get<{namespace:string;value:AppsView}>('provider_records','view-revision:'+canonicalJson([sessionId,viewId,current.viewRevision])),snapshot=record?.value;
+            if(record?.namespace==='view_revisions'&&snapshot?.ownerSessionId===sessionId&&snapshot.viewId===viewId&&snapshot.viewRevision===current.viewRevision&&canonicalJson(snapshot.source)===canonicalJson(current.source)&&canonicalJson(snapshot.bindings)===canonicalJson(current.bindings)&&canonicalJson(publication.source)===canonicalJson(current.source))return send(res,200,{...current,publication});
+          }
         }
         return send(res,200,current);
       }if(req.method==='POST'&&viewRoute[2]==='/refresh'){const input=await body(req);strict(input,['sessionId','bindingIds','forceRefresh'],['sessionId']);if(input.forceRefresh!==undefined&&typeof input.forceRefresh!=='boolean')throw new Error('INVALID_FORCE_REFRESH');return send(res,200,await presentation.refreshView(String(input.sessionId),viewId,source(String(input.sessionId)),input.bindingIds as string[]|undefined,controller.signal,{forceRefresh:input.forceRefresh!==false}));}}
@@ -374,12 +413,25 @@ export function createAppsServer(options:{runtime:AppsRuntime;presentation:AppsP
       }
       if(req.method==='POST'&&path==='/v1/model-result'){const input=await body(req);strict(input,['invocationId'],['invocationId']);const record=runtime.store.get<InvocationRecord>('invocations',String(input.invocationId));if(!record?.result)return send(res,404,{error:'INVOCATION_NOT_FOUND'});return send(res,200,projectModelResult(runtime.store,record.result));}
       if(req.method==='POST'&&path==='/v1/legacy-invocations')return send(res,200,await legacyInvoke(await body(req),controller.signal));
-      if(req.method==='GET'&&path==='/health')return send(res,200,{status:'ok',service:'dsh-apps-runtime',version:runtime.runtimeVersion,...runtime.identity(),hallmark:options.health?await options.health():{status:'unavailable'}});
+      if(req.method==='POST'&&path==='/v1/runtime/restart'){
+        strict(await body(req),[],[]);
+        if(!options.restart)return send(res,503,{status:'failed',error:{code:'RESTART_UNAVAILABLE',message:'此服务未配置重启。'}});
+        if(options.observer?.inFlight().some(item=>!['GET /health','POST /v1/runtime/restart'].includes(item.route)))return send(res,409,{status:'failed',error:{code:'RUNTIME_BUSY',message:'服务正在处理请求，请稍后重试。'}});
+        res.once('finish',()=>options.restart!());
+        return send(res,202,{status:'accepted'});
+      }
+      // `?shallow=1` is the liveness probe used by the Host supervisor: it never waits on the business backend.
+      if(req.method==='GET'&&path==='/health')return send(res,200,{status:'ok',service:'dsh-apps-runtime',version:runtime.runtimeVersion,...runtime.identity(),hallmark:url.searchParams.get('shallow')==='1'?{status:'skipped'}:options.health?await options.health():{status:'unavailable'},...(options.observer?{observability:options.observer.stats()}:{})});
       if(req.method==='GET'&&path==='/tools')return send(res,200,{tools:TOOL_DEFINITIONS});
       const session=path.match(/^\/sessions\/([^/]+)\/app$/);if(session){const sessionId=decodeURIComponent(session[1]);if(req.method==='GET')return send(res,200,{sessionId,appId:'hallmark',active:runtime.sessionBindings(sessionId).some(row=>row.appId==='hallmark'&&row.enabled)});if(req.method==='POST'){const input=await body(req);strict(input,['active'],['active']);if(typeof input.active!=='boolean')throw new Error('INVALID_INPUT');return send(res,200,bindings(sessionId,input.active));}}
       const sourceRoute=path.match(/^\/source-builds\/([a-f0-9]{64})\/(manifest|thumbnail|files\/(.+))$/);if(req.method==='GET'&&sourceRoute&&presentation.sources){const sources=presentation.sources,id=sourceRoute[1];if(sourceRoute[2]==='manifest')return send(res,200,sources.manifest(id));const asset=sourceRoute[2]==='thumbnail'?{bytes:sources.thumbnail(id),contentType:'image/png'}:sources.readFile(id,decodeURIComponent(sourceRoute[3]));if(!asset?.bytes)return send(res,404,{error:'SOURCE_FILE_NOT_FOUND'});res.writeHead(200,{'Content-Type':('contentType' in asset?asset.contentType:asset.mime),'Cache-Control':'private, max-age=31536000, immutable','X-Content-Type-Options':'nosniff'});res.end(asset.bytes);return;}
       return send(res,404,{error:'ROUTE_NOT_FOUND'});
-    }catch(error){if(!res.headersSent)send(res,(error as {statusCode?:number}).statusCode??400,{status:'failed',error:{code:(error as {code?:string}).code??'INVALID_REQUEST',message:error instanceof Error?error.message:String(error),retryPolicy:'never'}});else res.end();}
+    }catch(error){
+      const failure=classifyServerError(error,readOnly);
+      if(failure.status>=500)try{log({level:'error',event:'runtime_request_failed',requestId,method:req.method,path:req.url?.split('?',1)[0],status:failure.status,code:failure.code,message:failure.message.slice(0,500),...(failure.cause?{cause:failure.cause}:{})});}catch{}
+      if(!res.headersSent)send(res,failure.status,{status:'failed',error:{code:failure.code,message:failure.message,retryPolicy:failure.retryPolicy,...(failure.cause?{details:{requestId,cause:failure.cause}}:{})}});else res.end();
+    }
   });
-  server.requestTimeout=90000;server.headersTimeout=10000;return server;
+  // headersTimeout must not exceed requestTimeout; a long event-loop stall may delay header parsing without the peer being slow.
+  server.requestTimeout=90000;server.headersTimeout=60000;return server;
 }

@@ -2,13 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { businessPricingDraftSchema, dynamicReferenceDraft, quotePricing } from '../../packages/business-pricing/src/index.ts';
 import type { BusinessPricingConfig, BusinessPricingDraft, LogisticsPlan, QuoteInput } from '../../packages/business-pricing/src/index.ts';
+import { realStoreProducts } from '../real-data/corpus.ts';
 
 const NOW = '2026-10-10T09:00:00.000Z';
+const observedProduct = realStoreProducts().products[0];
 function config(patch: Partial<BusinessPricingDraft> = {}): BusinessPricingConfig {
   return { ...dynamicReferenceDraft(), ...patch, schemaVersion: 1, storeId: 'bill', revision: 2, updatedAt: NOW };
 }
 function input(patch: Partial<QuoteInput> = {}): QuoteInput {
-  return { storeId: 'bill', action: 'price', pricingMode: 'manual', purchaseMinor: 2000, weightGrams: 100, priceMinor: 13500, at: NOW, ...patch };
+  return { storeId: 'bill', action: 'price', pricingMode: 'manual', purchaseMinor: observedProduct.profit.purchaseMinor, weightGrams: observedProduct.profit.packageGrams, priceMinor: 13500, at: NOW, ...patch };
 }
 function plan(id: string, patch: Partial<LogisticsPlan> = {}): LogisticsPlan {
   return { id, name: id, enabled: true, fixedMinor: 0, logisticsMicrosPerGram: 0, commissionPpm: 0, ...patch };
@@ -37,7 +39,7 @@ test('actual and promotional prices switch at exactly 135 without trusting stale
   assert.equal(exact.breakdown.fixedMinor, 1800);
   assert.equal(exact.breakdown.logisticsMinor, 393);
   assert.equal(exact.breakdown.commissionMinor, 2700);
-  assert.equal(exact.breakdown.profitMinor, 6607);
+  assert.equal(exact.breakdown.profitMinor, 5944);
   assert.equal(exact.selectionMode, 'automatic');
   assert.deepEqual(exact.matchedPlanIds, ['dynamic-from-135']);
   assert.equal(exact.configRevision, 2);
@@ -71,8 +73,8 @@ test('weight limits are inclusive, quotation expiry exclusive, and unavailable s
 test('automatic suggestion crosses the 135 fee increase and verifies the new scheme without clipping', () => {
   const result = quotePricing(config(), input({ action: 'listing', pricingMode: 'automatic', priceMinor: undefined }));
   assert.equal(result.status, 'ready');
-  assert.equal(result.suggestedPriceMinor, 20965);
-  assert.equal(result.evaluatedPriceMinor, 20965);
+  assert.equal(result.suggestedPriceMinor, 24280);
+  assert.equal(result.evaluatedPriceMinor, 24280);
   assert.equal(result.planId, 'dynamic-from-135');
   assert.equal(result.suggestedPlanId, result.planId);
   assert.equal(result.breakdown.marginPpm, 600000);

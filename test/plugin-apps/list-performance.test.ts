@@ -80,6 +80,6 @@ test('fixed historical revisions and mounted publications read their indexed sna
   const rejected:Record<string,string>[]=[{viewRevision:'2',buildId:'wrong-build'},{viewRevision:'1'},{publicationId:'P1',buildId:'wrong-build'},{publicationId:'P1',viewRevision:'3'},{sessionId:'B',viewRevision:'2'},{sessionId:'B',publicationId:'P1'}];
   for(const query of rejected)assert.notEqual((await get(query)).status,200);
   const current=await get({viewRevision:'3',buildId:'current-build'});assert.equal(current.status,200);assert.equal(current.value.title,'Current revision');assert.equal(providerScans,0);
-  const byBuild=await get({buildId:'old-build'});assert.equal(byBuild.status,200);assert.equal(byBuild.value.title,historical.title);assert.equal(providerScans,1);
+  const byBuild=await get({buildId:'old-build'});assert.equal(byBuild.status,200);assert.equal(byBuild.value.title,historical.title);assert.equal(providerScans,0,'a build-only lookup uses the view-revision index too');
  }finally{store.list=originalList;server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));await runtime.dispose();store.close();}
 });

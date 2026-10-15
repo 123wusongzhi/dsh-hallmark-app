@@ -4,9 +4,12 @@ import {ReviewBridge,componentReviewInvocationId} from '../../packages/service/s
 import {reviewRoutes} from '../../packages/service/src/review-routes.ts';
 import {runIndependentReview,withIndependentReviewPump,type ReviewAgentServices,type ReviewSubagents} from '../../packages/plugin-apps/src/review-agent.ts';
 import type {IndependentReviewRequest,IndependentReviewResult} from '../../packages/app-contracts/src/business-review.ts';
+import {realDetail,realCorpus,realCorpusPath} from '../real-data/corpus.ts';
+import {readFileSync} from 'node:fs';
+import {dirname,join} from 'node:path';
 
 const owner={invocationId:'inv-1',sessionId:'session-1'},parent={id:'session-1',options:{model:'review-model'}};
-const input=():IndependentReviewRequest=>({source:{sku:'red'},draft:{title:'red cup'},versions:{source:'source-v1',draft:'draft-v1'},questions:[{id:'color',version:'1',instructions:'Compare colors',passCriteria:'same color',failCriteria:'different color'}],context:{mode:'independent-review',toolPolicy:'read-only',writeTools:[],reasons:[{id:'color',reasonCode:'decision_unavailable'}]}});
+const input=():IndependentReviewRequest=>{const detail=realDetail(6),sku=detail.skus[0];return {source:{itemId:detail.id,sku:sku.sourceSkuId,title:detail.title,spec:sku.spec,attributes:detail.attributes},draft:{title:detail.title},versions:{source:'source-v1',draft:'draft-v1'},questions:[{id:'color',version:'1',instructions:'Compare colors',passCriteria:'same color',failCriteria:'different color'}],context:{mode:'independent-review',toolPolicy:'read-only',writeTools:[],reasons:[{id:'color',reasonCode:'decision_unavailable'}]}};};
 const output=():IndependentReviewResult=>({reviewer:'independent-agent',reviewerId:'child-1',model:'review-model',versions:input().versions,questions:[{id:'color',version:'1',status:'passed',message:'matches',suggestion:''}]});
 function services(options:{stopReason?:string;structured?:unknown;withoutGuard?:boolean}={}){
   const starts:Array<Parameters<ReviewSubagents['start']>>=[];let disposed=0,released=0,guard:((execution:{name:string})=>string|undefined)|undefined;
@@ -76,16 +79,21 @@ test('independent fallback retains not-applicable choices and refuses invented o
 
 test('review images are decoded attachment messages, never only URL text',async()=>{
   const mock=services(),data=input();let saved:unknown;
-  data.images=[{id:'main',role:'draft',url:'data:image/png;base64,aW1hZ2U='}];
-  mock.value.attachments={async saveImages(images){saved=images;return [{attachmentId:'image-id',mediaType:'image/png',bytes:5,width:1,height:1}];}};
+  const corpus=realCorpus(),image=corpus.imageAssets.find(asset=>asset.status==='captured'&&asset.mimeType==='image/png'&&corpus.records.some(row=>row.detail.id===asset.productId&&row.detail.skus.length))!;
+  assert.ok(image,'A recorded PNG with its own source SKU is required');
+  const detail=realDetail(image.productId),sku=detail.skus[0];
+  data.source={itemId:detail.id,sku:sku.sourceSkuId,title:detail.title,spec:sku.spec,attributes:detail.attributes};data.draft={title:detail.title};
+  const pixels=readFileSync(join(dirname(realCorpusPath),image.file!)),attachment={attachmentId:'image-id',mediaType:'image/png' as const,bytes:pixels.length,width:pixels.readUInt32BE(16),height:pixels.readUInt32BE(20)};
+  data.images=[{id:'main',role:'draft',url:`data:${image.mimeType};base64,${pixels.toString('base64')}`}];
+  mock.value.attachments={async saveImages(images){saved=images;return [attachment];}};
   await runIndependentReview(data,parent,mock.value,new AbortController().signal);
-  assert.equal((saved as {data:Uint8Array}[])[0].data.toString(),'image');
-  const prompt=mock.starts[0][1].prompt;assert.deepEqual(prompt.find(block=>block.type==='image'),{type:'image',attachment:{attachmentId:'image-id',mediaType:'image/png',bytes:5,width:1,height:1}});
+  assert.deepEqual(Buffer.from((saved as {data:Uint8Array}[])[0].data),pixels);
+  const prompt=mock.starts[0][1].prompt;assert.deepEqual(prompt.find(block=>block.type==='image'),{type:'image',attachment});
   assert.equal(JSON.stringify(prompt).includes('data:image'),false);
 });
 
 test('missing image service and failed pixel loading never start a reviewer',async()=>{
-  const mock=services(),data=input();data.images=[{id:'main',role:'draft',url:'https://images.example.test/main.png'}];
+  const mock=services(),data=input();data.images=[{id:'main',role:'draft',url:realDetail(6).mainImage}];
   await assert.rejects(runIndependentReview(data,parent,mock.value,new AbortController().signal),/IMAGE_SERVICE/);
   mock.value.attachments={async saveImages(){throw new Error('should not save');}};mock.value.fetchImpl=async()=>new Response('no',{status:404});
   await assert.rejects(runIndependentReview(data,parent,mock.value,new AbortController().signal),/IMAGE_UNAVAILABLE/);assert.equal(mock.starts.length,0);

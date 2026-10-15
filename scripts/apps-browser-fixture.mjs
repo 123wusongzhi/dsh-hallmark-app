@@ -5,6 +5,7 @@ import {resolve,join} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {composeAppsRuntime} from '../packages/service/src/apps-main.ts';
 import {createAppsServer} from '../packages/service/src/apps-server.ts';
+import {realDetail} from '../test/real-data/corpus.ts';
 const root=resolve('artifacts/apps-browser-fixture'),project=join(root,'component');await mkdir(join(project,'dist'),{recursive:true});
 const componentSource=await readFile('test/apps-components/fixtures/Component.tsx','utf8');
 await writeFile(join(project,'Component.tsx'),componentSource);await writeFile(join(project,'package.json'),JSON.stringify({name:'apps-interaction-fixture',version:'1.0.0',dependencies:{react:'18.3.1','react-dom':'18.3.1'}}));await writeFile(join(project,'package-lock.json'),JSON.stringify({name:'apps-interaction-fixture',lockfileVersion:3,packages:{}}));
@@ -12,7 +13,9 @@ await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`import React
 await writeFile(join(project,'dist','index.html'),'<!doctype html><html><head><meta charset="utf-8"><style>body{font:16px system-ui;padding:24px}button{margin:8px;padding:12px}output{display:block;padding:16px}</style></head><body><h2>Ordinary source component</h2><div id="root"></div><script type="module" src="component.js"></script></body></html>');
 const instance=composeAppsRuntime(join(root,'runtime'),{connections:[{appId:'notes',connectionId:'local',displayName:'Browser fixture Notes',config:{backend:'isolated'},enabled:true,configRevision:1}]});
 for(const [appId,connectionId] of [['notes','local'],['apps','presentation']])instance.runtime.bind({sessionId:'s',appId,connectionId,enabled:true,boundAt:new Date().toISOString()});
-const seed={protocolVersion:'1.0',appId:'notes',connectionId:'local',invocationId:randomUUID(),traceId:randomUUID(),capabilityId:'notes.notes.create',capabilityVersion:'1.0.0',input:{id:'note-a',title:'Source UI fixture',content:'No external business mutation'},source:{kind:'agent',sessionId:'s',nativeCallId:'fixture'},deadlineAt:new Date(Date.now()+10000).toISOString(),idempotencyKey:'seed'};
+// Notes content is a projection of a captured source record; its local note ID is a scenario identity.
+const sourceRecord=realDetail();
+const seed={protocolVersion:'1.0',appId:'notes',connectionId:'local',invocationId:randomUUID(),traceId:randomUUID(),capabilityId:'notes.notes.create',capabilityVersion:'1.0.0',input:{id:'note-a',title:sourceRecord.title,content:sourceRecord.description??sourceRecord.sourceUrl},source:{kind:'agent',sessionId:'s',nativeCallId:'fixture'},deadlineAt:new Date(Date.now()+10000).toISOString(),idempotencyKey:'seed'};
 await instance.runtime.invoke(seed);
 const binding={bindingId:'notes',appId:'notes',connectionId:'local',capabilityId:'notes.notes.list',capabilityMajor:1,input:{},projection:[],refresh:{mode:'manual'}};
 let view=instance.presentation.openSource('s',project,{title:'Browser Notes component',bindings:[binding]});await instance.presentation.refreshView('s',view.viewId,{kind:'agent',sessionId:'s',nativeCallId:'refresh'});

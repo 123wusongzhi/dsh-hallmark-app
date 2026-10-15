@@ -6,8 +6,8 @@ const object=(value:unknown):Record<string,any>=>value&&typeof value==='object'&
 function invalid():never {throw new Error('INVALID_DATA_TRANSFER');}
 
 /** Each response owns one immutable body; an overlapping read cannot replace its base revision. */
-export function createDataTransferReader(extension:(action:string,params:JsonValue)=>Promise<JsonValue>):(params:Record<string,JsonValue>)=>Promise<JsonValue> {
-  let latest:Cached|undefined;
+export function createDataTransferReader(extension:(action:string,params:JsonValue)=>Promise<JsonValue>,onProgress?:(milestone:string)=>void):(params:Record<string,JsonValue>)=>Promise<JsonValue> {
+  let latest:Cached|undefined;const progressed=new Set<string>();
   return async params=>{
     const base=latest;
     const packet=object(await extension('prepare',{...params,...(base?{knownRevision:base.revision}:{})}));
@@ -17,14 +17,17 @@ export function createDataTransferReader(extension:(action:string,params:JsonVal
     else if(packet.body){body=structuredClone(packet.body);const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(body)))),value=>value.toString(16).padStart(2,'0')).join('');if(hash!==packet.revision)invalid();}
     else {
       const transfer=object(packet.transfer);
-      if(typeof transfer.id!=='string'||transfer.id.length>160||!Number.isSafeInteger(transfer.bytes)||transfer.bytes<1||transfer.bytes>32*1024*1024||!Number.isSafeInteger(transfer.chunks)||transfer.chunks<1||transfer.chunks>512)invalid();
+      if(typeof transfer.id!=='string'||!transfer.id||transfer.id.length>160||!Number.isSafeInteger(transfer.bytes)||transfer.bytes<1||transfer.bytes>32*1024*1024||!Number.isSafeInteger(transfer.chunks)||transfer.chunks<1||transfer.chunks>512)invalid();
       const bytes=new Uint8Array(transfer.bytes);let offset=0;
       for(let start=0;start<transfer.chunks;start+=4){
         const chunks=await Promise.all(Array.from({length:Math.min(4,transfer.chunks-start)},async(_,index)=>{
           const actualIndex=start+index,value=object(await extension('read',{id:transfer.id,index:actualIndex}));
           if(value.id!==transfer.id||value.index!==actualIndex||value.revision!==packet.revision||typeof value.chunk!=='string'||value.chunk.length>90000)invalid();
           const decoded=atob(value.chunk),chunk=new Uint8Array(decoded.length);
+          if(!chunk.length||chunk.length>65536||chunk.length>transfer.bytes)invalid();
           for(let index=0;index<decoded.length;index++)chunk[index]=decoded.charCodeAt(index);
+          const milestone=`chunk:${transfer.id}:${packet.revision}:${actualIndex}`;
+          if(!progressed.has(milestone)){progressed.add(milestone);if(progressed.size>2048)progressed.delete(progressed.values().next().value!);onProgress?.(milestone);}
           return chunk;
         }));
         for(const chunk of chunks){if(offset+chunk.length>bytes.length)invalid();bytes.set(chunk,offset);offset+=chunk.length;}

@@ -2,8 +2,7 @@
   "mode": "live_readonly",
   "requiredMethods": [
     "getData",
-    "refresh",
-    "readBindingPage"
+    "refresh"
   ],
   "assertions": [
     {
@@ -16,7 +15,7 @@
     {
       "id": "search",
       "action": "fill",
-      "selector": "[aria-label=\"搜索当前页\"]",
+      "selector": "[aria-label=\"搜索当前读取范围\"]",
       "valueFromSelector": "[data-product-row] strong",
       "checkSelector": "[data-product-row]",
       "check": "visible",
@@ -25,7 +24,7 @@
     {
       "id": "clear-search",
       "action": "fill",
-      "selector": "[aria-label=\"搜索当前页\"]",
+      "selector": "[aria-label=\"搜索当前读取范围\"]",
       "value": "",
       "check": "value",
       "expected": ""

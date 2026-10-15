@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiText,uiTask} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
@@ -14,7 +15,7 @@ const {ProductList}=compiled.exports;
 function fixture(){
  const view=createMaterialView('product-procurement');
  const widget={...view.widgets[0],fields:{'product.id':'id','product.name':'title','product.image':'image','price.current':'minor','price.currency':'currency','sku.id':'sku','sku.specification':'grams','purchase.specification':'purchaseSpec'},options:{...view.widgets[0].options,rowsPath:'products',pageSize:10,fieldMeta:{'sku.specification':{format:'integer',numericScale:.1,unit:'克'},'price.current':{format:'currency',numericScale:.01}}}};
- const products=Array.from({length:15},(_,i)=>({id:`p-${i}`,title:`商品 ${i}`,sku:`SKU-${i}`,offerId:`OFFER-${i}`,grams:350,minor:1234+i,currency:'CNY',purchaseSpec:i===12?'特别规格':'普通规格'}));
+ const products=Array.from({length:15},(_,i)=>uiProduct({id:`p-${i}`,sku:`SKU-${i}`,offerId:`OFFER-${i}`,grams:350,minor:1234+i,currency:'CNY',purchaseSpec:i===12?'特别规格':'普通规格'},i));
  const queries:any[]=[],selected:any[]=[];
  const data={bindingId:'products',datasetKey:'fixture',state:'ready',payload:{products},provenance:{source:'test'}};
  const interactions={bindings:{products:{fullDataset:true,onQueryChange:(query:any)=>queries.push(query)}},onSelect:(event:any)=>selected.push(event.value)};

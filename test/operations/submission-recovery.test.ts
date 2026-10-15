@@ -1,3 +1,4 @@
+import { recordedPlatformProduct } from '../adapter/real-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RuntimeStore } from '../../packages/app-runtime/src/store.ts';
@@ -8,6 +9,7 @@ import type { BusinessOperationsOptions, BusinessRowInput, BusinessTransportResu
 import type { SemanticReviewRequest, SemanticReviewResult } from '../../packages/app-contracts/src/business-review.ts';
 import type { AdapterResponse, CoreBroker, CoreClient } from '../../packages/core/src/types.ts';
 import type { OzonBusinessGateway } from '../../packages/ozon-business/src/index.ts';
+import { realCollection } from '../real-data/corpus.ts';
 
 const turn = () => new Promise<void>(resolve => setImmediate(resolve));
 function deferred<T>() { let resolve!: (value: T) => void; return { promise: new Promise<T>(r => { resolve = r; }), resolve }; }
@@ -19,7 +21,7 @@ function fixture() {
   const handlers = { execute: async (): Promise<BusinessTransportResult> => ({ status: 'pending' }), inspect: async (): Promise<BusinessTransportResult> => ({ status: 'pending' }), review: async (request: SemanticReviewRequest): Promise<SemanticReviewResult> => answer(request) };
   const options: BusinessOperationsOptions = {
     store,
-    source: { async load({ storeId, row }) { return { identity: { storeId, ...row.target, productId: '1' }, current: { price: '10', currency_code: 'CNY' }, source: { name: 'Cup' }, procurement: [] }; } },
+    source: { async load({ storeId, row }) { return { identity: { storeId, ...row.target, productId: '1' }, current: { price: '10', currency_code: 'CNY' }, source: realCollection(), procurement: [] }; } },
     transport: { async execute() { calls.execute++; return handlers.execute(); }, async inspect() { calls.inspect++; return handlers.inspect(); } },
     reviewer: { async review(request) { calls.review++; return handlers.review(request); } },
   };
@@ -135,7 +137,7 @@ function directFixture() {
   f.options.source.load = async request => ({ ...await original(request), credentialRevision: sourceRevision });
   const gateway = { hasStore: () => true, getStore: () => ({ enabled, hasCredentials: enabled, credentialRevision }), async request(_id: string, { path }: { path: string }) {
     if (path === '/v1/product/import/prices') { writes++; return response; }
-    return { status: 'ok', raw: path === '/v3/product/info/list' ? { items: [{ offer_id: 'one', id: 1 }] } : { items: [{ offer_id: 'one', product_id: 1, price: { price: response.status === 'ok' ? '12' : '10', currency_code: 'CNY' } }] } };
+    return { status: 'ok', raw: path === '/v3/product/info/list' ? { items: [{ offer_id: 'one', id: 1 }] } : { items: [recordedPlatformProduct({ offer_id: 'one', product_id: 1, price: { price: response.status === 'ok' ? '12' : '10', currency_code: 'CNY' } })] } };
   } } as unknown as OzonBusinessGateway;
   f.options.transport = new HallmarkBusinessAdapter({ store: f.store, gateway, client: {} as CoreClient, broker: {} as CoreBroker });
   return { ...f, get writes() { return writes; }, get enabled() { return enabled; }, set enabled(value: boolean) { enabled = value; }, get credentialRevision() { return credentialRevision; }, set credentialRevision(value: number) { credentialRevision = value; }, get sourceRevision() { return sourceRevision; }, set sourceRevision(value: number) { sourceRevision = value; }, get response() { return response; }, set response(value: AdapterResponse) { response = value; } };

@@ -93,3 +93,49 @@ test('component bridge validates ownership/build, invokes Runtime and validates 
     const attempts=ctx.store.list<import('../../packages/app-runtime/src/store.ts').InvocationRecord>('invocations');for(const kind of ['agent','script','component'])assert.ok(attempts.some(row=>row.request.source.kind===kind));
   }finally{await ctx.cleanup();}
 });
+
+async function failureServer() {
+  const directory=mkdtempSync(join(tmpdir(),'apps-http-failure-')),instance=composeAppsRuntime(directory,{connections:[],legacyHallmarkConnectionId:undefined as unknown as string}),logs:Record<string,unknown>[]=[];
+  const server=createAppsServer({...instance,token,log:row=>logs.push(row)}),url=await listening(server);
+  const call=(path:string,input?:unknown,headers:Record<string,string>={})=>fetch(new URL(path,url),{method:input===undefined?'GET':'POST',headers:{Authorization:`Bearer ${token}`,...headers,...(input===undefined?{}:{'Content-Type':'application/json'})},...(input===undefined?{}:{body:JSON.stringify(input)})});
+  return {server,instance,logs,call,cleanup:async()=>{await closed(server);await instance.close();rmSync(directory,{recursive:true,force:true});}};
+}
+test('server timeouts keep headersTimeout below requestTimeout so a stalled event loop does not abort slow-to-parse requests early',async()=>{
+  const ctx=await failureServer();try{assert.equal(ctx.server.requestTimeout,90000);assert.equal(ctx.server.headersTimeout,60000);assert.ok(ctx.server.headersTimeout<=ctx.server.requestTimeout);}finally{await ctx.cleanup();}
+});
+test('unexpected server exceptions are transient 503s with a request id and one structured log line; known 4xx stay unchanged',async()=>{
+  const ctx=await failureServer();try{
+    const presentation=ctx.instance.presentation as unknown as Record<string,unknown>;presentation.ownedView=()=>({viewId:'V'});
+    presentation.getData=()=>{throw new TypeError('Cannot read properties of undefined (reading rows)');};
+    const response=await ctx.call('/v1/views/V/data?sessionId=s',undefined,{'X-Request-Id':'req-from-host-1'}),body=await response.json() as {status:string;error:{code:string;retryPolicy:string;details:{requestId:string;cause:string}}};
+    assert.equal(response.status,503);assert.equal(response.headers.get('x-request-id'),'req-from-host-1');
+    assert.equal(body.error.code,'RUNTIME_INTERNAL_ERROR');assert.equal(body.error.retryPolicy,'read_retry');assert.equal(body.error.details.requestId,'req-from-host-1');assert.match(body.error.details.cause,/TypeError: Cannot read properties/);
+    assert.equal(ctx.logs.length,1);assert.deepEqual({requestId:ctx.logs[0].requestId,method:ctx.logs[0].method,path:ctx.logs[0].path,status:ctx.logs[0].status,code:ctx.logs[0].code},{requestId:'req-from-host-1',method:'GET',path:'/v1/views/V/data',status:503,code:'RUNTIME_INTERNAL_ERROR'});
+    // Without a client id the server mints one and still echoes it in header and body.
+    const minted=await ctx.call('/v1/views/V/data?sessionId=s'),mintedBody=await minted.json() as {error:{details:{requestId:string}}};assert.equal(minted.headers.get('x-request-id'),mintedBody.error.details.requestId);assert.match(mintedBody.error.details.requestId,/^[-\w.:]{8,128}$/);
+    // Known validation errors keep their 400 / never behaviour and are not logged as server faults.
+    ctx.logs.length=0;const known=await ctx.call('/v1/views'),knownBody=await known.json() as {error:{code:string;message:string;retryPolicy:string;details?:unknown}};
+    assert.equal(known.status,400);assert.deepEqual(knownBody.error,{code:'INVALID_REQUEST',message:'EXPLICIT_SESSION_REQUIRED',retryPolicy:'never'});assert.equal(ctx.logs.length,0);assert.ok(known.headers.get('x-request-id'));
+  }finally{await ctx.cleanup();}
+});
+test('SQLite contention maps to RUNTIME_STORE_BUSY; only known read routes are read_retry',async()=>{
+  const ctx=await failureServer();try{
+    const presentation=ctx.instance.presentation as unknown as Record<string,unknown>;presentation.ownedView=()=>{throw Object.assign(new Error('database is locked'),{code:'ERR_SQLITE_ERROR',errcode:5});};
+    const read=await ctx.call('/v1/views/V/data?sessionId=s'),readBody=await read.json() as {error:{code:string;retryPolicy:string}};
+    assert.equal(read.status,503);assert.equal(readBody.error.code,'RUNTIME_STORE_BUSY');assert.equal(readBody.error.retryPolicy,'read_retry');
+    const bridge=(method:string)=>({channel:'dsh.apps.component.v2',protocolVersion:'2.0',sessionId:'s',viewId:'V',buildId:'b',frameInstanceId:'f',requestId:'r-'+method,method,params:null});
+    const getData=await ctx.call('/v1/component-bridge',bridge('getData')),refresh=await ctx.call('/v1/component-bridge',bridge('refresh'));
+    assert.equal(getData.status,503);assert.equal(((await getData.json()) as {error:{retryPolicy:string}}).error.retryPolicy,'read_retry');
+    assert.equal(refresh.status,503);assert.equal(((await refresh.json()) as {error:{code:string;retryPolicy:string}}).error.retryPolicy,'inspect_only');
+    assert.equal(ctx.logs.length,3);assert.ok(ctx.logs.every(row=>row.code==='RUNTIME_STORE_BUSY'));
+  }finally{await ctx.cleanup();}
+});
+test('classifyServerError keeps explicit status and code and treats unclassified native errors as transient',async()=>{
+  const {classifyServerError}=await import('../../packages/service/src/apps-server.ts');
+  assert.deepEqual(classifyServerError(Object.assign(new Error('conflict'),{statusCode:409,code:'X'}),true),{status:409,code:'X',message:'conflict',retryPolicy:'never'});
+  assert.equal(classifyServerError(new Error('PUBLICATION_UNAVAILABLE'),true).status,400);
+  assert.equal(classifyServerError(Object.assign(new Error('BRIDGE_IDENTITY_STALE'),{code:'BRIDGE_IDENTITY_STALE'}),true).retryPolicy,'never');
+  assert.equal(classifyServerError(Object.assign(new Error('disk'),{code:'ENOSPC'}),false).code,'RUNTIME_INTERNAL_ERROR');
+  assert.equal(classifyServerError(Object.assign(new Error('x'),{code:'SQLITE_BUSY'}),false).retryPolicy,'inspect_only');
+  assert.equal(classifyServerError(Object.assign(new TypeError('Invalid URL'),{code:'ERR_INVALID_URL'}),true).status,400);
+});

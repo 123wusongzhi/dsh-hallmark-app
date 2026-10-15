@@ -8,11 +8,14 @@ import { HallmarkStorePort } from '../../packages/app-hallmark/src/store.ts';
 import { businessConnectedClient, connectionBusinessGateway } from '../../packages/app-hallmark/src/operations-client.ts';
 import { OzonBusinessGateway, OzonOrderWeightReports, ozonBusinessEndpoint } from '../../packages/ozon-business/src/index.ts';
 import { parseOrderWeightReport } from '../../packages/ozon-business/src/order-weight-csv.ts';
+import { realStoreProducts } from '../real-data/corpus.ts';
 
 const credential = { clientId: 'fixture-weight-client', apiKey: 'fixture-weight-secret' };
 const range = { dateFrom: '2026-09-01', dateTo: '2026-09-02', requestId: 'query-one' };
 const headers = ['Shipment number', 'Article code', 'SKU', 'Quantity', 'Status', 'Cancellation date', 'Linked shipments', 'Actual date of handing over to delivery', 'Total actual weight of the shipment', 'Declared total weight of the shipment', 'Customer name'];
-const row = ['posting-one', 'offer-one', '17', '1', 'Delivered', '', '', '2026-09-01 12:00:00', '0.01201', '0.02', 'private customer'];
+const recorded = realStoreProducts().products[0];
+// Shipment, quantity and fractional kg are explicit parser boundaries on a recorded sales identity.
+const row = ['posting-one', recorded.offerId, recorded.sku, '1', 'Delivered', '', '', '2026-09-01 12:00:00', '0.01201', '0.02', 'private customer'];
 const csv = (rows = [row]) => [headers, ...rows].map(values => values.map(value => /[;"\r\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value).join(';')).join('\r\n');
 const tick = () => new Promise<void>(resolve => setImmediate(resolve));
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }

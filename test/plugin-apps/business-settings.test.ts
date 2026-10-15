@@ -1,3 +1,4 @@
+import {uiFixturePrelude} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
@@ -7,14 +8,16 @@ import { build } from 'esbuild';
 
 const fixture = `
 import React from 'react';
+${uiFixturePrelude()}
 import {create,act} from 'react-test-renderer';
 import assert from 'node:assert/strict';
 import {BusinessSettings} from './packages/plugin-apps/client/business-settings.tsx';
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const originalFetch=globalThis.fetch,requests=[],reads=[];let tree,holdStoreSave=false,releaseStoreSave;
-const store=(id,name)=>({id,name,platform:'ozon',sourceConnectionId:'board',revision:3,credentialRevision:1,hasCredentials:true,enabled:true,currency:'CNY',createdAt:'2026-10-10',updatedAt:'2026-10-10'});
+const store=(id,name)=>({...uiStore({},id==='bill'?0:1),id,name,platform:'ozon',sourceConnectionId:'board',revision:3,credentialRevision:1,hasCredentials:true,enabled:true,currency:'CNY',createdAt:'2026-10-10',updatedAt:'2026-10-10'});
 let stores=[store('bill','Bill 店铺'),store('helen','Helen 店铺')];
-let config={schemaVersion:1,storeId:'bill',revision:7,updatedAt:'2026-10-10',currency:'CNY',defaultPlanId:'light',plans:[
+// Pricing ranges and revision transitions are explicit derivatives of the captured pricing settings.
+let config={...recordedPricingSettings,schemaVersion:1,storeId:'bill',revision:7,updatedAt:'2026-10-10',currency:'CNY',defaultPlanId:'light',plans:[
  {id:'light',name:'轻小件渠道',enabled:true,fixedMinor:1400,logisticsMicrosPerGram:85000,commissionPpm:150000},
  {id:'heavy',name:'大件渠道',enabled:true,fixedMinor:2000,logisticsMicrosPerGram:60000,commissionPpm:100000}],
  listingTargetMarginPpm:600000,manualTargetMarginPpm:50000,minimumMarginPpm:20000,maxAutoPriceMinor:13500,minPriceMinor:null,maxPriceMinor:null,

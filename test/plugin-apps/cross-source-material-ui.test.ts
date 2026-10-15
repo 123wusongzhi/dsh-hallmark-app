@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiOzonProduct,uiStore,uiListingPayload,uiFixturePrelude,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,rmSync} from 'node:fs';
@@ -9,7 +10,8 @@ test('visual material flow changes the cross-source recipe, preserves hidden col
   const root=resolve('artifacts');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'cross-source-ui-')),entry=join(directory,'fixture.mjs');
   try{
     await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
-      import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
+      import React from 'react';
+${uiFixturePrelude()}import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
       import {MaterialLibrary} from './packages/plugin-apps/client/material-library.tsx';
       import {InformationPicker} from './packages/plugin-apps/client/information-picker.tsx';
       import {ModuleConfig,configuredColumns} from './packages/plugin-apps/client/module-config.tsx';
@@ -31,7 +33,7 @@ test('visual material flow changes the cross-source recipe, preserves hidden col
         }
         assert.ok(['preview','read'].includes(body.operation));
         const instance=body.params.instance??board.instances.find(item=>item.instanceId===body.params.instanceId),ref=instance.dataSources.main,source=ref.draft?{...ref.draft,kind:'data_source',revision:ref.revision,validation:{status:'verified',checkedAt:'',sampleCount:1,issues:[]}}:sources.find(source=>source.id===ref.id),shop=body.params.context?.storeId??board.context.storeId;
-        const rows=source.capabilityId==='hallmark.ozon.warehouses'?[{warehouseId:shop+'-warehouse',warehouseName:shop==='bill'?'Bill 小件仓':'Helen 小件仓'}]:[{products:{image:null,title:shop==='bill'?'Bill 实际商品':'Helen 实际商品'},prices:{price:44.97,currency:'CNY'},stocks:{stockAvailable:320,stockReserved:12},analytics:{orderedUnits:16,cartEvents:7}}];
+        const rows=source.capabilityId==='hallmark.ozon.warehouses'?[uiWarehouse({warehouseId:shop+'-warehouse'})]:[{products:{image:uiProduct({},shop==='bill'?4:40).image,title:uiProduct({},shop==='bill'?4:40).title},prices:{price:44.97,currency:'CNY'},stocks:{stockAvailable:320,stockReserved:12},analytics:{orderedUnits:16,cartEvents:7}}];
         const design=structuredClone(instance.design);design.bindings[0].fieldMap=Object.fromEntries(source.fields.map(field=>[field.key??field.role,field.path]));design.widgets[0].fields=design.bindings[0].fieldMap;design.widgets[0].options={...design.widgets[0].options,rowsPath:'items',fieldMeta:Object.fromEntries(source.fields.map(field=>[field.key??field.role,{...FIELD_ROLE_MAP[field.role],...field}]))};
         return Response.json({instanceId:instance.instanceId,view:{viewId:'preview',design},dataSources:{main:source},dataSource:source,pages:{main:{cursor:null,nextCursor:null,hasMore:false,loadedCount:rows.length,total:rows.length}},data:{bindings:[{bindingId:'main',datasetId:'snapshot-'+shop,payload:{items:rows},state:'ready',lastSuccessAt:'2026-10-09T00:00:00Z',freshness:'fresh',provenance:[]}]}});
       };
@@ -39,16 +41,16 @@ test('visual material flow changes the cross-source recipe, preserves hidden col
       const previews=()=>requests.filter(row=>row.body?.operation==='preview'&&row.body.params.instance.dataSources.main.draft),latest=()=>previews().at(-1).body.params.instance;
       try{
         await act(async()=>{tree=create(<MaterialLibrary appId='hallmark' sessionId='chat' onComplete={instance=>completed.push(instance)}/>);await wait();});
-        assert.equal(tree.root.findAllByType(ModuleConfig).length,0,'initial library keeps configuration out of the visual catalog');assert.ok(tree.root.findAllByProps({className:'apps-material-card'}).length>=7);assert.match(JSON.stringify(tree.toJSON()),/Bill 实际商品/);assert.equal(button('添加到工作台').props.disabled,false);
+        assert.equal(tree.root.findAllByType(ModuleConfig).length,0,'initial library keeps configuration out of the visual catalog');assert.ok(tree.root.findAllByProps({className:'apps-material-card'}).length>=7);assert.match(JSON.stringify(tree.toJSON()),uiText(uiProduct({},4).title));assert.equal(button('添加到工作台').props.disabled,false);
         assert.deepEqual(byLabel('仓库').findAllByType('option').map(option=>option.props.value),['','bill-warehouse'],'warehouse scope presents names from the current shop');
         await change('仓库','bill-warehouse');await click('调整显示');await click('添加信息');assert.equal(tree.root.findAllByType(InformationPicker).length,1);
         const originalRecipeId=latest().dataSources.main.id,countBefore=previews().length,catalogReads=requests.filter(row=>['materials','dataSources'].includes(row.resource)).length;await activate('添加预留库存');await activate('添加加购次数');assert.ok(previews().length>countBefore);assert.equal(requests.filter(row=>['materials','dataSources'].includes(row.resource)).length,catalogReads,'field toggles reuse the loaded source catalog');assert.equal(requests.filter(row=>row.body?.operation==='initialize').length,0,'field toggles never initialize the catalog');assert.notEqual(latest().dataSources.main.id,originalRecipeId,'changed recipes get separate reusable identities');assert.ok(latest().dataSources.main.draft.input.recipe.fields.includes('stocks.stockReserved'));assert.ok(latest().dataSources.main.draft.input.recipe.fields.includes('analytics.cartEvents'));
-        assert.equal(tree.root.findAllByProps({'aria-label':'添加记账金额'}).length,0,'posting fees are not offered as product columns');assert.match(JSON.stringify(tree.toJSON()),/Bill 实际商品/);
+        assert.equal(tree.root.findAllByProps({'aria-label':'添加记账金额'}).length,0,'posting fees are not offered as product columns');assert.match(JSON.stringify(tree.toJSON()),uiText(uiProduct({},4).title));
         await click('完成');assert.equal(tree.root.findAllByType(InformationPicker).length,0);await activate('重命名预留库存');await change('预留库存显示名称','已预留');await activate('显示预留库存');
         let widget=tree.root.findByType(ModuleConfig).props.spec.widgets[0];assert.equal(configuredColumns(widget).find(column=>column.field==='stocks.stockReserved').label,'已预留');assert.equal(configuredColumns(widget).find(column=>column.field==='stocks.stockReserved').visible,false);assert.ok(!widget.columns.some(column=>column.field==='stocks.stockReserved'));
         await activate('商品经营表紧凑');await activate('上移加购次数');await click('完成');await click('添加到工作台');assert.equal(completed.length,1);assert.equal(requests.filter(row=>row.body?.operation==='save').at(-1).body.sessionId,'chat');assert.ok(!completed[0].dataSources.main.draft);
         await act(async()=>tree.unmount());await act(async()=>{tree=create(<MaterialLibrary appId='hallmark' sessionId='chat' initial={completed[0]} onComplete={()=>{}}/>);await wait();});await click('调整显示');widget=tree.root.findByType(ModuleConfig).props.spec.widgets[0];assert.equal(widget.options.density,'compact');assert.equal(configuredColumns(widget).find(column=>column.field==='stocks.stockReserved').label,'已预留');assert.equal(configuredColumns(widget).find(column=>column.field==='stocks.stockReserved').visible,false);
-        await change('当前店铺','helen');assert.match(JSON.stringify(tree.toJSON()),/Helen 实际商品/);assert.doesNotMatch(JSON.stringify(tree.toJSON()),/Bill 实际商品/);assert.equal(byLabel('仓库').props.value,'');assert.ok(byLabel('仓库').findAllByType('option').some(option=>option.props.value==='helen-warehouse'));assert.equal(configuredColumns(tree.root.findByType(ModuleConfig).props.spec.widgets[0]).find(column=>column.field==='stocks.stockReserved').label,'已预留');
+        await change('当前店铺','helen');assert.match(JSON.stringify(tree.toJSON()),uiText(uiProduct({},40).title));assert.doesNotMatch(JSON.stringify(tree.toJSON()),uiText(uiProduct({},4).title));assert.equal(byLabel('仓库').props.value,'');assert.ok(byLabel('仓库').findAllByType('option').some(option=>option.props.value==='helen-warehouse'));assert.equal(configuredColumns(tree.root.findByType(ModuleConfig).props.spec.widgets[0]).find(column=>column.field==='stocks.stockReserved').label,'已预留');
         console.log('CROSS_SOURCE_THREE_SCREEN_PERSISTENCE_PASS');
       }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=nativeFetch;}
     `},banner:{js:"import {createRequire} from 'node:module';const require=createRequire(import.meta.url);"},outfile:entry,bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-test-renderer']});

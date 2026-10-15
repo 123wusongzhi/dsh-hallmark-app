@@ -1,3 +1,4 @@
+import {uiStore} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
@@ -12,7 +13,7 @@ import type {JsonValue} from '../../packages/app-contracts/src/index.ts';
 import {workbenchRoutes} from '../../packages/service/src/workbench-routes.ts';
 
 test('initialize migrates mixed-case shop sources into shared definitions without losing history, layout or same-ID renamed sources; repeated initialization is idempotent',async()=>{
-  const stores=[{id:'bill-shop',shopName:'bill',platform:'ozon',status:'active'},{id:'helen-shop',shopName:'helen',platform:'ozon',status:'active'}];
+  const stores=[uiStore({id:'bill-shop'}),uiStore({id:'helen-shop'},1)];
   const requests:string[]=[],invocations:string[]=[];
   const upstream=createServer((request,response)=>{
     requests.push(request.url??'');response.setHeader('Content-Type','application/json');

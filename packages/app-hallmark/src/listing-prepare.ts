@@ -1,3 +1,4 @@
+import {compactPreparationPage} from './listing-prepare-output.ts';
 import {categoryToolId} from './category-identities.ts';
 import {createHash} from 'node:crypto';
 import type {CoreClient,CoreStore,RecordData} from '../../core/src/types.ts';
@@ -17,7 +18,7 @@ export function packagingMembers(products:CollectionProduct[],members:Array<{ite
 
 const STATUS_MAX_AGE_MS=5*60*1000;
 const saleStates:CollectionSaleState[]=['on_sale','out_of_stock','pending','archived','failed','not_sellable','unknown'];
-function observedSale(product:RecordData,sync:RecordData|undefined,now:number):{saleState:CollectionSaleState;observedAt:string|null;freshness:'fresh'|'stale'|'unknown'}{
+export function observedSale(product:RecordData,sync:RecordData|undefined,now:number):{saleState:CollectionSaleState;observedAt:string|null;freshness:'fresh'|'stale'|'unknown'}{
  const timestamp=Date.parse(product.observedAt??''),observedAt=Number.isFinite(timestamp)?new Date(timestamp).toISOString():null;
  const freshness=product.statusObservation==='missing'||observedAt===null?'unknown':product.statusObservation==='stale'||now-timestamp>STATUS_MAX_AGE_MS||timestamp>now||sync?.state==='failed'&&Date.parse(sync.attemptedAt??'')>=timestamp?'stale':'fresh';
  const raw=product.platformProduct??{...product,statuses:product.platformStatus,stocks:product.stock};
@@ -89,8 +90,8 @@ export interface ListingPrepareInput {
 interface PrepareOptions {collection:CollectionService;packaging:BusinessPackagingRepository;pricing?:Pick<BusinessPricingRepository,'read'|'quote'>;client:CoreClient;store:CoreStore;signal?:AbortSignal;listingStates?:(ids:string[])=>Record<string,CollectionListingState[]>;prepareProducts?:(products:CollectionProduct[])=>Promise<CollectionProduct[]>}
 const checkCancelled=(signal?:AbortSignal)=>{if(signal?.aborted)throw Object.assign(new Error('上品资料准备已取消。'),{name:'AbortError',code:'ABORTED'});};
 type Part={kind:'material'|'sale'|'reused'|'existingLinks'|'listingRecord';data:any}|{kind:'category';id:string;data:any};
-interface Preparation {storeId:string;revision:string;createdAt:string;parts:Part[];totals:{materials:number;sales:number;categories:number};rules:any;sourceRevisions:Record<string,string>}
-const NEXT='按已返回资料制作标题、属性和图片；草稿只填写原生 Ozon 字段及 procurement 引用，包装和自动售价由程序填入。缺失值为 null 时补充具体事实。';
+interface Preparation {storeId:string;revision:string;salesRevision?:string;createdAt:string;parts:Part[];totals:{materials:number;sales:number;categories:number};rules:any;sourceRevisions:Record<string,string>}
+const NEXT='按已返回资料制作标题、属性和图片；使用 hallmark.listing.draft.create/revise，草稿填写原生 Ozon 字段及 preparationRevision + saleId，程序解析采购组成，不提供报价；草稿设置 pricing.mode=automatic 且不填 price，由程序计算售价。packaging.sharedRef / categories 中的 sharedRef 引用本页 shared 的同名表；包装的 version、missing 保留在行内，按引用合并即可恢复。缺失值为 null 时补充具体事实。';
 
 function scope(input:ListingPrepareInput){
  const selections=input.selections;if(!Array.isArray(selections)||!selections.length||selections.length>30)fail('PREPARE_SELECTION_REQUIRED','选择 1 至 30 个商品。');
@@ -99,9 +100,8 @@ function scope(input:ListingPrepareInput){
  return selections!;
 }
 function compactRules(config:ReturnType<BusinessPricingRepository['read']>){if(!config)return null;return {revision:config.revision,currency:config.currency,logisticsSelection:config.logisticsSelection??'fixed',listingTargetMarginPpm:config.listingTargetMarginPpm,minimumMarginPpm:config.minimumMarginPpm,minPriceMinor:config.minPriceMinor,maxPriceMinor:config.maxPriceMinor,maxAutoPriceMinor:config.maxAutoPriceMinor,logisticsPlans:config.plans.length,available:{capability:'hallmark.pricing.read',input:{storeId:config.storeId}}};}
-function compactQuote(quote:ReturnType<BusinessPricingRepository['quote']>|null){if(!quote)return null;return {status:quote.status,configRevision:quote.configRevision,planId:quote.planId,planName:quote.planName,currency:quote.currency,suggestedPriceMinor:quote.suggestedPriceMinor,minimumAllowedPriceMinor:quote.minimumAllowedPriceMinor,targetMarginPpm:quote.targetMarginPpm,breakdown:quote.breakdown,issues:quote.issues,warnings:quote.warnings};}
 
-async function categoryParts(product:CollectionProduct,input:ListingPrepareInput,options:PrepareOptions,requestCache:Map<string,RecordData>):Promise<Part[]>{
+async function categoryParts(product:CollectionProduct,input:ListingPrepareInput,options:Pick<PrepareOptions,'client'|'store'|'signal'>,requestCache:Map<string,RecordData>):Promise<Part[]>{
  checkCancelled(options.signal);
  const hint=readExistingCategoryHint(options.store,product.id),specified=input.categories?.[product.id]??(hint?{descriptionCategoryId:String(hint.descriptionCategoryId),typeId:String(hint.typeId)}:undefined),query=input.categoryQuery??product.category.path.at(-1)??product.originalTitle??product.title;
  const request=specified?{mode:'template' as const,storeId:input.storeId,descriptionCategoryId:specified.descriptionCategoryId,typeId:specified.typeId}:{mode:'search' as const,storeId:input.storeId,q:query.slice(0,190),limit:8};
@@ -118,7 +118,7 @@ async function categoryParts(product:CollectionProduct,input:ListingPrepareInput
  const raw=cached.data?.response??cached.data??{},revision=hash(raw);
  if(!specified){const values=raw.items??raw.result?.items??raw.result??[],items=Array.isArray(values)?values.slice(0,8).map((value:any)=>({descriptionCategoryId:categoryToolId(value.descriptionCategoryId??value.description_category_id),typeId:categoryToolId(value.typeId??value.type_id),name:value.type_name??value.category_name??value.name,path:value.path})):[];return [{kind:'category',id:product.id,data:{status:'candidates',revision,items,total:raw.total??items.length,query:request}}];}
  const values=raw.result??raw.attributes??raw.items??[],attributes=Array.isArray(values)?values:[],required=(value:any)=>value.is_required===true||value.required===true;
- const base={status:'selected',revision,selection:specified,...(hint&&!input.categories?.[product.id]?{basis:'exact-platform-binding'}:{}),totalAttributes:attributes.length,requiredAttributes:attributes.filter(required).length,optionalAttributes:attributes.filter(value=>!required(value)).length,scope:input.includeOptionalAttributes?'all':'required',available:{capability:'hallmark.categories.read',input:request}};
+ const base={status:'selected',revision,selection:specified,...(hint&&!input.categories?.[product.id]?{basis:'exact-platform-binding'}:{}),totalAttributes:attributes.length,requiredAttributes:attributes.filter(required).length,optionalAttributes:attributes.filter(value=>!required(value)).length,scope:input.includeOptionalAttributes?'all':'required',available:{capability:'hallmark.listing.category.read',input:{storeId:input.storeId,...specified,scope:'all'}}};
  const parts:Part[]=[{kind:'category',id:product.id,data:{...base,attributes:[]}}];
  for(const attribute of [...attributes.filter(required),...(input.includeOptionalAttributes?attributes.filter(value=>!required(value)):[])]){
   // Platform constraints stay intact. Full choice dictionaries are fetched only for a chosen field.
@@ -131,17 +131,45 @@ async function categoryParts(product:CollectionProduct,input:ListingPrepareInput
  }
  return parts;
 }
+/** Category-only constraints; exact frozen pages never re-prepare sales or return choice dictionaries. */
+export async function readListingCategory(input:RecordData,options:Pick<PrepareOptions,'client'|'store'|'signal'>):Promise<any>{
+ checkCancelled(options.signal);
+ const stores=await options.client.getStores();checkCancelled(options.signal);
+ if(stores.status!=='ok'||!Array.isArray(stores.raw)||!stores.raw.some(s=>String(s.id??s.storeId)===input.storeId))throw Error('STORE_NOT_FOUND');
+ let saved:RecordData|undefined,offset=0;
+ if(input.cursor){
+  const cursor=JSON.parse(Buffer.from(input.cursor,'base64url').toString('utf8'));
+  saved=options.store.get<RecordData>('business_listing_category_pages',cursor.revision);offset=cursor.offset;
+  if(!saved||saved.storeId!==input.storeId||!Number.isSafeInteger(offset)||offset<0||offset>saved.attributes.length)throw Error('LISTING_CATEGORY_CURSOR_INVALID');
+ }else{
+  const id='category',selection={descriptionCategoryId:input.descriptionCategoryId,typeId:input.typeId};
+  const parts=await categoryParts({id,category:{path:[]}} as unknown as CollectionProduct,{storeId:input.storeId,categories:{[id]:selection},includeOptionalAttributes:true,refresh:input.refresh},options,new Map());
+  if(parts[0].data.status!=='selected')return parts[0].data;
+  const all=parts.flatMap(p=>p.data.attributes??[]),attributes=all.filter(a=>input.attributeIds?input.attributeIds.includes(String(a.id??a.attribute_id)):input.scope==='all'||a.is_required===true||a.required===true);
+  if(input.attributeIds?.some((id:string)=>!all.some(a=>String(a.id??a.attribute_id)===id)))throw Error('LISTING_CATEGORY_ATTRIBUTE_NOT_FOUND');
+  const {available,attributes:unused,...metadata}=parts[0].data;
+  const value={storeId:input.storeId,...metadata,scope:input.attributeIds?'selected':input.scope??'required',attributes};
+  const snapshot={...value,revision:hash(value)};saved=snapshot;options.store.put('business_listing_category_pages',snapshot.revision,snapshot);
+ }
+ if(!saved)throw Error('LISTING_CATEGORY_CURSOR_INVALID');
+ const limit=input.limit??30;if(!Number.isInteger(limit)||limit<1||limit>100)throw Error('LISTING_CATEGORY_PAGE_INVALID');
+ const attributes=saved.attributes.slice(offset,offset+limit),{attributes:all,...metadata}=saved;
+ const make=()=>{const next=offset+attributes.length<all.length?Buffer.from(JSON.stringify({revision:saved!.revision,offset:offset+attributes.length})).toString('base64url'):null;return {...metadata,attributes,page:{offset,total:all.length,returned:attributes.length,nextCursor:next},...(next?{continuation:{capability:'hallmark.listing.category.read',input:{storeId:input.storeId,cursor:next,limit}}}:{})};};
+ while(attributes.length>1&&Buffer.byteLength(JSON.stringify(make()))>12000)attributes.pop();
+ // A single oversized constraint remains intact for the runtime's exact result reader.
+ return make();
+}
 function page(preparation:Preparation,offset:number,input:ListingPrepareInput){
  const requested=input.maxBytes??14000,salesLimit=input.salesLimit??40;if(!Number.isInteger(requested)||requested<2048||requested>65536||!Number.isInteger(salesLimit)||salesLimit<1||salesLimit>100)fail('PREPARE_PAGE_INVALID','响应预算为 2048 至 65536 字节，每页销售行为 1 至 100。');
  // Leave room for the Runtime result envelope inside the real Host's 16 KiB limit.
  // A caller asking for a larger page must still receive intact continuation data.
  const budget=Math.min(requested,14000);
  const make=(end:number)=>{
-  const parts=preparation.parts.slice(offset,end),materials=parts.filter(part=>part.kind==='material').map(part=>part.data),sales=parts.filter(part=>part.kind==='sale').map(part=>part.data),reused=parts.filter(part=>part.kind==='reused').map(part=>part.data),existingLinks=parts.filter(part=>part.kind==='existingLinks').map(part=>part.data),categories:Record<string,any>={};
+  const parts=preparation.parts.slice(offset,end),materials=parts.filter(part=>part.kind==='material').map(part=>part.data),sales=parts.filter(part=>part.kind==='sale').map(part=>{const {quote,...sale}=part.data;return sale;}),reused=parts.filter(part=>part.kind==='reused').map(part=>part.data),existingLinks=parts.filter(part=>part.kind==='existingLinks').map(part=>part.data),categories:Record<string,any>={};
   for(const part of parts)if(part.kind==='category'){const prior=categories[part.id];categories[part.id]={...part.data,...(part.data.attributes?{attributes:[...(prior?.attributes??[]),...part.data.attributes]}:{})};}
   for(const category of Object.values(categories))if(category.attributes)category.returnedAttributes=category.attributes.length;
   const cursor=end<preparation.parts.length?Buffer.from(JSON.stringify({revision:preparation.revision,offset:end})).toString('base64url'):null;
-  return {storeId:preparation.storeId,preparationRevision:preparation.revision,preparedAt:preparation.createdAt,listingRecords:parts.filter(part=>part.kind==='listingRecord').map(part=>part.data),materials:materials.length?{items:materials,returned:materials.length}:null,reused,sales,...(existingLinks.length?{existingLinks}:{}),rules:offset===0?preparation.rules:null,categories,totals:preparation.totals,completeness:cursor?'partial':'complete',continuation:cursor?{capability:'hallmark.listing.prepare',input:{storeId:preparation.storeId,cursor,maxBytes:budget,salesLimit}}:null,next:offset===0?NEXT:'当前页延续同一份准备结果；existingLinks 按 saleId 和 offset 延续对应销售组成的完整关联，无需重复读取已返回资料。'};
+  return compactPreparationPage({storeId:preparation.storeId,preparationRevision:preparation.revision,salesRevision:preparation.salesRevision??preparation.revision,preparedAt:preparation.createdAt,listingRecords:parts.filter(part=>part.kind==='listingRecord').map(part=>part.data),materials:materials.length?{items:materials,returned:materials.length}:null,reused,sales,...(existingLinks.length?{existingLinks}:{}),rules:offset===0?preparation.rules:null,categories,totals:preparation.totals,completeness:cursor?'partial':'complete',continuation:cursor?{capability:'hallmark.listing.prepare',input:{storeId:preparation.storeId,cursor,maxBytes:budget,salesLimit}}:null,next:offset===0?NEXT:'当前页延续同一份准备结果；existingLinks 按 saleId 和 offset 延续对应销售组成的完整关联，无需重复读取已返回资料。'});
  };
  let end=offset,sales=0;while(end<preparation.parts.length){if(preparation.parts[end].kind==='sale'&&sales>=salesLimit)break;const candidate=make(end+1);if(bytes(candidate)>budget)break;if(preparation.parts[end].kind==='sale')sales++;end++;}
  if(end===offset&&offset<preparation.parts.length)fail('PREPARE_BUDGET_TOO_SMALL','一个完整资料单元超过当前预算，请提高 maxBytes 后读取；未返回截断内容。');
@@ -176,11 +204,15 @@ export async function prepareListing(input:ListingPrepareInput,options:PrepareOp
   checkCancelled(options.signal);
   const resolved=packaging.resolve({members:packagingMembers(products,composition.members),...(composition.members.length>1||composition.members[0].quantity!==1?{combinationId:composition.id}:{})});let purchase=0,known=true;
   for(const member of composition.members){const cost=products.find(product=>product.id===member.itemId)!.skus.find(sku=>sku.id===member.sourceSkuId)!.purchaseCost,amount=cost?Number(cost.amount):NaN;if(!cost||cost.currency!=='CNY'||!Number.isFinite(amount)||amount<0)known=false;else purchase+=amount*member.quantity;}
-  const purchaseMinor=known&&Number.isSafeInteger(Math.round(purchase*100))?Math.round(purchase*100):null,quote=config&&pricing?pricing.quote({storeId:input.storeId,action:'listing',purchaseMinor,weightGrams:resolved.weightGrams,priceMinor:null,pricingMode:'automatic'}):null;
+  const purchaseMinor=known&&Number.isSafeInteger(Math.round(purchase*100))?Math.round(purchase*100):null;
   const links=existing.filter(product=>product.sources?.some((source:RecordData)=>composition.members.some(member=>source.productId===member.itemId&&(source.components?.some((part:RecordData)=>part.sourceSkuId===member.sourceSkuId)||source.skuCode===member.sourceSkuId)))).map(product=>({offerId:product.offerId,productId:product.productId,status:product.status??'unknown',association:'linked',...observedSale(product,store.get<RecordData>('business_catalog_status_sync',input.storeId),Date.now()),scope:'contains_source_sku'}));
-  parts.push({kind:'sale',data:{id:composition.id,procurement:composition.members,purchaseMinor,packaging:{weightGrams:resolved.weightGrams,dimensionsMm:resolved.dimensionsMm,origin:resolved.origin,missing:resolved.missing,version:resolved.version},quote:compactQuote(quote),existingLinks:links.slice(0,10),...(links.length>10?{existingLinkCount:links.length,existingLinksComplete:false,existingLinksContinuation:'同一准备结果的 existingLinks 批次按 saleId/offset 续读'}:{})}});
+  parts.push({kind:'sale',data:{id:composition.id,procurement:composition.members,purchaseMinor,packaging:{weightGrams:resolved.weightGrams,dimensionsMm:resolved.dimensionsMm,origin:resolved.origin,missing:resolved.missing,version:resolved.version},existingLinks:links.slice(0,10),...(links.length>10?{existingLinkCount:links.length,existingLinksComplete:false,existingLinksContinuation:'同一准备结果的 existingLinks 批次按 saleId/offset 续读'}:{})}});
   for(let offset=10;offset<links.length;offset+=10)parts.push({kind:'existingLinks',data:{saleId:composition.id,offset,total:links.length,links:links.slice(offset,offset+10)}});
  }
- const snapshot={storeId:input.storeId,createdAt:new Date().toISOString(),parts:clean(parts),rules:compactRules(config),sourceRevisions:Object.fromEntries(originals.map(product=>[product.id,product.revision])),totals:{materials:originals.length,sales:compositions.length,categories:products.length}},preparation:Preparation={...snapshot,revision:hash(snapshot)};
- checkCancelled(options.signal);store.put('business_listing_preparations',preparation.revision,preparation);return page(preparation,0,input);
+ const sourceRevisions=Object.fromEntries(originals.map(product=>[product.id,product.revision]));
+ // Production dependencies exclude category selection, pagination and volatile listing observations.
+ const salesRevision=hash({storeId:input.storeId,sourceRevisions,sales:parts.filter(part=>part.kind==='sale').map(({data})=>({id:data.id,procurement:data.procurement,packaging:data.packaging,purchaseMinor:data.purchaseMinor}))});
+ const snapshot={storeId:input.storeId,salesRevision,parts:clean(parts),rules:compactRules(config),sourceRevisions,totals:{materials:originals.length,sales:compositions.length,categories:products.length}};
+ const revision=hash(snapshot),preparation:Preparation=store.get<Preparation>('business_listing_preparations',revision)??{...snapshot,createdAt:new Date().toISOString(),revision};
+ checkCancelled(options.signal);store.put('business_listing_preparations',revision,preparation);return page(preparation,0,input);
 }

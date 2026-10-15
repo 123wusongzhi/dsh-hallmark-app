@@ -1,3 +1,4 @@
+import { recordedPlatformProduct } from '../adapter/real-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -152,7 +153,7 @@ test('full product scan follows cursor and returns native details without legacy
   const { gateway } = fixture(t, async (url, init) => {
     const path = new URL(String(url)).pathname; paths.push(path); const body = JSON.parse(String(init?.body));
     if (path === '/v3/product/list') return Response.json({ result: body.last_id ? { items: [], last_id: '' } : { items: [{ product_id: 17 }, { product_id: 18 }], last_id: 'next' } });
-    assert.deepEqual(body, { product_id: [17, 18] }); return Response.json({ items: [{ id: 17, offer_id: 'red', stocks: { has_stock: false } }, { id: 18, offer_id: 'blue' }] });
+    assert.deepEqual(body, { product_id: [17, 18] }); return Response.json({ items: [recordedPlatformProduct({ id: 17, offer_id: 'red', stocks: { has_stock: false } }), { id: 18, offer_id: 'blue' }] });
   });
   const result = await gateway.getProducts('bill');
   assert.equal(result.status, 'ok'); assert.deepEqual(result.raw.response.items.map((p: any) => p.offer_id), ['red', 'blue']);
@@ -171,7 +172,7 @@ test('full product scan independently includes archived pages absent from ALL an
         : { items: [{ product_id: 20, offer_id: 'archived-green' }], last_id: '', total: 3 } });
     }
     const names: Record<string, string> = { 17: 'active', 18: 'archived-blue', 19: 'archived-red', 20: 'archived-green' };
-    return Response.json({ items: body.product_id.slice().reverse().map((id: string | number) => ({ id, offer_id: names[String(id)], is_archived: String(id) !== '17' })) });
+    return Response.json({ items: body.product_id.slice().reverse().map((id: string | number) => (recordedPlatformProduct({ id, offer_id: names[String(id)], is_archived: String(id) !== '17' }))) });
   });
   const result = await gateway.getProducts('bill');
   assert.equal(result.status, 'ok');
@@ -280,7 +281,7 @@ test('selected offer, product and SKU requests never expand into catalogue visib
   const { gateway } = fixture(t, async (url, init) => {
     assert.equal(new URL(String(url)).pathname, '/v3/product/info/list');
     requests.push(JSON.parse(String(init?.body)));
-    return Response.json({ items: [{ id: 17, offer_id: 'selected', sku: 29 }] });
+    return Response.json({ items: [recordedPlatformProduct({ id: 17, offer_id: 'selected', sku: 29 })] });
   });
   const result = await gateway.getProducts('bill', { offerIds: ['selected'], productIds: [17], skus: ['29'] });
   assert.equal(result.status, 'ok');

@@ -1,3 +1,4 @@
+import { recordedPlatformProduct } from '../adapter/real-scenarios.ts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync} from 'node:fs';
@@ -78,7 +79,7 @@ test('real gateway field errors survive provider conversion with credential reda
 });
 
 test('unavailable platform responses retain useful diagnostics and success remains unchanged',async t=>{
- let broken=true;const f=fixture(t,async()=>broken?Response.json({message:'maintenance'},{status:503}):Response.json({items:[{id:1,offer_id:'a',sku:1001}]}));
+ let broken=true;const f=fixture(t,async()=>broken?Response.json({message:'maintenance'},{status:503}):Response.json({items:[recordedPlatformProduct({id:1,offer_id:'a',sku:1001})]}));
  const unavailable=await f.invoke('hallmark.api.products.info',{storeId:'shop',body:{product_id:[1]}});
  assert.equal(unavailable.status,'unavailable');if(unavailable.status==='unavailable')assert.deepEqual(unavailable.error.details,{httpStatus:503,response:{message:'maintenance'}});
  broken=false;const success=await f.invoke('hallmark.api.products.info',{storeId:'shop',body:{product_id:[1]}});assert.equal(success.status,'ok');if(success.status==='ok')assert.equal((success.data as any).response.items[0].id,1);

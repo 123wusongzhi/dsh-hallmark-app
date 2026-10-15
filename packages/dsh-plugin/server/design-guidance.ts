@@ -7,12 +7,12 @@ const LEGACY_DESIGN_INSTRUCTIONS = `以下仅用于旧 ViewSpec 组件的维护�
 首次需要设计语法或配方时调用 hallmark_app_info，读取 data.designCapabilities。使用 ViewSpec（不是 json-render 派生树）：{id,title,layout,widgets,bindings,theme?}；layout={type:column|row|grid|tabs,children:[组件id或嵌套layout],columns?,gap?}；binding={id,datasetKey,fieldMap:{展示字段:真实字段路径}}；每个非text组件须有bindingId。表格列={field,label,format?}，format仅text/currency/percent/date。仅用已实现的widget、布局、字段和主题，不提交任意HTML/CSS/JS、表达式、事件处理器或虚构schema字段。
 表格先放名称等主信息，通常3–5个重点列，日期明确标date，长标识作次要信息；侧栏默认column，内容较多可tabs。沿用宿主明暗主题，适量留白和统一圆角，不以添加彩色卡片替代信息层级。采集商品用真实mainImage/title/id/source/skuCount/importedAt等存在的字段；importedAt只称导入时间，minPrice/maxPrice是采购成本，不能当售价或猜币种。无需图片/价格的字段不要为了装饰补造。
 stat_card与product_card仅读首行，不支持聚合或按行重复；图表只取真实有限number的y值（最多50条），缺失/null/字符串不补0；缺成本利润点被排除且利润图须有真实口径。折线只用于已有有序时间/序列，不擅自从采集条目制造趋势、汇总或统计。配方占位datasetKey/字段必须用本次只读查询证据替换；recipe不是已保存组件，不能把recipeId当templateId，只有已确认存在的templateId可使用。
-预览成功后可简短说明如何使用；未取得实际渲染截图不能声称完成视觉验收。勾选商品只附加到原聊天输入框，由用户确认发送；不自动发消息或业务写。生成和修改默认临时，仅用户明确要求保存时调用保存工具。`;
+预览成功后可简短说明如何使用；视觉检查基于实际渲染截图，但截图不等于已展示，完成表述见上述规则。勾选商品只附加到原聊天输入框，由用户确认发送；不自动发消息或业务写。生成和修改默认临时，仅用户明确要求保存时调用保存工具。`;
 
 export const DESIGN_INSTRUCTIONS = `Hallmark 新组件默认使用普通 React 源码工程。先读取 /hallmark-component-design 的视觉规范；使用原有文件与命令工具编写 TSX/CSS/JS、安装普通依赖、复用并修改 shadcn 源码。不要把旧 ViewSpec 的 widget/layout/字段/CSS 白名单带到源码工程，不预先收紧表达能力；遇到实际问题再局部修复。
 工程起点：E:/project/deepseek_h/dsh-hallmark-app/component-workspace/collected-products。工作流：复制工程到新目录（不复制 node_modules），查询真实数据 → 编辑源码 → npm install / npm run build → 用 scripts/source-preview.mjs 和 scripts/source-capture.mjs 运行同一 dist → read_image 查看实际渲染截图并操作搜索/勾选 → 修改 → hallmark_open_source_component({directory,bindings})。命令用法与桥接 API 见项目 docs/source-component-authoring.md；首次需要能力说明读取 hallmark_app_info.data.designCapabilities。打开工具只登记已有构建，不替你编译。
 设计应有蓝白色阶、信息层级、真实图片和留白，分别查看窄侧栏和宽页。数据可由普通 JS 计算与呈现，不按字段名隐藏利润。说明真实口径与缺失值。postMessage 辅助库负责数据/刷新/附加商品；附加生成原生 JSON 附件，保留原输入，由用户发送。
-草稿源码和构建可恢复；正式保存须用户要求。save_component 保存源码版本，open_component 返回工作副本，可指定历史 revision 后重新保存为新版本。源码保存后继续编辑新副本，重新构建并 open_source_component 更新同一 viewId。没有截图不能宣称已经完成视觉验收。
+草稿源码和构建可恢复；正式保存须用户要求。save_component 保存源码版本，open_component 返回工作副本，可指定历史 revision 后重新保存为新版本。源码保存后继续编辑新副本，重新构建并 open_source_component 更新同一 viewId。完成表述只引用工具返回的 completionStatement；outcome 不是 displayed 时不说已展示，截图只用于视觉检查、不证明已展示。通过 apps.authoring.* 构建/预览/发布的组件，publish 后调用 apps.authoring.await_display 获取结果；hallmark_open_source_component 只登记草稿，不发布，也不代表已展示。
 ${LEGACY_DESIGN_INSTRUCTIONS}`;
 
 const collectedSpec: ViewSpec = {
@@ -82,7 +82,7 @@ export const DESIGN_CAPABILITIES = {
     '图表用fields.label/value或options.xField/yField，y只接收有限number；缺失/null/数字字符串不补0，最多50点。利润缺成本点排除且须真实口径。图表不聚合、不排序，折线要求源数据已有正确顺序；无时间序列证据改bar_chart或table。',
     'currency须已知真实币种；percent使用比例值而非百分数文字。date仅明确时间字段；importedAt是导入时间。采集minPrice/maxPrice是采购成本，不是售价。',
     '表格商品选择依赖真实商品稳定ID和原绑定，附加后由用户发送；不能定义任意动作或把选择当写入授权。',
-    '预览/编辑不保存；用户明确要求才保存。未取得渲染截图不能声称视觉验收。',
+    '预览/编辑不保存；用户明确要求才保存。截图仅用于视觉检查；是否已展示以 apps.authoring 返回的 completionStatement 为准。',
   ],
   recipeUsage:'下列是设计配方，不是已保存组件。复制spec后换唯一id、真实标题、查询返回的datasetKey和已核实字段；不要执行占位值。调用hallmark_render_view({spec})；只有已确认存在的模板才能传templateId，recipeId不是templateId。',
   recipes:[

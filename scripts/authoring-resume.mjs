@@ -2,6 +2,7 @@ import {createHash} from 'node:crypto';
 import {existsSync,readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {join,resolve} from 'node:path';
 import {buildReuseSignature} from '../packages/source-components/src/authoring-evidence.ts';
+import {PERFORMANCE_POLICY_VERSION} from '../packages/source-components/src/authoring-performance.ts';
 
 export const fingerprint=value=>createHash('sha256').update(JSON.stringify(value,(_key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.fromEntries(Object.entries(item).sort(([a],[b])=>a.localeCompare(b))):item)).digest('hex');
 const checkpointPath=(input,stage)=>join(input.evidenceRoot,`resume-${fingerprint([input.sessionId??null,input.viewId??null,input.attemptId,input.epoch,stage])}.json`);
@@ -20,5 +21,5 @@ export async function inspectAttempt(input){
 }
 export function newAttemptRequired(){return Object.assign(new Error('Inputs changed after an immutable receipt. Start a new authoring attempt; do not rewrite old receipts.'),{code:'NEW_ATTEMPT_REQUIRED'});}
 export function previewFingerprint(input){
- return fingerprint({attemptId:input.attemptId,epoch:input.epoch,buildReceiptId:input.buildReceiptId,buildReportRef:input.buildReportRef,mode:input.mode,data:input.data??null,context:input.context??null,capabilityFixtures:input.capabilityFixtures??null,refreshData:input.refreshData??null,assertions:input.assertions??null,noninteractiveReason:input.noninteractiveReason??null,requiredMethods:input.requiredMethods??[],requiredMethodsOnce:input.requiredMethodsOnce??[],runtime:input.runtime??null,browserExecutable:input.browserExecutable??process.env.DSH_PREVIEW_BROWSER_PATH??null,...(input.validationProfile!==undefined?{validationProfile:input.validationProfile,draftViewport:input.draftViewport}: {})});
+ return fingerprint({performancePolicy:PERFORMANCE_POLICY_VERSION,attemptId:input.attemptId,epoch:input.epoch,buildReceiptId:input.buildReceiptId,buildReportRef:input.buildReportRef,mode:input.mode,data:input.data??null,context:input.context??null,capabilityFixtures:input.capabilityFixtures??null,refreshData:input.refreshData??null,assertions:input.assertions??null,noninteractiveReason:input.noninteractiveReason??null,requiredMethods:input.requiredMethods??[],requiredMethodsOnce:input.requiredMethodsOnce??[],runtime:input.runtime??null,browserExecutable:input.browserExecutable??process.env.DSH_PREVIEW_BROWSER_PATH??null,...(input.validationProfile!==undefined?{validationProfile:input.validationProfile,draftViewport:input.draftViewport}: {})});
 }

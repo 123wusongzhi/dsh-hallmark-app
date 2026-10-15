@@ -1,3 +1,4 @@
+import {AsyncLocalStorage} from 'node:async_hooks';
 import {descriptorView} from './descriptor-view.ts';
 import {createHash,randomUUID} from 'node:crypto';
 import {canonicalJson, compileSchema, validateResult} from '../../app-contracts/src/index.ts';
@@ -11,7 +12,12 @@ import type {ComponentExtensionRequest} from '../../component-runtime/src/host.t
 import {authoringInstructions,type AppsAuthoringGuidance} from './authoring-guidance.ts';
 import {withIndependentReviewPump,type ReviewSubagents,type ReviewAttachments} from './review-agent.ts';
 import {componentReviewInvocationId,type ReviewOwner} from '../../service/src/review-bridge.ts';
+import {connectionStatus,type ConnectionStatus} from './connection-status.ts';
+import {labelRuntimeDown,RuntimeHealthMonitor,type RuntimeHealthSnapshot} from './runtime-health.ts';
 export * from './transport.ts';
+export * from './runtime-health.ts';
+export * from './runtime-launcher.ts';
+import type {RuntimeRestarter} from './runtime-launcher.ts';
 export const name = 'dsh-plugin-apps';
 export const inject = ['tools', 'agents', 'connection', 'systemPrompt'];
 export const UI_PATH = '/api/dsh-apps';
@@ -52,7 +58,38 @@ const gatewaySchemas: Record<string, JsonSchema> = {
 const gatewayDescriptions:Record<string,string>={apps_list:'发现应用与能力摘要；按需apps_describe获取精确Schema，当前采用固定发现网关。',apps_describe:'读取精确能力版本和完整输入约束；输出Schema按需读取。跟随返回的 deferred/next 调用；分页 text 拼接后 JSON.parse，输入约束被延迟时，读完后才可调用。',apps_invoke:'用明确应用/连接/能力版本调用Runtime统一实现；unknown先查操作，不自动重新写入。',apps_inspect:'只读回查已有操作或续读结果。操作使用返回的 operation.operationId，不能使用 invocationId；结果续读使用 resultRef。不重发业务修改。fields仅显式选择对象数组各行的精确自有键；缺失与null不同，投影不代表完整原行。按continuation保留字段选择；省略fields读取原结果。明确字符串path可选literal精确定位；按continuation查全，再省略literal按readCursor读取原文上下文。fields与literal不能同时使用，位置不是完整业务上下文。'};
 const businessUiOperations=new Set(['create','revise','get','list','submit','inspect','restore']);
 const fail = (code: string,message: string,invocationId = 'host',traceId = 'host',details?: JsonValue): CapabilityResult => ({invocationId, traceId, status: 'failed', error: {code, message, retryPolicy: 'never',...(details === undefined ? {} : {details})}});
+/** What is known about a failed Runtime call: server-supplied or typed code, request id and a bounded cause. Nothing is invented. */
+interface RuntimeEvidence {code?: string; message?: string; retryPolicy?: string; requestId?: string; cause?: string; httpStatus?: number; attempts?: number}
+function runtimeEvidence(error: unknown): RuntimeEvidence {
+  const item = (error ?? {}) as {statusCode?: number; httpStatus?: number; code?: unknown; name?: string; message?: string; requestId?: unknown; cause?: {code?: string; message?: string}; details?: unknown};
+  const record = (value: unknown): Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  const body = record(record(item.details).error), inner = record(body.details), str = (value: unknown, max: number) => typeof value === 'string' && value ? value.slice(0, max) : undefined;
+  const code = str(body.code, 128) ?? (typeof item.code === 'string' && item.code.startsWith('RUNTIME_') ? item.code : undefined) ?? (item.name === 'TimeoutError' ? 'RUNTIME_REQUEST_TIMEOUT' : item.name === 'AbortError' ? 'RUNTIME_REQUEST_CANCELLED' : item.name === 'TypeError' || item.cause?.code ? 'RUNTIME_CONNECTION_LOST' : undefined);
+  const base = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  return {code, message: str(body.message, 300), retryPolicy: str(body.retryPolicy, 32), requestId: str(inner.requestId, 128) ?? str(item.requestId, 128), cause: str(inner.cause, 500) ?? (item.cause?.code || item.cause?.message ? `${base} (${[item.cause.code, item.cause.message].filter(Boolean).join(' ')})`.slice(0, 500) : base.slice(0, 500)), httpStatus: item.statusCode ?? item.httpStatus, attempts: Number.isInteger(inner.attempts) ? Number(inner.attempts) : undefined};
+}
 function jsonResponse(value: unknown, status = 200) {return new Response(JSON.stringify(value), {status, headers: {'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'}});}
+const SAFE_ID=/^[-\w.:@]{1,200}$/,SLOW_PROXY_MS=5000;
+interface UiTrace {url?:URL;body?:Record<string,unknown>;failed?:boolean}
+const asRecord=(value:unknown):Record<string,unknown>|undefined=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:undefined;
+/** Names the Host surface and copies identifier fields only (never params, tokens, nonces or payload data) for the proxy log. */
+function describeUi(trace:UiTrace):{surface:string;action?:string;ids:Record<string,string|number>} {
+  const ids:Record<string,string|number>={},clip=(value:unknown)=>typeof value==='string'&&SAFE_ID.test(value)?value.slice(0,80):undefined;
+  const keep=(source:Record<string,unknown>|undefined,keys:readonly string[])=>{for(const key of keys){const value=source?.[key];if(typeof value==='string'&&SAFE_ID.test(value))ids[key]=value;else if(key==='displayGeneration'&&Number.isSafeInteger(value))ids[key]=value as number;}};
+  if(trace.body){
+    const body=trace.body,action=clip(body.action)??'unknown';keep(body,['sessionId','viewId','connectionId']);
+    if(action==='componentBridge'||action==='componentExtension'){
+      const inner=asRecord(body.request);keep(inner,['sessionId','viewId','buildId','frameInstanceId']);keep(asRecord(inner?.params),['displayId','publicationId','displayGeneration']);const requestId=clip(inner?.requestId);if(requestId)ids.componentRequestId=requestId;
+      return action==='componentBridge'?{surface:'bridge',action:clip(inner?.method),ids}:{surface:'extension',action:[clip(inner?.feature),clip(inner?.action)].filter(Boolean).join('.')||undefined,ids};
+    }
+    if(action==='authoring'){keep(asRecord(body.params),['viewId','publicationId','displayId','buildId','displayGeneration']);return {surface:'authoring',action:clip(body.operation),ids};}
+    return {surface:action,action:clip(body.operation),ids};
+  }
+  const query=trace.url?.searchParams,resource=clip(query?.get('resource'));
+  if(query)for(const key of ['sessionId','viewId','displayId','publicationId','buildId']){const value=query.get(key);if(value&&SAFE_ID.test(value))ids[key]=value;}
+  return {surface:resource==='view'||resource==='viewData'?resource:`resource:${resource??'unknown'}`,ids};
+}
+const uiRow=(trace:UiTrace)=>{const {ids,...rest}=describeUi(trace);return {...rest,...ids};};
 /** Bound observation without claiming that an admitted Native operation was cancelled. */
 function observeWithin<T>(promise:Promise<T>,signal:AbortSignal):Promise<T> {
   return new Promise<T>((resolve,reject)=>{const abort=()=>reject(signal.reason);if(signal.aborted){reject(signal.reason);promise.catch(()=>{});return;}signal.addEventListener('abort',abort,{once:true});promise.then(resolve,reject).finally(()=>signal.removeEventListener('abort',abort));});
@@ -80,10 +117,16 @@ export class AppsHost {
   private modelProjections=new Map<string,ModelProjection>();
   private routedInvocations=false;
   private independentReviews=false;
+  private readonly health?:RuntimeHealthMonitor;
+  private readonly restarter?:RuntimeRestarter;
+  private initialized=false;
+  private initializing?:Promise<void>;
+  private readonly readyListeners=new Set<()=>void>();
+  private readonly logSink?:(row:Record<string,unknown>)=>void;
   readonly prepareView?: (view: JsonValue, sessionId: string, signal?: AbortSignal) => Promise<void>;
   readonly authoringGuidance?:AppsAuthoringGuidance;
-  constructor(ctx: AppsPluginContext, transport: AppsHostTransport, capabilities: HostCapabilityMatrix = {hostVersion: null, capabilities: {}},options: {prepareView?: (view: JsonValue, sessionId: string, signal?: AbortSignal) => Promise<void>;nativeSessionAdapter?: NativeSessionAdapterMode;authoringGuidance?:AppsAuthoringGuidance} = {}) {
-    this.ctx = ctx;this.transport = transport;this.capabilities = capabilities;this.prepareView=options.prepareView;this.nativeSessionAdapter=options.nativeSessionAdapter??'disabled';
+  constructor(ctx: AppsPluginContext, transport: AppsHostTransport, capabilities: HostCapabilityMatrix = {hostVersion: null, capabilities: {}},options: {prepareView?: (view: JsonValue, sessionId: string, signal?: AbortSignal) => Promise<void>;nativeSessionAdapter?: NativeSessionAdapterMode;authoringGuidance?:AppsAuthoringGuidance;health?:RuntimeHealthMonitor;restarter?:RuntimeRestarter;log?:(row:Record<string,unknown>)=>void} = {}) {
+    this.ctx = ctx;this.transport = transport;this.capabilities = capabilities;this.prepareView=options.prepareView;this.nativeSessionAdapter=options.nativeSessionAdapter??'disabled';this.health=options.health??(transport.health?new RuntimeHealthMonitor({probe:signal=>transport.health!(signal),log:options.log}):undefined);this.restarter=options.restarter;this.logSink=options.log;
     this.authoringGuidance=options.authoringGuidance?structuredClone(options.authoringGuidance):undefined;
     this.nativeReady=false;this.modes={...hostFeatureModes(capabilities),requestAgent:false,updateContext:false};this.refreshNativeAdapter();
   }
@@ -93,29 +136,62 @@ export class AppsHost {
     try {this.nativeController=(typeof ctx.get==='function'?ctx.get('sessionController'):ctx.sessionController) as NativeSessionController|undefined;} catch {this.nativeController=undefined;}
     try {this.nativeSessions=(typeof ctx.get==='function'?ctx.get('sessions'):ctx.sessions) as NativeSessions|undefined;} catch {this.nativeSessions=undefined;}
     this.nativeReady=this.nativeSessionAdapter==='dsh-0.2.0-rc.2'&&typeof ctx.systemPrompt?.context==='function'&&typeof ctx.on==='function'&&typeof this.nativeSessions?.flush==='function'&&typeof this.nativeController?.resolveAgent==='function'&&typeof this.nativeController?.prompt==='function'&&typeof this.nativeController?.inspect==='function'&&typeof transport.componentContexts==='function'&&typeof transport.componentBridge==='function'&&typeof transport.dispatchAgent==='function'&&typeof transport.agentReceipt==='function'&&typeof transport.agentIntent==='function';
-    if(this.started&&!this.closed&&this.nativeReady&&!this.nativeHookInstalled)this.installNativeContextHook();
+    if(this.started&&!this.closed&&typeof this.ctx.on==='function'&&!this.nativeHookInstalled)this.installNativeContextHook();
     this.modes.requestAgent=this.nativeReady&&!this.closed;this.modes.updateContext=this.nativeReady&&!this.closed;
   }
   private installNativeContextHook() {
     this.disposers.push(this.ctx.on!('system-prompt/assemble',async(_assembly,context,next)=>{
-      const assembled=await next(),agent=(context.agent??context.scope) as AgentRef|undefined,sessionId=this.trusted(agent);
-      if(!sessionId||context.scope&&context.scope!==agent)return assembled;
-      this.refreshNativeAdapter();
-      if(!this.nativeReady||this.closed)throw new Error('NATIVE_ADAPTER_NOT_READY');
+      const agent=(context.agent??context.scope) as AgentRef|undefined,sessionId=this.trusted(agent);
+      if(!sessionId||context.scope&&context.scope!==agent)return next();
       const signal=this.combined(context.signal);signal.throwIfAborted();
-      const projection=await this.transport.componentContexts!(sessionId,signal);signal.throwIfAborted();
-      if(projection.sessionId!==sessionId||projection.snapshot&&projection.snapshot.sessionId!==sessionId)throw new Error('CONTEXT_NOT_OWNED');
-      const contexts=assembled.contexts.filter(entry=>entry.name!=='dsh-apps-component-context');
-      if(projection.snapshot){
-        const snapshot=projection.snapshot;
-        if(!Number.isSafeInteger(snapshot.contextRevision)||snapshot.contextRevision<1||typeof snapshot.snapshotId!=='string'||!Array.isArray(snapshot.bindingEvidence)||!Array.isArray(snapshot.selections))throw new Error('INVALID_CONTEXT_SNAPSHOT');
-        const content=canonicalJson({kind:'dsh-apps-component-context',sessionId,snapshot});
-        if(Buffer.byteLength(content)>8192)throw new Error('CONTEXT_BUDGET_EXCEEDED');
-        contexts.push({name:'dsh-apps-component-context',text:content});
-      }
-      return {...assembled,contexts};
+      // DSH evaluates synchronous contributions before this waterfall. Re-evaluate only our contributions after resolving selection.
+      const selectionSignal=AbortSignal.any([signal,AbortSignal.timeout(1500)]);
+      const bindings=await this.transport.sessionBindings(sessionId,selectionSignal).catch(()=>{
+        signal.throwIfAborted();return [];
+      });
+      const appIds=new Set(bindings.filter(binding=>binding.enabled&&binding.appId!=='apps').map(binding=>binding.appId));
+      return this.promptSelection.run({sessionId,appIds},async()=>{
+        const original=await next();
+        const contexts=original.contexts.filter(entry=>entry.name!=='dsh-apps-component-context').map(entry=>{
+          const contribution=this.promptContributions.get(entry.name);
+          return contribution&&entry.text===''?{...entry,text:contribution.text(context)}:entry;
+        }).filter(entry=>entry.text!==''||!this.promptContributions.has(entry.name));
+        // Real DSH retains empty stubs in order; fallback is only for hosts without those placeholders.
+        for(const contribution of [...this.promptContributions.values()].sort((a,b)=>a.order-b.order)){
+          if(original.contexts.some(entry=>entry.name===contribution.name))continue;
+          const text=contribution.text(context);if(text)contexts.push({name:contribution.name,text});
+        }
+        const assembled={...original,contexts};
+        if(!appIds.size)return assembled;
+        this.refreshNativeAdapter();
+        if(this.nativeSessionAdapter==='disabled')return assembled;
+        if(!this.nativeReady||this.closed)throw new Error('NATIVE_ADAPTER_NOT_READY');
+        signal.throwIfAborted();
+        const projection=await this.transport.componentContexts!(sessionId,signal);signal.throwIfAborted();
+        if(projection.sessionId!==sessionId||projection.snapshot&&projection.snapshot.sessionId!==sessionId)throw new Error('CONTEXT_NOT_OWNED');
+        if(projection.snapshot){
+          const snapshot=projection.snapshot;
+          if(!Number.isSafeInteger(snapshot.contextRevision)||snapshot.contextRevision<1||typeof snapshot.snapshotId!=='string'||!Array.isArray(snapshot.bindingEvidence)||!Array.isArray(snapshot.selections))throw new Error('INVALID_CONTEXT_SNAPSHOT');
+          const content=canonicalJson({kind:'dsh-apps-component-context',sessionId,snapshot});
+          if(Buffer.byteLength(content)>8192)throw new Error('CONTEXT_BUDGET_EXCEEDED');
+          contexts.push({name:'dsh-apps-component-context',text:content});
+        }
+        return {...assembled,contexts};
+      });
     }));
     this.nativeHookInstalled=true;
+  }
+  private readonly promptContributions=new Map<string,{name:string;order:number;text(context:NativeAssembleContext):string}>();
+  registerContext(contribution:{name:string;order:number;text(context:NativeAssembleContext):string}):()=>void {
+    if(this.promptContributions.has(contribution.name))throw new Error('DUPLICATE_APP_CONTEXT');
+    const dispose=this.ctx.systemPrompt?.context({...contribution,text:()=>''});
+    this.promptContributions.set(contribution.name,contribution);
+    return ()=>{this.promptContributions.delete(contribution.name);dispose?.();};
+  }
+  private readonly promptSelection=new AsyncLocalStorage<{sessionId:string;appIds:Set<string>}>();
+  isAppSelected(context:NativeAssembleContext,appId:string):boolean {
+    const agent=(context.agent??context.scope) as AgentRef|undefined,sessionId=this.trusted(agent),selection=this.promptSelection.getStore();
+    return !!sessionId&&(!context.scope||context.scope===agent)&&selection?.sessionId===sessionId&&selection.appIds.has(appId);
   }
   private combined(signal?: AbortSignal) {return AbortSignal.any([this.lifetime.signal, ...(signal ? [signal] : [])]);}
   private trusted(agent?: AgentRef) {return agent && /^[-a-zA-Z0-9_]{1,160}$/.test(agent.id) && this.ctx.agents.get(agent.id) === agent ? agent.id : undefined;}
@@ -145,10 +221,27 @@ export class AppsHost {
     return !!descriptor&&value.appId===descriptor.capabilityId.split('.')[0]&&!descriptor.capabilityId.startsWith('apps.')&&['query','compute'].includes(descriptor.effect)&&descriptor.execution.concurrency==='declared_safe';
   }
   private rememberProjection(invocationId:string,projection:ModelProjection):void {if(this.modelProjections.size>=64)this.modelProjections.delete(this.modelProjections.keys().next().value!);this.modelProjections.set(invocationId,projection);}
+  /** Bundle projections wait for a real directory; registration is once-only, including recovery. */
+  whenReady(listener:()=>void):()=>void {if(this.closed)return ()=>{};if(this.initialized)listener();else this.readyListeners.add(listener);return ()=>{this.readyListeners.delete(listener);};}
+  private initializeRuntime():Promise<void> {
+    if(this.initialized||this.closed)return Promise.resolve();if(this.initializing)return this.initializing;
+    this.initializing=(async()=>{
+      const signal=this.combined(AbortSignal.timeout(3000));await this.handshake(signal);
+      const apps=await this.transport.listApps(signal);if(!Array.isArray(apps))throw new Error('INVALID_RUNTIME_DIRECTORY');
+      if(this.closed)return;this.apps=apps;
+      for(const listener of this.readyListeners)listener();this.readyListeners.clear();this.initialized=true;
+      this.record({event:'host_runtime_initialized'});
+    })().finally(()=>{this.initializing=undefined;});return this.initializing;
+  }
   async start() {
     if (this.started || this.closed) throw new Error('INVALID_HOST_LIFECYCLE');
-    await this.handshake();this.apps = await this.transport.listApps(this.lifetime.signal);
-    if (!Array.isArray(this.apps)) throw new Error('INVALID_RUNTIME_DIRECTORY');
+    try {await this.initializeRuntime();}catch(error){
+      const evidence=runtimeEvidence(error);
+      if(!this.health||evidence.httpStatus!==undefined||!['RUNTIME_CONNECTION_LOST','RUNTIME_REQUEST_TIMEOUT'].includes(evidence.code??''))throw error;
+      // Establish down before exposing tools, even when Desktop was launched with no Runtime.
+      for(let check=0;check<this.health.snapshot().thresholds.downAfter;check++)await this.health.check();
+      this.record({event:'host_degraded_start',code:'RUNTIME_DOWN'});
+    }
     try {
       for (const [name, parameters] of Object.entries(gatewaySchemas)) {
         const validate = compileSchema(parameters);
@@ -171,11 +264,13 @@ export class AppsHost {
         }}));
       }
       if (this.ctx.connection) this.disposers.push(this.ctx.connection.fetch.register({path: UI_PATH, methods: ['GET', 'POST'], requestBody: 'buffered', fetch: request => this.ui(request)}));
-      if (this.ctx.systemPrompt) this.disposers.push(this.ctx.systemPrompt.context({name: 'dsh-apps-summary', order: 510, text: context => {
+      if (this.ctx.systemPrompt) this.disposers.push(this.registerContext({name: 'dsh-apps-summary', order: 510, text: context => {
         const agent = (context.agent ?? context.scope) as AgentRef | undefined;
         const sessionId=this.trusted(agent);return sessionId && (!context.scope || context.scope === agent) ? this.appSummary(sessionId) : '';
       }}));
       this.started = true;
+      if(this.health)this.disposers.push(this.health.onCheck(snapshot=>{if(!this.initialized&&snapshot.state==='healthy'&&!this.closed)void this.initializeRuntime().catch(()=>{this.record({event:'host_runtime_initialization_failed'});});}));
+      this.restarter?.start();this.health?.start();
       if(this.nativeSessionAdapter==='dsh-0.2.0-rc.2'&&typeof this.ctx.on==='function')this.disposers.push(this.ctx.on('internal/service',name=>{if(name==='sessionController'||name==='sessions')this.refreshNativeAdapter();}));
       this.refreshNativeAdapter();
     } catch (error) {await this.dispose();throw error;}
@@ -188,7 +283,7 @@ export class AppsHost {
     const content = canonicalJson(value);
     return Buffer.byteLength(content) <= 16384 ? content : canonicalJson({status: 'failed', error: {code: 'RESULT_SPILL_FAILED', message: '此发现/说明结果超过预算。请限制能力分页或缩小工作集。'}});
   }
-  private appSummary(_sessionId?:string) {return `Apps采用固定发现网关。应用摘要：${JSON.stringify(this.apps.map(app=>({appId:app.appId,displayName:app.displayName,runtimeState:app.providerState})))}。先apps_list/describe按需发现，调用需明确连接和能力版本。变更需明确保存和幂等身份，unknown先inspect原操作。蓝白简洁、易懂中文；数据按店铺和权限隔离，缺失不填0，试算不写平台。先显示上次成功完整快照，15分钟有效期，到期后台刷新，临时失败保留旧快照和原时间。只分析数据时直接读取，无需创作组件；需要制作组件时describe apps.authoring.begin取得完整体验规则、路径和创作指引。`;}
+  private appSummary(sessionId?:string,appIds=this.promptSelection.getStore()?.sessionId===sessionId?this.promptSelection.getStore()?.appIds:undefined) {if(!appIds?.size)return '';return `Apps采用固定发现网关。应用摘要：${JSON.stringify(this.apps.filter(app=>appIds.has(app.appId)).map(app=>({appId:app.appId,displayName:app.displayName,runtimeState:app.providerState})))}。先apps_list/describe按需发现，调用需明确连接和能力版本。变更需明确保存和幂等身份，unknown先inspect原操作。蓝白简洁、易懂中文；数据按店铺和权限隔离，缺失不填0，试算不写平台。先显示上次成功完整快照，15分钟有效期，到期后台刷新，临时失败保留旧快照和原时间。只分析数据时直接读取，无需创作组件；需要制作组件时describe apps.authoring.begin取得完整体验规则、路径和创作指引。`;}
   private presentationMeta(args: unknown,value: unknown): Record<string,unknown> {
     const input=args as {appId?:string;capabilityId?:string}|null;if(input?.appId!=='apps'||!['apps.presentation.render_view','apps.presentation.update_view','apps.presentation.open_component','apps.presentation.open_source_component','apps.authoring.begin','apps.authoring.inspect','apps.authoring.publish'].includes(input.capabilityId??''))return {};
     const result=(value&&typeof value==='object'&&'result' in value?value.result:value) as CapabilityResult|undefined;if(result?.status!=='ok'||!('data' in result)||!result.data||typeof result.data!=='object'||Array.isArray(result.data))return {};
@@ -222,7 +317,7 @@ export class AppsHost {
   async call(name: string, input: Record<string,JsonValue>, sessionId: string, signal?: AbortSignal, nativeCallId?: string, onRuntimeResult?: () => void,parent?:AgentRef,invocationSource?:InvocationSource): Promise<unknown> {
     if (this.closed) return fail('APPS_HOST_CLOSED', 'Apps Host 已卸载。');
     const invocationId=typeof input.invocationId==='string'?input.invocationId:name==='apps_invoke'?randomUUID():'host',traceId=typeof input.traceId==='string'?input.traceId:name==='apps_invoke'?randomUUID():'host';
-    let submitted:InvocationRequest|undefined,descriptor:CapabilityDescriptor|undefined;
+    let submitted:InvocationRequest|undefined,descriptor:CapabilityDescriptor|undefined;const started=performance.now();
     try {
       await this.handshake(signal);
       if (name === 'apps_list') {
@@ -298,12 +393,14 @@ export class AppsHost {
       const failed=fail('OUTPUT_SCHEMA_INVALID',errors.join('; '),invocationId,traceId);this.rememberProjection(invocationId,{content:canonicalJson(failed)});return failed;
     } catch (error) {
       if(error instanceof Error&&error.message==='INCOMPATIBLE_PROTOCOL')return fail('INCOMPATIBLE_PROTOCOL',error.message,invocationId,traceId,(error as {details?:JsonValue}).details);
-      const rejected=runtimeHttpError(error,{invocationId,traceId});if(rejected)return rejected;
+      const rejected=runtimeHttpError(error,{invocationId,traceId}),evidence=runtimeEvidence(error),label=rejected?undefined:labelRuntimeDown(this.health,evidence);
+      if(!signal?.aborted)this.record({event:'host_proxy_failed',surface:'tool',action:name,sessionId,invocationId,traceId,...(typeof input.capabilityId==='string'&&SAFE_ID.test(input.capabilityId)?{capabilityId:input.capabilityId}:{}),code:label?.code??(rejected&&'error'in rejected?rejected.error.code:evidence.code)??'RUNTIME_UNAVAILABLE',...(evidence.httpStatus?{httpStatus:evidence.httpStatus}:{}),...(evidence.requestId?{requestId:evidence.requestId}:{}),...(evidence.attempts?{attempts:evidence.attempts}:{}),durationMs:Math.round(performance.now()-started),...(evidence.cause?{cause:evidence.cause}:{}),runtimeState:this.health?.state??'unmonitored'});
+      if(rejected)return rejected;
       if(submitted&&descriptor?.effect==='mutation'){
         try{const recovered=await recoverInvocationResult(this.transport,submitted,signal);if(recovered&&!validateResult(recovered,descriptor.outputSchema).length){onRuntimeResult?.();return recovered;}}catch{/* Only an original read is allowed; never repeat invoke. */}
       }
       const uncertainMutation=!!submitted&&descriptor?.effect==='mutation';
-      return {invocationId,traceId,status:'unavailable',error:{code:'RUNTIME_UNAVAILABLE',message:error instanceof Error?error.message:'Runtime unavailable',retryPolicy:uncertainMutation?'inspect_only':'read_retry',details:{invocationId,doNotResubmitMutation:uncertainMutation,submitted:!!submitted}}};
+      return {invocationId,traceId,status:'unavailable',error:{code:label?.code??'RUNTIME_UNAVAILABLE',message:label?.message??(error instanceof Error?error.message:'Runtime unavailable'),retryPolicy:uncertainMutation?'inspect_only':'read_retry',details:{...(label?{runtimeHealth:label.details as unknown as JsonValue}:{}),invocationId,doNotResubmitMutation:uncertainMutation,submitted:!!submitted}}};
     }
   }
   async bind(sessionId: string, appId: string, connectionId: string, enabled: boolean, signal?: AbortSignal) {
@@ -393,7 +490,8 @@ export class AppsHost {
     const latest=await this.transport.componentContexts!(intent.sessionId,signal);
     if(latest.sessionId!==intent.sessionId||latest.snapshot&&latest.snapshot.sessionId!==intent.sessionId)throw new Error('CONTEXT_NOT_OWNED');
     const context=latest.snapshot?canonicalJson({kind:'dsh-apps-component-context',sessionId:latest.sessionId,snapshot:latest.snapshot}):null;
-    const contribution=canonicalJson({content:intent.content,contexts:[{name:'dsh-apps-summary',text:this.appSummary(intent.sessionId)},...(context?[{name:'dsh-apps-component-context',text:context}]:[])],tools:Object.entries(gatewaySchemas).map(([name,parameters])=>({name,description:gatewayDescriptions[name],parameters}))});
+    const selectedApps=new Set((await this.transport.sessionBindings(intent.sessionId,signal)).filter(binding=>binding.enabled&&binding.appId!=='apps').map(binding=>binding.appId));
+    const contribution=canonicalJson({content:intent.content,contexts:[{name:'dsh-apps-summary',text:this.appSummary(intent.sessionId,selectedApps)},...(context?[{name:'dsh-apps-component-context',text:context}]:[])],tools:Object.entries(gatewaySchemas).map(([name,parameters])=>({name,description:gatewayDescriptions[name],parameters}))});
     if(Buffer.byteLength(contribution)>16384||context&&Buffer.byteLength(context)>8192)throw new Error('APPS_CONTEXT_BUDGET_EXCEEDED');
     let claim:{dispatchGranted:boolean;intent:ComponentAgentIntent};
     try {claim=await this.transport.dispatchAgent!(intent.sessionId,intent.requestId,intent.requestHash,signal);this.validateIntent(claim.intent,request,intent.requestHash);}
@@ -418,13 +516,16 @@ export class AppsHost {
     if(!this.transport.componentBridge)return this.bridgePacket(request,{error:{code:'UNSUPPORTED_HOST_CAPABILITY',message:'当前Runtime未提供组件bridge接口。',retryPolicy:'never'}});
     if(signal.aborted)return this.bridgePacket(request,{error:{code:'CANCELLED_BEFORE_DISPATCH',message:'Component request was not submitted.',retryPolicy:'never'}});
     let packet:JsonValue;
+    const started=performance.now();
     try{packet=request.method==='invokeCapability'?await this.reviewPump({invocationId:componentReviewInvocationId(request),sessionId:request.sessionId},dispatchSignal=>this.transport.componentBridge!(request,dispatchSignal),signal):await this.transport.componentBridge(request,signal);}
     catch(error){
       const rejected=runtimeHttpError(error,{invocationId:request.requestId,traceId:request.requestId});
+      const evidence=runtimeEvidence(error),label=rejected?undefined:labelRuntimeDown(this.health,evidence),bridgeParams=asRecord(request.params);
+      if(!signal.aborted)this.record({event:'host_proxy_failed',surface:'bridge',action:request.method,sessionId:request.sessionId,viewId:request.viewId,buildId:request.buildId,frameInstanceId:request.frameInstanceId,componentRequestId:request.requestId,...(typeof bridgeParams?.displayId==='string'&&SAFE_ID.test(bridgeParams.displayId)?{displayId:bridgeParams.displayId}:{}),...(typeof bridgeParams?.publicationId==='string'&&SAFE_ID.test(bridgeParams.publicationId)?{publicationId:bridgeParams.publicationId}:{}),code:label?.code??(rejected&&'error'in rejected?rejected.error.code:evidence.code)??'RUNTIME_UNAVAILABLE',...(evidence.httpStatus?{httpStatus:evidence.httpStatus}:{}),...(evidence.requestId?{requestId:evidence.requestId}:{}),...(evidence.attempts?{attempts:evidence.attempts}:{}),durationMs:Math.round(performance.now()-started),...(evidence.cause?{cause:evidence.cause}:{}),runtimeState:this.health?.state??'unmonitored'});
       if(rejected&&'error'in rejected)return this.bridgePacket(request,{error:rejected.error});
       const params=request.params&&typeof request.params==='object'&&!Array.isArray(request.params)?request.params:{};
       const potentialWrite=request.method==='requestAgent'||request.method==='updateContext'||request.method==='invokeCapability'&&(typeof params.idempotencyKey==='string'&&params.idempotencyKey.length>0||isBusinessSubmission(params.appId,params.capabilityId));
-      return this.bridgePacket(request,{error:{code:'RUNTIME_UNAVAILABLE',message:'Runtime response unavailable; retain this original component request.',retryPolicy:potentialWrite?'inspect_only':'read_retry',details:{requestId:request.requestId,method:request.method,sessionId:request.sessionId,viewId:request.viewId,buildId:request.buildId,frameInstanceId:request.frameInstanceId,params:request.params,doNotResubmitMutation:potentialWrite}}});
+      return this.bridgePacket(request,{error:{code:label?.code??evidence.code??'RUNTIME_UNAVAILABLE',message:label?.message??evidence.message??'Runtime response unavailable; retain this original component request.',retryPolicy:potentialWrite||evidence.retryPolicy==='inspect_only'?'inspect_only':'read_retry',details:{...(label?{runtimeHealth:label.details as unknown as JsonValue}:{}),requestId:request.requestId,...(evidence.requestId?{runtimeRequestId:evidence.requestId}:{}),...(evidence.cause?{cause:evidence.cause}:{}),...(evidence.httpStatus?{httpStatus:evidence.httpStatus}:{}),...(evidence.attempts?{attempts:evidence.attempts}:{}),method:request.method,sessionId:request.sessionId,viewId:request.viewId,buildId:request.buildId,frameInstanceId:request.frameInstanceId,params:request.params,doNotResubmitMutation:potentialWrite}}});
     }
     if(request.method!=='requestAgent'||!packet||typeof packet!=='object'||Array.isArray(packet)||packet.error)return packet;
     if(packet.channel!=='dsh.apps.component.v2'||packet.requestId!==request.requestId||packet.sessionId!==request.sessionId||packet.viewId!==request.viewId||packet.buildId!==request.buildId||packet.frameInstanceId!==request.frameInstanceId||!packet.result||typeof packet.result!=='object'||Array.isArray(packet.result))throw new Error('INVALID_AGENT_BRIDGE_RESPONSE');
@@ -432,12 +533,43 @@ export class AppsHost {
     try {const result=await this.submitAgent(intent,request,signal);return this.bridgePacket(request,{result:JSON.parse(canonicalJson(result)) as JsonValue});}
     catch(problem){return this.bridgePacket(request,{error:{code:problem instanceof Error?problem.message:'NATIVE_ADAPTER_FAILED',message:'原生输入未提交。请检查上下文引用与预算后显式发起请求。',retryPolicy:'never'}});}
   }
+  /** One JSON row per failed or slow Host-to-Runtime call. Identifiers, codes and timings only. */
+  private record(row:Record<string,unknown>):void {try{this.logSink?.({ts:new Date().toISOString(),...row});}catch{}}
+  /** Cached monitor state; never calls the Runtime, so it answers while the Runtime is down. */
+  async checkConnection(signal?:AbortSignal):Promise<ConnectionStatus> {
+    const node=await this.health?.check()??{state:'unknown' as const};
+    let data:ConnectionStatus['data']={state:'unknown',message:'尚未检查数据接口。'};
+    if(this.transport.dataHealth&&node.state!=='down'){
+      try{
+        const response=asRecord(await this.transport.dataHealth(signal)),source=asRecord(response?.hallmark);
+        data=source?.status==='ok'?{state:'available',message:'数据接口可用。'}:{state:'unavailable',message:String(asRecord(source?.error)?.message??asRecord(source?.error)?.code??'数据接口未通过检查。')};
+      }catch{data={state:'unavailable',message:'数据接口无法连接或检查超时。'};}
+    }
+    return connectionStatus(node,data,!!this.restarter&&!!this.transport.restartRuntime);
+  }
+  runtimeHealth():RuntimeHealthSnapshot|{monitoring:false;state:'unknown';recovering:false} {return this.health?.snapshot()??{monitoring:false,state:'unknown',recovering:false};}
+  private uiFailure(error:unknown,request:Request,trace:UiTrace,started:number):Response {
+    const detail=error as {statusCode?:number;details?:unknown},evidence=runtimeEvidence(error),label=labelRuntimeDown(this.health,evidence),passthrough=Number.isInteger(detail.statusCode)&&detail.statusCode!>=400&&detail.statusCode!<=599&&!!detail.details;
+    trace.failed=true;
+    const reported=label?.code??evidence.code??'RUNTIME_UNAVAILABLE',status=passthrough?detail.statusCode!:503,retryPolicy=passthrough?evidence.retryPolicy:request.method==='GET'?'read_retry':'never';
+    if(!request.signal.aborted)this.record({event:'host_proxy_failed',...uiRow(trace),code:reported,...(label&&evidence.code?{runtimeCode:evidence.code}:{}),status,...(evidence.httpStatus?{httpStatus:evidence.httpStatus}:{}),...(evidence.requestId?{requestId:evidence.requestId}:{}),...(evidence.attempts?{attempts:evidence.attempts}:{}),...(retryPolicy?{retryPolicy}:{}),durationMs:Math.round(performance.now()-started),...(evidence.cause?{cause:evidence.cause}:{}),runtimeState:this.health?.state??'unmonitored'});
+    if(passthrough){
+      const body=asRecord(detail.details),failure=asRecord(body?.error);
+      if(label&&body&&failure)return jsonResponse({...body,error:{...failure,code:label.code,message:label.message,retryPolicy:failure.retryPolicy==='inspect_only'?'inspect_only':'read_retry',details:{...asRecord(failure.details),runtimeHealth:label.details,...(evidence.code?{runtimeCode:evidence.code}:{})}}},status);
+      return jsonResponse(detail.details,status);
+    }
+    const failed=fail(reported,label?.message??evidence.message??'Runtime或目录暂不可用。','host','host',{...(evidence.requestId?{requestId:evidence.requestId}:{}),...(evidence.cause?{cause:evidence.cause}:{}),...(evidence.httpStatus?{httpStatus:evidence.httpStatus}:{}),...(label?{runtimeHealth:label.details as unknown as JsonValue}:{})}) as unknown as {error:Record<string,unknown>};
+    return jsonResponse({...failed,error:{...failed.error,retryPolicy}},503);
+  }
   async ui(request: Request): Promise<Response> {
+    const started=performance.now(),trace:UiTrace={};
     try {
       this.refreshNativeAdapter();
-      const url = new URL(request.url);
+      const url = new URL(request.url);trace.url=url;
       if (request.method === 'GET') {
         const resource = url.searchParams.get('resource');
+        if(resource==='connectionStatus'&&[...url.searchParams.keys()].every(key=>key==='resource'))return jsonResponse(await this.checkConnection(request.signal));
+        if(resource==='runtimeHealth'&&[...url.searchParams.keys()].every(key=>key==='resource'))return jsonResponse(this.runtimeHealth());
         if(resource==='componentThumbnail'&&[...url.searchParams.keys()].every(key=>['resource','componentId','revision'].includes(key))){
           const componentId=url.searchParams.get('componentId')??'',revision=url.searchParams.get('revision')??'';
           if(!/^[-a-zA-Z0-9_.:]{1,180}$/.test(componentId)||! /^[1-9][0-9]{0,9}$/.test(revision))return jsonResponse(fail('INVALID_INPUT','组件预览参数无效。'),400);
@@ -451,6 +583,7 @@ export class AppsHost {
           if(!this.transport.workbenchResource)return jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime尚未提供工作台。'),503);
           return jsonResponse(await this.transport.workbenchResource(resource!,url.searchParams.get('appId')??'hallmark',this.combined(request.signal)));
         }
+        if(resource==='associations'){const query=Object.fromEntries(url.searchParams);delete query.resource;return this.transport.associationOverview?jsonResponse(await this.transport.associationOverview(query,this.combined(request.signal))):jsonResponse(fail('UNSUPPORTED_HOST_CAPABILITY','Runtime 尚未提供关联总览。'),503);}
         if(resource==='businessSettings'&&[...url.searchParams.keys()].every(key=>['resource','connectionId','storeId'].includes(key)))return jsonResponse(this.transport.businessSettingsRead?await this.transport.businessSettingsRead(url.searchParams.get('connectionId')??undefined,url.searchParams.get('storeId')??undefined,this.combined(request.signal)):fail('UNSUPPORTED_HOST_CAPABILITY','Runtime 尚未提供经营设置。'));
         if(resource==='hostCapabilities'&&[...url.searchParams.keys()].every(key=>key==='resource'))return jsonResponse(this.hostCapabilities());
         if(resource==='componentFeatures'&&[...url.searchParams.keys()].every(key=>key==='resource'))return jsonResponse(this.transport.componentFeatures?await this.transport.componentFeatures(this.combined(request.signal)):{features:[]});
@@ -498,7 +631,15 @@ export class AppsHost {
         const body = await request.text();if (Buffer.byteLength(body) > 65536) return jsonResponse(fail('INVALID_INPUT', 'BODY_TOO_LARGE'), 400);
         const input: unknown = JSON.parse(body);
         if (input && typeof input === 'object' && !Array.isArray(input)) {
-          const value = input as Record<string,unknown>;
+          const value = input as Record<string,unknown>;trace.body=value;
+          if(value.action==='restartRuntime'){
+            if(Object.keys(value).some(key=>key!=='action'))return jsonResponse(fail('INVALID_INPUT','重启参数无效。'),400);
+            const origin=request.headers.get('origin');
+            if(origin&&origin!==url.origin)return jsonResponse(fail('INVALID_ORIGIN','请求来源无效。'),403);
+            if(!this.restarter||!this.transport.restartRuntime)return jsonResponse(fail('RESTART_UNAVAILABLE','此节点未配置受管理的启动方式。'),503);
+            await this.restarter.restart(()=>this.transport.restartRuntime!());
+            return jsonResponse(await this.checkConnection(request.signal));
+          }
           if(value.action==='businessOperations')return this.businessOperations(value,this.combined(request.signal));
           if(value.action==='businessSettings'){
             if(Object.keys(value).some(key=>!['action','sessionId','connectionId','operation','input'].includes(key))||(value.sessionId!==undefined&&typeof value.sessionId!=='string')||typeof value.connectionId!=='string'||typeof value.operation!=='string'||!['store.save','store.check','pricing.save','pricing.quote','packaging.search','packaging.read','packaging.save','packaging.remove'].includes(value.operation)||!value.input||typeof value.input!=='object'||Array.isArray(value.input))return jsonResponse(fail('INVALID_INPUT','经营设置参数无效。'),400);
@@ -557,8 +698,9 @@ export class AppsHost {
         }
       }
       return jsonResponse(fail('INVALID_INPUT', '无效Apps代理请求。'), 400);
-    } catch(error) {const detail=error as {statusCode?:number;details?:unknown};if(Number.isInteger(detail.statusCode)&&detail.statusCode!>=400&&detail.statusCode!<=599&&detail.details)return jsonResponse(detail.details,detail.statusCode);return jsonResponse(fail('RUNTIME_UNAVAILABLE', 'Runtime或目录暂不可用。'), 503);}
+    } catch(error) {return this.uiFailure(error,request,trace,started);}
+    finally {const durationMs=Math.round(performance.now()-started);if(!trace.failed&&durationMs>=SLOW_PROXY_MS&&!request.signal.aborted)this.record({event:'host_proxy_slow',...uiRow(trace),durationMs});}
   }
-  async dispose() {if (this.closed) return;this.closed = true;this.lifetime.abort();this.attachments.clear();await Promise.allSettled(this.disposers.splice(0).reverse().map(dispose => Promise.resolve().then(dispose)));}
+  async dispose() {if (this.closed) return;this.closed = true;this.restarter?.stop();this.health?.stop();this.readyListeners.clear();this.lifetime.abort();this.attachments.clear();await Promise.allSettled(this.disposers.splice(0).reverse().map(dispose => Promise.resolve().then(dispose)));}
 }
 export async function apply(ctx: AppsPluginContext, options: {transport: AppsHostTransport;capabilities?: HostCapabilityMatrix}) {const host = new AppsHost(ctx,options.transport,options.capabilities);await host.start();ctx.effect?.(() => () => {void host.dispose();});return host;}

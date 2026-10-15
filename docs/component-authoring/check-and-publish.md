@@ -4,6 +4,8 @@
 
 商品 starter 的正式验证计划位于 `.preview/plan.json`。检查请求仅引用 `preview.planPath`，不复制 assertions；该目录不属于源码指纹。计划中的 fill 可用 `valueFromSelector` 读取当前页面元素的文本作为搜索词，与固定 value 二选一。先搜索、清空搜索，再翻页。附加到聊天暂未开放，产品计划不包含勾选与附加。
 
+新建或修改源码同时遵循[组件性能与体验规格](performance.md)。标准检查对同一冻结构建执行性能验收；不需要 Agent 另建浏览器测试流程，也不能只凭 build PASS、截图或业务断言通过就发布。
+
 所有有效的失败报告也自动登记。同一请求重跑恢复原结果、补登记，不再次执行；FAIL/INCOMPLETE 后修正计划或源码，显式 begin 新 attempt，再 prepare。旧回执不覆盖。仅改计划不会触发源码变化错误，但已登记预览的 attempt 仍需更换。
 
 下面保留内联请求格式供已有工程兼容；新工程使用上述入口。
@@ -32,6 +34,8 @@ Windows 执行 Host `checkRunner.windowsCommand` 指向的 PowerShell 7 脚本�
 
 正常检查返回 PASS / FAIL / INCOMPLETE、原验证时间 verifiedAt、回执、复用标记、失败断言和截图。错误调用返回 ERROR 和独立 `.error.json` 路径，不覆盖已有成功摘要。
 
+性能失败时读报告中的测试条件、实际值和对应证据，修复组件后按新 attempt 重测。不要编辑报告、削弱断言、改预算或用不同构建绕过失败；缺少正式证据也不能作为性能通过。
+
 ## 恢复与重新验证
 
 - 同一 attempt、源码、构建输入、预览计划已成功：恢复原报告与回执，不重新读实时数据验证；verifiedAt 仍是原验证时间，完整报告 viewportResults[].bindingSnapshots 保留实际桥接读取的版本与源时间。
@@ -45,11 +49,11 @@ Windows 执行 Host `checkRunner.windowsCommand` 指向的 PowerShell 7 脚本�
 
 给某条 assertion 加 `screenshot:{}`，在该检查结束时截图；加 `screenshot:{selector:"#pager"}` 先滚动到目标再截图。每个计划自动运行 420 和 1040 两个宽度，摘要 viewports[].screenshots 标出 afterCase、selector、path。
 
-原有每个视口的最终截图继续保留。先完成必要交互再截图；不要另写 Host、CDP 或固定等待脚本。图片采用预览缓存／占位，截图不证明外网图片加载速度。
+原有每个视口的最终截图继续保留。先完成必要交互再截图；不要另写 Host、CDP 或固定等待脚本。图片采用预览缓存／占位，截图不证明外网图片加载速度；受控资源下的性能证据用于验证组件加载策略，不能说成真实图片源站的耗时。
 
 ## 发布
 
-PASS 后使用同 attempt/epoch/buildId/buildReceiptId/previewReceiptId 和 begin 返回的 expectedViewRevision 发布。publish 只确认已准备好；通过 inspect.summary.currentDisplay / nextAction 确认真正展示。保存是用户明确要求后的独立操作。
+正式检查及当前要求的性能证据 PASS 后，使用同 attempt/epoch/buildId/buildReceiptId/previewReceiptId 和 begin 返回的 expectedViewRevision 发布。publish 仅表示发布已接受，不代表已展示。publish 后调用 `apps.authoring.await_display`（最多等待约 20 秒，可重复调用）获取结果。完成表述只引用工具返回的 `completionStatement`；`outcome` 不是 `displayed` 时不说已展示。`awaiting_user_view` 时告知用户打开右侧面板；`display_stalled`、`display_failed` 且 nextAction 为 `reopen_same_build` 时重开同一构建，不重建。保存是用户明确要求后的独立操作。
 
 
 ## 耗时同步与双尺寸验证

@@ -5,7 +5,7 @@ import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import crypto from 'node:crypto';
 import {syncBuiltinESMExports} from 'node:module';
-import {configuration,draft,quote,invocation,fixedAt} from './fixture.mjs';
+import {configuration,draft,quote,invocation,fixedAt,recordedSalesProduct,recordedPackagingDetail,recordedPackaging,recordedPackagingTarget,recordedSettings} from './fixture.mjs';
 const [entryArg,directoryArg,outArg]=process.argv.slice(2);
 if(!entryArg||!directoryArg||!outArg)throw Error('Usage: parity-probe.mjs entry data-dir output.json');
 const entry=resolve(entryArg),directory=resolve(directoryArg),out=resolve(outArg);
@@ -44,15 +44,16 @@ try{
  results.trimmed=pricing.save('trimmed',{...draft(),plans:[{...draft().plans[0],id:' low ',name:'  名称  '}]},0);assert.equal(results.trimmed.plans[0].id,'low');
  const patches=[{priceMinor:13499},{priceMinor:13500},{priceMinor:13501},{action:'listing',pricingMode:'automatic',priceMinor:undefined},{priceMinor:null},{priceMinor:0},{purchaseMinor:-1},{weightGrams:0},{weightGrams:1.5},{purchaseMinor:Number.MAX_SAFE_INTEGER},{pricingMode:'invalid'}];
  results.quotes=patches.map(patch=>({input:quote('bill',patch),result:capture(()=>pricing.quote(quote('bill',patch)))}));
- assert.equal(results.quotes[0].result.value.planId,'low');assert.equal(results.quotes[1].result.value.breakdown.profitMinor,6607);assert.equal(results.quotes[3].result.value.suggestedPriceMinor,20965);
+ const logisticsMinor=Math.round(recordedSalesProduct.declaredWeight.grams*recordedSettings.logisticsMicrosPerGram/10000),purchaseMinor=recordedSalesProduct.profit.purchaseMinor;
+ assert.equal(results.quotes[0].result.value.planId,'low');assert.equal(results.quotes[1].result.value.breakdown.profitMinor,13500-purchaseMinor-logisticsMinor-1800-Math.round(13500*recordedSettings.commissionPpm/1000000));assert.equal(results.quotes[3].result.value.suggestedPriceMinor,Math.ceil((purchaseMinor+logisticsMinor+1800)*1000000/(1000000-recordedSettings.commissionPpm-draft().listingTargetMarginPpm)));
  const overlap=draft(), expensive={...overlap.plans[0],id:'expensive',fixedMinor:2500};delete expensive.maxPriceExclusiveMinor;overlap.plans.push(expensive);
  pricing.save('bill',overlap,1);results.overlap=pricing.quote(quote('bill',{priceMinor:13499}));assert.equal(results.overlap.planId,'expensive');results.savedVersion=pricing.readVersion('bill',1);
  const bounded={...draft(),plans:[{...draft().plans[0],minWeightGrams:100,maxWeightGrams:200,validFrom:fixedAt,validUntil:'2026-10-11T00:00:00Z'}]};delete bounded.plans[0].maxPriceExclusiveMinor;
  pricing.save('bounded',bounded,0);results.boundaries=[99,100,200,201].map(weightGrams=>pricing.quote(quote('bounded',{weightGrams})));results.expiry=pricing.quote(quote('bounded',{at:'2026-10-11T00:00:00Z'}));assert.equal(results.boundaries[1].planId,'low');assert.equal(results.expiry.status,'blocked');
  const packaging=instance.businessSettings.packagingOptions.packagingFor('h');
- results.packagingValid=packaging.saveOverrides([{target:{kind:'sku',itemId:'item',sourceSkuId:'sku'},values:{weightKg:.45,dimensionsCm:{length:25,width:10,height:10}},expectedRevision:0}]);
- results.packagingInvalid=capture(()=>packaging.saveOverrides([{target:{kind:'sku',itemId:'item',sourceSkuId:'sku'},values:{weightKg:-1},expectedRevision:1}]));assert.equal(results.packagingInvalid.ok,false);
- const target={kind:'sku',itemId:'item',sourceSkuId:'sku'};
+ results.packagingValid=packaging.saveOverrides([{target:recordedPackagingTarget,values:recordedPackaging,expectedRevision:0}]);
+ results.packagingInvalid=capture(()=>packaging.saveOverrides([{target:recordedPackagingTarget,values:{weightKg:-1},expectedRevision:1}]));assert.equal(results.packagingInvalid.ok,false);
+ const target=recordedPackagingTarget;
  const packagingCases=[
   ['unknown value',{target,values:{weightKg:1,extra:true}}],
   ['incomplete dimensions',{target,values:{dimensionsCm:{length:1,width:1}}}],
@@ -69,21 +70,22 @@ try{
  for(const row of results.invalidPackaging){assert.equal(row.result.ok,false,row.label);assert.equal(row.result.error.code,'INVALID_PACKAGING');}
  results.packagingConflict=capture(()=>packaging.saveOverrides([{target:{...target,sourceSkuId:'new'},values:{weightKg:1},expectedRevision:0},{target,values:{weightKg:1},expectedRevision:0}]));
  assert.equal(results.packagingConflict.error.code,'PACKAGING_REVISION_CONFLICT');assert.equal(packaging.readRevision({...target,sourceSkuId:'new'}),0,'batch rollback');
- results.packagingResolved=packaging.resolve({members:[{itemId:'item',sourceSkuId:'sku',quantity:2},{itemId:'item',sourceSkuId:'sku',quantity:1}]});
- assert.equal(results.packagingResolved.weightGrams,1350);assert.equal(results.packagingResolved.composition[0].quantity,3);
+ results.packagingResolved=packaging.resolve({members:[{itemId:target.itemId,sourceSkuId:target.sourceSkuId,quantity:2},{itemId:target.itemId,sourceSkuId:target.sourceSkuId,quantity:1}]});
+ assert.equal(results.packagingResolved.weightGrams,Math.round(recordedPackaging.weightKg*1000)*3);assert.equal(results.packagingResolved.composition[0].quantity,3);
  const stored=instance.businessGateway.saveStore({name:'Fixture',currency:'CNY',sourceConnectionId:'h',expectedRevision:0});
  pricing.save(stored.id,draft(),0);
- const port=instance.businessStoreFor('h'),local={storeId:stored.id,offerId:'offer',productId:100,sources:[{sourceSkuMatched:true,sourceUrl:'https://example.invalid/item',sourceSpec:'单件',skuCode:'source',productId:'item'}],weight:{source:'ozon_order_actual',grams:50,revision:'actual-1'},profit:{purchaseMinor:2000,packageGrams:999,actualMinor:20000,costMinor:1,profitMinor:19999,actualMargin:.999}};
- port.put('business_catalog',crypto.createHash('sha256').update(JSON.stringify([stored.id,'offer'])).digest('hex'),local);
+ // Store alias and order-weight precedence are controlled conditions; values come from the real record.
+ const sales=recordedSalesProduct,port=instance.businessStoreFor('h'),local={...structuredClone(sales),storeId:stored.id,productId:Number(sales.productId),weight:{source:'ozon_order_actual',grams:sales.declaredWeight.grams,revision:'recorded-weight-precedence-condition'}};
+ port.put('business_catalog',crypto.createHash('sha256').update(JSON.stringify([stored.id,sales.offerId])).digest('hex'),local);
  const gatewayCalls=[];
- instance.businessGateway.getProducts=async id=>{gatewayCalls.push(['products',id]);return {status:'ok',raw:{response:{items:[{id:100,offer_id:'offer',sku:200,name:'杯子',currency_code:'CNY',statuses:{status_name:'Продается',moderate_status:'approved',is_created:true},stocks:{has_stock:true},visibility_details:{has_price:true}}]}}};};
- instance.businessGateway.request=async(id,input)=>{gatewayCalls.push([input.path,id]);return {status:'ok',raw:{response:input.path==='/v5/product/info/prices'?{result:{items:[{offer_id:'offer',product_id:100,price:{price:'200',marketing_seller_price:'134.99',currency_code:'CNY'}}]}}:{result:[{offer_id:'offer',id:100,weight:30,weight_unit:'g'}]}}};};
+ instance.businessGateway.getProducts=async id=>{gatewayCalls.push(['products',id]);return {status:'ok',raw:{response:{items:[{id:Number(sales.productId),offer_id:sales.offerId,sku:Number(sales.sku),name:sales.title,currency_code:sales.currency,statuses:{status_name:sales.platformStatus,moderate_status:'approved',is_created:true},stocks:{has_stock:sales.stock>0},visibility_details:{has_price:true}}]}}};};
+ instance.businessGateway.request=async(id,input)=>{gatewayCalls.push([input.path,id]);return {status:'ok',raw:{response:input.path==='/v5/product/info/prices'?{result:{items:[{offer_id:sales.offerId,product_id:Number(sales.productId),price:{price:String(sales.pricing.ordinaryMinor/100),marketing_seller_price:String(sales.pricing.sellerMinor/100),currency_code:sales.currency}}]}}:{result:[{offer_id:sales.offerId,id:Number(sales.productId),weight:sales.declaredWeight.grams,weight_unit:'g'}]}}};};
  results.profit=await instance.runtime.invoke(invocation('profit','hallmark.profit.compute',{storeId:stored.id}));assert.equal(results.profit.status,'ok',JSON.stringify(results.profit));
- assert.equal(results.profit.data.products[0].profit.actualMinor,13499);assert.equal(results.profit.data.products[0].profit.pricingQuote.planId,'low');assert.equal(results.profit.data.products[0].profit.packageGrams,50);
+ assert.equal(results.profit.data.products[0].profit.actualMinor,sales.pricing.sellerMinor);assert.equal(results.profit.data.products[0].profit.pricingQuote.planId,'low');assert.equal(results.profit.data.products[0].profit.packageGrams,sales.declaredWeight.grams);
  results.gatewayCalls=gatewayCalls;
  results.notes=[];
  for(const [id,cap,input,extra] of [
-  ['create','create',{id:'note',title:'包装回归',content:'isolated fixture'},{idempotencyKey:'create'}],
+  ['create','create',{id:'note',title:recordedPackagingDetail.title,content:recordedPackagingDetail.sourceUrl},{idempotencyKey:'create'}],
   ['read','get',{id:'note'},{}],['list','list',{limit:1},{}],['invalid','list',{limit:0},{}],
   ['update','update',{id:'note',title:'updated'},{idempotencyKey:'update',expectedResourceRevision:'1'}],
   ['stale','update',{id:'note',title:'stale'},{idempotencyKey:'stale',expectedResourceRevision:'1'}],

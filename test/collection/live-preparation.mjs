@@ -1,35 +1,42 @@
-// Read-only development preparation; formal Agent acceptance is recorded after installation.
-import { mkdir, writeFile } from 'node:fs/promises';
-import { resolve, join } from 'node:path';
-import { CollectionService } from '../../packages/collection/src/index.ts';
-const base = 'http://127.0.0.1:4280';
-const output = resolve('artifacts/collection-listing-20261010');
-const entries = new Map();
-const counts = { detail: 0, raw: 0, imageRequests: 0 };
-async function get(path) { const response = await fetch(`${base}${path}`); if (!response.ok) throw new Error(`HTTP ${response.status}`); return { status: 'ok', raw: await response.json() }; }
-const service = new CollectionService({ sourceId: 'bill-source-board', cacheDir: join(output, 'source-images'), store: { get: (c, id) => entries.get(`${c}/${id}`), put: (c, id, value) => (entries.set(`${c}/${id}`, value), value) }, client: {
-  searchCollectedItems: () => get('/api/items'),
-  getCollectedItemDetail: id => { counts.detail++; return get(`/api/items/${encodeURIComponent(id)}`); },
-  getCollectedItem: id => { counts.raw++; return get(`/api/items/${encodeURIComponent(id)}/raw?full=1`); },
-} });
-const ids = ['bf389170-bc70-4db3-9847-05d9ea2957d5', '55e1c06a-b01c-45df-80a3-2df0e574d0ca'];
-const products = [], summary = [];
-for (const id of ids) {
-  const product = await service.getProduct(id); products.push(product);
-  const skuRows = [];
-  for (const sku of product.skus) {
-    const image = sku.imageRef ? await service.resourceRead({ id, kind: 'image', assetId: sku.imageRef }) : null;
-    if (image) counts.imageRequests++;
-    skuRows.push({ id: sku.id, spec: sku.spec, attributes: sku.attributes, purchaseCost: sku.purchaseCost, package: sku.package, image });
-  }
-  const mainImages = [];
-  for (const asset of product.assets.filter(a => a.roles.includes('main')).slice(0, 2)) {
-    mainImages.push(await service.resourceRead({ id, kind: 'image', assetId: asset.id })); counts.imageRequests++;
-  }
-  summary.push({ id, title: product.title, source: product.source, revision: product.revision, package: product.package, skus: skuRows, mainImages });
+// Read-only preparation over all 41 real source samples, without listing/platform writes.
+import assert from 'node:assert/strict';
+import { createLiveContext, materializeSource, pages, snapshotComparison } from './live-benchmark.mjs';
+
+const ctx = await createLiveContext('preparation'), { service, check, result } = ctx;
+result.products = [];
+result.counts.imageRequests = 0;
+await check('exact41_current_index', async () => {
+  result.searchPages = await pages(cursor => service.search({ cursor, refresh: !cursor, limit: 7 }));
+  assert.deepEqual(new Set(result.searchPages.flatMap(page => page.items.map(row => row.id))), new Set(ctx.ids));
+});
+for (const record of ctx.corpus.records) {
+  const id = record.detail.id;
+  const product = await check('fresh_real_product_preparation', () => service.getProduct(id, { refresh: true }), id);
+  if (!product) continue;
+  const detail = await service.getLegacyDetail(id), imageResults = new Map(), imageAssets = [];
+  // Every distinct SKU image and two main images are real remote resources from this product.
+  const assetIds = new Set([...product.skus.map(sku => sku.imageRef).filter(Boolean), ...product.assets.filter(asset => asset.roles.includes('main')).slice(0, 2).map(asset => asset.id)]);
+  let nextImage = 0;
+  const queue = [...assetIds];
+  await Promise.all(Array.from({ length: Math.min(4, queue.length) }, async () => {
+    while (nextImage < queue.length) {
+      const assetId = queue[nextImage++];
+      result.counts.imageRequests++;
+      const image = await check(`real_image_download:${assetId}`, () => service.resourceRead({ id, kind: 'image', assetId, revision: product.revision }), id);
+      imageResults.set(assetId, image ?? null);
+      imageAssets.push({ assetId, sourceUrl: product.assets.find(asset => asset.id === assetId).url, status: image ? 'captured' : 'failed', image: image ?? null });
+    }
+  }));
+  await check('full_real_source_original_preparation', async () => {
+    const originalPages = [], original = await materializeSource(service, id, '/source', originalPages), raw = ctx.current.get(`${id}/raw`);
+    assert.notEqual(raw.truncated, true, 'Provider original must be complete');
+    assert.deepEqual(original, typeof raw.content === 'string' ? JSON.parse(raw.content) : raw);
+    const descriptionPages = await pages(cursor => service.resourceRead({ id, kind: 'description', cursor, revision: product.revision, limit: 53 }));
+    assert.equal(descriptionPages.map(page => page.text).join(''), product.description);
+    const imagePages = await pages(cursor => service.resourceRead({ id, kind: 'images', cursor, revision: product.revision, limit: 7 }));
+    assert.deepEqual(imagePages.flatMap(page => page.items), product.assets);
+    result.products.push({ product, sampling: record.sampling, skus: product.skus.map(sku => ({ ...sku, image: sku.imageRef ? imageResults.get(sku.imageRef) : null })), imageAssets, originalPages, descriptionPages, imagePages, comparison: snapshotComparison(record, detail, raw) });
+  }, id);
+  if (result.products.length % 10 === 0) console.log(`Prepared ${result.products.length}/41 current real products`);
 }
-await mkdir(output, { recursive: true });
-const metadata = { purpose: 'development_preparation_not_formal_agent_acceptance', capturedAt: new Date().toISOString(), provider: 'current_collection_via_new_CollectionService', counts };
-await writeFile(join(output, 'source-products.json'), JSON.stringify({ ...metadata, products }, null, 2));
-await writeFile(join(output, 'source-prep-summary.json'), JSON.stringify({ ...metadata, products: summary }, null, 2));
-console.log(JSON.stringify({ output, ...metadata, products: summary.map(p => ({ id: p.id, skuCount: p.skus.length, skuImages: p.skus.filter(s => s.image).length, mainImages: p.mainImages.length })) }, null, 2));
+await ctx.save({ purpose: 'real_source_readonly_preparation_not_formal_listing_acceptance', imagePolicy: 'Original marketplace images only; download failures are preserved without substitute pixels.' });

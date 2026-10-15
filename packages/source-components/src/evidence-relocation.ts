@@ -1,6 +1,6 @@
-import {createHash} from 'node:crypto';
-import {existsSync,lstatSync,readFileSync,realpathSync} from 'node:fs';
+import {existsSync,lstatSync,realpathSync} from 'node:fs';
 import {dirname,isAbsolute,relative,resolve,sep} from 'node:path';
+import {FileVerificationCache,regularFilePathIdentity} from './file-verification-cache.ts';
 
 interface FileFact {originalPath:string;path?:string;bytes:number;sha256:string;rootId?:string}
 interface RootFact {rootId:string;originalPath:string;backupPrefix:string;restorePrefix:string;directories:string[]}
@@ -11,8 +11,7 @@ interface Relocation {
   appId:string;connectionId:string;namespace:string;backupId:string;kind:'file'|'directory';
   originalPath:string;relocatedPath:string;manifestPath:string;manifestSha256:string;bytes?:number;sha256?:string;
 }
-export interface EvidencePathResolverOptions {root:string;store:{list<T>(table:string):T[]}}
-const hash=(bytes:Buffer)=>createHash('sha256').update(bytes).digest('hex');
+export interface EvidencePathResolverOptions {root:string;store:{list<T>(table:string):T[];query?<T>(table:string,filters:Record<string,string>):T[]}}
 const hex=/^[a-f0-9]{64}$/;
 function inside(root:string,path:string):boolean {const rel=relative(resolve(root),resolve(path));return rel===''||!isAbsolute(rel)&&rel!=='..'&&!rel.startsWith('..'+sep);}
 function noTraversal(path:string):void {if(path.split(/[\\/]/).includes('..'))throw new Error('EVIDENCE_RELOCATION_TRAVERSAL');}
@@ -32,7 +31,9 @@ export class EvidencePathResolver {
   readonly root:string;
   private store:EvidencePathResolverOptions['store'];
   private indexes=new WeakMap<Manifest,ManifestIndex>();
-  private scope?:{rows?:Relocation[]};
+  private fileChecks=new FileVerificationCache();
+  private manifests=new Map<string,{identity:string;value:Manifest}>();
+  private scope?:{rows?:Relocation[];candidates?:Relocation[]};
   /** Reuse the relocation index only within one synchronous evidence batch. */
   withScope(work:()=>void):void {
     const previous=this.scope;this.scope=previous??{};
@@ -46,7 +47,10 @@ export class EvidencePathResolver {
     namedAbsolute(row.manifestPath);noSymlink(row.manifestPath);
     if(!inside(this.root,row.manifestPath)||!existsSync(row.manifestPath)||!lstatSync(row.manifestPath).isFile()||!inside(this.root,realpathSync(row.manifestPath))||!hex.test(row.manifestSha256))throw new Error('EVIDENCE_RELOCATION_MANIFEST_INVALID');
     const cacheKey=row.manifestPath+'\0'+row.manifestSha256;let manifest=cache.get(cacheKey);if(manifest)return manifest;
-    const bytes=readFileSync(row.manifestPath);if(hash(bytes)!==row.manifestSha256)throw new Error('EVIDENCE_RELOCATION_MANIFEST_HASH_MISMATCH');
+    const identity=regularFilePathIdentity(row.manifestPath),memo=this.manifests.get(cacheKey);
+    if(memo?.identity===identity){this.manifests.delete(cacheKey);this.manifests.set(cacheKey,memo);cache.set(cacheKey,memo.value);return memo.value;}
+    this.manifests.delete(cacheKey);
+    let bytes:Buffer;try{bytes=this.fileChecks.read(row.manifestPath,row.manifestSha256,lstatSync(row.manifestPath).size);}catch{throw new Error('EVIDENCE_RELOCATION_MANIFEST_HASH_MISMATCH');}
     manifest=JSON.parse(bytes.toString('utf8')) as Manifest;
     if(manifest.formatVersion!==1||manifest.schemaVersion!==4||!Array.isArray(manifest.files)||!Array.isArray(manifest.roots)||!Array.isArray(manifest.references))throw new Error('EVIDENCE_RELOCATION_MANIFEST_INVALID');
     const identities=new Set<string>();for(const root of manifest.roots){
@@ -57,7 +61,9 @@ export class EvidencePathResolver {
     const index:ManifestIndex={files:new Map(),aliases:new Map(),directories:new Map(manifest.roots.map(root=>[root.rootId,new Set(root.directories)]))};
     for(const file of manifest.files){namedAbsolute(file.originalPath);relativeAssetPath(file.path!);if(index.files.has(pathIdentity(file.originalPath)))throw new Error('EVIDENCE_RELOCATION_MANIFEST_INVALID');index.files.set(pathIdentity(file.originalPath),file);}
     for(const alias of manifest.references){if(!['file','directory'].includes(alias.kind)||!alias.resolvedPath)continue;namedAbsolute(alias.originalPath);namedAbsolute(alias.resolvedPath);const identity=alias.kind+'\0'+pathIdentity(alias.originalPath),list=index.aliases.get(identity)??[];list.push(alias);index.aliases.set(identity,list);}
-    this.indexes.set(manifest,index);cache.set(cacheKey,manifest);return manifest;
+    this.indexes.set(manifest,index);cache.set(cacheKey,manifest);
+    if(bytes.length<=2*1024*1024&&regularFilePathIdentity(row.manifestPath)===identity){while(this.manifests.size>=32)this.manifests.delete(this.manifests.keys().next().value!);this.manifests.set(cacheKey,{identity,value:manifest});}
+    return manifest;
   }
   private validate(row:Relocation,manifest:Manifest):Relocation {
     if(row.appId!=='apps'||row.connectionId!=='presentation'||row.backupId!==manifest.backupId||!['file','directory'].includes(row.kind))throw new Error('EVIDENCE_RELOCATION_INVALID');
@@ -79,9 +85,15 @@ export class EvidencePathResolver {
     }
     return {...row,originalPath:resolve(row.originalPath),relocatedPath:target};
   }
-  private rows():Relocation[] {
+  private candidates():Relocation[] {
+    if(this.scope?.candidates)return this.scope.candidates;
+    const values=this.store.query?this.store.query<unknown>('provider_records',{namespace:'evidence_relocations'}):this.store.list<unknown>('provider_records');
+    const rows=values.filter(value=>value&&typeof value==='object'&&(value as {namespace?:string}).namespace==='evidence_relocations') as Relocation[];
+    if(this.scope)this.scope.candidates=rows;return rows;
+  }
+  private rows(candidates=this.candidates()):Relocation[] {
     const cache=new Map<string,Manifest>(),rows:Relocation[]=[];
-    for(const value of this.store.list<unknown>('provider_records')){
+    for(const value of candidates){
       if(!value||typeof value!=='object'||(value as {namespace?:string}).namespace!=='evidence_relocations')continue;
       const row=value as Relocation;namedAbsolute(row.manifestPath);
       // A previous restore generation may have its anchor in an old Runtime. It cannot authorize this root.
@@ -98,12 +110,17 @@ export class EvidencePathResolver {
   }
   resolve(path:string):string {
     if(typeof path!=='string'||!path)throw new Error('EVIDENCE_RELOCATION_PATH_INVALID');noTraversal(path);
-    const absolute=resolve(path),rows=this.scope?(this.scope.rows??=this.rows()):this.rows(),exact=rows.find(row=>row.kind==='file'&&samePath(row.originalPath,absolute));
+    const absolute=resolve(path);
+    // A direct file does not rely on any restore manifest. Still inspect all mapping identities
+    // before taking this path; an applicable mapping must pass the full validation below.
+    const candidates=this.candidates();
+    if(candidates.every(row=>typeof row.originalPath==='string'&&isAbsolute(row.originalPath)&&!row.originalPath.split(/[\\/]/).includes('..')&&!(samePath(row.originalPath,absolute)||row.kind==='directory'&&inside(row.originalPath,absolute)))){noSymlink(absolute);return absolute;}
+    const rows=this.scope?(this.scope.rows??=this.rows(candidates)):this.rows(candidates),exact=rows.find(row=>row.kind==='file'&&samePath(row.originalPath,absolute));
     const directory=rows.filter(row=>row.kind==='directory'&&inside(row.originalPath,absolute)).sort((a,b)=>b.originalPath.length-a.originalPath.length)[0];
     if(!exact&&!directory){noSymlink(absolute);return absolute;}
     const target=exact?.relocatedPath??resolve(directory!.relocatedPath,relative(directory!.originalPath,absolute));
     noSymlink(target);if(!inside(this.root,target)||existsSync(target)&&!inside(this.root,realpathSync(target)))throw new Error('EVIDENCE_RELOCATION_TARGET_INVALID');
-    if(exact){if(!existsSync(target)||!lstatSync(target).isFile())throw new Error('EVIDENCE_RELOCATION_FILE_MISSING');const bytes=readFileSync(target);if(bytes.length!==exact.bytes||hash(bytes)!==exact.sha256)throw new Error('EVIDENCE_RELOCATION_FILE_HASH_MISMATCH');}
+    if(exact){if(!existsSync(target)||!lstatSync(target).isFile())throw new Error('EVIDENCE_RELOCATION_FILE_MISSING');try{this.fileChecks.verify(target,exact.sha256!,exact.bytes!);}catch{throw new Error('EVIDENCE_RELOCATION_FILE_HASH_MISMATCH');}}
     else if(samePath(directory!.originalPath,absolute)&&(!existsSync(target)||!lstatSync(target).isDirectory()))throw new Error('EVIDENCE_RELOCATION_DIRECTORY_MISSING');
     return target;
   }

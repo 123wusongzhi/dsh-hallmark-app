@@ -1,6 +1,7 @@
 import {checkpoint,previewFingerprint,inspectAttempt,newAttemptRequired} from './authoring-resume.mjs';
 import {recordEvidence,writeSummary,previewSummary} from './authoring-output.mjs';
 import {previewImages} from './preview-images.mjs';
+import {previewPerformance} from './preview-performance.mjs';
 import {previewData} from './preview-data.mjs';
 import {spawn} from 'node:child_process';
 import {existsSync,mkdirSync,readFileSync,writeFileSync} from 'node:fs';
@@ -38,7 +39,7 @@ export async function runAuthoringPreview(input){
   if(input.autoRecord){
    stage='record_preview';const receipt=await recordEvidence(input,'preview',result.reportRef);summary.previewReceiptId=receipt.receiptId;checkpoint(input,'preview',{requestKey,pendingRegistration:false,result});
   }
-  summary.stage=draft?'draft':'complete';summary.nextAction=draft?'run_formal_preview':result.report.verdict==='PASS'?'inspect_or_publish':'inspect_preview_report';
+  summary.stage=draft?'draft':'complete';summary.nextAction=draft?'run_formal_preview':result.report.verdict==='PASS'?'inspect_or_publish':result.report.performance.verdict!=='PASS'?'repair_performance_then_recheck':'inspect_preview_report';
   result.summary=summary;result.summaryPath=writeSummary(input,checkpointStage,summary);return result;
  }catch(error){error.summaryPath=writeSummary(input,'preview',{...summary,verdict:'ERROR',stage,nextAction:stage==='record_preview'?'retry_same_request':error.code==='NEW_ATTEMPT_REQUIRED'?'begin_new_attempt':'inspect_evidence',error:{code:error.code??null,message:error.message}});throw error;}
 }
@@ -58,6 +59,11 @@ async function executePreview(input){
  let socket,sequence=0;const pending=new Map(),pageErrors=[],unhandledRejections=[],failedRequests=[],responses=new Map();
  const command=(method,params={})=>new Promise((accept,reject)=>{const id=++sequence,timer=setTimeout(()=>{pending.delete(id);reject(new Error('Preview command timeout: '+method));},10000);pending.set(id,{accept:value=>{clearTimeout(timer);accept(value)},reject:error=>{clearTimeout(timer);reject(error)}});socket.send(JSON.stringify({id,method,params}));});
  const evaluate=async expression=>{const result=await command('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(result.exceptionDetails)throw new Error(result.exceptionDetails.exception?.description??result.exceptionDetails.text);return result.result?.value;};
+ const measured=previewPerformance({command,evaluate});
+ const settleImages=async()=>{
+  let timer;const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(new Error('图片请求持续变化，未在 5 秒内稳定；检查重复请求或不断重建的图片后重新验证。'),{code:'PERFORMANCE_SETTLE_TIMEOUT'})),5000);});
+  try{await Promise.race([(async()=>{while(imageTasks.size)await Promise.all([...imageTasks]);await evaluate("(()=>{const images=[...document.querySelector('iframe').contentDocument.images].filter(img=>!img.complete&&img.getClientRects().length&&img.getBoundingClientRect().top<900);return Promise.race([Promise.all(images.map(img=>new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true});}))),new Promise(resolve=>setTimeout(resolve,1000))]);})()");})(),timeout]);}finally{clearTimeout(timer);}
+ };
  const viewportResults=[];
  let operationBlocked=false;
  const waitForOperations=async(timeoutMs=150000)=>{
@@ -73,22 +79,32 @@ async function executePreview(input){
   let pages;for(let n=0;n<100;n++){try{pages=await fetch(`http://127.0.0.1:${port}/json/list`).then(result=>result.json());if(pages.length)break;}catch{}await pause(100);}
   if(!pages?.length)throw new Error('PREVIEW_BROWSER_UNAVAILABLE');
   socket=new WebSocket(pages.find(page=>page.type==='page').webSocketDebuggerUrl);await new Promise((accept,reject)=>{socket.addEventListener('open',accept,{once:true});socket.addEventListener('error',reject,{once:true});});
-  socket.addEventListener('message',event=>{const item=JSON.parse(event.data),request=pending.get(item.id);if(item.method==='Fetch.requestPaused'){const task=(async()=>{const p=item.params;if(new URL(p.request.url).origin===new URL(preview.url).origin){await command('Fetch.continueRequest',{requestId:p.requestId});return;}const image=images.response(p.request.url);await command('Fetch.fulfillRequest',{requestId:p.requestId,responseCode:200,responseHeaders:[{name:'Content-Type',value:image.contentType}],body:image.body});})();imageTasks.add(task);task.catch(error=>pageErrors.push(error.message)).finally(()=>imageTasks.delete(task));}else if(request){pending.delete(item.id);item.error?request.reject(new Error(item.error.message)):request.accept(item.result);}else if(item.method==='Runtime.exceptionThrown')pageErrors.push(item.params.exceptionDetails.exception?.description??item.params.exceptionDetails.text);else if(item.method==='Network.loadingFailed')failedRequests.push({requestId:item.params.requestId,error:item.params.errorText,url:responses.get(item.params.requestId)??null});else if(item.method==='Network.requestWillBeSent')responses.set(item.params.requestId,item.params.request.url);else if(item.method==='Network.responseReceived'&&item.params.response.status>=400)failedRequests.push({url:item.params.response.url,status:item.params.response.status});});
+  socket.addEventListener('message',event=>{const item=JSON.parse(event.data),request=pending.get(item.id);measured.network(item);if(item.method==='Fetch.requestPaused'){const task=(async()=>{const p=item.params;await measured.imageRequest(p);await pause(measured.imageDelayMs);if(new URL(p.request.url).origin===new URL(preview.url).origin){await command('Fetch.continueRequest',{requestId:p.requestId});return;}const image=images.response(p.request.url);await command('Fetch.fulfillRequest',{requestId:p.requestId,responseCode:200,responseHeaders:[{name:'Content-Type',value:image.contentType}],body:image.body});})();imageTasks.add(task);task.catch(error=>pageErrors.push(error.message)).finally(()=>imageTasks.delete(task));}else if(request){pending.delete(item.id);item.error?request.reject(new Error(item.error.message)):request.accept(item.result);}else if(item.method==='Runtime.exceptionThrown')pageErrors.push(item.params.exceptionDetails.exception?.description??item.params.exceptionDetails.text);else if(item.method==='Network.loadingFailed')failedRequests.push({requestId:item.params.requestId,error:item.params.errorText,url:responses.get(item.params.requestId)??null});else if(item.method==='Network.requestWillBeSent')responses.set(item.params.requestId,item.params.request.url);else if(item.method==='Network.responseReceived'&&item.params.response.status>=400)failedRequests.push({url:item.params.response.url,status:item.params.response.status});});
   await command('Page.enable');await command('Runtime.enable');await command('Network.enable');await command('Fetch.enable',{patterns:[{urlPattern:'http*',resourceType:'Image',requestStage:'Request'}]});timings.browserReadyMs=Math.round(performance.now()-timingStart);
+  await measured.install();
   await command('Page.addScriptToEvaluateOnNewDocument',{source:"window.__authoringUnhandled=[];window.addEventListener('unhandledrejection',event=>window.__authoringUnhandled.push(String(event.reason)));"});
   for(const width of input.validationProfile==='draft'?[input.draftViewport??420]:[420,1040]){
    const viewportStart=performance.now(),eventStart=preview.events.length;
    pageErrors.length=0;failedRequests.length=0;
+   measured.startViewport(width);
    await command('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:false});await command('Page.navigate',{url:preview.url});
-   for(let n=0;n<100;n++){if(await evaluate("Boolean(window.__APPS_PREVIEW?.bridgeReady&&window.__APPS_PREVIEW?.dataRead&&document.querySelector('iframe')?.contentDocument?.body?.innerText.trim())"))break;await pause(100);}
+   let previousBody,ready=false;
+   for(let n=0;n<100;n++){
+    const observed=await evaluate("(()=>{const d=document.querySelector('iframe')?.contentDocument;if(!window.__APPS_PREVIEW?.bridgeReady||!window.__APPS_PREVIEW?.dataRead||!d?.body?.innerText.trim())return null;const marker=d.querySelector('[data-ready]');return {body:d.body.innerText,ready:marker?['true','ready'].includes(marker.getAttribute('data-ready')):null};})()");
+    if(observed&&(observed.ready===true||observed.ready===null&&observed.body===previousBody)){ready=true;break;}
+    previousBody=observed?.body;await pause(100);
+   }
    const assertions=[],assert=(id,required,expected,actual,pass)=>assertions.push({id,required,expected,actual:actual===undefined?null:String(actual),status:pass?'PASS':'FAIL',evidenceRefs:[]});
    const state=await evaluate('window.__APPS_PREVIEW??null');assert('bridge.v2',true,'v2 hello and getData for frozen build',state?.identity?.buildId,Boolean(state?.bridgeReady&&state?.dataRead&&state.identity.buildId===build.archiveBuildId));
    const layout=await evaluate("(()=>{const d=document.querySelector('iframe').contentDocument;return {visible:!!d.body&&d.body.getBoundingClientRect().height>0&&d.body.innerText.trim().length>0,overflow:d.documentElement.scrollWidth>"+width+"};})()");
    assert('render.visible',true,'visible rendered content',layout?.visible,layout?.visible===true);assert('layout.viewport',true,'no document horizontal overflow',layout?.overflow,layout?.overflow===false);
+   assert('render.ready',true,'data-ready or stable visible content after bridge data',ready,ready);
    const readyAt=performance.now();
+   await settleImages();await measured.finish({readyMs:Math.round(readyAt-viewportStart)});
    const interactionCaseIds=[],screenshots=[];
    const interactiveControlCount=await evaluate("document.querySelector('iframe').contentDocument.querySelectorAll('button,input:not([type=hidden]),select,textarea,a[href],[role=button],[role=checkbox],[role=switch]').length");
    for(const item of testPlan.cases.filter(item=>!item.viewports||item.viewports.includes(width))){
+    let actionCompleted=false;
     try{
      let actual;
      const fillValue=item.valueFromSelector?await evaluate(`(()=>{const el=document.querySelector('iframe').contentDocument.querySelector(${JSON.stringify(item.valueFromSelector)});if(!el?.textContent?.trim())throw Error('Search sample target missing');return el.textContent.trim()})()`):item.value;
@@ -97,6 +113,7 @@ async function executePreview(input){
       await evaluate(`(()=>{const el=document.querySelector('iframe').contentDocument.querySelector(${selector});if(!el||el.matches(':disabled')||el.closest('[inert]'))throw Error('Unavailable interaction target');el.scrollIntoView({block:'center',inline:'center',behavior:'instant'});return true})()`);
       await pause(50);
       const point=await evaluate(`(()=>{const f=document.querySelector('iframe'),d=f.contentDocument,el=d.querySelector(${selector}),r=el.getBoundingClientRect(),p=f.getBoundingClientRect();const left=Math.max(0,r.left),right=Math.min(d.documentElement.clientWidth,r.right),top=Math.max(0,r.top),bottom=Math.min(d.documentElement.clientHeight,r.bottom);if(right<=left||bottom<=top)throw Error('Interaction target is not visible');const x=(left+right)/2,y=(top+bottom)/2,hit=d.elementFromPoint(x,y);if(!hit||!(hit===el||el.contains(hit)))throw Error('Interaction target is covered by '+(hit?.tagName??'nothing')+'.'+(hit?.className??''));const outerX=p.left+f.clientLeft+x,outerY=p.top+f.clientTop+y;if(document.elementFromPoint(outerX,outerY)!==f)throw Error('Component iframe is covered');return {x:outerX,y:outerY}})()`);
+      await measured.startInteraction(item.id);
       await command('Input.dispatchMouseEvent',{type:'mouseMoved',...point});
       await command('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1});
       await command('Input.dispatchMouseEvent',{type:'mouseReleased',...point,button:'left',clickCount:1});
@@ -109,6 +126,7 @@ async function executePreview(input){
        if(fillValue)await command('Input.insertText',{text:fillValue});
       }
       interactionCaseIds.push(item.id);
+      actionCompleted=true;
      }
      await pause(50);
      const target=JSON.stringify(item.checkSelector??item.selector);
@@ -120,6 +138,7 @@ async function executePreview(input){
      await pause(50);
      }while(Date.now()<checkDeadline);
      const pass=item.check==='contains'?String(actual).includes(String(item.expected)):actual===item.expected;
+     if(actionCompleted){await settleImages();await measured.finish({interaction:true});actionCompleted=false;}
      let shot;
      if(item.screenshot){
       if(item.screenshot.selector)await evaluate(`(()=>{const el=document.querySelector('iframe').contentDocument.querySelector(${JSON.stringify(item.screenshot.selector)});if(!el)throw Error('Screenshot target missing');el.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});})()`);
@@ -128,10 +147,12 @@ async function executePreview(input){
      }
      assert(item.id,item.required!==false,JSON.stringify(item.expected),actual,pass);if(shot)assertions[assertions.length-1].evidenceRefs=[shot];
     }catch(error){assert(item.id,item.required!==false,JSON.stringify(item.expected),error.message,false);if(operationBlocked)break;}
+    finally{if(actionCompleted){await settleImages();await measured.finish({interaction:true});}else measured.cancelInteraction();}
    }
    const rejections=await evaluate("[...(window.__authoringUnhandled??[]),...(document.querySelector('iframe').contentWindow.__authoringUnhandled??[])]");unhandledRejections.push(...rejections);
    const interactionsAt=performance.now();
    const capture=await command('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});const path=join(runDirectory,`viewport-${width}.png`);writeFileSync(path,Buffer.from(capture.data,'base64'));const screenshot=evidenceFile(path);for(const item of assertions)if(!item.evidenceRefs.length)item.evidenceRefs=[screenshot];
+   await settleImages();await measured.finishViewport();
    timings[width]={readyMs:Math.round(readyAt-viewportStart),interactionMs:Math.round(interactionsAt-readyAt),screenshotMs:Math.round(performance.now()-interactionsAt)};
    const bindingSnapshots=await evaluate("window.__APPS_PREVIEW.events.flatMap(event=>{if(event.response?.error)return [];const result=event.response?.result,transfer=result?.kind==='dsh.data-transfer.v1'&&event.request.feature==='dataTransferV1'&&event.request.action==='prepare';return (result?.bindings??(transfer?result.metadata?.bindings:[])??[]).map(binding=>({method:transfer?event.request.params.method:event.request.method??event.request.feature,bindingId:binding.bindingId,revision:binding.revision,sourceDataTime:binding.sourceDataTime,lastSuccessAt:binding.lastSuccessAt}));})");
    const missingMethods=(input.requiredMethods??[]).filter(method=>!preview.events.slice(eventStart).some(event=>event.method===method&&!event.error));
@@ -144,10 +165,11 @@ async function executePreview(input){
    const bridgeFailures=preview.events.filter(event=>event.error&&['readBindingPage','invokeCapability','refresh','attachSelection'].includes(event.method));
   for(const [index,event] of bridgeFailures.entries())assertionResults.push({id:`bridge:error:${index}`,required:true,expected:'Successful bridge operation',actual:`${event.method}: ${event.error}`,status:event.error==='PREVIEW_CAPABILITY_UNAVAILABLE'||event.error==='UNSUPPORTED_HOST_CAPABILITY'?'BLOCKED':'FAIL',evidenceRefs:[]});
   const incomplete=operationBlocked||testPlan.errors.length||assertionResults.some(item=>item.status==='NOT_RUN')||assertionResults.some(item=>item.status==='BLOCKED')||testPlan.mode==='noninteractive'&&viewportResults.some(view=>view.interactiveControlCount>0);
-  const verdict=input.validationProfile==='draft'||incomplete?'INCOMPLETE':viewportResults.some(view=>view.pageErrors.length||view.unhandledRejections.length||view.failedRequests.length||!view.bridgeReady)||assertionResults.some(item=>item.required&&item.status!=='PASS')?'FAIL':'PASS';
-  const report={schemaVersion:1,attemptId:input.attemptId,epoch:input.epoch,buildReceiptId:input.buildReceiptId,buildId:build.archiveBuildId,protocol:'dsh.apps.component.v2',mode:input.mode,runnerVersion:'dsh-authoring-preview/1',startedAt,finishedAt:new Date().toISOString(),viewportResults,assertionResults,testPlan,verdict,...(input.validationProfile==='draft'?{validationProfile:'draft',draftViewport:input.draftViewport??420}: {})};
+  const performanceResult=measured.result();
+  const verdict=input.validationProfile==='draft'||incomplete||performanceResult.verdict==='INCOMPLETE'?'INCOMPLETE':performanceResult.verdict==='FAIL'||viewportResults.some(view=>view.pageErrors.length||view.unhandledRejections.length||view.failedRequests.length||!view.bridgeReady)||assertionResults.some(item=>item.required&&item.status!=='PASS')?'FAIL':'PASS';
+  const report={schemaVersion:1,attemptId:input.attemptId,epoch:input.epoch,buildReceiptId:input.buildReceiptId,buildId:build.archiveBuildId,protocol:'dsh.apps.component.v2',mode:input.mode,runnerVersion:'dsh-authoring-preview/2',startedAt,finishedAt:new Date().toISOString(),viewportResults,assertionResults,testPlan,performance:performanceResult,verdict,...(input.validationProfile==='draft'?{validationProfile:'draft',draftViewport:input.draftViewport??420}: {})};
   await images.finish();await Promise.all([...imageTasks]);timings.totalMs=Math.round(performance.now()-timingStart);
-  const diagnostics={imageMode:'preview-cache-and-placeholder',note:'Screenshots do not measure live image loading. Sample downloads are bounded to six URLs and five seconds total.',timings,images:images.records};
+  const diagnostics={imageMode:'controlled-images-v1',note:'Cold browser cache; HTTP images are delayed at least 120 ms. Remote images use preview cache/placeholder; local assets retain original responses. Metrics measure component scheduling, not live CDN speed. Sample downloads are bounded to six URLs and five seconds total.',timings,images:images.records};
   const diagnosticsPath=join(runDirectory,'diagnostics.json');writeFileSync(diagnosticsPath,JSON.stringify(diagnostics,null,2));
   return {report,reportRef:runner.writeReport('preview',report),diagnosticsPath,diagnostics};
  }finally{socket?.close();child.kill();if(child.exitCode===null)await new Promise(accept=>{const timer=setTimeout(accept,2000);child.once('close',()=>{clearTimeout(timer);accept();});});for(const item of pending.values())item.reject(new Error('Preview closed'));pending.clear();await preview.close();}

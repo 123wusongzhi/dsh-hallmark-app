@@ -6,6 +6,7 @@ import { readOverview, type OverviewClient } from '../../packages/service/src/ov
 import { createAppServer } from '../../packages/service/src/server.ts';
 import { AppStore } from '../../packages/store/index.ts';
 import { assertJsonCompatible } from '../../packages/contracts/src/json.ts';
+import {realScenarioProduct,realSourceSummaries,realStores} from '../real-data/corpus.ts';
 
 const readAt = '2026-10-06T05:00:00.000Z', firstAt = '2026-10-05T02:00:00.000Z', secondAt = '2026-10-06T02:00:00.000Z';
 const now = () => new Date(readAt);
@@ -13,11 +14,11 @@ const ok = (raw: unknown) => ({ status: 'ok', raw });
 function fixture(overrides: Partial<OverviewClient> = {}): OverviewClient {
   return {
     health: async () => ok({ service: 'hallmark-board' }),
-    searchCollectedItems: async () => ok([{ id: 'item-a' }, { id: 'item-b' }]),
-    getStores: async () => ok([{ id: 'a', shopName: '店铺 A' }, { id: 'b', shopName: '店铺 B' }]),
+    searchCollectedItems: async () => ok(realSourceSummaries().slice(0,2)),
+    getStores: async () => ok(realStores().map((store,index)=>({...store,id:index?'b':'a',shopName:index?'店铺 B':'店铺 A'}))),
     getStoreProducts: async () => ok({
       stores: [{ id: 'a', storeId: 'a', lastSuccessAt: firstAt }, { id: 'b', lastSuccessAt: secondAt }],
-      products: [{ storeId: 'a', offerId: 'same-offer', status: 'archived' }, { storeId: 'b', offerId: 'same-offer', status: 'on_sale' }],
+      products: [realScenarioProduct({ storeId: 'a', offerId: 'same-offer', status: 'archived' }), realScenarioProduct({ storeId: 'b', offerId: 'same-offer', status: 'on_sale' },1)],
     }),
     ...overrides,
   };
@@ -30,7 +31,7 @@ test('overview uses only the four fixed local GET routes, counts archived invent
     '/api/items': [{ id: 'item-a', raw: marker }, { id: 'item-b', title: marker }],
     '/api/stores': [{ id: 'a', shopName: '店铺 A', apiKey: marker, hasCredential: true }, { id: 'b', shopName: '店铺 B', remark: marker }],
     '/api/store-products': { stores: [{ id: 'a', lastSuccessAt: firstAt, analytics: { raw: marker } }, { id: 'b', lastSuccessAt: secondAt }],
-      products: [{ storeId: 'a', offerId: 'same-offer', status: 'archived', profit: marker }, { storeId: 'b', offerId: 'same-offer', status: 'on_sale' }] },
+      products: [realScenarioProduct({ storeId: 'a', offerId: 'same-offer', status: 'archived', profit: marker }), realScenarioProduct({ storeId: 'b', offerId: 'same-offer', status: 'on_sale' },1)] },
   };
   const client = new HallmarkClient({ baseUrl: 'http://127.0.0.1:4280', fetchImpl: (async (input, init) => {
     const path = new URL(String(input)).pathname;

@@ -7,8 +7,10 @@ import {ReviewBridge} from '../../packages/service/src/review-bridge.ts';
 import {AppsHost,HttpAppsHostTransport,type NativeGatewayTool} from '../../packages/plugin-apps/src/index.ts';
 import type {AppProvider,CapabilityDescriptor,InvocationRequest} from '../../packages/app-contracts/src/index.ts';
 import type {IndependentReviewRequest} from '../../packages/app-contracts/src/business-review.ts';
+import {realDetail} from '../real-data/corpus.ts';
 
-const reviewInput:IndependentReviewRequest={source:{sku:'source-1'},draft:{title:'red cup'},versions:{source:'source-v1',draft:'draft-v1'},questions:[{id:'color',version:'1',instructions:'Compare color',passCriteria:'Matches',failCriteria:'Does not match'}],context:{mode:'independent-review',toolPolicy:'read-only',writeTools:[],reasons:[{id:'color',reasonCode:'decisions_unavailable'}]}};
+const detail=realDetail(6),sku=detail.skus[0];
+const reviewInput:IndependentReviewRequest={source:{itemId:detail.id,sku:sku.sourceSkuId,title:detail.title,spec:sku.spec,attributes:detail.attributes},draft:{title:detail.title},versions:{source:'source-v1',draft:'draft-v1'},questions:[{id:'color',version:'1',instructions:'Compare color',passCriteria:'Matches',failCriteria:'Does not match'}],context:{mode:'independent-review',toolPolicy:'read-only',writeTools:[],reasons:[{id:'color',reasonCode:'decisions_unavailable'}]}};
 const descriptor:CapabilityDescriptor={capabilityId:'hallmark.plan.review',version:'1.0.0',title:'Review fixture',description:'Isolated host review fixture',effect:'compute',inputSchema:{type:'object',additionalProperties:false},outputSchema:{type:'object',properties:{verdict:{type:'string'}},required:['verdict'],additionalProperties:false},execution:{mode:'sync',timeoutMs:3000,concurrency:'declared_safe',lockScope:'connection',idempotency:'not_applicable',completionEvidence:'response'},discovery:{defaultVisible:false,keywords:[]},aliases:[]};
 
 test('native gateway automatically pumps a service review over authenticated HTTP with the real parent',async()=>{

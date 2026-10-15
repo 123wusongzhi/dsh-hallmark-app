@@ -44,3 +44,7 @@ evidence/apps-live-bill-20261007/host-session/dsh-home/
 
 /bundles/apps/authoring-docs/
 /bundles/apps/skills/
+
+# Generated private real-source replay data; regenerate with capture-real-source-corpus.mjs.
+/test/real-data/browser-data.ts
+/test/source-preview/artifacts/

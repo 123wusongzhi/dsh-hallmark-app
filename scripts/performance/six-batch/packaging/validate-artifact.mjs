@@ -2,28 +2,35 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {dirname, join, resolve} from 'node:path';
+import {basename,dirname, join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {cleanEnvironment, extractArtifact, sha256} from './artifact.mjs';
+import {realCorpus,realCorpusPath} from '../../../../test/real-data/corpus.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
-export function prepareRun(root, {provisionDiagnosticZod = false} = {}) {
-  const directory = mkdtempSync(join(tmpdir(), 'runtime-artifact-'));
+export function prepareRun(root, {provisionDiagnosticZod = false,temporaryRoot} = {}) {
+  const temporaryBase=resolve(temporaryRoot??tmpdir());
+  mkdirSync(temporaryBase,{recursive:true});
+  const directory = mkdtempSync(join(temporaryBase, 'runtime-artifact-'));
+  const cleanup=()=>{assert.equal(dirname(resolve(directory)),temporaryBase,'cleanup stays in the explicitly selected temporary root');assert.match(basename(directory),/^runtime-artifact-[A-Za-z0-9]+$/);rmSync(directory,{recursive:true,force:true});};
   try {
     const artifact = extractArtifact(root, join(directory, 'candidate'), {provisionDiagnosticZod});
     const harness = join(directory, 'harness'), home = join(directory, 'home');
     mkdirSync(harness); mkdirSync(home);
     for (const name of ['isolation-preload.mjs', 'parity-probe.mjs', 'fixture.mjs'])
       cpSync(join(here, name), join(harness, name));
+    realCorpus(); // Validate the private response/image/manifest hashes before isolation.
+    cpSync(realCorpusPath,join(harness,'real-data.json'));
     const resourceFile = join(directory, 'resources.json');
     return {directory, artifact, harness, home, resourceFile,
       args: ['--import', pathToFileURL(join(harness, 'isolation-preload.mjs')).href],
       env: cleanEnvironment(home, {PACKAGING_RUN_ROOT: directory, PACKAGING_RESOURCE_FILE: resourceFile}),
-      cleanup: () => rmSync(directory, {recursive: true, force: true})};
-  } catch (error) { rmSync(directory, {recursive: true, force: true}); throw error; }
+      cleanup};
+  } catch (error) { cleanup(); throw error; }
 }
 
 export function validateArtifact(root, output, options = {}) {
+  if(output&&typeof output==='object'){options={...output,...options};output=undefined;}
   const run = prepareRun(root, options);
   try {
     const resultFile = join(run.directory, 'parity.json');

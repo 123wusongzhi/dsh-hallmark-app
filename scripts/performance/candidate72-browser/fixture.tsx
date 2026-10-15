@@ -16,7 +16,7 @@ const CHANNEL='hallmark.source.v1',params=new URLSearchParams(location.search),s
 const records=createRecords(size),networkAttempts:any[]=[];
 function invariant(value:unknown,message:string):asserts value{if(!value)throw Error(`Fixture invariant: ${message}`);}
 const same=(actual:any,expected:any,message:string)=>invariant(JSON.stringify(actual)===JSON.stringify(expected),`${message}\nactual=${JSON.stringify(actual)}\nexpected=${JSON.stringify(expected)}`);
-const metadata=()=>({size,react:React.version,ua:navigator.userAgent,locale:Intl.DateTimeFormat().resolvedOptions(),viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},imageMode:'local data SVG; failure case uses invalid data PNG',clock:performance.timeOrigin});
+const metadata=()=>({size,react:React.version,ua:navigator.userAgent,locale:Intl.DateTimeFormat().resolvedOptions(),viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},imageMode:'authentic captured source pixels; invalid PNG is an explicit byte-decode fault',clock:performance.timeOrigin});
 function installNetworkGuard(){
  const deny=(kind:string,url:unknown)=>{networkAttempts.push({kind,url:String(url),at:performance.now()});throw Error(`Unexpected network operation: ${kind}`);};
  window.fetch=((input:any)=>Promise.reject(deny('fetch',input?.url??input))) as typeof fetch;

@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {execFileSync} from 'node:child_process';
 import {readFileSync,mkdirSync,cpSync,realpathSync,lstatSync,readdirSync,existsSync} from 'node:fs';
-import {join,resolve,dirname,sep} from 'node:path';
+import {join,resolve,dirname,basename,sep} from 'node:path';
 export const sha256=value=>createHash('sha256').update(value).digest('hex');
 export function cleanEnvironment(home,extra={}){return {PATH:process.env.PATH,HOME:home,TMPDIR:home,TZ:'UTC',LANG:'C.UTF-8',...extra};}
 export function extractArtifact(root,directory,{provisionDiagnosticZod=false}={}){
@@ -11,10 +11,14 @@ export function extractArtifact(root,directory,{provisionDiagnosticZod=false}={}
  const evidence=join(root,'evidence',versions.releaseId,'candidates',versions.bundleVersion);
  const build=JSON.parse(readFileSync(join(evidence,'build-manifest.json'),'utf8')),packed=JSON.parse(readFileSync(join(evidence,'package-manifest.json'),'utf8'));
  const archive=resolve(root,packed.archive),bytes=readFileSync(archive);assert.equal(sha256(bytes),packed.sha256,'archive digest');
- const entries=execFileSync('tar',['-tf',archive],{encoding:'utf8'}).trim().split(/\r?\n/);
+ // A drive-letter archive path is interpreted as a remote host by GNU tar.
+ const windowsTar=process.platform==='win32'&&process.env.SystemRoot?join(process.env.SystemRoot,'System32','tar.exe'):undefined;
+ const tar=windowsTar&&existsSync(windowsTar)?windowsTar:'tar';
+ const tarOptions={cwd:dirname(archive),encoding:'utf8'},archiveName=basename(archive);
+ const entries=execFileSync(tar,['-tf',archiveName],tarOptions).trim().split(/\r?\n/);
  assert.ok(entries.length>0&&entries.every(p=>p.startsWith('package/')&&!p.split('/').includes('..')&&!p.includes('\\')),'safe archive names');
- const verbose=execFileSync('tar',['-tvf',archive],{encoding:'utf8'}).trim().split(/\r?\n/);assert.ok(verbose.every(row=>/^[-d]/.test(row)),'archive has only regular files/directories');
- mkdirSync(directory,{recursive:true});execFileSync('tar',['-xf',archive,'-C',directory]);
+ const verbose=execFileSync(tar,['-tvf',archiveName],tarOptions).trim().split(/\r?\n/);assert.ok(verbose.every(row=>/^[-d]/.test(row)),'archive has only regular files/directories');
+ mkdirSync(directory,{recursive:true});execFileSync(tar,['-xf',archiveName,'-C',resolve(directory)],tarOptions);
  const packageRoot=join(directory,'package'),entry=join(packageRoot,'lib/runtime.js');
  assert.equal(sha256(readFileSync(entry)),build.artifacts['lib/runtime.js'],'packed runtime digest');
  assert.ok(!existsSync(join(packageRoot,'node_modules')),'archive contains no dependencies directory');

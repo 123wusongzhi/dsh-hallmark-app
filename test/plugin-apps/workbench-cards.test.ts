@@ -1,3 +1,4 @@
+import {uiFixturePrelude} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdirSync,mkdtempSync,rmSync} from 'node:fs';
@@ -9,7 +10,8 @@ test('workbench cards open separate detail views without eager data reads and re
   const root=resolve('artifacts');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'workbench-cards-')),entry=join(directory,'fixture.mjs');
   try{
     await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
-import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
+import React from 'react';
+${uiFixturePrelude()}import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
 import {WorkbenchBoard,WorkbenchInstanceView} from './packages/plugin-apps/client/workbench-board.tsx';
 import {MaterialThumbnail} from './packages/plugin-apps/client/material-thumbnail.tsx';
 import {createMaterialView} from './packages/app-presentation/src/materials/catalog.ts';
@@ -19,7 +21,7 @@ const source={id:'source',revision:1,title:'商品',appId:'hallmark',connectionI
 const saved={componentId:'saved',revision:2,title:'采集箱 · 渠道商品与 SKU 采购价',hasPreview:true};
 let board={kind:'workbench',appId:'hallmark',workbenchId:'main',revision:2,context:{storeId:'A'},instances:[instance],savedComponents:[saved]},opened,savedOpened,changed,adds=0,myComponents=0;const requests=[];
 const originalFetch=globalThis.fetch;
-globalThis.fetch=async(url,options)=>{const body=options?.body?JSON.parse(options.body):undefined;requests.push(body??String(url));if(!body){const resource=new URL(String(url),'http://fixture').searchParams.get('resource');return Response.json(resource==='stores'?{stores:[{id:'A',name:'Bill'}]}:board);}if(body.operation==='unpinComponent'){assert.equal(body.params.expectedRevision,2);assert.equal(body.params.componentId,'saved');board={...board,revision:3,savedComponents:[]};return Response.json(board);}assert.equal(body.operation,'read');return Response.json({instanceId:'products',view:{viewId:'read',design:instance.design},dataSources:{products:source},pages:{products:{hasMore:false,loadedCount:0}},data:{viewId:'read',bindings:[{bindingId:'products',datasetId:'data',payload:{items:[]},state:'ready',lastSuccessAt:'2026-10-09T00:00:00Z',freshness:'fresh',provenance:[]}]}});};
+globalThis.fetch=async(url,options)=>{const body=options?.body?JSON.parse(options.body):undefined;requests.push(body??String(url));if(!body){const resource=new URL(String(url),'http://fixture').searchParams.get('resource');return Response.json(resource==='stores'?{stores:[uiStore({id:'A'})]}:board);}if(body.operation==='unpinComponent'){assert.equal(body.params.expectedRevision,2);assert.equal(body.params.componentId,'saved');board={...board,revision:3,savedComponents:[]};return Response.json(board);}assert.equal(body.operation,'read');return Response.json({instanceId:'products',view:{viewId:'read',design:instance.design},dataSources:{products:source},pages:{products:{hasMore:false,loadedCount:0}},data:{viewId:'read',bindings:[{bindingId:'products',datasetId:'data',payload:{items:[]},state:'ready',lastSuccessAt:'2026-10-09T00:00:00Z',freshness:'fresh',provenance:[]}]}});};
 const settle=async()=>{for(let i=0;i<5;i++)await new Promise(resolve=>setImmediate(resolve));};
 const text=node=>typeof node==='string'?node:node?.children?.map(text).join('')??'';
 let tree;const props={appId:'hallmark',onAdd:()=>adds++,onOpenSaved:()=>myComponents++,onConfigure:()=>{},onOpenInstance:value=>opened=value,onOpenComponent:value=>savedOpened=value,onChange:value=>changed=value};

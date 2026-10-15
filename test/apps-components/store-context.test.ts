@@ -1,3 +1,4 @@
+import {uiProduct} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
@@ -14,7 +15,7 @@ const definition:DataSourceDraft={id:'shared',title:'Ozon 库存',appId:'shop',c
 const instance=():WorkbenchInstance=>({instanceId:'table',title:'库存',materialId:'data-table',materialVersion:1,design:createMaterialView('data-table') as unknown as JsonValue,dataSources:{main:{id:'shared',revision:1,params:{warehouseId:'warehouse-A',dateFrom:'2026-10-01'}}},position:{order:0,span:2}});
 function fixture(t:{after:(fn:()=>void)=>void}){
  const store=new RuntimeStore(':memory:');t.after(()=>store.close());const calls:InvocationRequest[]=[];
- let execute=async(request:InvocationRequest):Promise<JsonValue>=>({items:[{id:(request.input as {storeId:string}).storeId,name:'真实记录'}]});
+ let execute=async(request:InvocationRequest):Promise<JsonValue>=>({items:[{id:(request.input as {storeId:string}).storeId,name:uiProduct({},8).title}]});
  const runtime={describe:()=>descriptor,getConnection:()=>({enabled:true}),invoke:async(request:InvocationRequest):Promise<CapabilityResult>=>{calls.push(request);return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:await execute(request)};}};
  const presentation=new AppsPresentationService({store,runtime}),sources=new DataSourceLibrary({store,runtime}),board=new WorkbenchLibrary({store,runtime,dataSources:sources,refreshBinding:(...args)=>presentation.refreshBinding(...args)});
  sources.installCatalog([definition]);return {store,calls,sources,board,setExecute:(fn:typeof execute)=>{execute=fn;}};

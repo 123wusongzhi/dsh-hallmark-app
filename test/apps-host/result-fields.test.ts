@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiOzonProduct,uiStore,uiListingPayload,uiFixturePrelude,uiText} from '../real-data/ui-scenarios.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readResultPage} from '../../packages/app-runtime/src/projection.ts';
@@ -12,7 +13,7 @@ test('explicit field projection through registered Host and Runtime preserves ex
 const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store);runtime.register(new NotesProvider({store}));
 runtime.addConnection({appId:'notes',connectionId:'n',displayName:'n',config:{},enabled:true,configRevision:1});
 const agent={id:'owner'};runtime.bind({sessionId:agent.id,appId:'notes',connectionId:'n',enabled:true,boundAt:new Date().toISOString()});
-const rows=Array.from({length:100},(_,i)=>({product_id:10000+i,offer_id:`sku-${i}`,stocks:i%7===0?null:{present:i%11,reserved:i%3},status:i%13===0?'unknown':'ready',description:'Точное описание 商品 '.repeat(160),images:Array.from({length:8},(_,j)=>`https://example.invalid/image/${i}/${j}.jpg`),attributes:[{id:85,values:[{dictionary_value_id:12345,value:'精确品牌'}]}],...(i%9===0?{}:{barcode:`barcode-${i}`})}));
+const rows=Array.from({length:100},(_,i)=>uiOzonProduct({product_id:10000+i,offer_id:`sku-${i}`,stocks:i%7===0?null:{present:i%11,reserved:i%3},status:i%13===0?'unknown':'ready',description:uiProduct({},i%41).title.repeat(160),images:[uiProduct({},i%41).image],attributes:uiListingPayload({},i%41).attributes,...(i%9===0?{}:{barcode:`barcode-${i}`})},i));
 const result:any={status:'ok',invocationId:'synthetic-ozon',traceId:'fixture',data:{response:{result:rows,total:rows.length}}};
 store.put('invocations',result.invocationId,{request:{appId:'notes',connectionId:'n',source:{kind:'agent',sessionId:agent.id}},result});
 const projection=projectModelResult(store,result),ref=projection.fullResultRef!;assert.ok(ref);

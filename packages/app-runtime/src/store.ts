@@ -57,11 +57,17 @@ function assertJSON(value: unknown, seen = new Set<object>()): void {
 }
 const queryFields:Record<string,readonly string[]>={
   views:['ownerSessionId','sourceComponentId'],component_versions:['componentId'],saved_assets:['kind','appId'],
-  provider_records:['namespace','appId','connectionId','value.viewId','value.identity.sessionId','value.identity.viewId','value.candidate.displayId'],
+  provider_records:['namespace','appId','connectionId','scopeId','configRevision','value.viewId','value.clientKey','value.identity.sessionId','value.identity.viewId','value.candidate.displayId'],
   authoring_drafts:['ownerSessionId','viewId'],authoring_attempts:['draftId','epoch'],
   view_publications:['ownerSessionId','viewId','state','committedViewRevision','candidateBuildId'],
   artifact_refs:['ownerKind','ownerId','targetKind','targetId'],
 };
+
+const operationStates=Object.keys(transitions) as OperationState[];
+/** Rows the scope query must always surface so the caller's JSON.parse/JS filter keeps its original behaviour: non-text, invalid JSON, top-level null, or duplicated metadata keys (JSON.parse is last-key-wins, SQLite json_extract first-key-wins). */
+const IRREGULAR_PROVIDER_RECORD="CASE WHEN typeof(value_json)<>'text' OR NOT json_valid(value_json) THEN 1 WHEN json_type(value_json)='null' THEN 1 WHEN json_type(json_remove(value_json,'$.appId'),'$.appId') IS NOT NULL OR json_type(json_remove(value_json,'$.connectionId'),'$.connectionId') IS NOT NULL OR json_type(json_remove(value_json,'$.namespace'),'$.namespace') IS NOT NULL THEN 1 ELSE 0 END";
+
+export const PROVIDER_RECORD_SCOPE_SQL=`SELECT value_json FROM provider_records WHERE id IN (SELECT id FROM provider_records WHERE json_extract(value_json,'$.namespace')=?3 AND json_extract(value_json,'$.connectionId')=?2 AND json_extract(value_json,'$.appId')=?1 UNION SELECT id FROM provider_records WHERE ${IRREGULAR_PROVIDER_RECORD}) ORDER BY created_at,id`;
 
 /** Normal Runtime opens schema 4. The explicit schema-3 mode is only for offline legacy migration. */
 export class RuntimeStore {
@@ -87,7 +93,12 @@ export class RuntimeStore {
         CREATE INDEX IF NOT EXISTS saved_assets_kind_app ON saved_assets(json_extract(value_json,'$.kind'),json_extract(value_json,'$.appId'),created_at,id);
         CREATE INDEX IF NOT EXISTS provider_records_namespace_view ON provider_records(json_extract(value_json,'$.namespace'),json_extract(value_json,'$.value.viewId'),created_at,id) WHERE json_extract(value_json,'$.namespace')='component_displays';
         CREATE INDEX IF NOT EXISTS provider_records_frame_owner ON provider_records(json_extract(value_json,'$.namespace'),json_extract(value_json,'$.value.identity.sessionId'),json_extract(value_json,'$.value.identity.viewId'),created_at,id) WHERE json_extract(value_json,'$.namespace')='frame_grants';
-        CREATE INDEX IF NOT EXISTS provider_records_frame_display ON provider_records(json_extract(value_json,'$.namespace'),json_extract(value_json,'$.value.candidate.displayId'),created_at,id) WHERE json_extract(value_json,'$.namespace')='frame_grants'`);
+        CREATE INDEX IF NOT EXISTS provider_records_frame_display ON provider_records(json_extract(value_json,'$.namespace'),json_extract(value_json,'$.value.candidate.displayId'),created_at,id) WHERE json_extract(value_json,'$.namespace')='frame_grants';
+        CREATE INDEX IF NOT EXISTS provider_records_evidence_relocations ON provider_records(json_extract(value_json,'$.namespace'),created_at,id) WHERE json_extract(value_json,'$.namespace')='evidence_relocations';
+        CREATE INDEX IF NOT EXISTS provider_records_namespace_connection ON provider_records(json_extract(value_json,'$.namespace'),json_extract(value_json,'$.connectionId'),created_at,id);
+        CREATE INDEX IF NOT EXISTS provider_records_irregular ON provider_records(created_at,id) WHERE ${IRREGULAR_PROVIDER_RECORD};
+        CREATE INDEX IF NOT EXISTS provider_records_view_revisions ON provider_records(json_extract(value_json,'$.value.ownerSessionId'),json_extract(value_json,'$.value.viewId'),json_extract(value_json,'$.value.source.buildId'),created_at,id) WHERE json_extract(value_json,'$.namespace')='view_revisions';
+        CREATE INDEX IF NOT EXISTS operations_state ON operations(json_extract(value_json,'$.state'),created_at,id)`);
       if(this.schemaVersion===4)this.db.exec(`CREATE INDEX IF NOT EXISTS authoring_drafts_owner_view ON authoring_drafts(json_extract(value_json,'$.ownerSessionId'),json_extract(value_json,'$.viewId'),created_at,id);
         CREATE INDEX IF NOT EXISTS authoring_attempts_draft_epoch ON authoring_attempts(json_extract(value_json,'$.draftId'),json_extract(value_json,'$.epoch'),created_at,id);
         CREATE INDEX IF NOT EXISTS view_publications_owner_view ON view_publications(json_extract(value_json,'$.ownerSessionId'),json_extract(value_json,'$.viewId'),json_extract(value_json,'$.state'),created_at,id)`);
@@ -110,7 +121,9 @@ export class RuntimeStore {
     const row = this.db.prepare(`SELECT value_json FROM ${this.table(collection)} WHERE id=?`).get(id);
     return row ? JSON.parse(String(row.value_json)) as T : undefined;
   }
-  list<T = Record<string, JsonValue>>(collection: string): T[] {
+  /** With `filters` this is `query()` (indexed, declared fields only); without, a full ordered scan. */
+  list<T = Record<string, JsonValue>>(collection: string, filters?: Record<string,string|number|boolean|null>): T[] {
+    if(filters)return this.query<T>(collection,filters);
     return this.db.prepare(`SELECT value_json FROM ${this.table(collection)} ORDER BY created_at,id`).all().map(row => JSON.parse(String(row.value_json)) as T);
   }
   /** Opaque instance identity + local writes + external SQLite commits, without parsing collection rows. */
@@ -122,12 +135,24 @@ export class RuntimeStore {
   query<T>(collection:string,filters:Record<string,string|number|boolean|null>):T[] {
     const table=this.table(collection),entries=Object.entries(filters),allowed=queryFields[table];
     if(!entries.length||!allowed||entries.some(([field,value])=>!allowed.includes(field)||!(value===null||typeof value==='string'||typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value))))throw new Error('INVALID_RUNTIME_QUERY');
-    const clauses=entries.map(([field,value])=>value===null?`json_type(value_json,'$.${field}')='null'`:`json_extract(value_json,'$.${field}')=?`),values=entries.filter(([,value])=>value!==null).map(([,value])=>typeof value==='boolean'?Number(value):value as string|number);
+    const clauses=entries.map(([field,value])=>value===null?`json_type(value_json,'$.${field}')='null'`:field==='configRevision'?"COALESCE(json_extract(value_json,'$.configRevision'),1)=?":`json_extract(value_json,'$.${field}')=?`),values=entries.filter(([,value])=>value!==null).map(([,value])=>typeof value==='boolean'?Number(value):value as string|number);
     return this.db.prepare(`SELECT value_json FROM ${table} WHERE ${clauses.join(' AND ')} ORDER BY created_at,id`).all(...values).map(row=>JSON.parse(String(row.value_json)) as T);
   }
-  /** Keep error candidates; any matching duplicate key is a candidate, then the caller applies JS last-key-wins filtering. */
+  /** Indexed by namespace+connection; irregular rows (see IRREGULAR_PROVIDER_RECORD) are always candidates, then the caller applies JS last-key-wins filtering. */
   providerRecordScopeCandidates<T>(appId:string,connectionId:string,namespace:string):T[] {
-    return this.db.prepare(`SELECT value_json FROM ${this.table('provider_records')} WHERE CASE WHEN typeof(value_json)<>'text' OR NOT json_valid(value_json) THEN 1 WHEN json_type(value_json)='null' THEN 1 WHEN NOT EXISTS (SELECT 1 FROM json_each(value_json) WHERE key='appId' AND type='text' AND value=?) THEN 0 WHEN NOT EXISTS (SELECT 1 FROM json_each(value_json) WHERE key='connectionId' AND type='text' AND value=?) THEN 0 ELSE EXISTS (SELECT 1 FROM json_each(value_json) WHERE key='namespace' AND type='text' AND value=?) END ORDER BY created_at,id`).all(appId,connectionId,namespace).map(row=>JSON.parse(String(row.value_json)) as T);
+    this.table('provider_records');return this.db.prepare(PROVIDER_RECORD_SCOPE_SQL).all(appId,connectionId,namespace).map(row=>JSON.parse(String(row.value_json)) as T);
+  }
+  /** View snapshots (namespace 'view_revisions') of one session view, optionally pinned to a build; uses provider_records_view_revisions, never scans other records. Same order as list(). */
+  viewRevisionsForBuild<T>(sessionId:string,viewId:string,buildId?:string):T[] {
+    const rows=this.db.prepare(`SELECT json_extract(value_json,'$.value') AS value_json FROM ${this.table('provider_records')} WHERE json_extract(value_json,'$.namespace')='view_revisions' AND json_extract(value_json,'$.value.ownerSessionId')=?1 AND json_extract(value_json,'$.value.viewId')=?2${buildId===undefined?'':" AND json_extract(value_json,'$.value.source.buildId')=?3"} ORDER BY created_at,id`).all(...(buildId===undefined?[sessionId,viewId]:[sessionId,viewId,buildId]));
+    return rows.map(row=>JSON.parse(String(row.value_json)) as T);
+  }
+  /** Operations currently in any of `states`, via operations_state; same order as list(). */
+  operationsInStates<T = RuntimeOperation>(states:readonly OperationState[],filters:{appId?:string;connectionId?:string}={}):T[] {
+    if(!states.length||states.some(state=>!operationStates.includes(state)))throw new Error('INVALID_RUNTIME_QUERY');
+    const extra=Object.entries(filters).filter(([,value])=>value!==undefined) as [string,string][];
+    if(extra.some(([field,value])=>!['appId','connectionId'].includes(field)||typeof value!=='string'))throw new Error('INVALID_RUNTIME_QUERY');
+    return this.db.prepare(`SELECT value_json FROM ${this.table('operations')} WHERE json_extract(value_json,'$.state') IN (${states.map(()=>'?').join(',')})${extra.map(([field])=>` AND json_extract(value_json,'$.${field}')=?`).join('')} ORDER BY created_at,id`).all(...states,...extra.map(([,value])=>value)).map(row=>JSON.parse(String(row.value_json)) as T);
   }
   viewsForSession<T>(sessionId:string):T[] {
     return this.db.prepare(`SELECT value_json FROM ${this.table('views')} WHERE json_extract(value_json,'$.ownerSessionId')=? ORDER BY created_at,id`).all(sessionId).map(row=>JSON.parse(String(row.value_json)) as T);

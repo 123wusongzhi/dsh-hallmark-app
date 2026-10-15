@@ -8,16 +8,16 @@ import { ListingAssetPublisher, LISTING_ASSET_DESCRIPTOR } from '../../packages/
 import {HallmarkProvider} from '../../packages/app-hallmark/src/index.ts';
 
 test('all failed image deliveries retain per-file reasons through the provider',async()=>{
-  const files=[{path:'C:/images/a.png',skuIds:['sku-a'],status:'failed',error:{code:'IMPORT_MISMATCH',message:'内容不一致'}}];
+  const files=[{path:'C:/images/a.png',status:'failed',error:{code:'IMPORT_MISMATCH',message:'内容不一致'}}];
   const publisher={publish:async()=>({status:'failed',successCount:0,failureCount:1,files})};
   const provider=new HallmarkProvider({store:{} as any,client:{} as any,broker:{} as any,assetPublisher:publisher as any});
   const result=await provider.execute({request:{appId:'hallmark',connectionId:'c',capabilityId:'hallmark.listing.assets.publish',capabilityVersion:'1.0.0',input:{files:[{path:'C:/images/a.png'}]},invocationId:'i',traceId:'t',source:{kind:'agent',sessionId:'s'}},operationId:'o',configRevision:1} as any);
-  assert.equal(result.status,'failed');assert.equal((result as any).error.details.files[0].error.code,'IMPORT_MISMATCH');assert.equal((result as any).error.details.files[0].skuIds[0],'sku-a');
+  assert.equal(result.status,'failed');assert.equal((result as any).error.details.files[0].error.code,'IMPORT_MISMATCH');assert.equal((result as any).error.details.files[0].path,'C:/images/a.png');
 });
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
 const hash = (v: Buffer) => createHash('sha256').update(v).digest('hex');
-async function fixture(t: any, options: { publicWrongHash?: boolean; importFailure?: string; mutateOriginal?: boolean; failureMessage?: string; importedHash?: (digest: string) => string; publishFailure?:(assetIds:string[],attempt:number)=>string|undefined } = {}) {
+async function fixture(t: any, options: { publicWrongHash?: boolean; importFailure?: string; mutateOriginal?: boolean; failureMessage?: string; importedHash?: (digest: string) => string; publishFailure?:(assetIds:string[],attempt:number)=>string|undefined; publishHang?: boolean; timeBudgetMs?: number } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'listing-assets-test-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const imports = join(root, 'imports'); await mkdir(imports);
@@ -38,6 +38,7 @@ async function fixture(t: any, options: { publicWrongHash?: boolean; importFailu
       return Response.json({ kind: 'hallmark-image-asset-v1', formatVersion: 1, assetId, contentHash: options.importedHash?.(contentHash) ?? `sha256:${contentHash}`, mediaType: 'image/png', byteLength: bytes.length, width: 1, height: 1 });
     }
     if (url.pathname === '/api/images/publish') {
+      if (options.publishHang) await new Promise((_, reject) => { const signal = init!.signal!; if (signal.aborted) reject(signal.reason); signal.addEventListener('abort', () => reject(signal.reason), { once: true }); });
       const code=options.publishFailure?.(body.assetIds,calls.filter(c=>c.path==='/api/images/publish').length);
       if(code)return Response.json({ok:false,code,error:'password=private-provider-secret'},{status:400});
       return Response.json({ mode: 'stable', ok: true, assets: body.assetIds.map((assetId: string) => ({ assetId, publicUrl: `https://images.example/images/${assetId}`, reachable: true })) });
@@ -49,15 +50,15 @@ async function fixture(t: any, options: { publicWrongHash?: boolean; importFailu
     }
     throw new Error('unexpected request');
   }) as typeof fetch;
-  const publisher = new ListingAssetPublisher({ baseUrl: 'http://provider.example', operatorToken: 'private-operator-secret', store: { get: <T>(c: string, id: string) => records.get(`${c}/${id}`) as T | undefined, put: <T>(c: string, id: string, value: T) => (records.set(`${c}/${id}`, value), value) }, fetchImpl });
+  const publisher = new ListingAssetPublisher({ baseUrl: 'http://provider.example', operatorToken: 'private-operator-secret', store: { get: <T>(c: string, id: string) => records.get(`${c}/${id}`) as T | undefined, put: <T>(c: string, id: string, value: T) => (records.set(`${c}/${id}`, value), value) }, fetchImpl, ...(options.timeBudgetMs ? { timeBudgetMs: options.timeBudgetMs } : {}) });
   return { publisher, first, second, imports, calls, records, assets };
 }
 
-test('selected local image is snapshotted, published, read back and bound to precise SKU IDs', async t => {
+test('selected local image is snapshotted, published and read back', async t => {
   const { publisher, first, imports, calls } = await fixture(t, { mutateOriginal: true });
-  const r = await publisher.publish({ files: [{ path: first, skuIds: ['a', 'b', 'a'] }] });
+  const r = await publisher.publish({ files: [{ path: first }] });
   assert.equal(r.status, 'ready'); assert.equal(r.successCount, 1); assert.equal(r.files[0].contentHash, hash(png));
-  assert.deepEqual(r.files[0].skuIds, ['a', 'b']); assert.equal(r.files[0].mimeType, 'image/png');
+  assert.equal('skuIds' in r.files[0], false); assert.equal(r.files[0].mimeType, 'image/png');
   assert.equal(r.files[0].url, `https://images.example/images/image-v1-${hash(png)}`);
   const imported = calls.find(c => c.path === '/api/images/import/local')!;
   assert(imported.body.filePath.startsWith(imports)); assert.deepEqual(await readFile(imported.body.filePath), png);
@@ -67,7 +68,7 @@ test('selected local image is snapshotted, published, read back and bound to pre
 test('same bytes reuse verified content cache; later source file changes create another content identity', async t => {
   const { publisher, first, calls } = await fixture(t);
   const initial = await publisher.publish({ files: [{ path: first }] });
-  const repeated = await publisher.publish({ files: [{ path: first, skuIds: ['new-binding'] }] });
+  const repeated = await publisher.publish({ files: [{ path: first }] });
   assert.equal(repeated.files[0].reused, true); assert.equal(initial.files[0].assetId, repeated.files[0].assetId);
   assert.equal(calls.filter(c => c.path === '/api/images/publish').length, 1);
   await writeFile(first, Buffer.concat([png, Buffer.from('new')]));
@@ -75,42 +76,41 @@ test('same bytes reuse verified content cache; later source file changes create 
   assert.notEqual(changed.files[0].assetId, initial.files[0].assetId); assert.equal(changed.files[0].reused, false);
 });
 
-test('one batch delivers identical bytes once while retaining every file and SKU association',async t=>{
+test('one batch delivers identical bytes once while retaining every file result',async t=>{
  const {publisher,first,second,calls}=await fixture(t);await writeFile(second,png);
- const files=Array.from({length:20},(_,i)=>({path:i%2?first:second,skuIds:[`sku-${i}`,`sku-${i}`]}));
+ const files=Array.from({length:20},(_,i)=>({path:i%2?first:second}));
  const result=await publisher.publish({files});assert.equal(result.status,'ready');assert.equal(result.successCount,20);
  assert.deepEqual(result.files.map((file:any)=>file.path),files.map(file=>file.path));
- assert.deepEqual(result.files.map((file:any)=>file.skuIds),files.map((_,i)=>[`sku-${i}`]));
  assert.equal(new Set(result.files.map((file:any)=>file.assetId)).size,1);
  assert.equal(calls.filter(c=>c.path==='/api/images/import/local').length,1);assert.equal(calls.filter(c=>c.path==='/api/images/publish').length,1);assert.equal(calls.filter(c=>c.path.startsWith('/images/')).length,1);
- const again=await publisher.publish({files:[{path:first,skuIds:['later']}]});assert.equal(again.files[0].reused,true);assert.deepEqual(again.files[0].skuIds,['later']);assert.equal(calls.filter(c=>c.path==='/api/images/import/local').length,1);
+ const again=await publisher.publish({files:[{path:first}]});assert.equal(again.files[0].reused,true);assert.equal(calls.filter(c=>c.path==='/api/images/import/local').length,1);
 });
 
 test('identical content import failure maps to every binding and is retried by a new invocation',async t=>{
  const options:{importFailure?:string}={importFailure:hash(png)},f=await fixture(t,options);
- const files=[{path:f.first,skuIds:['one']},{path:f.first,skuIds:['two']}];
+ const files=[{path:f.first},{path:f.first}];
  const failed=await f.publisher.publish({files});assert.equal(failed.failureCount,2);assert.equal(f.calls.filter(c=>c.path==='/api/images/import/local').length,1);
- assert.deepEqual(failed.files.map((file:any)=>file.skuIds),[['one'],['two']]);assert.ok(failed.files.every((file:any)=>file.error.code==='LISTING_ASSET_PROVIDER_FAILED'));
+ assert.deepEqual(failed.files.map((file:any)=>file.path),[f.first,f.first]);assert.ok(failed.files.every((file:any)=>file.error.code==='LISTING_ASSET_PROVIDER_FAILED'));
  options.importFailure=undefined;const retried=await f.publisher.publish({files});assert.equal(retried.successCount,2);assert.equal(f.calls.filter(c=>c.path==='/api/images/import/local').length,2);assert.equal(f.calls.filter(c=>c.path==='/api/images/publish').length,1);
 });
 
 test('duplicate public verification failure remains uncached and new invocation retries the content',async t=>{
- const options={publicWrongHash:true},f=await fixture(t,options),files=[{path:f.first,skuIds:['a']},{path:f.first,skuIds:['b']}];
+ const options={publicWrongHash:true},f=await fixture(t,options),files=[{path:f.first},{path:f.first}];
  const failed=await f.publisher.publish({files});assert.equal(failed.failureCount,2);assert.equal(f.records.size,0);assert.equal(f.calls.filter(c=>c.path.startsWith('/images/')).length,1);
  assert.ok(failed.files.every((file:any)=>file.error.code==='LISTING_ASSET_PUBLIC_MISMATCH'));
- options.publicWrongHash=false;const retried=await f.publisher.publish({files});assert.equal(retried.successCount,2);assert.equal(f.calls.filter(c=>c.path.startsWith('/images/')).length,2);assert.equal(f.records.size,1);
+ options.publicWrongHash=false;const retried=await f.publisher.publish({files});assert.equal(retried.successCount,2);assert.equal(f.calls.filter(c=>c.path.startsWith('/images/')).length,2);assert.equal(f.records.size,2);
 });
 
 test('shared duplicate failure does not affect another content in the same image batch',async t=>{
  const f=await fixture(t,{importFailure:hash(png)});
- const result=await f.publisher.publish({files:[{path:f.first,skuIds:['failed-one']},{path:f.first,skuIds:['failed-two']},{path:f.second,skuIds:['ready']}]});
- assert.equal(result.status,'partial');assert.equal(result.failureCount,2);assert.equal(result.successCount,1);assert.equal(result.files[2].status,'ready');assert.deepEqual(result.files[2].skuIds,['ready']);
+ const result=await f.publisher.publish({files:[{path:f.first},{path:f.first},{path:f.second}]});
+ assert.equal(result.status,'partial');assert.equal(result.failureCount,2);assert.equal(result.successCount,1);assert.equal(result.files[2].status,'ready');assert.equal(result.files[2].path,f.second);
  assert.equal(f.calls.filter(c=>c.path==='/api/images/import/local').length,2);assert.equal(f.calls.filter(c=>c.path==='/api/images/publish').length,1);
 });
 
 test('one bad local file does not discard other successfully published files', async t => {
   const { publisher, first, imports } = await fixture(t);
-  const r = await publisher.publish({ files: [{ path: imports }, { path: first, skuIds: ['good'] }] });
+  const r = await publisher.publish({ files: [{ path: imports }, { path: first }] });
   assert.equal(r.status, 'partial'); assert.equal(r.failureCount, 1); assert.equal(r.successCount, 1);
   assert.equal(r.files[0].error.code, 'LISTING_ASSET_NOT_FILE'); assert.equal(r.files[1].status, 'ready');
 });
@@ -139,8 +139,8 @@ test('transport exceptions are sanitized and file count is bounded', async t => 
 
 test('current provider sha256-prefixed import metadata allows an eleven-file DSH batch to reach publish', async t => {
   const { publisher, first, second, imports, calls } = await fixture(t);
-  const files = [{ path: first, skuIds: ['sku-0'] }, { path: second, skuIds: ['sku-1'] }];
-  for (let i = 2; i < 11; i++) { const path = join(imports, `generated-${i}.png`); await writeFile(path, Buffer.concat([png, Buffer.from(`image-${i}`)])); files.push({ path, skuIds: [`sku-${i}`] }); }
+  const files = [{ path: first }, { path: second }];
+  for (let i = 2; i < 11; i++) { const path = join(imports, `generated-${i}.png`); await writeFile(path, Buffer.concat([png, Buffer.from(`image-${i}`)])); files.push({ path }); }
   const result = await publisher.publish({ files });
   assert.equal(result.status, 'ready'); assert.equal(result.successCount, 11); assert.equal(result.failureCount, 0);
   const publishes = calls.filter(c => c.path === '/api/images/publish'); assert.deepEqual(publishes.map(c=>c.body.assetIds.length),[3,3,3,2]);
@@ -180,4 +180,23 @@ test('unknown or non-sync provider failures are never retried and only known cod
     assert.equal(calls.filter(c=>c.path==='/api/images/publish').length,1);assert(!JSON.stringify(result).includes('secret'));
     assert.equal(result.files[0].error.message.includes('IMAGE_PUBLISH_INVALID'),code==='IMAGE_PUBLISH_INVALID');
   }
+});
+
+test('a call that runs out of its time budget returns per-file retryable results and a plain retry succeeds', async t => {
+  const options: { publishHang?: boolean; timeBudgetMs?: number } = { publishHang: true, timeBudgetMs: 200 };
+  const f = await fixture(t, options);
+  const started = Date.now(), r = await f.publisher.publish({ files: [{ path: f.first }, { path: f.second }] });
+  assert.ok(Date.now() - started < 5000, 'the budget bounds the whole call');
+  assert.equal(r.status, 'failed'); assert.ok(r.files.every((file: any) => file.error.code === 'LISTING_ASSET_TIME_BUDGET'));
+  assert.equal(f.records.size, 0);
+  options.publishHang = false;
+  const retried = await f.publisher.publish({ files: [{ path: f.first }, { path: f.second }] });
+  assert.equal(retried.status, 'ready'); assert.equal(retried.successCount, 2);
+});
+
+test('caller cancellation keeps its ordinary failure instead of the time-budget code', async t => {
+  const f = await fixture(t, { publishHang: true }), controller = new AbortController();
+  setTimeout(() => controller.abort(), 50);
+  const r = await f.publisher.publish({ files: [{ path: f.first }] }, controller.signal);
+  assert.notEqual(r.files[0].error.code, 'LISTING_ASSET_TIME_BUDGET');
 });

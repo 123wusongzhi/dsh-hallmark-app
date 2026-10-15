@@ -1,4 +1,5 @@
 import {migrateSchema4} from '../../packages/app-migration/src/schema4.ts';
+import {realScenarioProduct} from '../real-data/corpus.ts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {fork} from 'node:child_process';
@@ -45,7 +46,7 @@ for(const branch of ['A-no-new-write','B-success-and-unknown'] as const)test(`is
  const upstream=createServer(async(req,res)=>{const chunks:Uint8Array[]=[];for await(const chunk of req)chunks.push(chunk);const body=Buffer.concat(chunks).toString(),input=body?JSON.parse(body):{},route=new URL(req.url??'/','http://127.0.0.1').pathname;businessRequests.push({method:req.method,route,...(body?{input}:{})});
   const send=(value:unknown)=>{res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify(value));};
   if(route==='/api/health')return send({service:'hallmark-control'});if(route==='/api/stores')return send([{id:'shop',shopName:'Copied fixture shop'}]);
-  if(route==='/api/store-products'||route==='/api/store-products/sync'){if(route.endsWith('/sync')&&holdNextRefresh){holdNextRefresh=false;markRefreshStarted();await refreshRelease;}return send({stores:[{id:'shop',lastSuccessAt:at}],products:[{storeId:'shop',offerId:'A',productId:1,price:100,stock:2,originalField:{preserved:true}}]});}
+  if(route==='/api/store-products'||route==='/api/store-products/sync'){if(route.endsWith('/sync')&&holdNextRefresh){holdNextRefresh=false;markRefreshStarted();await refreshRelease;}return send({stores:[{id:'shop',lastSuccessAt:at}],products:[realScenarioProduct({storeId:'shop',offerId:'A',productId:1,price:100,stock:2,currency:'RUB',sources:[],originalField:{preserved:true}})]});}
   if(route==='/api/tasks')return send([{id:'task',kind:'listing',storeId:'shop',status:'active'}]);if(route==='/api/tasks/task')return send({id:'task',kind:'listing',storeId:'shop',status:'active'});
   if(route==='/api/tasks/task/platform'||route==='/api/stores/shop/data/read'||route==='/fixture-ozon-request'){
    assert.ok(['/v1/product/import/prices','/v5/product/info/prices','/v3/product/info/list','/v4/product/info/attributes'].includes(input.path));

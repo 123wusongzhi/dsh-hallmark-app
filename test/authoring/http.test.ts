@@ -5,6 +5,7 @@ import {existsSync,mkdtempSync,mkdirSync,symlinkSync,readFileSync,readdirSync,rm
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {realScenarioProduct} from '../real-data/corpus.ts';
 import {canonicalJson} from '../../packages/app-contracts/src/index.ts';
 import {composeAppsRuntime} from '../../packages/service/src/apps-main.ts';
 import {createAppsServer} from '../../packages/service/src/apps-server.ts';
@@ -64,7 +65,7 @@ async function setup(){
  const call=async(path:string,input?:unknown)=>{const response=await fetch(url+path,{method:input===undefined?'GET':'POST',headers:{authorization:'Bearer '+token,...(input===undefined?{}:{'content-type':'application/json'})},...(input===undefined?{}:{body:JSON.stringify(input)})});return {status:response.status,body:await response.json()};};
  const action=async(capabilityId:string,input:unknown,requestId=randomUUID())=>{const result=await call('/v1/presentation-actions',{sessionId:'original',capabilityId,input,requestId});assert.equal(result.status,200);return result.body;};
  const begin=async(input:unknown)=>{const result=await action('apps.authoring.begin',input);assert.equal(result.status,'ok',JSON.stringify(result));return result.data as {draft:AuthoringDraft;attempt:AuthoringAttempt;view:AuthoringView};};
- return {...instance,directory,url,token,call,action,begin,async cleanup(){server.closeAllConnections();await new Promise<void>(accept=>server.close(()=>accept()));await instance.close();assert.ok(resolve(directory).startsWith(resolve(tmpdir())));rmSync(directory,{recursive:true,force:true,maxRetries:5,retryDelay:200});}};
+ return {...instance,directory,url,token,call,action,begin,async cleanup(){server.closeAllConnections();await new Promise<void>(accept=>server.close(()=>accept()));await instance.close();assert.ok(resolve(directory).startsWith(resolve(tmpdir())));rmSync(directory,{recursive:true,force:true,maxRetries:15,retryDelay:200});}};
 }
 function project(workspace:string,title:string){
  const html=`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><h1>${title}</h1><button id="toggle">Select</button><output id="result">unselected</output><script>window.addEventListener('message',e=>{if(e.source!==parent||e.origin!==location.origin)return;const m=e.data;if(m.type==='hello')parent.postMessage({channel:m.channel,protocolVersion:'2.0',sessionId:m.sessionId,viewId:m.viewId,buildId:m.buildId,frameInstanceId:m.frameInstanceId,requestId:'data',method:'getData',params:null},location.origin);});parent.postMessage({channel:'dsh.apps.component.v2',type:'hello',protocolVersion:'2.0',requestId:'hello',documentNonce:'document'},location.origin);document.querySelector('#toggle').onclick=()=>document.querySelector('#result').textContent='selected';</script>`;
@@ -87,6 +88,30 @@ test('HTTP opens reuse session workcopies and closure is durable and restorable 
   assert.deepEqual(f.store.list('components'),before);assert.equal((await f.call('/v1/views?sessionId=original')).body.views.length,2);
  }finally{await f.cleanup();}
 });
+test('ordinary committed view reads expose only a unique exact publication and preserve pending, historical and closed targets',async()=>{
+ const f=await setup();try{
+  const base=f.presentation.createView('original',{title:'Committed source'}),source={buildId:'a'.repeat(64),directory:join(f.directory,'source'),entry:'index.html',files:['index.html']};
+  const view={...base,source,activeBuildId:source.buildId,viewRevision:2,pendingPublicationId:null,validationStatus:'verified' as const};
+  const publication:ViewPublication={publicationId:'committed-publication',viewId:view.viewId,ownerSessionId:'original',attemptId:'committed-attempt',attemptEpoch:1,expectedViewRevision:1,committedViewRevision:2,candidateBuildId:source.buildId,priorActiveBuildId:null,state:'mounted',readyDeadlineAt:null,evidenceRefs:[],createdAt:base.createdAt,updatedAt:base.updatedAt,buildReceiptId:'build-fixture',previewReceiptId:'preview-fixture',source};
+  const revisionId='view-revision:'+canonicalJson(['original',view.viewId,2]),revision={appId:'apps',connectionId:'presentation',namespace:'view_revisions',recordId:revisionId,value:view};
+  f.store.put('views',view.viewId,view);f.store.put('provider_records',revisionId,revision);f.store.put('view_publications',publication.publicationId,publication);
+  const route=`/v1/views/${view.viewId}?sessionId=original`,read=()=>f.call(route),state=()=>canonicalJson({views:f.store.list('views'),publications:f.store.list('view_publications'),snapshot:f.store.get('provider_records',revisionId)});
+  const before=state();assert.equal((await read()).body.publication.publicationId,publication.publicationId);assert.equal(state(),before,'discovery is read-only and does not manufacture a display');
+  for(const changed of [{ownerSessionId:'other'},{viewId:'other'},{candidateBuildId:'b'.repeat(64)},{committedViewRevision:3},{state:'cancelled'},{source:{...source,directory:join(f.directory,'different')}}]){
+   f.store.put('view_publications',publication.publicationId,{...publication,...changed});assert.equal((await read()).body.publication,undefined,JSON.stringify(changed));
+  }
+  f.store.put('view_publications',publication.publicationId,publication);
+  f.store.put('view_publications','ambiguous',{...publication,publicationId:'ambiguous'});assert.equal((await read()).body.publication,undefined,'an exact tuple with two publications is ambiguous');f.store.delete('view_publications','ambiguous');
+  f.store.put('view_publications','same-build-history',{...publication,publicationId:'same-build-history',committedViewRevision:1});assert.equal((await read()).body.publication.publicationId,publication.publicationId,'another revision of the same build never replaces this committed publication');
+  for(const changed of [{pendingPublicationId:'new-candidate'},{panelState:'closed'},{activeBuildId:'b'.repeat(64)},{bindings:[{bindingId:'changed'}]}]){
+   f.store.put('views',view.viewId,{...view,...changed});assert.equal((await read()).body.publication,undefined,JSON.stringify(changed));
+  }
+  f.store.put('views',view.viewId,view);assert.equal((await f.call(route+'&buildId='+source.buildId)).body.publication,undefined,'build-only historical selection keeps its existing contract');assert.equal((await f.call(route+'&publicationId='+publication.publicationId)).body.publication.publicationId,publication.publicationId);
+  assert.equal((await f.call(route.replace('sessionId=original','sessionId=foreign'))).body.error.code,'VIEW_NOT_OWNED');
+  const unsnapshotted={...view,viewId:'unsnapshotted-view'};f.store.put('views',unsnapshotted.viewId,unsnapshotted);f.store.put('view_publications','missing-snapshot',{...publication,publicationId:'missing-snapshot',viewId:unsnapshotted.viewId});assert.equal((await f.call(`/v1/views/${unsnapshotted.viewId}?sessionId=original`)).body.publication,undefined,'a current view cannot stand in for a missing committed snapshot');
+ }finally{await f.cleanup();}
+});
+
 test('HTTP authoring validates real receipt schemas, authorizes candidate document, commits once and keeps fixed historical publications',{skip:!existsSync(browser),timeout:60000},async()=>{
  const f=await setup();try{
   const prepare=async(mode:'new'|'edit',viewId?:string,title='First')=>{
@@ -95,7 +120,9 @@ test('HTTP authoring validates real receipt schemas, authorizes candidate docume
    const built=await f.action('apps.authoring.record_build',{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,reportRef:build.reportRef});assert.equal(built.status,'ok',JSON.stringify(built));const receipt=built.data as BuildReceipt;
    const tested=await runAuthoringPreview({attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,buildReceiptId:receipt.receiptId,buildReportRef:build.reportRef,mode:'fixture',runner:f.evidenceRunner,sources:f.presentation.sources,browserExecutable:browser,data:{viewId:begin.view.viewId,bindings:[]},assertions:[{id:'select',action:'click',selector:'#toggle',checkSelector:'#result',check:'text',expected:'selected'}]});assert.equal(tested.report.verdict,'PASS',JSON.stringify(tested.report));
    const recorded=await f.action('apps.authoring.record_preview',{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,buildReceiptId:receipt.receiptId,reportRef:tested.reportRef});assert.equal(recorded.status,'ok',JSON.stringify(recorded));const preview=recorded.data as PreviewReceipt;
-   assert.deepEqual(Object.keys(preview.viewportResults[0]).sort(),['id','contentWidthCssPx','heightCssPx','deviceScaleFactor','screenshot','pageErrors','unhandledRejections','failedRequests','bridgeReady','assertionIds'].sort());
+   assert.deepEqual(Object.keys(preview.viewportResults[0]).sort(),['id','contentWidthCssPx','heightCssPx','deviceScaleFactor','screenshot','pageErrors','unhandledRejections','failedRequests','bridgeReady','assertionIds','interactionCaseIds'].sort());
+   assert.deepEqual(preview.performance,tested.report.performance);assert.equal(preview.performance?.verdict,'PASS');
+   assert.deepEqual(preview.viewportResults.map(view=>view.interactionCaseIds),tested.report.viewportResults.map((view:any)=>view.interactionCaseIds));
    const published=await f.action('apps.authoring.publish',{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,viewId:begin.view.viewId,expectedViewRevision:begin.attempt.expectedViewRevision,buildId:receipt.archiveBuildId,buildReceiptId:receipt.receiptId,previewReceiptId:preview.receiptId});assert.equal(published.status,'ok',JSON.stringify(published));const publication=published.data as ViewPublication;
    const params={publicationId:publication.publicationId,attemptId:begin.attempt.attemptId,attemptEpoch:begin.attempt.epoch,viewId:begin.view.viewId,buildId:receipt.archiveBuildId,frameInstanceId:randomUUID(),documentNonce:randomUUID(),clientFeatures:['renderReadyV1','uiStateV1']};
    const identity={protocolVersion:'2.0',sessionId:'original',viewId:params.viewId,buildId:params.buildId,frameInstanceId:params.frameInstanceId};
@@ -153,8 +180,10 @@ test('HTTP display opens the previewed archive, rejects invalid grants atomicall
   const authorized=await f.call('/v1/authoring/authorizeDisplayFrame',{sessionId:'original',params:frameParams});assert.equal(authorized.status,200);assert.deepEqual(authorized.body.features,['renderReadyV1','uiStateV1','bindingPagesV1']);
   const identity={protocolVersion:'2.0',sessionId:'original',viewId,buildId:target.buildId,frameInstanceId:frameParams.frameInstanceId},extension={...identity,channel:'dsh.apps.component.v2',type:'extension',feature:'renderReadyV1',action:'ready',requestId:'display-ready',params:{documentNonce:frameParams.documentNonce,checks:{rendered:true,bridgeReady:true,dataRead:true,unhandledErrors:[],assertionResults:first.preview.assertionResults}}};
   const beforeNonce=state(),nonce=await f.call('/v1/component-extension',{...extension,params:{...extension.params,documentNonce:'foreign-nonce'}});assert.equal(nonce.status,400);assert.equal(nonce.body.error.code,'BRIDGE_IDENTITY_STALE');assert.equal(state(),beforeNonce);
-  const failed=await f.call('/v1/authoring/reportDisplayError',{sessionId:'original',params:{viewId,publicationId:target.publicationId,buildId:target.buildId,displayId:params.displayId,displayGeneration:params.displayGeneration,error:{phase:'script',code:'COMPONENT_SCRIPT_ERROR',message:'Actual iframe script failure fixture'}}});assert.equal(failed.body.state,'failed');
-  const inspected=await f.call('/v1/authoring/inspect',{sessionId:'original',params:{publicationId:target.publicationId}});assert.equal(inspected.body.latestDisplay.errors[0].code,'COMPONENT_SCRIPT_ERROR');assert.equal(inspected.body.attempt.state,'publish_ready');assert.equal(inspected.body.view.viewRevision,1);
+  const reportParams=(error:Record<string,unknown>)=>({sessionId:'original',params:{viewId,publicationId:target.publicationId,buildId:target.buildId,displayId:params.displayId,displayGeneration:params.displayGeneration,error}});
+  for(const bad of [{requestId:'r'.repeat(129)},{cause:'c'.repeat(501)},{retryPolicy:'p'.repeat(33)},{attempts:11},{unknown:'x'}]){const before=state(),rejected=await f.call('/v1/authoring/reportDisplayError',reportParams({phase:'script',code:'COMPONENT_SCRIPT_ERROR',message:'oversized',...bad}));assert.equal(rejected.status,400);assert.equal(rejected.body.error?.code??rejected.body.code,'INVALID_INPUT');assert.equal(state(),before,'a rejected error report leaves the display untouched');}
+  const failed=await f.call('/v1/authoring/reportDisplayError',reportParams({phase:'script',code:'COMPONENT_SCRIPT_ERROR',message:'Actual iframe script failure fixture',requestId:'req-http-1',attempts:2,retryPolicy:'never',cause:'ReferenceError: x is not defined'}));assert.equal(failed.body.state,'failed');assert.equal(failed.body.errors[0].requestId,'req-http-1');assert.equal(failed.body.errors[0].attempts,2);
+  const inspected=await f.call('/v1/authoring/inspect',{sessionId:'original',params:{publicationId:target.publicationId}});assert.equal(inspected.body.latestDisplay.errors[0].code,'COMPONENT_SCRIPT_ERROR');assert.equal(inspected.body.latestDisplay.errors[0].cause,'ReferenceError: x is not defined');assert.equal(inspected.body.summary.outcome,'display_failed');assert.equal(inspected.body.summary.nextAction.action,'fix_source');assert.equal(inspected.body.attempt.state,'publish_ready');assert.equal(inspected.body.view.viewRevision,1);
   const reopened=await callOpen(first.publication,'http-display-two');assert.equal(reopened.status,200);assert.equal(reopened.body.display.generation,2);const secondParams={...frameParams,displayId:reopened.body.display.displayId,displayGeneration:2,frameInstanceId:randomUUID(),documentNonce:randomUUID()};
   // Use the real SDK and parent proxy against the HTTP grant boundary, including a
   // legacy SDK packet that omits its nonce. Preview's direct binding calls skip it.
@@ -304,7 +333,7 @@ test('prepared product template checks its single plan, pages without attachment
  f.runtime.addConnection({appId:'hallmark',connectionId:'fixture-products',displayName:'Fixture products',enabled:true,configRevision:1,config:{baseUrl:'http://127.0.0.1:1'}});
  f.runtime.bind({sessionId:'original',appId:'hallmark',connectionId:'fixture-products',enabled:true,boundAt:new Date().toISOString()});
   const invoke=f.runtime.invoke.bind(f.runtime);
-  f.runtime.invoke=async request=>{if(request.capabilityId!=='hallmark.products.list')return invoke(request);const input=request.input as {cursor?:string;limit:number},offset=Number(input.cursor??0);return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{total:5,cursor:offset+2<5?String(offset+2):null,products:Array.from({length:Math.min(2,5-offset)},(_,index)=>({storeId:'store',productId:String(offset+index),offerId:'offer-'+(offset+index),title:'Product '+(offset+index),sku:'sku-'+(offset+index),currency:'CNY',pricing:{sellerMinor:4497},profit:{purchaseMinor:2663,actualMargin:0.05}}))}};};
+  f.runtime.invoke=async request=>{if(request.capabilityId!=='hallmark.products.list')return invoke(request);const input=request.input as {cursor?:string;limit:number},offset=Number(input.cursor??0);return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{total:5,cursor:offset+2<5?String(offset+2):null,products:Array.from({length:Math.min(2,5-offset)},(_,index)=>realScenarioProduct({storeId:'store',productId:String(offset+index),offerId:'offer-'+(offset+index),sku:'sku-'+(offset+index)},offset+index))}};};
   const begin=await f.begin({mode:'new',bindings:[{bindingId:'products',appId:'hallmark',connectionId:'fixture-products',capabilityId:'hallmark.products.list',capabilityMajor:1,input:{storeId:'store',limit:2},projection:[],refresh:{mode:'manual'}}]});
   // @ts-expect-error Installable generator.
   const {createAppsSource}=await import('../../scripts/create-apps-source.mjs');

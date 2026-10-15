@@ -8,7 +8,7 @@ import {build} from 'esbuild';
 test('actual useApps preserves visible data while refreshing and ignores stale refresh completions after a newer page request',async()=>{
  const root=resolve('test/apps-components/artifacts');mkdirSync(root,{recursive:true});
  const directory=mkdtempSync(join(root,'sdk-order-')),output=join(directory,'test.mjs');
- const source=readFileSync('packages/component-runtime/src/apps-react.tsx','utf8').replace("import {createAppsClient,ComponentBridgeError} from './apps-client.ts';",'const createAppsClient=()=>globalThis.fakeClient;class ComponentBridgeError extends Error {}').replace("from './latest-state-saver.ts'","from './packages/component-runtime/src/latest-state-saver.ts'");
+ const source=readFileSync('packages/component-runtime/src/apps-react.tsx','utf8').replace("import {createAppsClient,ComponentBridgeError} from './apps-client.ts';",'const createAppsClient=()=>globalThis.fakeClient;class ComponentBridgeError extends Error {constructor(failure){super(failure.message);this.code=failure.code;this.failure=failure;}}').replace("from './latest-state-saver.ts'","from './packages/component-runtime/src/latest-state-saver.ts'").replace("from './visible-deadline.ts'","from './packages/component-runtime/src/visible-deadline.ts'");
  const fixture=`
 import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
 globalThis.window={addEventListener(){},removeEventListener(){}};

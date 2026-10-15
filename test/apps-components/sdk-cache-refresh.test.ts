@@ -76,8 +76,8 @@ async function checkHook(fixture:string){
   const directory=mkdtempSync(join(root,'sdk-cache-')),output=join(directory,'test.mjs');
   const source=readFileSync('packages/component-runtime/src/apps-react.tsx','utf8').replace(
     "import {createAppsClient,ComponentBridgeError} from './apps-client.ts';",
-    'const createAppsClient=()=>globalThis.fakeClient;class ComponentBridgeError extends Error {}',
-  ).replace("from './latest-state-saver.ts'","from './packages/component-runtime/src/latest-state-saver.ts'");
+    'const createAppsClient=()=>globalThis.fakeClient;class ComponentBridgeError extends Error {constructor(failure){super(failure.message);this.code=failure.code;this.failure=failure;}}',
+  ).replace("from './latest-state-saver.ts'","from './packages/component-runtime/src/latest-state-saver.ts'").replace("from './visible-deadline.ts'","from './packages/component-runtime/src/visible-deadline.ts'");
   await build({stdin:{contents:source+'\n'+harness+'\n'+fixture+'\nconsole.log("CACHE_PASS");',loader:'tsx',resolveDir:resolve('.')},outfile:output,bundle:true,platform:'node',format:'esm',packages:'external'});
   const result=spawnSync(process.execPath,[output],{encoding:'utf8',windowsHide:true,timeout:15000});
   assert.equal(result.status,0,result.stderr||result.error?.message);

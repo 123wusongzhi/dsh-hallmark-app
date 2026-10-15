@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {randomInt} from 'node:crypto';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
@@ -22,11 +21,8 @@ function setup(store:RuntimeStore){
  return {runtime,presentation,save,favorites:componentFavorites(runtime),reads:()=>reads};
 }
 async function listen(server:ReturnType<typeof createAppsServer>):Promise<string>{
- for(let attempt=0;attempt<20;attempt++){
-  try{await new Promise<void>((accept,reject)=>{const ready=()=>{server.off('error',failed);accept();},failed=(error:Error)=>{server.off('listening',ready);reject(error);};server.once('error',failed);server.once('listening',ready);server.listen(randomInt(20000,65536),'127.0.0.1');});return `http://127.0.0.1:${(server.address() as {port:number}).port}`;}
-  catch(error){if((error as NodeJS.ErrnoException).code!=='EADDRINUSE')throw error;}
- }
- throw new Error('No fixture port available');
+ await new Promise<void>((accept,reject)=>{const ready=()=>{server.off('error',failed);accept();},failed=(error:Error)=>{server.off('listening',ready);reject(error);};server.once('error',failed);server.once('listening',ready);server.listen(0,'127.0.0.1');});
+ return `http://127.0.0.1:${(server.address() as {port:number}).port}`;
 }
 
 test('favorites are explicit profile references, persist across restart and sessions without business reads or source copies',async()=>{

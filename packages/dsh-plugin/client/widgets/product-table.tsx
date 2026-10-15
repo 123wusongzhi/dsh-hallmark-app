@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { matchesTableSearch, tableCellValue, tableColumnKind, tablePageSize } from './table-format.ts';
 import type { TableColumn } from './table-format.ts';
 import {materialDisplay,materialFieldMeta,materialValue} from './material-format.ts';
-import {MaterialImage} from './product-list.tsx';
+import {MaterialImage,priorityMaterialImageRow} from './product-list.tsx';
 import type {MaterialBindingInteraction} from '../material-interactions.ts';
 
 const emptySelection:RowSelectionState={};
@@ -22,7 +22,7 @@ function Checkbox({mixed=false,...props}:React.ComponentProps<'input'>&{mixed?:b
 function TableIcon({kind}:{kind:'search'|'close'|'attach'|'left'|'right'|'sort'|'asc'|'desc'}){
   return <svg className={`hm-table-icon hm-table-icon-${kind}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{kind==='search'?<><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></>:kind==='close'?<path d="m6 6 12 12M18 6 6 18"/>:kind==='attach'?<path d="M20 11.5 12 19.5a5 5 0 0 1-7-7L14 3.5a3 3 0 0 1 4 4l-9 9a1 1 0 0 1-1.5-1.5L16 6.5"/>:kind==='left'?<path d="m14 6-6 6 6 6"/>:kind==='right'?<path d="m10 6 6 6-6 6"/>:kind==='asc'?<path d="M12 19V5m-5 5 5-5 5 5"/>:kind==='desc'?<path d="M12 5v14m-5-5 5 5 5-5"/>:<path d="m8 9 4-4 4 4m-8 6 4 4 4-4"/>}</svg>;
 }
-export function ProductTable({widget,rows,binding,data,basis,control}:{widget:WidgetSpec;rows:Row[];binding?:DataBinding;data?:BindingData;basis?:string;control?:MaterialBindingInteraction}){
+export function ProductTable({widget,rows,binding,data,basis,control,visible=true}:{widget:WidgetSpec;rows:Row[];binding?:DataBinding;data?:BindingData;basis?:string;control?:MaterialBindingInteraction;visible?:boolean}){
   const fullDataset=control?.fullDataset===true;
   const bridge=useProductSelection();
   const candidates=useMemo(()=>getProductSelectionRows(binding,data,rows),[binding,data,rows]);
@@ -54,8 +54,8 @@ export function ProductTable({widget,rows,binding,data,basis,control}:{widget:Wi
     accessorFn:row=>{const value=mappedValue(row,column.field,binding);return value==null||isProfitField(column.field,binding)&&(missingCost(row)||!basis)?undefined:value;},
     sortUndefined:'last',sortDescFirst:false,
     sortingFn:(a,b,id)=>{const x=a.getValue(id),y=b.getValue(id);return typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),'zh-CN',{numeric:true});},
-    cell:({row})=>{
-      if(materialFieldMeta(column.field,widget).format==='image')return <MaterialImage value={materialValue(row.original,column.field,widget,binding)} name={String(materialValue(row.original,'products.title',widget,binding)??column.label)}/>;
+    cell:({row,table})=>{
+      if(materialFieldMeta(column.field,widget).format==='image')return <MaterialImage priority={priorityMaterialImageRow(table,row.id)} value={materialValue(row.original,column.field,widget,binding)} name={String(materialValue(row.original,'products.title',widget,binding)??column.label)}/>;
       const value=cellValue(row.original,column);
       const kind=columnKinds.get(column.field)??'text';
       return value.date?<time className="hm-table-cell-value hm-cell-date" dateTime={value.date.iso} title={value.date.iso}><span>{value.date.date}</span>{value.date.time?<span>{value.date.time}</span>:null}</time>:<span className={`hm-table-cell-value hm-cell-${kind}${value.missing?' hm-cell-missing':''}`} title={value.title} aria-label={value.missing?value.title:undefined}>{value.text}</span>;
@@ -63,7 +63,7 @@ export function ProductTable({widget,rows,binding,data,basis,control}:{widget:Wi
   })),[widget,binding,basis,columnKinds]);
   const selectable=candidates.eligible&&bridge?.available===true;
   const minWidth=columns.length>=3?[...columnKinds.values()].reduce((width,kind)=>width+({title:180,date:120,number:100,text:120}[kind]),candidates.eligible?34:0):undefined;
-  const table=useReactTable({data:rows,columns,state:{sorting,pagination,rowSelection,globalFilter:search},onSortingChange:updater=>{setSorting(updater);setPagination(current=>({...current,pageIndex:0}));},onPaginationChange:setPagination,onRowSelectionChange:onSelection,getRowId:(row,index)=>keys.get(row)??`display-only:${index}`,enableRowSelection:selectable,enableSortingRemoval:false,getColumnCanGlobalFilter:()=>true,globalFilterFn:(row,columnId,query)=>{
+  const table=useReactTable({meta:{visible},data:rows,columns,state:{sorting,pagination,rowSelection,globalFilter:search},onSortingChange:updater=>{setSorting(updater);setPagination(current=>({...current,pageIndex:0}));},onPaginationChange:setPagination,onRowSelectionChange:onSelection,getRowId:(row,index)=>keys.get(row)??`display-only:${index}`,enableRowSelection:selectable,enableSortingRemoval:false,getColumnCanGlobalFilter:()=>true,globalFilterFn:(row,columnId,query)=>{
     const column=columnSpecs.get(columnId) as TableColumn;
     return matchesTableSearch(row.getValue(columnId),cellValue(row.original,column).text,String(query));
   },getCoreRowModel:getCoreRowModel(),getFilteredRowModel:getFilteredRowModel(),getSortedRowModel:getSortedRowModel(),getPaginationRowModel:getPaginationRowModel(),autoResetPageIndex:false});

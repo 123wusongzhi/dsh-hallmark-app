@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiStore,uiListingPayload,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
@@ -16,7 +17,7 @@ function fixture(t:{after:(fn:()=>void)=>void},capabilityId=source.capabilityId)
   const store=new RuntimeStore(':memory:');t.after(()=>store.close());const calls:InvocationRequest[]=[];
   const descriptor={...PROCUREMENT_DESCRIPTOR,capabilityId};
   const runtime={describe:()=>descriptor,getConnection:()=>({enabled:true}),invoke:async(request:InvocationRequest):Promise<CapabilityResult>=>{
-    calls.push(request);return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{products:Array.from({length:23},(_,i)=>({productId:`p${i}`,title:`商品 ${i}`,sellerMinor:100,currency:'CNY'})),total:23}};
+    calls.push(request);return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{products:uiProducts(23),total:23}};
   }};
   const presentation=new AppsPresentationService({store,runtime}),sources=new DataSourceLibrary({store,runtime}),board=new WorkbenchLibrary({store,runtime,dataSources:sources,refreshBinding:(...args)=>presentation.refreshBinding(...args)});
   const legacy:DataSourceDraft={...structuredClone(source),capabilityId,input:{limit:10,planMode:'delivery'},parameters:source.parameters.filter(item=>item.name!=='loadAll').map(item=>item.name==='limit'?{...item,default:10}:item),operations:{pagination:{cursorParam:'cursor',limitParam:'limit',nextCursorPath:'cursor',totalPath:'total'},search:{scope:'server',param:'query'},sort:{scope:'loaded'}}};

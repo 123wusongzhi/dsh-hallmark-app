@@ -1,3 +1,4 @@
+import { recordedSample, recordedDetail, recordedSku } from '../adapter/real-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
@@ -11,7 +12,7 @@ import {BusinessPackagingRepository} from '../../packages/business-packaging/src
 function fixture(options:{count?:number; packaging?:boolean; failSecond?:boolean; duplicate?:boolean}={}){
  const database=new RuntimeStore(':memory:'),store=new HallmarkStorePort(database,'fixture');
  let sourceReads=0,writes=0,reviews=0,packageCalls=0;
- const details=Object.fromEntries(['cup','lid'].map(id=>[id,{id,title:id,source:'taobao_tmall',currency:'CNY',package:{weightKg:.1,dimensionsCm:{length:10,width:10,height:10}},skus:Array.from({length:options.count??1},(_,i)=>({sourceSkuId:options.duplicate?'duplicate':`${id}-verified-${i}`,spec:`${id} variant ${i}`,goodsPrice:3,currency:'CNY'}))}]));
+ const details=Object.fromEntries(['cup','lid'].map(id=>[id,recordedDetail({id,title:id,source:'taobao_tmall',currency:'CNY',package:{weightKg:.1,dimensionsCm:{length:10,width:10,height:10}},skus:Array.from({length:options.count??1},(_,i)=>(recordedSku({sourceSkuId:options.duplicate?'duplicate':`${id}-verified-${i}`,spec:`${id} variant ${i}`,goodsPrice:3,currency:'CNY'}, recordedSample({id:id,source:'taobao_tmall',nonempty:true}), undefined, ["properties","id","code"])))}, recordedSample({id:id,source:'taobao_tmall',nonempty:true}))]));
  const client:any={getStoreProducts:async()=>({status:'ok',raw:{stores:[{id:'bill'}],products:[]}}),getCollectedItemDetail:async(id:string)=>{sourceReads++;if(options.failSecond&&id==='lid')throw Error('SOURCE_READ_FAILED');return {status:'ok',raw:details[id]};},storeDataRead:async()=>({status:'ok',raw:{outcome:'response_received',httpStatus:200,response:{items:[]}}})};
  const collection=new CollectionService({client,store});const packaging=new BusinessPackagingRepository(store);
  const resolve=packaging.resolve.bind(packaging);packaging.resolve=(...args:any[])=>{packageCalls++;return (resolve as any)(...args);};

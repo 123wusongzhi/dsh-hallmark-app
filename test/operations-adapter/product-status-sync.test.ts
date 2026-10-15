@@ -1,3 +1,4 @@
+import { recordedPlatformProduct, recordedProduct } from '../adapter/real-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
@@ -7,7 +8,7 @@ import {businessConnectedClient,businessProductSaleState,businessProductStatus,r
 import type {AdapterResponse,CoreClient,RecordData} from '../../packages/core/src/types.ts';
 import type {OzonBusinessGateway} from '../../packages/ozon-business/src/index.ts';
 
-const product=(overrides:RecordData={}):RecordData=>({id:100,offer_id:'offer',sku:200,statuses:{is_created:true,moderate_status:'approved',status:'price_sent'},stocks:{has_stock:false,stocks:[]},errors:[],...overrides});
+const product=(overrides:RecordData={}):RecordData=>(recordedPlatformProduct({id:100,offer_id:'offer',sku:200,statuses:{is_created:true,moderate_status:'approved',status:'price_sent'},stocks:{has_stock:false,stocks:[]},errors:[],...overrides}));
 const response=(items:RecordData[]):AdapterResponse=>({status:'ok',raw:{response:{items}}});
 function fixture(){
  const database=new RuntimeStore(':memory:'),store=new HallmarkStorePort(database,'status-fixture');let reads=0,read:()=>Promise<AdapterResponse>=async()=>response([product()]);
@@ -38,11 +39,11 @@ test('native failure, unfinished card, sale, empty stock and archive have distin
 test('exact observations preserve procurement and commercial facts, retain history, and refuse conflicting identities',()=>{
  const f=fixture();try{
   const preserved={sources:[{productId:'source',sourceSkuMatched:true,skuCode:'red'}],procurementBinding:{amount:7,currency:'CNY'},profit:{purchaseMinor:700},price:'25.00',pricing:{sellerMinor:2500}};
-  f.store.put('business_catalog',businessHash(['bill','offer']),{storeId:'bill',offerId:'offer',productId:'100',...preserved});
+  f.store.put('business_catalog',businessHash(['bill','offer']),recordedProduct({storeId:'bill',offerId:'offer',productId:'100',...preserved}));
   assert.deepEqual(recordBusinessProductObservations(f.store,'bill',[product()], '2026-10-10T10:00:00.000Z'),{updated:1,ignored:0});
   for(const [key,value] of Object.entries(preserved))assert.deepEqual(f.saved()[key],value);
   assert.equal(f.saved().saleState,'out_of_stock');assert.equal(f.saved().observedAt,'2026-10-10T10:00:00.000Z');
-  assert.deepEqual(f.saved().listingHistory,{created:true,approved:true,observedAt:'2026-10-10T10:00:00.000Z'});
+  assert.deepEqual(f.saved().listingHistory,{created:true,approved:true,legacyOnSale:true,observedAt:'2026-10-10T10:00:00.000Z'});
   recordBusinessProductObservations(f.store,'bill',[product({is_archived:true,statuses:{}})],'2026-10-10T10:01:00.000Z');
   assert.equal(f.saved().saleState,'archived');assert.equal(f.saved().listingHistory.created,true);
   const before=f.saved();assert.deepEqual(recordBusinessProductObservations(f.store,'bill',[product({id:999})]),{updated:0,ignored:1});assert.deepEqual(f.saved(),before);
@@ -84,16 +85,16 @@ test('failed or invalid refresh never claims freshness and keeps the last observ
 
 test('full catalogue refresh records the same state metadata while enriching commercial facts',async()=>{
  const f=fixture();try{
-  f.gateway.request=async(_id,input)=>({status:'ok',raw:{response:input.path.includes('/prices')?{items:[{offer_id:'offer',product_id:100,price:{price:'25.00',marketing_seller_price:'25.00',currency_code:'CNY'}}]}:{result:[{offer_id:'offer',id:100,weight:50,weight_unit:'g'}]}}});
+  f.gateway.request=async(_id,input)=>({status:'ok',raw:{response:input.path.includes('/prices')?{items:[recordedPlatformProduct({offer_id:'offer',product_id:100,price:{price:'25.00',marketing_seller_price:'25.00',currency_code:'CNY'}})]}:{result:[{offer_id:'offer',id:100,weight:50,weight_unit:'g'}]}}});
   const result=await f.client().getStoreProducts();assert.equal(result.status,'ok');assert.equal(f.saved().saleState,'out_of_stock');assert.equal(f.saved().price,'25.00');assert.equal(f.store.get<RecordData>('business_catalog_status_sync','bill')?.state,'fresh');
  }finally{f.database.close();}
 });
 
 test('archive observations retain already stored native creation evidence and an unrelated connection cannot stale it',async()=>{
  const f=fixture();try{
-  f.store.put('business_catalog',businessHash(['bill','offer']),{storeId:'bill',offerId:'offer',productId:'100',platformProduct:product(),observedAt:'2026-10-10T10:00:00.000Z'});
+  f.store.put('business_catalog',businessHash(['bill','offer']),recordedProduct({storeId:'bill',offerId:'offer',productId:'100',platformProduct:product(),observedAt:'2026-10-10T10:00:00.000Z'}));
   recordBusinessProductObservations(f.store,'bill',[product({is_archived:true,statuses:{}})],'2026-10-10T11:00:00.000Z');
-  assert.deepEqual(f.saved().listingHistory,{created:true,approved:true,observedAt:'2026-10-10T10:00:00.000Z'});
+  assert.deepEqual(f.saved().listingHistory,{created:true,approved:true,legacyOnSale:true,observedAt:'2026-10-10T10:00:00.000Z'});
   const before=f.saved(),unrelated=businessConnectedClient({} as CoreClient,f.gateway,f.store,'another-connection');
   const denied=await unrelated.syncBusinessProductStates('bill');assert.equal(denied.error?.code,'STORE_CONNECTION_MISMATCH');assert.deepEqual(f.saved(),before);assert.equal(f.reads(),0);
  }finally{f.database.close();}
@@ -101,7 +102,7 @@ test('archive observations retain already stored native creation evidence and an
 
 test('a legacy on-sale fact survives archive without inventing native creation or moderation flags',()=>{
  const f=fixture();try{
-  f.store.put('business_catalog',businessHash(['bill','offer']),{storeId:'bill',offerId:'offer',productId:'100',status:'on_sale'});
+  f.store.put('business_catalog',businessHash(['bill','offer']),recordedProduct({storeId:'bill',offerId:'offer',productId:'100',status:'on_sale'}));
   recordBusinessProductObservations(f.store,'bill',[product({is_archived:true,statuses:{}})]);
   assert.equal(f.saved().listingHistory.legacyOnSale,true);assert.equal(f.saved().listingHistory.created,false);assert.equal(f.saved().listingHistory.approved,false);
   recordBusinessProductObservations(f.store,'bill',[product({is_archived:false,statuses:{is_created:false,status_failed:'imported'}})]);

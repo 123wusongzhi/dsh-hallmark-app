@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiStore,uiListingPayload,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -12,7 +13,7 @@ import type { CoreStore } from '../../packages/core/src/types.ts';
 
 function row(index:number) {
   return {rowId:`stable-row-${index}`,revision:2,action:'listing',target:{offerId:`bill-new-20261010-${index}`,productId:10000+index},status:index===3?'rejected':'succeeded',
-    payload:{name:'Русское название товара '.repeat(100),description:'实际商品说明'.repeat(3000),images:Array.from({length:20},(_,image)=>`https://cdn.example.invalid/${index}/${image}.png`),attributes:[{id:4191,values:[{value:'详情'.repeat(5000)}]}],price:'27.45',currency_code:'CNY',weight:20,weight_unit:'g',depth:100,width:80,height:20,dimension_unit:'mm'},
+    payload:uiListingPayload({description:uiListingPayload({},index%41).description.repeat(3000),attributes:[{id:4191,values:[{value:uiListingPayload({},index%41).description.repeat(5000)}]}],price:'27.45',currency_code:'CNY',weight:20,weight_unit:'g',depth:100,width:80,height:20,dimension_unit:'mm'},index%41),
     issues:index===3?[{code:'ATTRIBUTE_VALUE_INVALID',field:'attributes.颜色',message:'“蓝色”不能用于这个来源为红色的 SKU。',suggestion:'将颜色修正为红色，再只修改这行。',requiresUser:false}]:[],corrections:['已自动换算包装单位'],
     binding:{amount:6.63,currency:'CNY',missing:[],components:[{itemId:'source-1',sourceSkuId:'source-sku-'+index,quantity:1,unitPrice:6.63,currency:'CNY'}]},
     pricingQuote:{status:'ready',storeId:'bill',configRevision:2,planId:'economy',planName:'方案1',selectionMode:'automatic',selectionReason:'按售价及重量选择；重叠按较贵方案',matchedPlanIds:['economy'],currency:'CNY',targetMarginPpm:600000,minimumMarginPpm:null,suggestedPriceMinor:2745,minimumAllowedPriceMinor:null,evaluatedPriceMinor:2745,breakdown:{purchaseMinor:663,fixedMinor:316,logisticsMinor:79,commissionMinor:549,totalCostMinor:1607,profitMinor:1138,marginPpm:414571},issues:[],warnings:[]},
@@ -30,7 +31,7 @@ test('all 11 real-shaped SKU results fit without echoing content or audit object
     assert.deepEqual(view.data.page,{offset:0,total:11,returned:11,nextCursor:null});
     assert.equal(view.data.rows[3].status,'rejected');assert.deepEqual(view.data.rows[3].issues,row(3).issues);
     assert.deepEqual(view.data.rows[3].target,row(3).target);assert.equal(view.data.rows[3].revision,2);
-    assert.equal(view.data.rows[0].pricingQuote.breakdown.purchaseMinor,663);assert.equal(view.data.rows[0].values.weight,20);
+    assert.equal(view.data.rows[0].pricingQuote.breakdown,undefined);assert.equal(view.data.rows[0].pricingQuote.status,'ready');assert.equal(view.data.rows[0].values.price,'27.45');assert.equal(view.data.rows[0].values.weight,20);
     assert.equal(view.data.rows[0].receipt.importTaskId,800);assert.equal(view.data.rows[0].receipt.product.id,10000);
     for(const item of view.data.rows){assert.equal(item.payload,undefined);assert.equal(item.review,undefined);assert.equal(item.context,undefined);}
     assert.equal(view.sample,undefined);assert.equal(view.fullResultRef,undefined);assert.doesNotMatch(projected.content,/authoringGuidance/);

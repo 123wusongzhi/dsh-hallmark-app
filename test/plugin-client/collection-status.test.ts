@@ -1,3 +1,4 @@
+import {uiProduct} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {collectionStatusLines,filterCollectionRecords} from '../../packages/dsh-plugin/client/widgets/collection-status.ts';
@@ -9,7 +10,7 @@ test('collection cards distinguish archived and empty stock while preserving sto
 });
 
 test('record filters use target-store facts and archived, failed and saved drafts stay found',()=>{
- const rows=[{id:'candidate',listedIn:[{storeId:'bill',listingRecord:'not_found',association:'unknown'},{storeId:'helen',listingRecord:'found'}]},{id:'archived',listedIn:[{storeId:'bill',listingRecord:'found',saleStates:{archived:2}}]},{id:'draft',listedIn:[{storeId:'bill',listingRecord:'found',savedListingCount:1}]},{id:'failed',listedIn:[{storeId:'bill',listingRecord:'found',saleStates:{failed:1}}]},{id:'unavailable',listedIn:[{storeId:'bill',listingRecord:'unavailable',listingRecordReason:'RECORD_SYNC_FAILED'}]}];
+ const rows=[{...uiProduct({id:'candidate'},6),listedIn:[{storeId:'bill',listingRecord:'not_found',association:'unknown'},{storeId:'helen',listingRecord:'found'}]},{...uiProduct({id:'archived'},20),listedIn:[{storeId:'bill',listingRecord:'found',saleStates:{archived:2}}]},{...uiProduct({id:'draft'},40),listedIn:[{storeId:'bill',listingRecord:'found',savedListingCount:1}]},{...uiProduct({id:'failed'},7),listedIn:[{storeId:'bill',listingRecord:'found',saleStates:{failed:1}}]},{...uiProduct({id:'unavailable'},8),listedIn:[{storeId:'bill',listingRecord:'unavailable',listingRecordReason:'RECORD_SYNC_FAILED'}]}];
  assert.deepEqual(filterCollectionRecords(rows,'bill','not_found').map(r=>r.id),['candidate']);assert.equal(filterCollectionRecords(rows,'bill','found').length,3);assert.equal(filterCollectionRecords(rows,'bill','unavailable').length,1);
  assert.match(collectionStatusLines(rows[0].listedIn)[0].text,/本店无上品记录/);assert.match(collectionStatusLines(rows[1].listedIn)[0].text,/本店有上品记录 · 已归档 2/);assert.match(collectionStatusLines(rows[2].listedIn)[0].text,/已保存上品行 1/);assert.match(collectionStatusLines(rows[4].listedIn)[0].text,/记录暂不可查/);
 });

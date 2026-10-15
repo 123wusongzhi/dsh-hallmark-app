@@ -1,3 +1,4 @@
+import { recordedProduct } from '../adapter/real-scenarios.ts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {AppStore} from '../../packages/store/index.ts';
@@ -9,7 +10,7 @@ const ok=(raw:any):AdapterResponse=>({status:'ok',raw,provenance:{source:'hallma
 function setup(){
  const store=new AppStore(':memory:'),presentation=new PresentationManager(store);
  const shops=[{id:'A',shopName:'Alpha shop',aliases:['A-shop']},{id:'B',shopName:'Alpine shop'},{id:'C',shopName:'Beta shop'}];
- const source={stores:shops.map(shop=>({id:shop.id,lastSuccessAt:'2026-10-05T00:00:00Z'})),products:[{storeId:'A',offerId:'A1',productId:1,price:100,stock:1,profit:{costMinor:30,actualMargin:0.1},unknownSourceField:'retained'},{storeId:'A',offerId:'A2',productId:2,price:50,stock:0,profit:{costMinor:null,actualMargin:null}},{storeId:'B',offerId:'B1',productId:3,profit:{costMinor:20,actualMargin:0.4}},{storeId:'C',offerId:'C1',productId:4,profit:{costMinor:20,actualMargin:0.2}}]};
+ const source={stores:shops.map(shop=>({id:shop.id,lastSuccessAt:'2026-10-05T00:00:00Z'})),products:[recordedProduct({storeId:'A',offerId:'A1',productId:1,price:100,stock:1,profit:{costMinor:30,actualMargin:0.1},unknownSourceField:'retained'}),recordedProduct({storeId:'A',offerId:'A2',productId:2,price:50,stock:0,profit:{costMinor:null,actualMargin:null}}),recordedProduct({storeId:'B',offerId:'B1',productId:3,profit:{costMinor:20,actualMargin:0.4}}),recordedProduct({storeId:'C',offerId:'C1',productId:4,profit:{costMinor:20,actualMargin:0.2}})]};
  const counts={stores:0,sync:0,products:0,business:0},syncArguments:any[][]=[],readArguments:any[][]=[];
  const forbidden=async()=>{counts.business++;return {status:'failed' as const,error:{code:'TEST_BUSINESS_FORBIDDEN',message:'No other business API expected',retryable:false}};};
  const client:CoreClient={getStores:async()=>{counts.stores++;return ok(shops);},syncStoreProducts:async(...args)=>{counts.sync++;syncArguments.push(args);return ok({});},getStoreProducts:async(...args)=>{counts.products++;readArguments.push(args);return ok(source);},getTargetMargin:forbidden,searchCollectedItems:forbidden,getCollectedItem:forbidden,platformCall:forbidden,platformRead:forbidden};
@@ -24,14 +25,14 @@ const context={sessionId:'background'};
 
 test('saved exact-status queries retain their filtered page on refresh without replacing the store snapshot',async()=>{
  const f=setup(),source={...f.source,products:[
-  {storeId:'A',offerId:'A1',status:'on_sale',title:'needle first'},
-  {storeId:'A',offerId:'false-title',status:'archived',title:'on_sale needle'},
-  {storeId:'A',offerId:'A2',status:'on_sale',title:'needle second'},
-  {storeId:'A',offerId:'false-history',status:'archived',title:'needle',history:{status:'on_sale'}},
-  {storeId:'A',offerId:'missing',title:'needle',platformStatus:'Продается'},
-  {storeId:'A',offerId:'A3',status:'on_sale',title:'needle third'},
-  {storeId:'A',offerId:'A4',status:'on_sale',title:'other'},
-  {storeId:'B',offerId:'B1',status:'on_sale',title:'needle foreign'},
+  recordedProduct({storeId:'A',offerId:'A1',status:'on_sale',title:'needle first'}),
+  recordedProduct({storeId:'A',offerId:'false-title',status:'archived',title:'on_sale needle'}),
+  recordedProduct({storeId:'A',offerId:'A2',status:'on_sale',title:'needle second'}),
+  recordedProduct({storeId:'A',offerId:'false-history',status:'archived',title:'needle',history:{status:'on_sale'}}),
+  recordedProduct({storeId:'A',offerId:'missing',title:'needle',platformStatus:'Продается'}),
+  recordedProduct({storeId:'A',offerId:'A3',status:'on_sale',title:'needle third'}),
+  recordedProduct({storeId:'A',offerId:'A4',status:'on_sale',title:'other'}),
+  recordedProduct({storeId:'B',offerId:'B1',status:'on_sale',title:'needle foreign'}),
  ]},spill={path:'synthetic-products.json',bytes:2000000,summary:{count:8},cursor:'spill:fixture:0'},original=structuredClone(source);
  f.client.getStoreProducts=async()=>({...ok(source),spill});
  try{

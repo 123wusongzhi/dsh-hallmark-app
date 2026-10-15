@@ -22,6 +22,7 @@ test('native save controls update an ordinary saved copy, follow save-as targets
       import {AppsPresentationService} from './packages/app-presentation/src/index.ts';
       import {SourceComponentStore} from './packages/source-components/src/index.ts';
       import {AuthoringEvidenceRunner,evidenceFile} from './packages/source-components/src/authoring-evidence.ts';
+      import {performanceEvidence} from './test/authoring/performance-fixture.ts';
       import {createAppsServer} from './packages/service/src/apps-server.ts';
       import {AppsHost,HttpAppsHostTransport} from './packages/plugin-apps/src/index.ts';
 
@@ -43,7 +44,7 @@ test('native save controls update an ordinary saved copy, follow save-as targets
         const built=await authoring.recordBuild(sessionId,{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,reportRef:executed.reportRef});
         const screenshotPath=join(runner.root,'fixture-'+begin.attempt.attemptId+'.png');writeFileSync(screenshotPath,Buffer.from('backend-preview-evidence-fixture'));
         const screenshot=evidenceFile(screenshotPath),at=new Date().toISOString();
-        const report={schemaVersion:1,attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,buildReceiptId:built.receiptId,buildId:built.archiveBuildId,protocol:'dsh.apps.component.v2',mode:'fixture',runnerVersion:'native-save-lifecycle-fixture/1',startedAt:at,finishedAt:at,viewportResults:[420,1040].map(width=>({id:'fixture-'+width,contentWidthCssPx:width,heightCssPx:800,deviceScaleFactor:1,screenshot,pageErrors:[],unhandledRejections:[],failedRequests:[],bridgeReady:true,assertionIds:['lifecycle-fixture']})),assertionResults:structuredClone(assertions),verdict:'PASS'};
+        const report={schemaVersion:1,attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,buildReceiptId:built.receiptId,buildId:built.archiveBuildId,protocol:'dsh.apps.component.v2',mode:'fixture',runnerVersion:'native-save-lifecycle-fixture/1',startedAt:at,finishedAt:at,viewportResults:[420,1040].map(width=>({id:'fixture-'+width,contentWidthCssPx:width,heightCssPx:800,deviceScaleFactor:1,screenshot,pageErrors:[],unhandledRejections:[],failedRequests:[],bridgeReady:true,assertionIds:['lifecycle-fixture'],interactionCaseIds:[]})),assertionResults:structuredClone(assertions),verdict:'PASS',performance:performanceEvidence()};
         const preview=await authoring.recordPreview(sessionId,{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,buildReceiptId:built.receiptId,reportRef:runner.writeReport('preview',report)});
         const publication=authoring.publish(sessionId,{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,viewId:begin.view.viewId,expectedViewRevision:begin.attempt.expectedViewRevision,buildId:built.archiveBuildId,buildReceiptId:built.receiptId,previewReceiptId:preview.receiptId});
         return {publication,confirm(){

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { CollectionAsset, CollectionPackage, CollectionPrice, CollectionProduct, CollectionSku } from './types.ts';
 
+export const COLLECTION_MAPPING_VERSION = 'collection-3';
 export const hash = (value: unknown): string => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 24);
 export const object = (value: unknown): Record<string, any> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, any> : {};
 const text = (value: unknown): string | null => typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -36,6 +37,22 @@ export function normalizePackage(value: unknown, basis = '来源字段；尺寸 
 function price(amount: unknown, currency: unknown, unit: string | null, meaning: CollectionPrice['meaning']): CollectionPrice | null {
   if ((typeof amount !== 'number' && typeof amount !== 'string') || String(amount).trim() === '' || !Number.isFinite(Number(amount)) || Number(amount) < 0 || !text(currency)) return null;
   return { amount: String(amount), currency: String(currency), unit, meaning };
+}
+/** Source SKU goods price plus captured inbound freight; absent freight is zero. */
+export function normalizePurchaseCost(sku: Record<string, any>, defaults: { currency?: unknown; unit?: string | null; source?: unknown; delivery?: unknown }): CollectionPrice | null {
+  const currency = sku.currency ?? defaults.currency, unit = text(sku.unit) ?? defaults.unit ?? null;
+  const goods = price(sku.goodsPrice, currency, unit, 'purchase_cost')
+    ?? price(sku.sourceSellingPrice?.amount, sku.sourceSellingPrice?.currency ?? currency, unit, 'purchase_cost');
+  const base = goods ?? price(sku.price, currency, unit, 'purchase_cost');
+  // The legacy Taobao detail's price is already goods + freight; goodsPrice is goods only.
+  if (!base || (!goods && defaults.source === 'taobao_tmall')) return base;
+  const freight = price(object(defaults.delivery).freightAmount, defaults.currency ?? base.currency, unit, 'purchase_cost');
+  if (!freight || Number(freight.amount) === 0) return base;
+  if (freight.currency !== base.currency) return null;
+  const goodsMinor = Math.round(Number(base.amount) * 100), freightMinor = Math.round(Number(freight.amount) * 100);
+  const totalMinor = goodsMinor + freightMinor;
+  if (![goodsMinor, freightMinor, totalMinor].every(Number.isSafeInteger)) return null;
+  return { ...base, amount: String(totalMinor / 100) };
 }
 function skuProperties(sku: Record<string, any>): Record<string, string> {
   const explicit = attributes(sku.properties);
@@ -82,9 +99,8 @@ export function normalizeProduct(detail: Record<string, any>, sourceId = 'legacy
     const entries = Array.isArray(logistics.logisticsSku ?? editor.logisticsSku) ? logistics.logisticsSku ?? editor.logisticsSku : [];
     const logisticsMatches = entries.filter((entry: any) => (s.id && String(entry.skuId) === String(s.id)) || (id && String(entry.skuOuterId) === id));
     const specific = s.package ?? s.packaging ?? (logisticsMatches.length === 1 ? logisticsMatches[0] : null);
-    // Alibaba seller offers are never promoted to purchase cost. Taobao goodsPrice excludes its separately captured freight.
-    const cost = price(s.goodsPrice ?? (['taobao_tmall', 'alibaba_com'].includes(source) ? undefined : s.price), s.currency ?? detail.currency, text(s.unit) ?? unit, 'purchase_cost');
-    const display = price(s.sourceSellingPrice?.amount, s.sourceSellingPrice?.currency ?? detail.currency, text(s.unit) ?? unit, 'source_display_price');
+    const cost = normalizePurchaseCost(s, { currency: detail.currency, unit, source, delivery: detail.delivery });
+    const display = price(s.sourceSellingPrice?.amount, s.sourceSellingPrice?.currency ?? s.currency ?? detail.currency, text(s.unit) ?? unit, 'source_display_price');
     return {
       id, ...(text(s.id) ? { nativeId: String(s.id) } : {}), ...(text(s.code) ? { code: String(s.code) } : {}),
       spec: text(s.spec) ?? '', attributes: skuProperties(s), purchaseCost: cost, sourceDisplayPrice: display,
@@ -98,7 +114,7 @@ export function normalizeProduct(detail: Record<string, any>, sourceId = 'legacy
   const unknowns: CollectionProduct['unknowns'] = [];
   if (skus.some(s => !s.id)) unknowns.push({ field: 'sku.id', reason: '来源 SKU 身份缺失或重复，未以列表行号代替' });
   const missingCost = skus.filter(s => !s.purchaseCost).map(s => s.id).filter((s): s is string => !!s);
-  if (missingCost.length) unknowns.push({ field: 'purchaseCost', reason: source === 'alibaba_com' ? '来源只有卖家报价，采购成本未知' : '采购成本未知', skuIds: missingCost });
+  if (missingCost.length) unknowns.push({ field: 'purchaseCost', reason: '来源 SKU 售价或币种不可用，或运费币种不一致', skuIds: missingCost });
   const weightMissing = skus.filter(s => s.package?.weightGrams == null && commonPackage.weightGrams == null).map(s => s.id).filter((s): s is string => !!s);
   const dimsMissing = skus.filter(s => s.package?.dimensionsMm == null && commonPackage.dimensionsMm == null).map(s => s.id).filter((s): s is string => !!s);
   if (weightMissing.length) unknowns.push({ field: 'package.weightGrams', reason: '来源未提供可用发货重量', skuIds: weightMissing });
@@ -111,7 +127,7 @@ export function normalizeProduct(detail: Record<string, any>, sourceId = 'legacy
     minimumOrder: positive(detail.minimumOrder ?? sd.pricing?.minOrderQuantity ?? editor.minOrderQuantity),
     customsCodes: Array.isArray(sourceCodes) ? [...new Set(sourceCodes.map((v: any) => String(v.hsCode ?? v)).filter(Boolean))] : [],
     description: String(detail.description ?? sd.description?.textDesc ?? ''), skus, assets, unknowns,
-    mapping: { version: 'collection-1', coverage: ['alibaba_com', 'taobao_tmall'].includes(source) ? 'verified_structure' : 'partial' },
+    mapping: { version: COLLECTION_MAPPING_VERSION, coverage: ['alibaba_com', 'taobao_tmall'].includes(source) ? 'verified_structure' : 'partial' },
   };
   if (result.mapping.coverage === 'partial') result.unknowns.push({ field: 'sourceMapping', reason: '该来源目前仅覆盖通用字段，专有字段仍可按原始依据读取' });
   return { ...result, revision: hash({ ...result, fetchedAt: undefined }) };

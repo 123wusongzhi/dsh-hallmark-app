@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AppsRuntime, RuntimeStore } from '../../app-runtime/src/index.ts';
@@ -11,6 +11,7 @@ import { AppsPresentationService } from '../../app-presentation/src/index.ts';
 import { SourceComponentStore } from '../../source-components/src/index.ts';
 import { HallmarkClient, TaskBroker } from '../../hallmark-adapter/index.ts';
 import { getOrCreateToken } from './http.ts';
+import { AsyncJsonlLog, RequestObserver } from './request-log.ts';
 import { createAppsServer } from './apps-server.ts';
 import {AppsSnapshotScheduler} from './apps-scheduler.ts';
 import {createDecisionReviewer} from './decision-review.ts';
@@ -20,6 +21,7 @@ import {BusinessOperationPoller} from './business-poller.ts';
 import {StableHallmarkBusinessStore} from '../../app-hallmark/src/store.ts';
 import {OzonBusinessGateway} from '../../ozon-business/src/index.ts';
 import {BusinessPricingRepository} from '../../business-pricing/src/index.ts';
+import {AssociationOverviewService} from './association-overview.ts';
 import {BusinessSettingsService} from './business-settings.ts';
 import {CollectionService} from '../../collection/src/index.ts';
 import {BusinessPackagingRepository} from '../../business-packaging/src/index.ts';
@@ -40,7 +42,9 @@ export function composeAppsRuntime(directory:string,configuration:AppsConfigurat
   try{store=new RuntimeStore(join(directory,'apps.db'));}catch(error){lease.release();throw error;}
   const signals=new AsyncLocalStorage<ExecutionContext>(),clients=new Map<string,HallmarkClient>(),ports=new Map<string,HallmarkStorePort>(),brokers=new Map<string,TaskBroker>();
   const reviewBridge=new ReviewBridge(),reviewer=createDecisionReviewer({imageProtocol:createDecisionImageProtocol(),fallback:(input,signal)=>{const context=signals.getStore();if(!context)throw new Error('REVIEW_HOST_CONTEXT_REQUIRED');return reviewBridge.request(input,{invocationId:context.request.invocationId,sessionId:'sessionId'in context.request.source?context.request.source.sessionId:undefined},signal);}});
-  const runtime=new AppsRuntime(store,{admit,log(event){mkdirSync(join(directory,'logs'),{recursive:true});appendFileSync(join(directory,'logs',`${new Date().toISOString().slice(0,10)}.jsonl`),JSON.stringify(event)+'\n');}});
+  // Invocation events keep their format and daily file; they are appended asynchronously, never on the request path.
+  const invocationLog=new AsyncJsonlLog({directory:join(directory,'logs'),maxFiles:0,maxFileBytes:0,flushIntervalMs:100});
+  const runtime=new AppsRuntime(store,{admit,log:event=>invocationLog.write(event as Record<string,unknown>)});
   const generation=(id:string,revision?:number)=>{const active=runtime.getConnection('hallmark',id);if(!active||revision!==undefined&&revision!==active.configRevision)throw new Error('CONFIG_REVISION_CONFLICT');return active.configRevision;};
   const cacheKey=(id:string,revision:number)=>canonicalJson([id,revision]);
   const clientFor=(connectionId:string,revision?:number)=>{
@@ -95,7 +99,8 @@ export function composeAppsRuntime(directory:string,configuration:AppsConfigurat
   authoring.recoverInterrupted();scheduler.start();
   const businessPoller=new BusinessOperationPoller(runtime);businessPoller.start();
   const businessSettings=new BusinessSettingsService(runtime,businessGateway,pricingFor,{packagingFor,collectionFor,prepareProducts:async(id,products)=>collectionSourceMatches(id)?applyExistingPackaging(products,businessStoreFor(id),({storeId,path,body})=>businessGateway.request(storeId,{path,body}),{storeIds:businessGateway.listStores().filter(s=>!s.sourceConnectionId||s.sourceConnectionId===id).map(s=>s.id)}):products});
-  return {runtime,store,presentation,authoring,evidenceRunner,scheduler,reviewBridge,businessPoller,businessSettings,businessGateway,businessStoreFor,pricingFor,lease,health:async()=>{const id=configuration.legacyHallmarkConnectionId;return id?clientFor(id).health():{status:'unavailable',error:{code:'EXPLICIT_HALLMARK_BACKEND_REQUIRED'}};},close:async()=>{reviewBridge.dispose();await businessPoller.stop();await scheduler.stop();await runtime.dispose();store.close();lease.release();}};
+  const associations=new AssociationOverviewService({runtime,gateway:businessGateway,storeFor:businessStoreFor,clientFor,collectionFor,sourceMatches:collectionSourceMatches});
+  return {associations,runtime,store,presentation,authoring,evidenceRunner,scheduler,reviewBridge,businessPoller,businessSettings,businessGateway,businessStoreFor,pricingFor,lease,invocationLog,health:async()=>{const id=configuration.legacyHallmarkConnectionId;return id?clientFor(id).health(true):{status:'unavailable',error:{code:'EXPLICIT_HALLMARK_BACKEND_REQUIRED'}};},close:async()=>{reviewBridge.dispose();await businessPoller.stop();await scheduler.stop();await runtime.dispose();await invocationLog.close();store.close();lease.release();}};
 }
 
 async function main() {
@@ -103,11 +108,15 @@ async function main() {
   const directory=resolve(process.env.APPS_DATA_DIR),configuration=JSON.parse(readFileSync(resolve(process.env.APPS_CONNECTIONS_FILE),'utf8')) as AppsConfiguration;
   const port=Number(process.env.APPS_PORT??4181);if(!Number.isSafeInteger(port)||port<1||port>65535)throw new Error('INVALID_SERVICE_PORT');
   const instance=composeAppsRuntime(directory,configuration),token=getOrCreateToken(directory);
-  const server=createAppsServer({...instance,token,port});
+  // One JSON line per request plus an event-loop stall detector; buffered and appended asynchronously (logs/requests-YYYY-MM-DD.jsonl, 32 MiB per file, newest 14 files).
+  const requestLog=new AsyncJsonlLog({directory:join(directory,'logs'),prefix:'requests-'}),observer=new RequestObserver({log:requestLog});observer.start();
+  process.once('exit',()=>{requestLog.flushSync();instance.invocationLog.flushSync();});
+  const server=createAppsServer({...instance,token,port,observer,restart:()=>{void close();}});
   await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(port,'127.0.0.1',resolve);});
   const recovery=instance.runtime.recover();let closing=false;
+  requestLog.write({ts:new Date().toISOString(),event:'runtime_start',pid:process.pid,port,version:instance.runtime.runtimeVersion,node:process.version});
   console.info(JSON.stringify({event:'apps-runtime-start',...instance.runtime.identity(),pid:process.pid,url:`http://127.0.0.1:${port}`}));
-  const close=async()=>{if(closing)return;closing=true;server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));await recovery;await instance.close();};
+  const close=async()=>{if(closing)return;closing=true;server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));await recovery;await instance.close();observer.stop();await requestLog.close();};
   process.once('SIGINT',()=>void close());process.once('SIGTERM',()=>void close());
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))await main();

@@ -1,3 +1,4 @@
+import {uiFixturePrelude} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
@@ -11,17 +12,18 @@ test('business table saves drafts without submitting, recovers the original requ
     const entry = resolve(directory, 'ui.mjs');
     await build({ stdin: { resolveDir: process.cwd(), sourcefile: 'business-ui-test.tsx', loader: 'tsx', contents: `
 import React from 'react';
+${uiFixturePrelude()}
 import {create,act} from 'react-test-renderer';
 import assert from 'node:assert/strict';
 import {BusinessOperations,businessOperation} from './packages/plugin-apps/client/business-operations.tsx';
 import {businessRowInput} from './packages/app-presentation/src/materials/business-operations.ts';
-const pricingConfig={revision:7,defaultPlanId:'light',plans:[{id:'light',name:'轻小件渠道',enabled:true}]};
+const pricingConfig={...recordedPricingSettings,revision:7,defaultPlanId:'light',plans:[{id:'light',name:'轻小件渠道',enabled:true}]};
 const quote={status:'ready',storeId:'bill',configRevision:7,planId:'light',planName:'轻小件渠道',currency:'CNY',suggestedPriceMinor:2200,minimumAllowedPriceMinor:1600,breakdown:{purchaseMinor:1200,fixedMinor:100,logisticsMinor:300,commissionMinor:100,totalCostMinor:1700,profitMinor:500,marginPpm:227272},issues:[],warnings:[]};
-const row=(rowId,offerId,status='draft')=>({rowId,action:'price',target:{offerId,productId:rowId},payload:{price:'20',currency_code:'CNY'},pricing:{planId:'light',mode:'automatic'},pricingQuote:quote,before:{price:'19',currency_code:'CNY'},revision:1,status,issues:[],corrections:[],repairHistory:{},procurement:[{itemId:'source',sourceSkuId:'red',quantity:2}],binding:{amount:12,currency:'CNY',missing:[],components:[{itemId:'source',sourceSkuId:'red',quantity:2,unitPrice:6,currency:'CNY',unit:'个'}]}});
+const row=(rowId,offerId,status='draft')=>({rowId,action:'price',target:{offerId,productId:rowId},payload:{name:uiProduct({},rowId==='one'?4:40).title,price:'20',currency_code:'CNY'},pricing:{planId:'light',mode:'automatic'},pricingQuote:quote,before:{price:'19',currency_code:'CNY'},revision:1,status,issues:[],corrections:[],repairHistory:{},procurement:[{itemId:uiProduct({},20).id,sourceSkuId:uiProduct({},20).sku,quantity:2}],binding:{amount:12,currency:'CNY',missing:[],components:[{itemId:uiProduct({},20).id,sourceSkuId:uiProduct({},20).sku,quantity:2,unitPrice:6,currency:'CNY',unit:'个'}]}});
 let plan={planId:'p',storeId:'bill',title:'价格调整',revision:1,status:'draft',rows:[row('one','RED'),row('two','BLUE','succeeded')],createdAt:'2026-10-10T00:00:00Z',updatedAt:'2026-10-10T00:00:00Z'},lost=false,tree,bound=false,releaseList;
 const originalFetch=globalThis.fetch,requests=[];
 globalThis.fetch=async(url,options)=>{
- if(String(url).includes('resource=stores'))return Response.json({stores:[{id:'bill',name:'Bill 店铺',connectionId:'board'}]});
+ if(String(url).includes('resource=stores'))return Response.json({stores:[uiStore({id:'bill',connectionId:'board'})]});
  if(String(url).includes('resource=businessSettings'))return Response.json({pricing:pricingConfig});
  const body=JSON.parse(options.body);requests.push(body);assert.equal(body.action,'businessOperations');assert.equal(body.sessionId,'s');assert.equal(body.connectionId,'board');assert.equal(Object.hasOwn(body,'storeId'),false);
  if(body.operation==='list'){
@@ -52,7 +54,7 @@ try{
  await click('刷新批次');assert.equal(button('正在读取…').props.disabled,true,'pending reads show loading');
  await act(async()=>{releaseList();releaseList=undefined;await settle();});
  assert.doesNotMatch(JSON.stringify(tree.toJSON()),/请先在当前聊天启用此经营连接/,'successful refresh clears obsolete connection error');
- assert.match(JSON.stringify(tree.toJSON()),/Bill 店铺/);assert.match(JSON.stringify(tree.toJSON()),/12 CNY/);
+ assert.match(JSON.stringify(tree.toJSON()),uiText(uiStore().name));assert.match(JSON.stringify(tree.toJSON()),/12 CNY/);
  assert.match(JSON.stringify(tree.toJSON()),/轻小件渠道/);assert.match(JSON.stringify(tree.toJSON()),/22.00 CNY/);assert.match(JSON.stringify(tree.toJSON()),/规则修订/);
  assert.deepEqual(businessRowInput(plan.rows[0],{...plan.rows[0].payload,name:'changed only title'}).pricing,{planId:'light',mode:'automatic'});
  const located={...plan.rows[0],referenceSubjects:[{sourceImageUrl:'https://source.test/photo.png',subject:'左侧银色主体'}]};
@@ -90,12 +92,13 @@ test('new price drafts support default and chosen logistics rules and automatic 
     const entry = resolve(directory, 'ui.mjs');
     await build({ stdin: { resolveDir: process.cwd(), sourcefile: 'business-pricing-ui-test.tsx', loader: 'tsx', contents: `
 import React from 'react';
+${uiFixturePrelude()}
 import {create,act} from 'react-test-renderer';
 import assert from 'node:assert/strict';
 import {BusinessOperations} from './packages/plugin-apps/client/business-operations.tsx';
 const originalFetch=globalThis.fetch,created=[];let tree,dynamic=false;
 globalThis.fetch=async(url,options)=>{
- if(String(url).includes('resource=stores'))return Response.json({stores:[{id:'bill',name:'Bill',connectionId:'board'}]});
+ if(String(url).includes('resource=stores'))return Response.json({stores:[uiStore({id:'bill',connectionId:'board'})]});
  if(String(url).includes('resource=businessSettings'))return Response.json({pricing:{revision:7,...(dynamic?{logisticsSelection:'automatic'}:{}),defaultPlanId:'light',plans:[{id:'light',name:'轻小件渠道',enabled:true},{id:'bulky',name:'大件渠道',enabled:true}]}});
  const body=JSON.parse(options.body);
  if(body.operation==='list')return Response.json({status:'ok',data:{plans:[]}});

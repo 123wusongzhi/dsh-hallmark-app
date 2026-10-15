@@ -1,3 +1,4 @@
+import { recordedSample, recordedRaw, recordedPlatformProduct, recordedProduct, recordedDetail, recordedSku } from '../adapter/real-scenarios.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -15,12 +16,12 @@ const ok=(raw:any):AdapterResponse=>({status:'ok',raw,provenance:{source:'hallma
 function fixture(){
  const store=new RuntimeStore(':memory:'),ports=new Map<string,HallmarkStorePort>(),calls:any[]=[];let unknown=false,price='100',currency='RUB',unavailable=false,executes=0,direct=false;
  const port=(id:string)=>{let value=ports.get(id);if(!value){value=new HallmarkStorePort(store,id);ports.set(id,value);}return value;};
- const readResponse=()=>ok({outcome:'response_received',httpStatus:200,response:{result:{items:[{id:1,product_id:1,sku:101,offer_id:'A',price:{price,currency_code:currency}}]}}});
- const client:CoreClient={getStores:async()=>ok([{id:'shop',shopName:'Shop'}]),getStoreProducts:async()=>unavailable?{status:'unavailable',error:{code:'DOWN',message:'Down',retryable:true}}:ok({stores:[{id:'shop'}],products:[{storeId:'shop',offerId:'A',productId:1,price:100,profit:{costMinor:5000,profitMinor:1000,actualMargin:0.1},original:{preserved:true}},{storeId:'shop',offerId:'B',productId:2,profit:{costMinor:null,actualMargin:1}}]}),syncStoreProducts:async()=>unavailable?{status:'unavailable',error:{code:'DOWN',message:'Down',retryable:true}}:ok({}),getTargetMargin:async()=>ok({targetMargin:0.2}),searchCollectedItems:async()=>ok([{id:'item',title:'Original',skuCount:1}]),getCollectedItem:async(id)=>ok({id,content:'{}',truncated:false}),platformCall:async(taskId,input)=>{calls.push({write:true,taskId,...input});if(unknown)price='50';return unknown?{status:'unknown',error:{code:'OUTCOME_UNKNOWN',message:'timeout',retryable:false}}:ok({outcome:'response_received',httpStatus:200,response:{result:[{updated:true}]}});},platformRead:async(taskId,input)=>{calls.push({write:false,taskId,...input});return readResponse();}};
+ const readResponse=()=>ok({outcome:'response_received',httpStatus:200,response:{result:{items:[recordedPlatformProduct({id:1,product_id:1,sku:101,offer_id:'A',price:{price,currency_code:currency}})]}}});
+ const client:CoreClient={getStores:async()=>ok([{id:'shop',shopName:'Shop'}]),getStoreProducts:async()=>unavailable?{status:'unavailable',error:{code:'DOWN',message:'Down',retryable:true}}:ok({stores:[{id:'shop'}],products:[recordedProduct({storeId:'shop',offerId:'A',productId:1,price:100,sources:[],profit:{costMinor:5000,profitMinor:1000,actualMargin:0.1},original:{preserved:true}}),recordedProduct({storeId:'shop',offerId:'B',productId:2,sources:[],profit:{costMinor:null,actualMargin:1}})]}),syncStoreProducts:async()=>unavailable?{status:'unavailable',error:{code:'DOWN',message:'Down',retryable:true}}:ok({}),getTargetMargin:async()=>ok({targetMargin:0.2}),searchCollectedItems:async()=>ok([{id:'item',title:'Original',skuCount:1}]),getCollectedItem:async(id)=>ok(recordedRaw({id,content:'{}',truncated:false})),platformCall:async(taskId,input)=>{calls.push({write:true,taskId,...input});if(unknown)price='50';return unknown?{status:'unknown',error:{code:'OUTCOME_UNKNOWN',message:'timeout',retryable:false}}:ok({outcome:'response_received',httpStatus:200,response:{result:[{updated:true}]}});},platformRead:async(taskId,input)=>{calls.push({write:false,taskId,...input});return readResponse();}};
  const directStore:OzonBusinessStore={id:'shop',name:'Shop',platform:'ozon',enabled:true,revision:1,credentialRevision:1,hasCredentials:true,sourceConnectionId:'c',createdAt:'2026-10-10T00:00:00Z',updatedAt:'2026-10-10T00:00:00Z'};
  const directWrites=new Set(['/v1/product/import/prices','/v3/product/import','/v2/products/stocks','/v1/product/archive','/v1/product/unarchive','/v1/actions/products/update','/v2/actions/products/deactivate']);
  const gateway={listStores:()=>[directStore],hasStore:(id:string)=>id==='shop',getStore:(id:string)=>id==='shop'?directStore:undefined,
-  getProducts:async()=>ok({response:{items:[{id:1,product_id:1,sku:101,offer_id:'A',price:{price,currency_code:currency}}]}}),
+  getProducts:async()=>ok({response:{items:[recordedPlatformProduct({id:1,product_id:1,sku:101,offer_id:'A',price:{price,currency_code:currency}})]}}),
   request:async(storeId:string,input:OzonBusinessRequest)=>{assert.equal(storeId,'shop');const write=directWrites.has(input.path);calls.push({transport:'ozon-direct',storeId,write,...input});if(!write)return readResponse();if(unknown){price='50';return {status:'unknown' as const,error:{code:'OUTCOME_UNKNOWN',message:'timeout',retryable:false}};}if(input.path==='/v1/product/import/prices')price=String((input.body?.prices as any[])[0].price);return ok({outcome:'response_received',httpStatus:200,response:{result:[{updated:true}]}});}
  } as unknown as OzonBusinessGateway;
  const broker:CoreBroker={getStoreTask:async()=>ok({taskId:'task'}),getListingTask:async()=>ok({taskId:'listing'}),requestId:(kind:string,id:string,index:number)=>`${kind}-${id}-${index}`},provider=new HallmarkProvider({store:port,client,broker,businessGateway:()=>direct?gateway:undefined,inspectOperation:(id,signal)=>runtime.inspect(id,signal)});
@@ -34,8 +35,8 @@ function data(result:CapabilityResult):any{assert.ok('data' in result,JSON.strin
 test('collection tools refresh status automatically and reuse it; precise native observations feed legacy cards',async()=>{
  const f=fixture();try{
   f.enableDirect();let refreshes=0;
-  const product:any={id:1,offer_id:'A',sku:101,is_archived:false,statuses:{is_created:true,moderate_status:'approved',validation_status:'success',status_name:'Готов к продаже'},stocks:{has_stock:false},errors:[]};
-  f.port('c').put('business_catalog','fixture',{storeId:'shop',offerId:'A',productId:'1',profit:{purchaseMinor:498},sources:[{productId:'item',skuCode:'sku-1',sourceSkuMatched:true}]});
+  const product:any=recordedPlatformProduct({id:1,offer_id:'A',sku:101,is_archived:false,statuses:{is_created:true,moderate_status:'approved',validation_status:'success',status_name:'Готов к продаже'},stocks:{has_stock:false},errors:[]});
+  f.port('c').put('business_catalog','fixture',recordedProduct({storeId:'shop',offerId:'A',productId:'1',profit:{purchaseMinor:498},sources:[{productId:'item',skuCode:'sku-1',sourceSkuMatched:true}]}));
   (f.gateway as any).getProducts=async()=>{refreshes++;return ok({response:{items:[product]}});};
   (f.gateway as any).request=async(_id:string,input:OzonBusinessRequest)=>{assert.equal(input.path,'/v3/product/info/list');return ok({response:{items:[product]}});};
   const first=data(await f.invoke('hallmark.collection.search',{store:{id:'shop',saleState:'out_of_stock'}}));
@@ -71,7 +72,7 @@ test('failed first history import makes record lookup unavailable and recovers w
 
 test('SKU reads retain exact item identity and source prices without inventing variant rows',async()=>{
  const f=fixture();try{
-  f.client.getCollectedItemDetail=async id=>ok({id,title:'采集商品',currency:'CNY',skus:[{sourceSkuId:'sku-1',spec:'颜色:蓝色',price:22.68,image:'https://example.com/blue.jpg'},{sourceSkuId:'sku-2',spec:'颜色:白色'}]});
+  f.client.getCollectedItemDetail=async id=>ok(recordedDetail({id,title:'采集商品',currency:'CNY',skus:[recordedSku({sourceSkuId:'sku-1',spec:'颜色:蓝色',price:22.68,image:'https://example.com/blue.jpg'}, recordedSample({id:id,source:undefined,nonempty:true}), undefined, ["goodsPrice","sourceSellingPrice","properties","id","code"]),recordedSku({sourceSkuId:'sku-2',spec:'颜色:白色'}, recordedSample({id:id,source:undefined,nonempty:true}), undefined, ["properties","id","code","goodsPrice","price","sourceSellingPrice"])]}, recordedSample({id:id,source:undefined,nonempty:true})));
   const collected=data(await f.invoke('hallmark.collected.skus',{itemId:'item'}));
   assert.equal(collected.items[0].productId,'item');assert.equal(collected.items[0].price,22.68);assert.equal(collected.items[0].currency,'CNY');assert.equal(collected.items[1].price,null);
   f.client.getStoreProducts=async()=>ok({stores:[{id:'shop'}],products:[{storeId:'shop',productId:1,sku:'platform-sku',title:'店铺商品',currency:'CNY',pricing:{sellerMinor:4497,currency:'CNY'},sources:[{sourceSkuMatched:false,sourceSpec:'错误规格'},{sourceSkuMatched:true,sourceSpec:'颜色:蓝色'}]}]});
@@ -97,7 +98,7 @@ test('content rating reads only direct Ozon credentials and never falls back to 
   const noStore=await f.invoke('hallmark.ozon.ratings',{storeId:'shop',sku:'101'});assert.equal('error' in noStore?noStore.error?.code:undefined,'OZON_DIRECT_STORE_REQUIRED');
   f.enableDirect();(f.client as any).storeDataRead=async()=>{throw Error('Hallmark channel must not be used');};
   f.broker.getStoreTask=async()=>{throw Error('legacy task must not be used');};
-  (f.gateway as any).request=async(storeId:string,input:OzonBusinessRequest)=>{f.calls.push({storeId,...input});return ok({outcome:'succeeded',httpStatus:200,response:input.path==='/v3/product/info/list'?{items:[{id:1,offer_id:'A',sku:101,name:'Shop A',statuses:{status_name:'Продается'}}]}:{products:[{sku:101,rating:78.5}]}});};
+  (f.gateway as any).request=async(storeId:string,input:OzonBusinessRequest)=>{f.calls.push({storeId,...input});return ok({outcome:'succeeded',httpStatus:200,response:input.path==='/v3/product/info/list'?{items:[recordedPlatformProduct({id:1,offer_id:'A',sku:101,name:'Shop A',statuses:{status_name:'Продается'}})]}:{products:[{sku:101,rating:78.5}]}});};
   const result=data(await f.invoke('hallmark.ozon.ratings',{storeId:'shop',sku:'101'}));assert.equal(result.items[0].rating,78.5);assert.equal(result.items[0].status,'在售');assert.deepEqual(f.calls.map(call=>call.path),['/v3/product/info/list','/v1/product/rating-by-sku']);
   const wrongStore=await f.invoke('hallmark.ozon.ratings',{storeId:'shop',sku:'101'},{connectionId:'d'});assert.equal('error' in wrongStore?wrongStore.error?.code:undefined,'STORE_CONNECTION_MISMATCH');
  }finally{await f.runtime.dispose();f.store.close();}
@@ -116,15 +117,15 @@ test('product fields trim transport while preserving identity, cursor, total and
 });
 for(const useSpill of [false,true])test(`exact product status filters before paging and field projection${useSpill?' with source spill':''}`,async()=>{
  const f=fixture(),source={stores:[{id:'shop'}],products:[
-  {id:'source-A',storeId:'shop',offerId:'A',productId:1,status:'on_sale',title:'needle first'},
-  {storeId:'shop',offerId:'title',productId:2,status:'archived',title:'on_sale needle'},
-  {storeId:'shop',offerId:'B',productId:3,status:'on_sale',title:'needle second'},
-  {storeId:'shop',offerId:'history',productId:4,status:'archived',sources:{history:['on_sale']}},
-  {storeId:'shop',offerId:'missing',productId:5,title:'on_sale',platformStatus:'Продается',stock:10},
-  {storeId:'shop',offerId:'imported',productId:6,status:'imported',platformStatus:'Продается',stock:10},
-  {storeId:'shop',offerId:'case',productId:7,status:'ON_SALE'},
-  {storeId:'shop',offerId:'C',productId:8,status:'on_sale',title:'other'},
-  {storeId:'other',offerId:'foreign',productId:9,status:'on_sale'},
+  recordedProduct({id:'source-A',storeId:'shop',offerId:'A',productId:1,status:'on_sale',title:'needle first'}),
+  recordedProduct({storeId:'shop',offerId:'title',productId:2,status:'archived',title:'on_sale needle'}),
+  recordedProduct({storeId:'shop',offerId:'B',productId:3,status:'on_sale',title:'needle second'}),
+  recordedProduct({storeId:'shop',offerId:'history',productId:4,status:'archived',sources:{history:['on_sale']}}),
+  recordedProduct({storeId:'shop',offerId:'missing',productId:5,title:'on_sale',platformStatus:'Продается',stock:10}),
+  recordedProduct({storeId:'shop',offerId:'imported',productId:6,status:'imported',platformStatus:'Продается',stock:10}),
+  recordedProduct({storeId:'shop',offerId:'case',productId:7,status:'ON_SALE'}),
+  recordedProduct({storeId:'shop',offerId:'C',productId:8,status:'on_sale',title:'other'}),
+  recordedProduct({storeId:'other',offerId:'foreign',productId:9,status:'on_sale'}),
  ]},original=structuredClone(source),spill={path:'synthetic-products.json',bytes:2000000,summary:{count:9},cursor:'spill:fixture:0'};
  f.client.getStoreProducts=async()=>({...ok(source),...(useSpill?{spill}:{})});
  try{
@@ -329,4 +330,27 @@ test('platform synchronization coalesces while pagination reads the last complet
   assert.equal(data(page).products[0].offerId,'B');assert.equal(syncs,1);assert.equal(f.port('c').get('snapshots','store_products:shop')?.state,'refreshing');
   release();const results=await Promise.all([first,second]);assert.ok(results.every(result=>result.status==='ok'));assert.equal(syncs,1);assert.equal(data(results[0]).timings.syncMs>=0,true);assert.equal(f.port('c').get('snapshots','store_products:shop')?.state,'ready');
  }finally{release?.();await f.runtime.dispose();f.store.close();}
+});
+
+
+test('exact association capability refreshes sale observations once, pages without searches and validates scope',async()=>{
+ const f=fixture();try{
+  f.enableDirect();let refreshes=0;
+  const product=recordedPlatformProduct({id:1,offer_id:'A',sku:101,is_archived:false,statuses:{is_created:true,moderate_status:'approved',validation_status:'success',status_name:'Продается'},stocks:{has_stock:true},errors:[]});
+  f.port('c').put('business_catalog','linked',recordedProduct({storeId:'shop',offerId:'A',productId:'1',sources:[{productId:'item',skuCode:'sku-1',sourceSkuMatched:true}]}));
+  f.client.searchCollectedItems=async()=>{throw Error('no collection keyword search');};
+  f.client.getStoreProducts=async()=>{throw Error('no legacy catalogue for a direct store');};
+  (f.gateway as any).getProducts=async()=>{refreshes++;return ok({response:{items:[product]}});};
+  (f.gateway as any).request=async()=>ok({response:{items:[product]}});
+  const input={id:'item',storeId:'shop'};
+  let result=data(await f.invoke('hallmark.collection.associations',input));
+  assert.equal(result.currentSale,'on_sale');assert.equal(result.offers[0].offerId,'A');assert.equal(result.total,1);assert.equal(refreshes,1);
+  await f.invoke('hallmark.collection.associations',input);assert.equal(refreshes,1);
+  product.is_archived=true;result=data(await f.invoke('hallmark.collection.associations',{...input,refresh:true}));
+  assert.equal(refreshes,2);assert.equal(result.offers[0].saleState,'archived');assert.equal(result.currentSale,'not_on_sale');
+  (f.gateway as any).getProducts=async()=>({status:'unavailable',error:{code:'DOWN',message:'down'}});
+  result=data(await f.invoke('hallmark.collection.associations',{...input,refresh:true}));assert.equal(result.currentSale,'unknown');assert.equal(result.total,1);
+  assert.equal((await f.invoke('hallmark.collection.associations',{...input,query:'same title'})).status,'failed');
+  assert.equal((await f.invoke('hallmark.collection.associations',input,{connectionId:'d'}) as any).error.code,'STORE_CONNECTION_MISMATCH');
+ }finally{await f.runtime.dispose();f.store.close();}
 });

@@ -1,3 +1,4 @@
+import { recordedPlatformProduct } from '../adapter/real-scenarios.ts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {AppStore} from '../../packages/store/index.ts';
@@ -14,7 +15,7 @@ function setup(){
  const presentation=new PresentationManager(store),calls={stores:0,sync:0,products:0,write:0,read:0,other:0};
  const forbidden=async()=>{calls.other++;throw new Error('unexpected remote invocation');};
  const client:CoreOptions['client']={getStores:async()=>{calls.stores++;return ok([{id:'shop',shopName:'Shop'}]);},syncStoreProducts:async()=>{calls.sync++;throw new Error('unexpected source sync');},getStoreProducts:async()=>{calls.products++;throw new Error('unexpected source read');},getTargetMargin:forbidden,searchCollectedItems:forbidden,getCollectedItem:forbidden,
-  platformCall:async()=>{calls.write++;return ok({outcome:'response_received',httpStatus:200,response:{result:[{offer_id:'A',updated:true,errors:[]}]}});},platformRead:async()=>{calls.read++;return ok({outcome:'response_received',httpStatus:200,response:{result:{items:[{offer_id:'A',product_id:1,price:{price:'100',currency_code:'RUB'}}]}}});}};
+  platformCall:async()=>{calls.write++;return ok({outcome:'response_received',httpStatus:200,response:{result:[{offer_id:'A',updated:true,errors:[]}]}});},platformRead:async()=>{calls.read++;return ok({outcome:'response_received',httpStatus:200,response:{result:{items:[recordedPlatformProduct({offer_id:'A',product_id:1,price:{price:'100',currency_code:'RUB'}})]}}});}};
  const broker:CoreOptions['broker']={getStoreTask:async()=>ok({taskId:'task'}),getListingTask:async()=>ok({taskId:'listing'}),requestId:(kind,id,index)=>`${kind}-${id}-${index}`};
  const core=new AppCore({store,presentation,client,broker});
  const ledger=(id='op',state='running',sessionId:string|null='alice')=>({operationId:id,kind:'update_price',sessionId,storeId:'shop',targets:['A'],input:{price:100,currency:'RUB',userRequest:request},state,hallmarkRefs:[{taskId:'task',requestId:'real-recorded-request',path:'/v1/product/import/prices'}],items:[] as any[],createdAt:'2026-10-05T00:00:00Z',updatedAt:'2026-10-05T00:01:00Z'});

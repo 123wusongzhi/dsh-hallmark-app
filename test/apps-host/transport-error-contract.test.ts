@@ -15,8 +15,22 @@ import {AppsClient, HttpRuntimeTransport} from '../../packages/app-sdk/src/index
 import {AppsHost, HttpAppsHostTransport} from '../../packages/plugin-apps/src/index.ts';
 import type {AppProvider, CapabilityDescriptor, CapabilityResult, InvocationRequest} from '../../packages/app-contracts/src/index.ts';
 import {validateResult} from '../../packages/app-contracts/src/index.ts';
+import type {ComponentExtensionRequest} from '../../packages/component-runtime/src/host.ts';
 
 type Fault='none'|'drop-response'|'drop-response-and-inspection'|'operation-only-inspection'|'drop-read'|'handshake'|'describe'|'connections'|'corrupt-output'|'protocol-rejection'|'mismatched-inspection'|'drop-component';
+
+test('component data reads recover one lost HTTP response; refresh and mutations are never replayed',async()=>{
+  let calls=0,mode='drop';
+  const server=createServer(async(req,res)=>{for await(const _ of req){}calls++;if(mode==='drop'&&calls===1){req.socket.destroy();return;}if(mode==='empty'){res.end();return;}res.setHeader('content-type','application/json');res.end(JSON.stringify({result:{chunk:'real HTTP response'}}));});
+  const port=await listen(server),transport=new HttpAppsHostTransport(`http://127.0.0.1:${port}`,randomUUID()+randomUUID());
+  const request:ComponentExtensionRequest={channel:'dsh.apps.component.v2',protocolVersion:'2.0',sessionId:'fixture-session',viewId:'view',buildId:'build',frameInstanceId:'frame',requestId:randomUUID(),type:'extension',feature:'dataTransferV1',action:'read',params:{id:'transfer',index:0,documentNonce:'document'}};
+  try{
+    assert.deepEqual(await transport.componentExtension(request),{result:{chunk:'real HTTP response'}});assert.equal(calls,2);
+    calls=0;await assert.rejects(()=>transport.componentExtension({...request,action:'prepare',params:{method:'refresh'}}),error=>{assert.equal((error as any).details.error.code,'RUNTIME_CONNECTION_LOST');assert.equal((error as any).details.error.retryPolicy,'inspect_only');return true;});assert.equal(calls,1);
+    calls=0;mode='empty';await assert.rejects(()=>transport.componentExtension(request),error=>{assert.equal((error as any).details.error.code,'RUNTIME_INVALID_RESPONSE');assert.equal((error as any).details.error.details.attempts,2);return true;});assert.equal(calls,2);
+    calls=0;await assert.rejects(()=>transport.componentExtension(request,AbortSignal.abort()));assert.equal(calls,0);
+  }finally{server.closeAllConnections();await new Promise<void>(done=>server.close(()=>done()));}
+});
 type RouteMode='legacy'|'routed';
 const invocationPath=(path:unknown)=>path==='/v1/invocations'||path==='/v1/routed-invocations';
 const submittedCount=(rows:Record<string,any>[])=>rows.filter(row=>row.method==='POST'&&invocationPath(row.path)).length;
@@ -78,3 +92,56 @@ test('Host routed invocation does not depend on legacy connections discovery; Ru
 for(const effect of ['query','mutation'] as const){test(`component proxy ${effect} accepted once then response loss retains original bridge identity and honest retry policy`,async()=>{const f=await fixture('component-lost-'+effect);try{f.setFault('drop-component');const {request,response,packet}=await f.component(effect);assert.equal(response.status,200);assert.equal(packet.channel,request.channel);for(const key of ['protocolVersion','sessionId','viewId','buildId','frameInstanceId','requestId'] as const)assert.equal(packet[key],request[key]);assert.equal(packet.error.retryPolicy,effect==='mutation'?'inspect_only':'read_retry');assert.equal(packet.error.details.requestId,request.requestId);assert.equal(packet.error.details.method,'invokeCapability');assert.equal(packet.error.details.params.capabilityId,request.params.capabilityId);if(effect==='mutation')assert.equal(packet.error.details.params.idempotencyKey,request.params.idempotencyKey);assert.equal(packet.result,undefined);assert.equal(f.providerCalls(),1);assert.equal(f.http.filter(row=>row.path==='/v1/component-bridge').length,1);}finally{await f.close();}});}
 test('component proxy explicit stale-build backend rejection preserves same tuple and never policy with zero Provider',async()=>{const f=await fixture('component-known-rejection');try{const {request,packet}=await f.component('mutation',true);assert.equal(packet.requestId,request.requestId);assert.equal(packet.error.code,'BRIDGE_IDENTITY_STALE');assert.equal(packet.error.retryPolicy,'never');assert.equal(f.providerCalls(),0);assert.equal(f.store.list('operations').length,0);}finally{await f.close();}});
 test('Direct HTTP transport cancellation before submission returns cancelled/never with zero HTTP POST or Provider dispatch',async()=>{const f=await fixture('direct-before-submit');try{const descriptor=cap('mutation'),request:InvocationRequest={protocolVersion:'1.0',appId:'transportfixture',connectionId:'C1',invocationId:randomUUID(),traceId:randomUUID(),capabilityId:descriptor.capabilityId,capabilityVersion:descriptor.version,input:{value:'cancelled-before-submit'},source:{kind:'script',sessionId:'fixture-session',runId:'direct-transport',stepKey:'cancelled'},deadlineAt:new Date(Date.now()+3000).toISOString(),idempotencyKey:randomUUID()},before=f.http.length,result=await f.transport.invoke(request,AbortSignal.abort());save(f.label+'/cancelled-result.json',{request,result});assert.equal(result.status,'cancelled');assert.equal(result.invocationId,request.invocationId);assert.equal(result.traceId,request.traceId);assert.ok('error'in result);assert.equal(result.error.code,'CANCELLED_BEFORE_DISPATCH');assert.equal(result.error.retryPolicy,'never');assert.equal(result.operation,undefined);assert.equal(f.http.length,before);assert.equal(f.providerCalls(),0);assert.equal(f.store.list('operations').length,0);}finally{await f.close();}});
+
+test('transport checks status before parsing: an empty 408 or a non-JSON gateway body is a typed RUNTIME_INVALID_RESPONSE that keeps status and request id',async()=>{
+  let mode='empty-408';const ids:string[]=[];
+  const server=createServer(async(req,res)=>{for await(const _ of req){}ids.push(String(req.headers['x-request-id']));
+    if(mode==='empty-408'){res.writeHead(408);res.end();return;}
+    if(mode==='html-502'){res.writeHead(502,{'content-type':'text/html'});res.end('<html>Bad Gateway</html>');return;}
+    if(mode==='json-503'){res.writeHead(503,{'content-type':'application/json'});res.end(JSON.stringify({status:'failed',error:{code:'RUNTIME_STORE_BUSY',message:'busy',retryPolicy:'read_retry',details:{requestId:'srv'}}}));return;}
+    res.writeHead(200);res.end();});
+  const port=await listen(server),transport=new HttpAppsHostTransport(`http://127.0.0.1:${port}`,randomUUID()+randomUUID());
+  try{
+    await assert.rejects(()=>transport.viewData('s','v'),(error:any)=>{assert.equal(error.code,'RUNTIME_INVALID_RESPONSE');assert.equal(error.statusCode,408);assert.match(ids[0],/^[0-9a-f-]{36}$/);assert.equal(error.requestId,ids[0]);assert.equal(error.details.error.code,'RUNTIME_INVALID_RESPONSE');assert.equal(error.details.error.retryPolicy,'read_retry');assert.equal(error.details.error.details.httpStatus,408);assert.equal(error.details.error.details.requestId,ids[0]);return true;});
+    mode='html-502';await assert.rejects(()=>transport.viewData('s','v'),(error:any)=>{assert.equal(error.code,'RUNTIME_INVALID_RESPONSE');assert.equal(error.statusCode,502);assert.match(error.details.error.details.cause,/Bad Gateway/);return true;});
+    mode='json-503';await assert.rejects(()=>transport.viewData('s','v'),(error:any)=>{assert.equal(error.statusCode,503);assert.equal(error.details.error.code,'RUNTIME_STORE_BUSY');assert.equal(error.requestId,ids.at(-1));return true;});
+    // A 2xx with an empty body is an uncertain read, not a server verdict: no statusCode, but still typed and traceable.
+    mode='empty-200';await assert.rejects(()=>transport.viewData('s','v'),(error:any)=>{assert.equal(error.code,'RUNTIME_INVALID_RESPONSE');assert.equal(error.statusCode,undefined);assert.equal(error.httpStatus,200);assert.equal(error.requestId,ids.at(-1));return true;});
+  }finally{server.closeAllConnections();await new Promise<void>(done=>server.close(()=>done()));}
+});
+test('component extension retries a transient server status once for idempotent reads only and keeps the Runtime evidence',async()=>{
+  let mode='busy-then-ok',calls=0;
+  const server=createServer(async(req,res)=>{for await(const _ of req){}calls++;
+    if(mode==='busy-then-ok'&&calls===1||mode==='busy-always'){res.writeHead(503,{'content-type':'application/json'});res.end(JSON.stringify({status:'failed',error:{code:'RUNTIME_STORE_BUSY',message:'busy',retryPolicy:'read_retry',details:{requestId:'srv'}}}));return;}
+    if(mode==='empty-408'){res.writeHead(408);res.end();return;}
+    res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({result:{ok:true}}));});
+  const port=await listen(server),transport=new HttpAppsHostTransport(`http://127.0.0.1:${port}`,randomUUID()+randomUUID());
+  const read:ComponentExtensionRequest={channel:'dsh.apps.component.v2',protocolVersion:'2.0',sessionId:'fixture-session',viewId:'view',buildId:'build',frameInstanceId:'frame',requestId:randomUUID(),type:'extension',feature:'dataTransferV1',action:'prepare',params:{method:'getData',documentNonce:'document'}};
+  try{
+    assert.deepEqual(await transport.componentExtension(read),{result:{ok:true}});assert.equal(calls,2);
+    calls=0;mode='busy-always';await assert.rejects(()=>transport.componentExtension(read),(error:any)=>{assert.equal(error.statusCode,503);assert.equal(error.details.error.code,'RUNTIME_STORE_BUSY');assert.equal(error.details.error.retryPolicy,'read_retry');assert.equal(error.details.error.details.requestId,'srv');assert.equal(error.details.error.details.attempts,2);return true;});assert.equal(calls,2);
+    calls=0;mode='empty-408';await assert.rejects(()=>transport.componentExtension(read),(error:any)=>{assert.equal(error.code,'RUNTIME_INVALID_RESPONSE');assert.equal(error.statusCode,408);assert.equal(error.details.error.details.attempts,2);return true;});assert.equal(calls,2);
+    calls=0;mode='busy-always';await assert.rejects(()=>transport.componentExtension({...read,feature:'renderReadyV1',action:'ready',params:{}}),(error:any)=>{assert.equal(error.statusCode,503);assert.equal(error.details.error.details.attempts,undefined);return true;});assert.equal(calls,1,'a non-read extension is never replayed');
+  }finally{server.closeAllConnections();await new Promise<void>(done=>server.close(()=>done()));}
+});
+test('Host proxy keeps the underlying code, request id and cause instead of a bare RUNTIME_UNAVAILABLE',async()=>{
+  let mode:'busy'|'reset'='busy';
+  const fetcher:typeof fetch=async()=>{
+    if(mode==='reset')throw Object.assign(new TypeError('fetch failed'),{cause:Object.assign(new Error('read ECONNRESET'),{code:'ECONNRESET'})});
+    return new Response(JSON.stringify({status:'failed',error:{code:'RUNTIME_INTERNAL_ERROR',message:'Runtime internal error, retry later.',retryPolicy:'read_retry',details:{requestId:'srv-id',cause:'TypeError: Cannot read properties of undefined'}}}),{status:503,headers:{'content-type':'application/json','x-request-id':'srv-id'}});
+  };
+  const host=new AppsHost({agents:{get:(id:string)=>id==='A'?{id}:undefined},tools:{register:()=>()=>{}}} as never,new HttpAppsHostTransport('http://127.0.0.1:1',randomUUID()+randomUUID(),fetcher));
+  const bridge=(method:string,params:unknown=null)=>({channel:'dsh.apps.component.v2',protocolVersion:'2.0',sessionId:'A',viewId:'V',buildId:'B',frameInstanceId:'F',requestId:'bridge-'+method,method,params});
+  const post=async(request:unknown)=>await (await host.ui(new Request('http://dsh.invalid/api/dsh-apps',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'componentBridge',request})}))).json() as {error:{code:string;retryPolicy:string;message:string;details:Record<string,unknown>}};
+  try{
+    const busy=await post(bridge('getData'));
+    assert.equal(busy.error.code,'RUNTIME_INTERNAL_ERROR');assert.equal(busy.error.retryPolicy,'read_retry');assert.equal(busy.error.details.requestId,'bridge-getData');assert.equal(busy.error.details.runtimeRequestId,'srv-id');assert.match(String(busy.error.details.cause),/Cannot read properties/);assert.equal(busy.error.details.httpStatus,503);
+    const write=await post(bridge('invokeCapability',{appId:'notes',connectionId:'n',capabilityId:'notes.notes.create',capabilityVersion:'1.0.0',input:{},idempotencyKey:'k',deadlineAt:new Date(Date.now()+5000).toISOString()}));
+    assert.equal(write.error.retryPolicy,'inspect_only');assert.equal(write.error.details.doNotResubmitMutation,true);
+    mode='reset';const reset=await post(bridge('getData'));
+    assert.equal(reset.error.code,'RUNTIME_CONNECTION_LOST');assert.equal(reset.error.retryPolicy,'read_retry');assert.match(String(reset.error.details.cause),/ECONNRESET/);assert.equal(typeof reset.error.details.runtimeRequestId,'string');
+    // The generic catch-all for GET reads keeps the same evidence and is retryable; it used to be a bare RUNTIME_UNAVAILABLE / never.
+    const data=await host.ui(new Request('http://dsh.invalid/api/dsh-apps?resource=viewData&sessionId=A&viewId=V')),body=await data.json() as {error:{code:string;retryPolicy:string;details:{cause:string;requestId:string}}};
+    assert.equal(data.status,503);assert.equal(body.error.code,'RUNTIME_CONNECTION_LOST');assert.equal(body.error.retryPolicy,'read_retry');assert.match(body.error.details.cause,/ECONNRESET/);assert.ok(body.error.details.requestId);
+  }finally{await host.dispose();}
+});

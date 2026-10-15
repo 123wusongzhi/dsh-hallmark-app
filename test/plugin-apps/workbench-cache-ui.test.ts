@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiOzonProduct,uiStore,uiListingPayload,uiFixturePrelude,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdirSync,mkdtempSync,rmSync} from 'node:fs';
@@ -9,7 +10,8 @@ test('workbench and saved native views refresh on expiry, pause when hidden, pre
  const root=resolve('artifacts');mkdirSync(root,{recursive:true});const dir=mkdtempSync(join(root,'cache-ui-')),entry=join(dir,'fixture.mjs');
  try{
   await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
-import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
+import React from 'react';
+${uiFixturePrelude()}import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
 import {WorkbenchInstanceView} from './packages/plugin-apps/client/workbench-board.tsx';
 import {AppsNativeView} from './packages/plugin-apps/client/view.tsx';
 import {createMaterialView} from './packages/app-presentation/src/materials/catalog.ts';
@@ -23,7 +25,7 @@ const design=createMaterialView('data-table');design.bindings=[{id:'main',datase
 const instance={instanceId:'test',title:'缓存测试',materialId:'data-table',materialVersion:1,design,dataSources:{main:{id:'source',revision:1,params:{}}},position:{order:0}};
 const source={id:'source',revision:1,fields:[],parameters:[],operations:{pagination:{},search:{scope:'loaded'},sort:{scope:'loaded'}}};
 let tree,requests=[],mode='board',fail=false,hold=false,releases=[],rowVersion=0,swr=false;
-const bindings=(viewId)=>({viewId,bindings:[{bindingId:'main',datasetId:'data',payload:{items:[{title:viewId+'商品'+rowVersion}],cache:{ttlMs:900000,fetchedAt:new Date(now).toISOString(),expiresAt:new Date(now+900000).toISOString(),nextRefreshAt:new Date(now+(swr?2000:900000)).toISOString(),stale:false,refreshing:swr}},state:'ready',lastSuccessAt:new Date(now).toISOString(),sourceDataTime:null,freshness:'fresh',provenance:[]}]});
+const bindings=(viewId)=>({viewId,bindings:[{bindingId:'main',datasetId:'data',payload:{items:[{title:uiProduct({},(viewId==='A'?3:10)+rowVersion).title}],cache:{ttlMs:900000,fetchedAt:new Date(now).toISOString(),expiresAt:new Date(now+900000).toISOString(),nextRefreshAt:new Date(now+(swr?2000:900000)).toISOString(),stale:false,refreshing:swr}},state:'ready',lastSuccessAt:new Date(now).toISOString(),sourceDataTime:null,freshness:'fresh',provenance:[]}]});
 globalThis.fetch=async(url,options)=>{const body=options?.body?JSON.parse(options.body):undefined;requests.push({url:String(url),body,signal:options?.signal});const id=mode==='board'?body.params.context.storeId:new URL(String(url),'http://fixture').searchParams.get('viewId')??body.viewId;const captured=bindings(id);if(hold&&body)await new Promise(resolve=>releases.push(resolve));if(fail&&body)return Response.json({error:{message:'临时网络故障'}},{status:503});
  if(mode==='board')return Response.json({instanceId:'test',view:{viewId:id,design},dataSources:{main:source},pages:{main:{hasMore:false,loadedCount:1}},data:captured});
  if(body)return Response.json(captured);const resource=new URL(String(url),'http://fixture').searchParams.get('resource');return Response.json(resource==='view'?{viewId:id,ownerSessionId:'chat',title:'保存的组件',viewRevision:1,design,bindings:[{bindingId:'main',datasetId:'data'}]}:captured);
@@ -32,15 +34,15 @@ const contents=()=>JSON.stringify(tree.toJSON()),text=node=>typeof node==='strin
 const mount=async(id)=>{await act(async()=>{const element=mode==='board'?<WorkbenchInstanceView appId='hallmark' instance={instance} context={{storeId:id}}/>:<AppsNativeView sessionId='chat' viewId={id}/>;if(tree)tree.update(element);else tree=create(element);await flush();});};
 const hidden=async(value)=>{await act(async()=>{document.hidden=value;document.dispatchEvent(new Event('visibilitychange'));await flush();});};
 for(mode of ['board','native']){
- requests=[];rowVersion=0,swr=false;await mount('A');assert.match(contents(),/A商品0/);assert.equal(timers.size,1);
+ requests=[];rowVersion=0,swr=false;await mount('A');assert.match(contents(),uiText(uiProduct({},3).title));assert.equal(timers.size,1);
  await hidden(true);assert.equal(timers.size,0,'hidden document cancels automatic refresh');await hidden(false);assert.equal(timers.size,1);
- rowVersion=1;await tick();assert.match(contents(),/A商品1/);const automatic=requests.at(-1).body;assert.equal(mode==='board'?automatic.params.forceRefresh:automatic.forceRefresh,false);
- hold=true;rowVersion=2;await act(async()=>{button('立即更新').props.onClick();await flush();});assert.match(contents(),/A商品1/,'keep existing rows while requesting');assert.equal(timers.size,0,'no overlapping refresh');const manual=requests.at(-1).body;assert.equal(mode==='board'?manual.params.forceRefresh:manual.forceRefresh,true);
- fail=true;await act(async()=>{releases.shift()();await flush();});assert.match(contents(),/A商品1/);assert.match(contents(),/临时网络故障/);assert.equal(timers.size,1,'failed read schedules retry');fail=false;hold=false;
- await tick();assert.match(contents(),/A商品2/);
- swr=true;await act(async()=>{button('立即更新').props.onClick();await flush();});assert.match(contents(),/A商品2/);assert.match(contents(),/正在后台更新/);assert.equal(button('更新中…').props.disabled,true);assert.equal([...timers.values()][0].delay,2000,'poll the pending snapshot without waiting for TTL');
- swr=false;rowVersion=3;await tick();assert.match(contents(),/A商品3/);assert.equal(mode==='board'?requests.at(-1).body.params.forceRefresh:requests.at(-1).body.forceRefresh,false);assert.equal([...timers.values()][0].delay,900000,'the next regular update waits fifteen minutes');
- hold=true;await act(async()=>{button('立即更新').props.onClick();await flush();});const old=requests.at(-1);hold=false;rowVersion=3;await mount('B');assert.equal(old.signal.aborted,true);assert.match(contents(),/B商品3/);await act(async()=>{releases.shift()();await flush();});assert.doesNotMatch(contents(),/A商品/);assert.equal(button('立即更新').props.disabled,false,'new owner is not stuck refreshing');
+ rowVersion=1;await tick();assert.match(contents(),uiText(uiProduct({},4).title));const automatic=requests.at(-1).body;assert.equal(mode==='board'?automatic.params.forceRefresh:automatic.forceRefresh,false);
+ hold=true;rowVersion=2;await act(async()=>{button('立即更新').props.onClick();await flush();});assert.match(contents(),uiText(uiProduct({},4).title),'keep existing rows while requesting');assert.equal(timers.size,0,'no overlapping refresh');const manual=requests.at(-1).body;assert.equal(mode==='board'?manual.params.forceRefresh:manual.forceRefresh,true);
+ fail=true;await act(async()=>{releases.shift()();await flush();});assert.match(contents(),uiText(uiProduct({},4).title));assert.match(contents(),/临时网络故障/);assert.equal(timers.size,1,'failed read schedules retry');fail=false;hold=false;
+ await tick();assert.match(contents(),uiText(uiProduct({},5).title));
+ swr=true;await act(async()=>{button('立即更新').props.onClick();await flush();});assert.match(contents(),uiText(uiProduct({},5).title));assert.match(contents(),/正在后台更新/);assert.equal(button('更新中…').props.disabled,true);assert.equal([...timers.values()][0].delay,2000,'poll the pending snapshot without waiting for TTL');
+ swr=false;rowVersion=3;await tick();assert.match(contents(),uiText(uiProduct({},6).title));assert.equal(mode==='board'?requests.at(-1).body.params.forceRefresh:requests.at(-1).body.forceRefresh,false);assert.equal([...timers.values()][0].delay,900000,'the next regular update waits fifteen minutes');
+ hold=true;await act(async()=>{button('立即更新').props.onClick();await flush();});const old=requests.at(-1);hold=false;rowVersion=3;await mount('B');assert.equal(old.signal.aborted,true);assert.match(contents(),uiText(uiProduct({},13).title));await act(async()=>{releases.shift()();await flush();});assert.doesNotMatch(contents(),new RegExp([3,4,5,6].map(index=>uiText(uiProduct({},index).title).source).join('|')));assert.equal(button('立即更新').props.disabled,false,'new owner is not stuck refreshing');
  await act(async()=>tree.unmount());tree=undefined;assert.equal(timers.size,0,'unmount clears timers');
 }
 console.log('TTL_NATIVE_AND_WORKBENCH_PASS');
@@ -53,7 +55,8 @@ test('full Ozon table snapshots page and search locally and retain valid pages a
  const root=resolve('artifacts');mkdirSync(root,{recursive:true});const dir=mkdtempSync(join(root,'snapshot-table-')),entry=join(dir,'fixture.mjs');
  try{
   await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
-import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
+import React from 'react';
+${uiFixturePrelude()}import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
 import {WorkbenchInstanceView} from './packages/plugin-apps/client/workbench-board.tsx';
 import {createMaterialView} from './packages/app-presentation/src/materials/catalog.ts';
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;

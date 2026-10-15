@@ -1,4 +1,4 @@
-/** Entirely synthetic Source HTTP fixtures. No original server, credentials, tasks or platform writes. */
+/** Recorded sales identity with explicit price-format and transport fault scenarios; only loopback replay writes. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
@@ -6,11 +6,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HallmarkClient } from '../../packages/hallmark-adapter/index.ts';
 import type { HallmarkClientOptions, OrdinaryCnyOperationRaw, SubmitOrdinaryCnyPriceInput } from '../../packages/hallmark-adapter/index.ts';
+import { realStoreProducts } from '../real-data/corpus.ts';
 
 const id = '11111111-1111-4111-8111-111111111111';
-const storeId = 'synthetic-shop-a';
+const recorded = realStoreProducts().products[0];
+const storeId = recorded.storeId;
 const token = 'synthetic-original-operator-token';
-const input: SubmitOrdinaryCnyPriceInput = { operationId: id, storeId, products: [{ productId: 123456789, offerId: 'synthetic-offer-a', price: '12.34' }] };
+const input: SubmitOrdinaryCnyPriceInput = { operationId: id, storeId, products: [{ productId: Number(recorded.productId), offerId: recorded.offerId, price: recorded.price }] };
 const submitPath = `/api/manual-promotions/operations?storeId=${storeId}`;
 const getPath = `/api/manual-promotions/operations/${id}?storeId=${storeId}`;
 const inspectPath = `/api/manual-promotions/operations/${id}/inspect?storeId=${storeId}`;
@@ -37,12 +39,12 @@ function mock(responder: (path: string, init: RequestInit) => Response | Promise
 }
 
 test('exact no-Task ordinary CNY HTTP, original bearer, user price preserved and Source raw untouched', async () => {
-  const raw = receipt(); const selection = { ...input, products: [{ ...input.products[0], price: '00012.34' }] };
+  const selection = { ...input, products: [{ ...input.products[0], price: '00012.34' }] }; const raw = receipt('finished', selection);
   const { client, requests, submits } = mock((path, init) => {
     assert.equal(path, submitPath); assert.equal(init.method, 'POST');
     assert.equal(new Headers(init.headers).get('Authorization'), `Bearer ${token}`);
     assert.deepEqual(JSON.parse(String(init.body)), { id, kind: 'ordinary', actionId: 0,
-      products: [{ productId: 123456789, offerId: 'synthetic-offer-a', price: '00012.34', stock: '0' }] });
+      products: [{ productId: Number(recorded.productId), offerId: recorded.offerId, price: '00012.34', stock: '0' }] });
     return json(raw);
   });
   const result = await client.submitOrdinaryCnyPrice(selection);
@@ -160,7 +162,7 @@ test('concurrent same-ID submit is single-flight; changed contents same-ID block
   const results = await Promise.all([client.submitOrdinaryCnyPrice(input), client.submitOrdinaryCnyPrice(structuredClone(input))]);
   assert.equal(submits().length, 1); assert.deepEqual(results[0], results[1]);
   results[0].raw!.products[0].price = '99.99';
-  assert.equal((await client.submitOrdinaryCnyPrice(input)).raw?.products[0].price, '12.34');
+  assert.equal((await client.submitOrdinaryCnyPrice(input)).raw?.products[0].price, input.products[0].price);
   const changed = await client.submitOrdinaryCnyPrice({ ...input, products: [{ ...input.products[0], price: '99.99' }] });
   assert.equal(changed.error?.code, 'ORDINARY_PRICE_OPERATION_ID_REUSED'); assert.equal(submits().length, 1);
 });

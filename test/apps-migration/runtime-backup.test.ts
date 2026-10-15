@@ -392,7 +392,7 @@ test('resolver reuses relocation rows within an evidence batch and releases them
   const f=await fixture();let store:RuntimeStore|undefined;try{
     await backupRuntime(f.options);restoreRuntimeBackup({backupDirectory:f.backup,targetDirectory:f.target});
     store=new RuntimeStore(join(f.target,'apps.db'));let reads=0;
-    const resolver=new EvidencePathResolver({root:f.target,store:{list:<T>(table:string)=>{reads++;return store!.list<T>(table);}}});
+    const resolver=new EvidencePathResolver({root:f.target,store:{list:()=>{throw new Error('Unrelated business records must not be loaded');},query:<T>(table:string,filters:Record<string,string>)=>{reads++;return store!.query<T>(table,filters);}}});
     resolver.withScope(()=>{
       for(let i=0;i<46;i++)resolver.resolve(f.screenshot.path);
       resolver.withScope(()=>resolver.resolve(f.current.reportRef.path));

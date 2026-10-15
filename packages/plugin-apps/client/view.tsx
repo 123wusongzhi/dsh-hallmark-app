@@ -3,7 +3,10 @@ import type {AppsComponent,AppsView,AppsViewData} from '../../app-presentation/s
 import type {BindingData,ViewSpec} from '../../presentation/src/types.ts';
 import {validateViewSpec} from '../../presentation/src/validation.ts';
 import {AppsSourceFrame} from '../../dsh-plugin/client/component-frame.tsx';
-import {createAppsPresentationHandlers} from './component-handlers.ts';
+import {createVisibleDeadline,dataProgressKey,DISPLAY_NO_PROGRESS_MS,remainingDisplayBudget} from '../../component-runtime/src/visible-deadline.ts';
+import {ComponentBridgeError} from '../../component-runtime/src/apps-client.ts';
+import {createAppsPresentationHandlers,readAppsFrameCapabilities} from './component-handlers.ts';
+import type {AppsFrameCapabilities} from './component-handlers.ts';
 import {EmptyView,ErrorView,LoadingView,RenderBoundary,ViewRenderer} from '../../dsh-plugin/client/renderer.tsx';
 import {STYLES} from '../../dsh-plugin/client/styles.ts';
 import {openSessionComponents} from '../../dsh-plugin/client/sidebar-contract.ts';
@@ -17,6 +20,16 @@ import {appsResource,appsAuthoring,appsRefreshView,mergeCachedAppsData} from './
 import {cacheFallbackAllowed,cacheRetryAt} from '../../presentation/src/cache-display.ts';
 import {ownedPublication,openOwnedPublicationDisplay,readOwnedDisplay,latestOpenedDisplayId} from './native-publication.tsx';
 import {SidebarPreparing,SIDEBAR_STATUS_STYLES} from './sidebar-status.tsx';
+import {createDisplayErrorOutbox,describeFailure,displayErrorBody,permanentRejection,retryTransient} from './display-failure.ts';
+import {useRuntimeHealth} from './runtime-status.tsx';
+import {createRuntimeDisplayRecovery,type RecoveryTarget} from './runtime-recovery.ts';
+// A report the Runtime could not receive is kept here (per display, bounded) and retried while the document is visible.
+const displayErrorOutbox=createDisplayErrorOutbox({send:(sessionId,params,signal)=>appsAuthoring(sessionId,'reportDisplayError',params,signal)});
+/** Sends a display error; on a transient failure the report is queued for retry and the failure is still thrown to the caller. */
+async function sendDisplayError(sessionId:string,displayId:string,params:JsonValue,signal:AbortSignal):Promise<void> {
+  try{await appsAuthoring(sessionId,'reportDisplayError',params,signal);}
+  catch(cause){if(!permanentRejection(cause))displayErrorOutbox.enqueue(sessionId,displayId,params);throw cause;}
+}
 
 interface AppsViewReference {sessionId:string;viewId:string;buildId?:string;viewRevision?:number;publicationId?:string}
 function object(value:unknown):Record<string,unknown> {return value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};}
@@ -39,8 +52,11 @@ export function AppsNativeView({sessionId,viewId,expectedBuildId,expectedViewRev
   const [view,setView]=useState<AuthoringView>(),[data,setData]=useState<AppsViewData>(),[publication,setPublication]=useState<ViewPublication>(),[display,setDisplay]=useState<ComponentDisplay>(),[error,setError]=useState(''),[notice,setNotice]=useState(''),[revision,setRevision]=useState(0),[starting,setStarting]=useState(false),startInFlight=useRef(false);
   const [savedComponent,setSavedComponent]=useState<AppsComponent>();
   const [refreshedData,setRefreshedData]=useState<{identity:string;buildId:string;displayId?:string;data:AppsViewData}>();
+  const [preparedHandlers,setPreparedHandlers]=useState<{identity:string;buildId:string;displayId?:string;handlers:ExtendedComponentHandlers}>();
+  const startupCapabilities=useRef<{identity:string;generation:number;buildId:string;displayId?:string;displayGeneration?:number;signal:AbortSignal;value:AppsFrameCapabilities}>();
   const identity=JSON.stringify([sessionId,viewId,expectedBuildId,expectedViewRevision,expectedPublicationId,expectedDisplayId]),[loadedOwner,setLoadedOwner]=useState<string>();
   const loadedRevision=useRef<number>(),loadGeneration=useRef(0),live=useRef({identity,active:true,visible:active,visibilitySignal,isCurrentOwner,publicationId:publication?.publicationId,displayId:display?.displayId});live.current={identity,active:true,visible:active,visibilitySignal,isCurrentOwner,publicationId:publication?.publicationId,displayId:display?.displayId};
+  const displayRef=useRef<ComponentDisplay>();displayRef.current=display;
   useEffect(()=>()=>{live.current.active=false;},[]);
   const currentIdentity=()=>live.current.active&&live.current.identity===identity&&!live.current.visibilitySignal?.aborted&&(live.current.isCurrentOwner?.()??true);
   const currentVisible=()=>currentIdentity()&&live.current.visible;
@@ -49,6 +65,7 @@ export function AppsNativeView({sessionId,viewId,expectedBuildId,expectedViewRev
     if(!currentVisible())return()=>controller.abort();
     if(loadedOwner!==identity){setView(undefined);setData(undefined);setPublication(undefined);setDisplay(undefined);setLoadedOwner(undefined);}setError('');setNotice('');
     const alive=()=>!signal.aborted&&currentVisible()&&loadGeneration.current===generation;
+    let attempted:ComponentDisplay|undefined;
     void (async()=>{
       const current=await read('view',sessionId,viewId,signal,{buildId:expectedBuildId,viewRevision:expectedViewRevision,publicationId:expectedPublicationId}) as AuthoringView&{publication?:ViewPublication};
       if(!alive())return;if(current.viewId!==viewId||current.ownerSessionId!==sessionId)throw new Error('Apps component owner or view identity does not match.');
@@ -56,18 +73,29 @@ export function AppsNativeView({sessionId,viewId,expectedBuildId,expectedViewRev
       let fixed:ViewPublication|undefined,opened:ComponentDisplay|undefined;
       if(expectedPublicationId)fixed=ownedPublication({sessionId,viewId,publicationId:expectedPublicationId,buildId:expectedBuildId,viewRevision:expectedViewRevision},current);
       else if(current.pendingPublicationId){const pinned=await read('view',sessionId,viewId,signal,{publicationId:current.pendingPublicationId}) as AuthoringView&{publication?:ViewPublication};if(!alive())return;fixed=ownedPublication({sessionId,viewId,publicationId:current.pendingPublicationId},pinned);}
+      else if(current.publication){
+        if(current.publication.state!=='mounted'||current.publication.committedViewRevision!==current.viewRevision||current.activeBuildId!==current.source?.buildId||current.publication.candidateBuildId!==current.source?.buildId)throw new Error('当前工作视图没有匹配的已提交发布身份。');
+        fixed=ownedPublication({sessionId,viewId,publicationId:current.publication.publicationId,buildId:current.source?.buildId,viewRevision:current.viewRevision},current);
+      }
       else if(display&&publication&&loadedRevision.current===revision&&current.viewRevision===view?.viewRevision&&current.source?.buildId===display.buildId)fixed=publication;
       const retainedDisplayId=fixed?latestOpenedDisplayId({sessionId,viewId,publicationId:fixed.publicationId})??expectedDisplayId:expectedDisplayId;
-      if(retainedDisplayId){if(!fixed)throw new Error('展示缺少原消息的固定发布身份。');setPublication(fixed);opened=await readOwnedDisplay({sessionId,viewId,publicationId:fixed.publicationId,displayId:retainedDisplayId},fixed,signal);if(!alive())return;
+      if(retainedDisplayId){if(!fixed)throw new Error('展示缺少原消息的固定发布身份。');setPublication(fixed);opened=await readOwnedDisplay({sessionId,viewId,publicationId:fixed.publicationId,displayId:retainedDisplayId},fixed,signal);attempted=opened;if(!alive())return;
         if(opened.state==='failed'||opened.state==='retired'){setView(opened.view);setData(undefined);setDisplay(opened);setLoadedOwner(identity);setError(opened.state==='failed'?opened.errors.at(-1)?.message??'组件加载失败，请重新打开。':'此展示已关闭，请重新打开组件。');return;}}
       const retained=loadedOwner===identity&&loadedRevision.current===revision&&!!data&&Number.isSafeInteger(current.viewRevision)&&current.viewRevision===view?.viewRevision&&current.source?.buildId===view?.source?.buildId&&current.pendingPublicationId===view?.pendingPublicationId&&opened?.displayId===display?.displayId&&opened?.generation===display?.generation;
-      const payload=retained?data:await read('viewData',sessionId,viewId,signal,opened?{publicationId:opened.publicationId,buildId:opened.buildId,displayId:opened.displayId,displayGeneration:opened.generation}:undefined) as AppsViewData;
-      if(!alive())return;if(payload.viewId!==viewId||!Array.isArray(payload.bindings))throw new Error('Apps component data identity does not match.');
       if(expectedBuildId&&current.source?.buildId!==expectedBuildId&&fixed?.candidateBuildId!==expectedBuildId)throw new Error('此历史消息的原构建不可用；不会替换为新候选。');
+      const loadedSource=opened&&fixed&&['opening','ready'].includes(opened.state)?fixed.source:(!opened&&!expectedPublicationId&&fixed?.state!=='mounted'||!opened&&fixed?.state==='prepared'?current.source:undefined);
+      const handlersReady=preparedHandlers?.identity===identity&&preparedHandlers.buildId===loadedSource?.buildId&&preparedHandlers.displayId===opened?.displayId&&opened?.generation===display?.generation;
+      // Data and read-only capability discovery are independent; authorize only after the iframe hello.
+      const [payload,capabilities]=await Promise.all([
+        retained?data:retryTransient(()=>read('viewData',sessionId,viewId,signal,opened?{publicationId:opened.publicationId,buildId:opened.buildId,displayId:opened.displayId,displayGeneration:opened.generation}:undefined) as Promise<AppsViewData>,{signal}),
+        loadedSource&&!retained&&!handlersReady?readAppsFrameCapabilities(signal):undefined,
+      ]);
+      if(!alive())return;if(payload.viewId!==viewId||!Array.isArray(payload.bindings))throw new Error('Apps component data identity does not match.');
+      if(loadedSource&&capabilities)startupCapabilities.current={identity,generation,buildId:loadedSource.buildId,displayId:opened?.displayId,displayGeneration:opened?.generation,signal,value:capabilities};
       setView(opened?.view??current);setData(payload);if(!retained)setRefreshedData(undefined);setPublication(fixed);setDisplay(opened);setLoadedOwner(identity);loadedRevision.current=revision;
       if(opened?.state==='failed')setError(opened.errors.at(-1)?.message??'组件加载失败，请重新打开。');
       if(opened?.state==='retired')setError('此展示已关闭，请重新打开组件。');
-    })().catch(cause=>{if(alive()){const message=cause instanceof Error?cause.message:String(cause);if(loadedOwner===identity&&view?.source&&cacheFallbackAllowed(cause))setNotice(`组件重新读取失败，当前展示继续保留：${message}`);else {setData(undefined);setRefreshedData(undefined);setError(message);}}});
+    })().catch(cause=>{if(alive()){const message=cause instanceof Error?cause.message:String(cause);if(loadedOwner===identity&&view?.source&&cacheFallbackAllowed(cause))setNotice(`组件重新读取失败，当前展示继续保留：${message}`);else {setData(undefined);setRefreshedData(undefined);setError(message);const target=attempted??displayRef.current;if(target?.state==='opening')void reportRef.current({phase:'data',...describeFailure(cause,'DISPLAY_DATA_LOAD_FAILED')},target);}}});
     return()=>{controller.abort();if(loadGeneration.current===generation)loadGeneration.current++;};
   },[identity,revision,visibilitySignal,active]);
   const current=loadedOwner===identity?view:undefined,currentData=loadedOwner===identity?data:undefined;
@@ -77,7 +105,7 @@ export function AppsNativeView({sessionId,viewId,expectedBuildId,expectedViewRev
     window.addEventListener('apps-library-changed',receive);return()=>window.removeEventListener('apps-library-changed',receive);
   },[identity,current]);
   // Before an explicit candidate open, only the existing active source may remain visible.
-  const source=display&&publication&&['opening','ready'].includes(display.state)?publication.source:(!display&&!expectedPublicationId||!display&&publication?.state==='prepared'?current?.source:undefined);
+  const source=display&&publication&&['opening','ready'].includes(display.state)?publication.source:(!display&&!expectedPublicationId&&publication?.state!=='mounted'||!display&&publication?.state==='prepared'?current?.source:undefined);
   const [refreshingData,setRefreshingData]=useState(false),[refreshRetryAt,setRefreshRetryAt]=useState(0),[documentVisible,setDocumentVisible]=useState(()=>typeof document==='undefined'||!document.hidden);
   const nativeRefresh=useRef<AbortController>();
   useEffect(()=>{setRefreshingData(false);setRefreshRetryAt(0);return()=>{nativeRefresh.current?.abort();nativeRefresh.current=undefined;};},[identity,revision,visibilitySignal]);
@@ -110,20 +138,52 @@ export function AppsNativeView({sessionId,viewId,expectedBuildId,expectedViewRev
   const abort=useMemo(()=>new AbortController(),[identity,source?.buildId,display?.displayId,visibilitySignal]);useEffect(()=>()=>abort.abort(),[abort]);
   const frameSignal=useMemo(()=>visibilitySignal?AbortSignal.any([abort.signal,visibilitySignal]):abort.signal,[abort,visibilitySignal]);
   const failing=useRef<string>();
-  const reportError=async(problem:ComponentFrameError)=>{
-    const original=display;if(!original||failing.current===original.displayId||!currentIdentity())return;
-    const stillCurrent=()=>currentIdentity()&&live.current.displayId===original.displayId;
+  const recovery=useRef(createRuntimeDisplayRecovery()),[recoveryRevision,setRecoveryRevision]=useState(0);
+  const runtimeHealth=useRuntimeHealth(active&&documentVisible&&currentIdentity()&&!!display,recovery.current.pending());
+  useEffect(()=>{if(!active||!documentVisible||!currentIdentity())recovery.current.cancel();return()=>recovery.current.cancel();},[identity,active,documentVisible]);
+  const reportError=async(problem:ComponentFrameError,target?:ComponentDisplay)=>{
+    const original=target??display;if(!original||failing.current===original.displayId||!currentIdentity())return;
+    // A display whose load failed before it reached state is still this surface's display.
+    const stillCurrent=()=>currentIdentity()&&(live.current.displayId===original.displayId||target!==undefined&&live.current.displayId===undefined);
+    if(currentVisible()&&(typeof document==='undefined'||!document.hidden)&&recovery.current.failed({sessionId,viewId,publicationId:original.publicationId,buildId:original.buildId,displayId:original.displayId},problem))setRecoveryRevision(value=>value+1);
     failing.current=original.displayId;setError(problem.message);setDisplay(value=>value?.displayId===original.displayId?{...value,state:'failed'}:value);
     window.dispatchEvent(new CustomEvent('apps-display-failed',{detail:{sessionId,viewId,publicationId:original.publicationId,buildId:original.buildId,displayId:original.displayId,error:problem}}));
-    try{await appsAuthoring(sessionId,'reportDisplayError',{viewId,publicationId:original.publicationId,buildId:original.buildId,displayId:original.displayId,displayGeneration:original.generation,error:{phase:problem.phase,code:problem.code,message:problem.message}},visibilitySignal?AbortSignal.any([visibilitySignal,AbortSignal.timeout(5000)]):AbortSignal.timeout(5000));if(stillCurrent())setNotice('实际加载错误已记录，Agent 可检查并修复；也可以重新打开此构建。');}
+    try{await sendDisplayError(sessionId,original.displayId,{viewId,publicationId:original.publicationId,buildId:original.buildId,displayId:original.displayId,displayGeneration:original.generation,error:displayErrorBody(problem) as unknown as JsonValue},visibilitySignal?AbortSignal.any([visibilitySignal,AbortSignal.timeout(5000)]):AbortSignal.timeout(5000));if(stillCurrent())setNotice('实际加载错误已记录，Agent 可检查并修复；也可以重新打开此构建。');}
     catch(cause){if(stillCurrent())setNotice(`加载错误尚未同步给 Runtime：${cause instanceof Error?cause.message:String(cause)}。可以重新打开，原构建和工作副本保留。`);}
   };
   const reportRef=useRef(reportError);reportRef.current=reportError;
-  const [preparedHandlers,setPreparedHandlers]=useState<{identity:string;buildId:string;displayId?:string;handlers:ExtendedComponentHandlers}>();
+  // Older archived SDKs do not know preparing: do not mount them until a real snapshot exists.
+  const preparingData=!!source&&!!currentData?.bindings.some(binding=>binding.state==='preparing'||['failed','unavailable'].includes(binding.state)&&binding.payload===null);
+  const preparationDeadline=useRef<ReturnType<typeof createVisibleDeadline>>();
+  useEffect(()=>{preparationDeadline.current?.visible(active&&documentVisible);},[active,documentVisible]);
+  useEffect(()=>{
+    if(!preparingData||error)return;
+    const controller=new AbortController(),signal=visibilitySignal?AbortSignal.any([controller.signal,visibilitySignal]):controller.signal;
+    let timer:ReturnType<typeof setTimeout>|undefined,polls=0,disposed=false;
+    const fail=(cause:unknown)=>{if(disposed||!currentIdentity())return;const problem={phase:'data',...describeFailure(cause,'DISPLAY_DATA_LOAD_FAILED')};setError(problem.message);if(display)void reportRef.current(problem);};
+    const deadline=createVisibleDeadline(()=>{fail(new ComponentBridgeError({code:'DISPLAY_READY_TIMEOUT',message:'数据准备长时间没有实质进展或已达到最长等待时间。',retryPolicy:'never'}));controller.abort();},DISPLAY_NO_PROGRESS_MS,undefined,remainingDisplayBudget(display?.openedAt??display?.createdAt));
+    preparationDeadline.current=deadline;deadline.visible(active&&documentVisible);deadline.progress(dataProgressKey(currentData));
+    const poll=async()=>{
+      if(disposed||signal.aborted)return;
+      if(!currentVisible()||typeof document!=='undefined'&&document.hidden){timer=setTimeout(()=>void poll(),1000);return;}
+      try{
+        const next=await retryTransient(async()=>{
+          const next=await read('viewData',sessionId,viewId,AbortSignal.any([signal,AbortSignal.timeout(8000)]),display?{publicationId:display.publicationId,buildId:display.buildId,displayId:display.displayId,displayGeneration:display.generation}:undefined) as AppsViewData;
+          const failed=next.bindings.find(binding=>['failed','unavailable'].includes(binding.state)&&binding.payload===null);if(failed)throw new ComponentBridgeError(failed.error??{code:'DATASET_NOT_READY',message:'数据准备失败。',retryPolicy:'never'});return next;
+        },{signal});
+        if(disposed||signal.aborted||!currentIdentity())return;
+        deadline.progress(dataProgressKey(next));setData(next);
+        if(next.bindings.some(binding=>binding.state==='preparing'))timer=setTimeout(()=>void poll(),Math.min(3000,1000+polls++*500));
+      }catch(cause){if(!signal.aborted)fail(cause);}
+    };
+    timer=setTimeout(()=>void poll(),1000);
+    return()=>{disposed=true;controller.abort();if(timer!==undefined)clearTimeout(timer);deadline.stop();if(preparationDeadline.current===deadline)preparationDeadline.current=undefined;};
+  },[identity,display?.displayId,preparingData,!!error,visibilitySignal]);
   useEffect(()=>{
     let active=true;if(!source){setPreparedHandlers(undefined);return;}
     const buildId=source.buildId,frameDisplay=display,framePublication=publication;
-    void createAppsPresentationHandlers({sessionId,viewId,buildId},frameSignal,frameDisplay&&framePublication?{publicationId:framePublication.publicationId,attemptId:framePublication.attemptId,attemptEpoch:framePublication.attemptEpoch,displayId:frameDisplay.displayId,displayGeneration:frameDisplay.generation}:undefined,true,problem=>{if(currentIdentity()&&live.current.displayId===frameDisplay?.displayId)void reportRef.current(problem);},currentIdentity).then(handlers=>{
+    const prepared=startupCapabilities.current,capabilities=prepared?.identity===identity&&prepared.generation===loadGeneration.current&&prepared.buildId===buildId&&prepared.displayId===frameDisplay?.displayId&&prepared.displayGeneration===frameDisplay?.generation&&!prepared.signal.aborted?prepared.value:undefined;
+    void createAppsPresentationHandlers({sessionId,viewId,buildId},frameSignal,frameDisplay&&framePublication?{publicationId:framePublication.publicationId,attemptId:framePublication.attemptId,attemptEpoch:framePublication.attemptEpoch,displayId:frameDisplay.displayId,displayGeneration:frameDisplay.generation}:undefined,true,problem=>{if(currentIdentity()&&live.current.displayId===frameDisplay?.displayId)void reportRef.current(problem);},currentIdentity,capabilities).then(handlers=>{
       if(!active||frameSignal.aborted||!currentIdentity())return;
       const authorize=handlers.authorizeFrame,refresh=handlers.refresh;let refreshSequence=0,authorizedFrameId:string|undefined;
       const updateTimes=refresh?async(request:Parameters<NonNullable<ExtendedComponentHandlers['refresh']>>[0])=>{
@@ -133,7 +193,7 @@ export function AppsNativeView({sessionId,viewId,expectedBuildId,expectedViewRev
         return next;
       }:undefined;
       setPreparedHandlers({identity,buildId,displayId:frameDisplay?.displayId,handlers:{...handlers,...(updateTimes?{refresh:updateTimes}:{}),...(authorize?{authorizeFrame:async(...args:Parameters<NonNullable<ExtendedComponentHandlers['authorizeFrame']>>)=>{if(!currentIdentity())throw new Error('原生会话已切换，组件授权已停止。');const granted=await authorize(...args);if(!currentIdentity())throw new Error('原生会话已切换，组件授权响应不再展示。');authorizedFrameId=args[0].frameInstanceId;return granted;}}:{})}});
-    }).catch(cause=>{if(active&&!frameSignal.aborted&&currentIdentity()){const problem={phase:'authorization',code:String(object(cause).code??'DISPLAY_HANDLER_UNAVAILABLE'),message:cause instanceof Error?cause.message:String(cause)};if(frameDisplay)void reportRef.current(problem);else setError(problem.message);}});
+    }).catch(cause=>{if(active&&!frameSignal.aborted&&currentIdentity()){const problem={phase:'authorization',...describeFailure(cause,'DISPLAY_HANDLER_UNAVAILABLE')};if(frameDisplay)void reportRef.current(problem);else setError(problem.message);}});
     return()=>{active=false;};
   },[identity,source?.buildId,display?.displayId,frameSignal]);
   const handlers=preparedHandlers?.identity===identity&&preparedHandlers.buildId===source?.buildId&&preparedHandlers.displayId===display?.displayId?preparedHandlers.handlers:undefined;
@@ -142,17 +202,31 @@ export function AppsNativeView({sessionId,viewId,expectedBuildId,expectedViewRev
     const discover=(event:Event)=>{const detail=(event as CustomEvent).detail;if(!expectedPublicationId&&!display&&currentIdentity()&&detail?.sessionId===sessionId&&detail.viewId===viewId&&detail.publicationId!==publication?.publicationId)setRevision(value=>value+1);};
     window.addEventListener('apps-display-ready',ready);window.addEventListener('apps-publication-discovered',discover);return()=>{window.removeEventListener('apps-display-ready',ready);window.removeEventListener('apps-publication-discovered',discover);};
   },[identity,display?.displayId,publication?.publicationId]);
-  const open=async()=>{
+  const open=async(recovering?:RecoveryTarget)=>{
     if(!publication||startInFlight.current||!currentVisible())return;
+    if(recovering&&(typeof document!=='undefined'&&document.hidden||recovering.sessionId!==sessionId||recovering.viewId!==viewId||recovering.publicationId!==publication.publicationId||recovering.buildId!==publication.candidateBuildId||recovering.displayId!==display?.displayId||view?.panelState==='closed'))return;
+    if(!recovering)recovery.current.cancel();
     const fixed=publication,originalGeneration=loadGeneration.current,displayId=globalThis.crypto.randomUUID(),target={sessionId,viewId,publicationId:fixed.publicationId,buildId:fixed.candidateBuildId,displayId};
-    const stillCurrent=()=>currentVisible()&&loadGeneration.current===originalGeneration&&live.current.publicationId===fixed.publicationId;
-    startInFlight.current=true;setStarting(true);setNotice('');
-    try{const opened=await openOwnedPublicationDisplay(target,fixed,stillCurrent,visibilitySignal??new AbortController().signal);let payload=opened.data;
-      if(!payload)payload=await read('viewData',sessionId,viewId,visibilitySignal??new AbortController().signal,{publicationId:fixed.publicationId,buildId:fixed.candidateBuildId,displayId,displayGeneration:opened.display.generation}) as AppsViewData;
+    const stillCurrent=()=>currentVisible()&&loadGeneration.current===originalGeneration&&live.current.publicationId===fixed.publicationId&&(!recovering||typeof document==='undefined'||!document.hidden);
+    startInFlight.current=true;setStarting(true);setNotice(recovering?'Runtime 已恢复，正在重新打开原组件…':'');
+    let openedDisplay:ComponentDisplay|undefined;
+    try{
+      if(recovering){const latest=await read('view',sessionId,viewId,visibilitySignal?AbortSignal.any([visibilitySignal,AbortSignal.timeout(5000)]):AbortSignal.timeout(5000),{publicationId:fixed.publicationId,buildId:fixed.candidateBuildId}) as AuthoringView&{publication?:ViewPublication};if(!stillCurrent()||latest.panelState==='closed')return;ownedPublication({sessionId,viewId,publicationId:fixed.publicationId,buildId:fixed.candidateBuildId},latest);}
+      const opened=await openOwnedPublicationDisplay(target,fixed,stillCurrent,visibilitySignal??new AbortController().signal);openedDisplay=opened.display;let payload=opened.data;
+      if(!payload){const readSignal=visibilitySignal??new AbortController().signal;payload=await retryTransient(()=>read('viewData',sessionId,viewId,readSignal,{publicationId:fixed.publicationId,buildId:fixed.candidateBuildId,displayId,displayGeneration:opened.display.generation}) as Promise<AppsViewData>,{signal:readSignal});}
       if(stillCurrent()){setView(opened.view);setData(payload);setRefreshedData(undefined);setPublication(opened.publication);setDisplay(opened.display);setError('');failing.current=undefined;}}
-    catch(cause){if(stillCurrent())setNotice(cause instanceof Error?cause.message:String(cause));}
+    catch(cause){if(stillCurrent())setNotice(cause instanceof Error?cause.message:String(cause));
+      // The display exists on the Runtime but its first data never arrived; Agent inspection must see that.
+      if(openedDisplay?.state==='opening')void reportRef.current({phase:'data',...describeFailure(cause,'DISPLAY_DATA_LOAD_FAILED')},openedDisplay);}
     finally{startInFlight.current=false;if(currentIdentity())setStarting(false);}
   };
+  // Health is the Host monitor's cached state, never a second restart loop. Reopen only the same failed read display, with a new identity and fresh ready receipt.
+  useEffect(()=>{
+    const target=display&&publication?{sessionId,viewId,publicationId:publication.publicationId,buildId:publication.candidateBuildId,displayId:display.displayId}:undefined;
+    const eligible=currentVisible()&&documentVisible&&view?.panelState!=='closed'&&display?.state!=='retired'&&display?.state!=='ready';
+    const recovering=recovery.current.observe(runtimeHealth,target,eligible&&!startInFlight.current);
+    if(recovering){setRecoveryRevision(value=>value+1);void open(recovering);}
+  },[runtimeHealth,recoveryRevision,identity,active,documentVisible,display?.displayId,display?.state,publication?.publicationId,view?.panelState]);
   const automaticAttempt=useRef<string>();
   useEffect(()=>{
     if(!current||!publication||display||expectedDisplayId||!currentVisible())return;
@@ -171,8 +245,8 @@ export function AppsNativeView({sessionId,viewId,expectedBuildId,expectedViewRev
   if(!currentIdentity())return null;
   const status=draft?'正在打磨，请稍候':display?.state==='failed'?'暂未打开，请再试一次':display?.state==='opening'?'正在为您展开':saved?`已保存到组件库 · 版本 ${saved.revision}`:display?.state==='ready'?'':publication?'新的模样，即将呈现':current?.validationStatus==='verified'?'':'本次会话的组件';
   const partial=(timeData?.bindings??[]).some(binding=>{const states=object(binding.payload).sourceStates;return Array.isArray(states)&&states.some(state=>object(state).status==='missing');});
-  const visibleNotice=notice||(nativeBackgroundRefreshing?'正在后台更新 · 当前快照可继续查看':partial?'部分信息待更新，其余可继续查看。':saved?`已明确保存“${saved.title}”版本 ${saved.revision}。`:'');
-  return <section className="hm-root hm-view apps-component"><style>{STYLES}{APPS_WORKSPACE_STYLES}{SIDEBAR_STATUS_STYLES}</style><header><div className="apps-component-heading"><span className="apps-component-mark"><AppsIcon name="component"/></span><div><h3>{current?.title??'应用组件'}</h3><p>{status}</p></div></div><div className="apps-component-actions">{publication&&(error||!display&&notice||display?.state==='failed')?<button type="button" disabled={starting} onClick={()=>void open()}>{starting?'正在打开…':'重试'}</button>:null}<button type="button" disabled={starting||refreshingData||!source&&nativeBackgroundRefreshing} onClick={()=>{if(source||!current)setRevision(value=>value+1);else void refreshNative(true);}}>{source||!current?'重新读取':refreshingData||nativeBackgroundRefreshing?'更新中…':'立即更新'}</button>{onOpenSidebar?<button type="button" onClick={onOpenSidebar}>侧栏查看</button>:null}</div></header>{currentData?<div className="apps-component-times"><span>源数据时间：{sourceTimes.length?sourceTimes.map(time=>appsDisplayTime(time)).join(' / '):'暂无时间证据'}</span><span>读取成功：{readTimes.length?readTimes.map(time=>appsDisplayTime(time)).join(' / '):'暂无成功读取时间'}</span></div>:null}{visibleNotice?<p role="status">{visibleNotice}</p>:null}{error?<ErrorView message={error}/>:!current||!currentData||source&&!handlers?<SidebarPreparing editing={draft||!!publication}/>:<RenderBoundary key={JSON.stringify([identity,display?.displayId])}>{source&&handlers?<AppsSourceFrame active={active} key={display?.displayId??'active'} frameKey={display?.displayId} sessionId={sessionId} viewId={viewId} buildId={source.buildId} title={current.title} url={`/api/hallmark-source/${encodeURIComponent(source.buildId)}/${source.entry.split('/').map(encodeURIComponent).join('/')}`} data={currentData as unknown as JsonValue} context={display?undefined:{sessionId,viewId,buildId:source.buildId,contextRevision:0}} handlers={handlers} onFrameError={display?problem=>void reportRef.current(problem):undefined} onLoadError={display?undefined:()=>setError('组件构建未能加载，请重新读取。')}/>:publication?<SidebarPreparing/>:draft?<SidebarPreparing editing/>:spec?<ViewRenderer spec={spec} data={bindings}/>:<EmptyView message="组件设计尚无对应展示器" detail="源码组件可按原构建打开；请查看此调用的原生文字结果。"/>}</RenderBoundary>}</section>;
+  const visibleNotice=notice||(preparingData?'数据准备中…':nativeBackgroundRefreshing?'正在后台更新 · 当前快照可继续查看':partial?'部分信息待更新，其余可继续查看。':saved?`已明确保存“${saved.title}”版本 ${saved.revision}。`:'');
+  return <section className="hm-root hm-view apps-component"><style>{STYLES}{APPS_WORKSPACE_STYLES}{SIDEBAR_STATUS_STYLES}</style><header><div className="apps-component-heading"><span className="apps-component-mark"><AppsIcon name="component"/></span><div><h3>{current?.title??'应用组件'}</h3><p>{status}</p></div></div><div className="apps-component-actions">{publication&&(error||!display&&notice||display?.state==='failed')?<button type="button" disabled={starting} onClick={()=>void open()}>{starting?'正在打开…':'重试'}</button>:null}<button type="button" disabled={starting||refreshingData||!source&&nativeBackgroundRefreshing} onClick={()=>{if(source||!current)setRevision(value=>value+1);else void refreshNative(true);}}>{source||!current?'重新读取':refreshingData||nativeBackgroundRefreshing?'更新中…':'立即更新'}</button>{onOpenSidebar?<button type="button" onClick={onOpenSidebar}>侧栏查看</button>:null}</div></header>{currentData?<div className="apps-component-times"><span>源数据时间：{sourceTimes.length?sourceTimes.map(time=>appsDisplayTime(time)).join(' / '):'暂无时间证据'}</span><span>读取成功：{readTimes.length?readTimes.map(time=>appsDisplayTime(time)).join(' / '):'暂无成功读取时间'}</span></div>:null}{visibleNotice?<p role="status">{visibleNotice}</p>:null}{error?<ErrorView message={error}/>:!current||!currentData||preparingData||source&&!handlers?<SidebarPreparing editing={draft||!!publication}/>:<RenderBoundary key={JSON.stringify([identity,display?.displayId])}>{source&&handlers?<AppsSourceFrame active={active} readinessStartedAt={display?.openedAt??display?.createdAt} key={display?.displayId??'active'} frameKey={display?.displayId} sessionId={sessionId} viewId={viewId} buildId={source.buildId} title={current.title} url={`/api/hallmark-source/${encodeURIComponent(source.buildId)}/${source.entry.split('/').map(encodeURIComponent).join('/')}`} data={currentData as unknown as JsonValue} context={display?undefined:{sessionId,viewId,buildId:source.buildId,contextRevision:0}} handlers={handlers} onFrameError={display?problem=>void reportRef.current(problem):undefined} onLoadError={display?undefined:()=>setError('组件构建未能加载，请重新读取。')}/>:publication?<SidebarPreparing/>:draft?<SidebarPreparing editing/>:spec?<ViewRenderer spec={spec} data={bindings}/>:<EmptyView message="组件设计尚无对应展示器" detail="源码组件可按原构建打开；请查看此调用的原生文字结果。"/>}</RenderBoundary>}</section>;
 }
 export function AppsToolView(props:{sessionId?:string;phase?:string;block?:{meta?:unknown};sidebarRight?:NativeSidebarRight}) {
   const reference=appsToolViewReference(props),[notice,setNotice]=useState(''),[title,setTitle]=useState('应用组件'),[draft,setDraft]=useState<boolean>(),[publication,setPublication]=useState<ViewPublication>(),[display,setDisplay]=useState<ComponentDisplay>(),[opening,setOpening]=useState<string>(),inFlight=useRef<string>(),openingController=useRef<{fixed:string;controller:AbortController}>();
@@ -187,11 +261,14 @@ export function AppsToolView(props:{sessionId?:string;phase?:string;block?:{meta
     if(!isCurrent()){setNotice('请切回组件所属聊天后重新打开。');return;}
     openingController.current?.controller.abort();inFlight.current=fixed;setOpening(fixed);setNotice('');
     const controller=new AbortController(),signal=controller.signal;openingController.current={fixed,controller};
+    let openedDisplay:ComponentDisplay|undefined;
     try{
       let displayId:string|undefined;
-      if(original.publicationId){const target={...original,publicationId:original.publicationId,displayId:globalThis.crypto.randomUUID()},value=await read('view',original.sessionId,original.viewId,AbortSignal.any([signal,AbortSignal.timeout(5000)]),original) as AppsView&{publication?:ViewPublication};if(!isCurrent())throw new Error('会话已切换，请切回组件所属聊天后重新打开。');const prepared=ownedPublication(target,value),opened=await openOwnedPublicationDisplay(target,prepared,isCurrent,signal);if(!isCurrent())throw new Error('会话已切换，请切回组件所属聊天后重新打开。');setPublication(opened.publication);setDisplay(opened.display);displayId=opened.display.displayId;}
+      if(original.publicationId){const target={...original,publicationId:original.publicationId,displayId:globalThis.crypto.randomUUID()},value=await read('view',original.sessionId,original.viewId,AbortSignal.any([signal,AbortSignal.timeout(5000)]),original) as AppsView&{publication?:ViewPublication};if(!isCurrent())throw new Error('会话已切换，请切回组件所属聊天后重新打开。');const prepared=ownedPublication(target,value),opened=await openOwnedPublicationDisplay(target,prepared,isCurrent,signal);if(!isCurrent())throw new Error('会话已切换，请切回组件所属聊天后重新打开。');openedDisplay=opened.display;setPublication(opened.publication);setDisplay(opened.display);displayId=opened.display.displayId;}
       const result=openSessionComponents(props.sidebarRight,original.sessionId,original.viewId,original.publicationId,displayId);if(!result.ok)throw new Error(result.message??'Native sidebar is unavailable.');
-    }catch(cause){if(live.current.active&&live.current.fixed===fixed)setNotice(cause instanceof Error?cause.message:String(cause));}
+    }catch(cause){if(live.current.active&&live.current.fixed===fixed)setNotice(cause instanceof Error?cause.message:String(cause));
+      // A display opened but no sidebar surface will ever load it; report so the Runtime does not wait for it forever.
+      if(openedDisplay?.state==='opening')void sendDisplayError(original.sessionId,openedDisplay.displayId,{viewId:original.viewId,publicationId:openedDisplay.publicationId,buildId:openedDisplay.buildId,displayId:openedDisplay.displayId,displayGeneration:openedDisplay.generation,error:displayErrorBody({phase:'authorization',...describeFailure(cause,'DISPLAY_SIDEBAR_UNAVAILABLE')}) as unknown as JsonValue},AbortSignal.timeout(5000)).catch(()=>{});}
     finally{if(inFlight.current===fixed)inFlight.current=undefined;if(openingController.current?.controller===controller)openingController.current=undefined;if(live.current.active&&live.current.fixed===fixed)setOpening(undefined);}
   };
   return <div className="hm-root apps-tool-result"><style>{STYLES}{APPS_WORKSPACE_STYLES}</style>{notice?<p role="status">{notice}</p>:null}{props.phase!=='result'?<LoadingView/>:reference?<section className="hm-root apps-component" data-view-id={reference.viewId} data-publication-id={reference.publicationId} data-build-id={reference.buildId} data-view-revision={reference.viewRevision}><header><div className="apps-component-heading"><span className="apps-component-mark"><AppsIcon name="component"/></span><div><h3>{title}</h3><p>{draft?'组件正在制作，尚未构建':display?.state==='failed'?'展示失败 · 可以重新打开':display?.state==='opening'?'正在加载原构建':display?.state==='ready'||publication?.state==='mounted'?'已展示':publication?'已准备好 · 在右侧展示':'打开此工作视图；原发布记录保留'}</p></div></div>{(draft===false||reference.publicationId)?<button type="button" disabled={opening===fixed} title="在当前聊天右侧打开原消息的固定组件发布" onClick={()=>void open()}>{opening===fixed?'正在打开…':display?'重新打开组件 ↗':'打开组件 ↗'}</button>:null}</header></section>:<EmptyView message="此调用没有可展示的 Apps 组件" detail="请查看原生文字结果。"/>}</div>;
