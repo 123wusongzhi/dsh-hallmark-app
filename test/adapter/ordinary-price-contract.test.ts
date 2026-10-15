@@ -1,4 +1,4 @@
-/** Recorded sales identity with explicit price-format and transport fault scenarios; only loopback replay writes. */
+/** Unchanged recorded sales fields with a separate local protocol identity; injected fetch only, never a real platform write. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
@@ -12,7 +12,9 @@ const id = '11111111-1111-4111-8111-111111111111';
 const recorded = realStoreProducts().products[0];
 const storeId = recorded.storeId;
 const token = 'synthetic-original-operator-token';
-const input: SubmitOrdinaryCnyPriceInput = { operationId: id, storeId, products: [{ productId: Number(recorded.productId), offerId: recorded.offerId, price: recorded.price }] };
+// This request-only control is not the recorded product's platform ID and never rewrites recorded.
+const LOCAL_PRICE_PRODUCT_ID = 101;
+const input: SubmitOrdinaryCnyPriceInput = { operationId: id, storeId, products: [{ productId: LOCAL_PRICE_PRODUCT_ID, offerId: recorded.offerId, price: recorded.price }] };
 const submitPath = `/api/manual-promotions/operations?storeId=${storeId}`;
 const getPath = `/api/manual-promotions/operations/${id}?storeId=${storeId}`;
 const inspectPath = `/api/manual-promotions/operations/${id}/inspect?storeId=${storeId}`;
@@ -44,7 +46,7 @@ test('exact no-Task ordinary CNY HTTP, original bearer, user price preserved and
     assert.equal(path, submitPath); assert.equal(init.method, 'POST');
     assert.equal(new Headers(init.headers).get('Authorization'), `Bearer ${token}`);
     assert.deepEqual(JSON.parse(String(init.body)), { id, kind: 'ordinary', actionId: 0,
-      products: [{ productId: Number(recorded.productId), offerId: recorded.offerId, price: '00012.34', stock: '0' }] });
+      products: [{ productId: LOCAL_PRICE_PRODUCT_ID, offerId: recorded.offerId, price: '00012.34', stock: '0' }] });
     return json(raw);
   });
   const result = await client.submitOrdinaryCnyPrice(selection);
@@ -240,6 +242,25 @@ test('wrong identity, target, CNY contract shape or readback amount never become
     const { client } = mock(() => json(raw)); const result = await client.submitOrdinaryCnyPrice(input);
     assert.equal(result.status, 'unknown'); assert.equal(result.stage, 'outcome_unknown'); assert.deepEqual(result.raw, raw);
   }
+});
+
+test('a local receipt result for a different product ID never verifies the selected product', async () => {
+  const raw = receipt(); raw.results[0].productId = LOCAL_PRICE_PRODUCT_ID + 1;
+  const { client, submits } = mock(() => json(raw));
+  const result = await client.submitOrdinaryCnyPrice(input);
+  assert.equal(result.status, 'unknown'); assert.equal(result.stage, 'outcome_unknown');
+  assert.equal(result.error?.code, 'ORDINARY_PRICE_INVALID_RECEIPT'); assert.deepEqual(result.raw, raw);
+  assert.equal(submits().length, 1);
+});
+
+test('an internally consistent local receipt for another product ID never verifies the original request', async () => {
+  const raw = receipt();
+  raw.products[0].productId = LOCAL_PRICE_PRODUCT_ID + 1; raw.results[0].productId = LOCAL_PRICE_PRODUCT_ID + 1;
+  const { client, submits } = mock(() => json(raw));
+  const result = await client.submitOrdinaryCnyPrice(input);
+  assert.equal(result.status, 'unknown'); assert.equal(result.stage, 'outcome_unknown');
+  assert.equal(result.error?.code, 'ORDINARY_PRICE_INVALID_RECEIPT'); assert.deepEqual(result.raw, raw);
+  assert.equal(submits().length, 1);
 });
 
 test('large Source raw spills losslessly; unknown/additive fields and historical times are never projected away', async () => {

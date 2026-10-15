@@ -16,15 +16,17 @@ test('upstream authorization errors are failures, never successful empty rows',a
 });
 
 test('separate store data gateway never redirects legacy queries, task platform calls or price writes',async()=>{
- const baseUrl='http://127.0.0.1:4280',ozonDataBaseUrl='http://127.0.0.1:4281',calls:{url:string;method:string;authorized:boolean}[]=[];
+ const baseUrl='http://127.0.0.1:4280',ozonDataBaseUrl='http://127.0.0.1:4281',calls:{url:string;method:string;authorized:boolean;body:unknown}[]=[];
+ // Request-only identity for this injected-fetch route control, not a recorded platform ID.
+ const LOCAL_PRICE_PRODUCT_ID=101;
  const client=new HallmarkClient({baseUrl,ozonDataBaseUrl,operatorToken:'synthetic-operator',fetchImpl:async(url,init)=>{
-  calls.push({url:String(url),method:String(init?.method),authorized:new Headers(init?.headers).has('Authorization')});
+  calls.push({url:String(url),method:String(init?.method),authorized:new Headers(init?.headers).has('Authorization'),body:init?.body===undefined?undefined:JSON.parse(String(init.body))});
   return new URL(String(url)).pathname==='/api/health'?Response.json({service:'hallmark-board'}):Response.json({storeId:'shop',outcome:'response_received',httpStatus:200,response:{items:[]}});
  }});
  const input={path:'/v5/product/info/prices',requestId:'read',agentId:'fixture',body:{limit:20}};
  await client.getStores();await client.getTasks();await client.platformRead('task',input);await client.platformCall('task',{...input,path:'/v1/product/import/prices'});
  const product=realStoreProducts().products[0];
- await client.submitOrdinaryCnyPrice({operationId:'11111111-1111-4111-8111-111111111111',storeId:'shop',products:[{productId:Number(product.productId),offerId:product.offerId,price:product.price}]});
+ const priceResult=await client.submitOrdinaryCnyPrice({operationId:'11111111-1111-4111-8111-111111111111',storeId:'shop',products:[{productId:LOCAL_PRICE_PRODUCT_ID,offerId:product.offerId,price:product.price}]});
  await client.storeDataRead('shop',input);await client.readOrderWeights('shop',{dateFrom:'2026-09-01',dateTo:'2026-09-02'});
  assert.deepEqual(calls.map(({url,method})=>({url,method})),[
   {url:`${baseUrl}/api/health`,method:'GET'},
@@ -36,6 +38,9 @@ test('separate store data gateway never redirects legacy queries, task platform 
   {url:`${ozonDataBaseUrl}/api/stores/shop/data/read`,method:'POST'},
   {url:`${ozonDataBaseUrl}/api/stores/shop/data/order-weights`,method:'POST'},
  ]);
+ assert.deepEqual(calls[5].body,{id:'11111111-1111-4111-8111-111111111111',kind:'ordinary',actionId:0,products:[{productId:LOCAL_PRICE_PRODUCT_ID,offerId:product.offerId,price:product.price,stock:'0'}]});
+ // The generic gateway response is deliberately not proof of a completed price operation.
+ assert.equal(priceResult.status,'unknown');assert.equal(priceResult.stage,'outcome_unknown');
  assert.equal(calls[5].authorized,true);assert.ok(calls.filter(call=>call.url.startsWith(ozonDataBaseUrl)).every(call=>!call.authorized));
 });
 
