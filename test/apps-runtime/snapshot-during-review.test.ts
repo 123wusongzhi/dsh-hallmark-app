@@ -13,6 +13,7 @@ test('a persisted plan snapshot stays readable while its submit awaits external 
  runtime.register(provider);runtime.addConnection({appId:'snapshot',connectionId:'c',displayName:'fixture',config:{},configRevision:1,enabled:true});runtime.bind({sessionId:'s',appId:'snapshot',connectionId:'c',enabled:true,boundAt:new Date().toISOString()});
  const invoke=(operation:string)=>runtime.invoke({protocolVersion:'1.0',invocationId:randomUUID(),traceId:randomUUID(),appId:'snapshot',connectionId:'c',capabilityId:'snapshot.plan.'+operation,capabilityVersion:'1.0.0',input:{},source:{kind:'agent',sessionId:'s',nativeCallId:randomUUID()},deadlineAt:new Date(Date.now()+3000).toISOString()} satisfies InvocationRequest);
  const write=invoke('submit');
- try{await started;const result=await Promise.race([invoke('get'),new Promise<never>((_,reject)=>setTimeout(()=>reject(Error('snapshot waited on external review')),500))]);assert.equal(result.status,'ok');}
- finally{finish();await write;await runtime.dispose();store.close();}
+ let timer:ReturnType<typeof setTimeout>|undefined;
+ try{await started;const result=await Promise.race([invoke('get'),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error('snapshot waited on external review')),500);})]);assert.equal(result.status,'ok');}
+ finally{clearTimeout(timer);finish();await write;await runtime.dispose();store.close();}
 });
