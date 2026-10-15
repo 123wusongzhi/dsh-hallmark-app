@@ -42,7 +42,12 @@ globalThis.fetch=async(url,options)=>{
   if(readCount===2)return new Promise((resolve,reject)=>{pendingSignal=options.signal;release=()=>failed?reject(new Error('REFRESH_LIFECYCLE_CONTROL')):resolve(Response.json(late?data(rows.slice(0,2),'2026-10-15T10:01:00Z'):data(rows.slice(2),'2026-10-15T10:02:00Z')));});
   assert.equal(readCount,3);assert.equal(late,true);return Response.json(data(rows.slice(2),'2026-10-15T10:02:00Z'));
 };
-const latest=()=>posts.filter(row=>row.channel==='hallmark.source.v1'&&row.event==='data').at(-1).data;
+const latest=()=>{
+  const message=posts.filter(row=>row.channel==='hallmark.source.v1'&&row.event==='data').at(-1);
+  assert.ok(message,'SnapshotView must deliver a hallmark.source.v1 data message after its scoped reads; rendered alerts: '+JSON.stringify(alerts()));
+  assert.ok(message.data,'the snapshot data message must contain a data payload');
+  return message.data;
+};
 const ids=packet=>packet.bindings[0].payload.items.map(row=>row.id);
 const alerts=()=>tree.root.findAllByProps({role:'alert'}).map(node=>JSON.stringify(node.children.map(child=>typeof child==='string'?child:child.children)));
 try{
