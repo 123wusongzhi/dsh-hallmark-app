@@ -177,6 +177,8 @@ test('price pagination rejects stalled tokens and does not discard missing conti
 test('analytics carries exact date/dimension/metric order and preserves zero instead of null',async()=>{
  const f=fixture(()=>({result:{data:[{dimensions:[{id:'123',name:'Product'},{id:'2026-09-01'}],metrics:[0,1,2,3,4]}]},timestamp:'2026-09-03 10:00:00'}));const result=data(await readOzonData('analytics',{storeId:'s',...range},f.store,f.client));
  assert.equal(result.items[0].impressions,0);assert.equal(result.items[0].orderedUnits,3);assert.equal(result.items[0].visitors,4);assert.deepEqual((f.calls[0].input.body as RecordData).dimension,['sku','day']);assert.deepEqual(result.period,range);
+ assert.equal(result.items[0].views,1);assert.equal(result.items[0].cartEvents,2);
+ assert.deepEqual((f.calls[0].input.body as RecordData).metrics,['hits_view_search','hits_view_pdp','hits_tocart','ordered_units','session_view_pdp']);
  const before=f.calls.length;assert.equal((await readOzonData('analytics',{storeId:'s',dateFrom:'2026-02-30',dateTo:'2026-03-01'},f.store,f.client)).error?.code,'INVALID_DATE_RANGE');assert.equal(f.calls.length,before);
 });
 test('period SKU analytics uses one 1000-row upstream batch and buffers user-sized pages without a second API request',async()=>{
