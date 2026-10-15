@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "policy": "All tests consuming commodity, SKU, collected source, shop, sale, logistics, activity or dictionary facts use recorded snapshots. Original records remain immutable. Alias, omission, failure, numeric boundary and scale modifications are explicit derived cases.",
   "requiredFiles": [
+    "test/apps-host/collection-column-fidelity.test.ts",
     "test/apps-host/collected-empty-search.test.ts",
     "test/source-preview/selection-bulk-chain.test.ts",
     "test/source-preview/selection-retry-chain.test.ts",
@@ -489,6 +490,7 @@
     "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts."
   },
   "fileModes": {
+    "test/apps-host/collection-column-fidelity.test.ts": "Three original SKUs from an unchanged hash-checked frozen detail through real Adapter, CollectionService, Provider, Runtime HTTP and Host renderer; independent source attribute/image expectations and formal image metadata resource reads verify named column fidelity and explicit absent package/price nulls without downloading images.",
     "test/apps-host/collected-empty-search.test.ts": "Two unchanged hash-checked recorded summaries through the real HallmarkClient adapter, Core, HallmarkProvider, Runtime HTTP and Host renderer; explicit query, empty-source subset and failed-read controls distinguish authoritative empty matches from retained raw evidence.",
     "test/source-preview/selection-bulk-chain.test.ts": "25 unchanged hash-checked recorded summaries through the actual source component, original SDK, host selection and native File bridge; page-local select and deselect controls preserve another page's exact recorded attachment identities.",
     "test/source-preview/selection-retry-chain.test.ts": "Two unchanged hash-checked recorded product summaries through the actual collected-products component, original SDK, sourceSelection and native File boundary; explicit native refusal and user retry controls preserve exact recorded selection payloads.",
