@@ -10,7 +10,7 @@ import {build} from 'esbuild';
 // browser checks of visibility, hit testing, event dispatch or focus behavior.
 test('application catalog and session cards obey rendered state and navigation contracts',{timeout:30000},async()=>{
   const root=fileURLToPath(new URL('../../',import.meta.url));
-  const scratch=join(root,'.test-tmp');mkdirSync(scratch,{recursive:true});
+  const scratch=join(root,'artifacts');mkdirSync(scratch,{recursive:true});
   const directory=mkdtempSync(join(scratch,'application-surfaces-')),entry=join(directory,'checks.mjs');
   let passed=false;
   try{

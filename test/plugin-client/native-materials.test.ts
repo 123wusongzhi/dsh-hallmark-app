@@ -96,6 +96,7 @@ test('activity material reuses table and resolves provider row paths and date al
     for(const [timeZone,startsOn,endsOn,localTime] of [
       ['UTC','2026/10/08','2026/10/12','00:00:00'],
       ['America/Los_Angeles','2026/10/07','2026/10/11','17:00:00'],
+      ['Asia/Shanghai','2026/10/08','2026/10/12','08:00:00'],
     ] as const){
       process.env.TZ=timeZone;
       const html=renderToStaticMarkup(React.createElement(ViewRenderer,{spec,data:[data]}));

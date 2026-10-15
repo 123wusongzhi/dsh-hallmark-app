@@ -22,9 +22,9 @@ test('generated product templates pass the formal two-viewport performance gate 
   let passed=false;
   const sources=new SourceComponentStore(join(root,'archive')),runner=new AuthoringEvidenceRunner(join(root,'evidence'));
   const corpus=realCorpus(),corpusRoot=dirname(realCorpusPath);
-  const assets=JSON.parse(readFileSync(join(corpusRoot,'image-assets.json'),'utf8')).assets;
+  const assets=corpus.imageAssets;
   const images=new Map<string,{bytes:Buffer;mimeType:string}>();
-  for(const asset of assets){if(asset.status!=='captured')continue;const bytes=readFileSync(join(corpusRoot,asset.file));assert.equal(createHash('sha256').update(bytes).digest('hex'),asset.sha256);images.set(asset.productId,{bytes,mimeType:asset.mimeType});}
+  for(const asset of assets){if(asset.status!=='captured')continue;assert.ok(asset.file&&asset.mimeType,`Captured image required for source ${asset.productId}`);const bytes=readFileSync(join(corpusRoot,asset.file));assert.equal(createHash('sha256').update(bytes).digest('hex'),asset.sha256);images.set(asset.productId,{bytes,mimeType:asset.mimeType});}
   const imageServer=createServer((request,response)=>{const id=decodeURIComponent(new URL(request.url!,'http://replay').pathname.slice(1)),asset=images.get(id);if(!asset){response.writeHead(404);response.end();return;}response.writeHead(200,{'Content-Type':asset.mimeType,'Cache-Control':'no-store'});response.end(asset.bytes);});
   await new Promise<void>(resolve=>imageServer.listen(0,'127.0.0.1',resolve));
   t.after(async()=>{imageServer.closeAllConnections();await new Promise<void>(resolve=>imageServer.close(()=>resolve()));});

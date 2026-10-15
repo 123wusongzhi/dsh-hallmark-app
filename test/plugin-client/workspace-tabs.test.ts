@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -18,11 +18,14 @@ test('closing inactive preserves selection; closing active falls back to workben
 test('drafts are unique temporary tabs and metadata for unsupported apps grants no workspace authority',()=>{
   let state=createWorkspaceState();state=workspaceReducer(state,{type:'new-draft',appId:'hallmark'});const first=state.activeId;state=workspaceReducer(state,{type:'new-draft',appId:'hallmark'});assert.notEqual(state.activeId,first);state=workspaceReducer(state,{type:'close',id:first});state=workspaceReducer(state,{type:'new-draft',appId:'hallmark'});assert.equal(state.draftSequence,3);assert.equal(new Set(state.tabs.map(tab=>tab.id)).size,state.tabs.length);assert.equal(workspaceReducer(state,{type:'new-draft',appId:'other-app'}),state);assert.equal(workspaceReducer(state,{type:'open-view',appId:'other-app',viewId:'x',title:'Not Hallmark'}),state);const other=createWorkspaceState('other-app');assert.equal(other.tabs.length,0);assert.equal(workspaceReducer(other,{type:'new-draft',appId:'other-app'}),other);
 });
+// Props and the focus boundary are exercised here; browser event delivery and
+// actual DOM focus remain covered by the browser fixture.
 test('rendered dock handles keyboard navigation, deletion and focus', { timeout: 30000 }, async () => {
   const root = fileURLToPath(new URL('../../', import.meta.url));
   mkdirSync(join(root, 'artifacts'), { recursive: true });
   const directory = mkdtempSync(join(root, 'artifacts', 'workspace-dock-interaction-'));
   const entry = join(directory, 'fixture.mjs');
+  let passed = false;
   try {
     await build({
       stdin: { resolveDir: root, loader: 'tsx', contents: `
@@ -159,10 +162,13 @@ test('rendered dock handles keyboard navigation, deletion and focus', { timeout:
       external: ['react', 'react/jsx-runtime', 'react-test-renderer'],
     });
     const result = spawnSync(process.execPath, [entry], { cwd: root, encoding: 'utf8', timeout: 15000, maxBuffer: 1024 * 1024 });
-    assert.equal(result.status, 0, [result.error?.message, result.stdout, result.stderr].filter(Boolean).join('\n'));
+    writeFileSync(join(directory, 'stdout.txt'), result.stdout ?? '');
+    writeFileSync(join(directory, 'stderr.txt'), result.stderr ?? '');
+    assert.equal(result.status, 0, [result.error?.message, result.stdout, result.stderr, 'logs: ' + directory].filter(Boolean).join('\n'));
     assert.match(result.stdout, /WORKSPACE_DOCK_INTERACTION_PASS/);
+    passed = true;
   } finally {
-    rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    if (passed) rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   }
 });
 

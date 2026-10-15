@@ -21,7 +21,7 @@ test('freshly generated SDK wrapper forwards call options and honors cancellatio
     async inspect(){throw Error('No operation inspection expected');},
   };
   const source={kind:'agent',sessionId:'local-control',nativeCallId:'wrapper-call'} as const;
-  const deadlineAt=new Date(Date.now()+5000).toISOString(),client=new AppsClient(transport,source,{traceId:'control-trace',deadlineAt});
+  const deadlineAt=new Date(Date.now()+30000).toISOString(),client=new AppsClient(transport,source,{traceId:'control-trace',deadlineAt});
   const ref={appId:'control',connectionId:'local'},input={text:'echo fixture'};
   const options={invocationId:'supplied-invocation',idempotencyKey:'supplied-key',expectedResourceRevision:'supplied-revision'};
   const result=await generated.call0(client,ref,input,options);

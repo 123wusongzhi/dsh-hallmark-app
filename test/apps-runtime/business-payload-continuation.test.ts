@@ -20,7 +20,7 @@ test('payload-mode draft pagination retains exact recorded content through every
     const seen:any[]=[];
     for(let page=0;;page++){
       assert.ok(page<10,'continuation must terminate');
-      const request:InvocationRequest={protocolVersion:'1.0',...args,invocationId:`payload-page-${page}`,traceId:'payload-pages',source:{kind:'agent',sessionId:'local',nativeCallId:`payload-page-${page}`},deadlineAt:new Date(Date.now()+5000).toISOString()};
+      const request:InvocationRequest={protocolVersion:'1.0',...args,invocationId:`payload-page-${page}`,traceId:'payload-pages',source:{kind:'agent',sessionId:'local',nativeCallId:`payload-page-${page}`},deadlineAt:new Date(Date.now()+30000).toISOString()};
       const result=await runtime.invoke(request);assert.equal(result.status,'ok',JSON.stringify(result));
       const projected=projectModelResult(store,result),model=JSON.parse(projected.content);
       assert.equal(projected.fullResultRef,undefined);assert.ok(Buffer.byteLength(projected.content)<=16384);

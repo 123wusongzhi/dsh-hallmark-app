@@ -23,7 +23,6 @@ test('publication contracts expose waiting state and nullable deadline while ret
 });
 
 test('receipt required/base fields retain A.2 compatibility with explicit optional execution and performance evidence',()=>{
-  // The versioned A.2 contract is the oracle, independently of the implementation.
   const templateRoot=new URL('../../docs/requirements/A2/templates/',import.meta.url);
   for(const [name,actual] of [['build-receipt.schema.json',AUTHORING_BUILD_RECEIPT_SCHEMA],['preview-receipt.schema.json',AUTHORING_PREVIEW_RECEIPT_SCHEMA]] as const){
     const template=JSON.parse(readFileSync(new URL(name,templateRoot),'utf8')) as JsonSchema;

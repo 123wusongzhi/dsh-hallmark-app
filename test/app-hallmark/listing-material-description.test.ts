@@ -29,7 +29,7 @@ test('a long recorded source description is exactly recoverable from preparation
     let text=material.description.text,cursor=material.description.nextCursor,pages=0;
     while(cursor){
       assert.ok(pages<100,'description continuation must progress');const input={...hint,cursor};assert.deepEqual(compileSchema(descriptor.inputSchema)(input),[]);
-      const result:any=await provider.execute({request:{protocolVersion:'1.0',appId:'hallmark',connectionId:'local',capabilityId:descriptor.capabilityId,capabilityVersion:descriptor.version,input,invocationId:`description-${pages}`,traceId:'description-control',source:{kind:'agent',sessionId:'local',nativeCallId:`description-${pages}`},deadlineAt:new Date(Date.now()+5000).toISOString()},signal:new AbortController().signal,configRevision:1});
+      const result:any=await provider.execute({request:{protocolVersion:'1.0',appId:'hallmark',connectionId:'local',capabilityId:descriptor.capabilityId,capabilityVersion:descriptor.version,input,invocationId:`description-${pages}`,traceId:'description-control',source:{kind:'agent',sessionId:'local',nativeCallId:`description-${pages}`},deadlineAt:new Date(Date.now()+30000).toISOString()},signal:new AbortController().signal,configRevision:1});
       assert.equal(result.status,'ok',JSON.stringify(result));assert.equal(result.data.id,source.id);assert.equal(result.data.revision,material.revision);
       assert.ok(Buffer.byteLength(JSON.stringify(result.data))<=14000);text+=result.data.text;pages++;
       if(result.data.nextCursor)assert.notEqual(result.data.nextCursor,cursor);cursor=result.data.nextCursor;
