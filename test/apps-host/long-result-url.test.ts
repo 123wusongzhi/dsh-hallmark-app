@@ -12,8 +12,9 @@ test('legal Unicode and escaped result paths reconstruct through registered HTTP
  runtime.register({manifest:{manifestVersion:1,appId:'fixture',displayName:'Fixture',providerPackage:'fixture',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:['row']},descriptors:[{capabilityId:'fixture.query',version:'1.0.0',title:'Query',description:'Fixture',effect:'query',inputSchema:{type:'object',additionalProperties:false},outputSchema:{type:'object'},execution:{mode:'sync',timeoutMs:5000,concurrency:'declared_safe',lockScope:'connection',idempotency:'not_applicable',completionEvidence:'response'},discovery:{defaultVisible:false,keywords:[]},aliases:[]}],async execute(context){calls++;return {status:'ok',invocationId:context.request.invocationId,traceId:context.request.traceId,data};},async dispose(){}});
  runtime.addConnection({appId:'fixture',connectionId:'C1',displayName:'C1',config:{},enabled:true,configRevision:1});runtime.bind({sessionId:agent.id,appId:'fixture',connectionId:'C1',enabled:true,boundAt:new Date().toISOString()});
  const token='fixture-token'.repeat(5),server=createAppsServer({runtime,presentation:new AppsPresentationService({store,runtime}),token});await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));const address=server.address();assert.ok(address&&typeof address!=='string');const url=`http://127.0.0.1:${address.port}`;
- const host=new AppsHost({agents:{get:()=>agent},tools:{register:t=>{tools.set(t.name,t);return()=>{};}}},new HttpAppsHostTransport(url,token));await host.start();host.attachApp('fixture');
+ const host=new AppsHost({agents:{get:()=>agent},tools:{register:t=>{tools.set(t.name,t);return()=>{};}}},new HttpAppsHostTransport(url,token));
  try{
+  await host.start();host.attachApp('fixture');
   const inspect=tools.get('apps_inspect')!,invoke=tools.get('apps_invoke')!,validate=compileSchema(inspect.parameters),execution={agent,signal:new AbortController().signal};
   const original='target 中😀\ud800 "\\\n'.repeat(2500),keys=['中'.repeat(1900),'😀'.repeat(950),'中~/'.repeat(700),'x'.repeat(3985)];
   for(const key of keys){
