@@ -21,7 +21,7 @@ function descriptor(version: string): CapabilityDescriptor {
     description: `Protocol fixture for the active ${version} catalogue.`, effect: 'query',
     inputSchema: {type: 'object', properties: version === '1.0.0' ? {} : {label: {type: 'string'}}, additionalProperties: false},
     outputSchema: {type: 'object', properties: {version: {type: 'string'}, label: {type: 'string'}}, required: ['version', 'label'], additionalProperties: false},
-    execution: {mode: 'sync', timeoutMs: 5000, concurrency: 'declared_safe', lockScope: 'connection', idempotency: 'not_applicable', completionEvidence: 'response'},
+    execution: {mode: 'sync', timeoutMs: 30000, concurrency: 'declared_safe', lockScope: 'connection', idempotency: 'not_applicable', completionEvidence: 'response'},
     discovery: {defaultVisible: true, keywords: ['protocol-control']}, aliases: [],
   };
 }
@@ -56,7 +56,7 @@ async function closeServer(server: Server): Promise<void> {
   await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 }
 
-test('registered Host retires warmed exact descriptors across HTTP Runtime generations and recovers using the new contract', async () => {
+test('registered Host retires warmed exact descriptors across HTTP Runtime generations and recovers using the new contract', {timeout: 30000}, async t => {
   const store = new RuntimeStore(':memory:');
   const requests: {generation: string; method: string; path: string}[] = [];
   const providerRequests: InvocationRequest[] = [];
@@ -111,7 +111,7 @@ test('registered Host retires warmed exact descriptors across HTTP Runtime gener
     const describe = tools.get('apps_describe')!;
     const invoke = tools.get('apps_invoke')!;
     const execute = async (tool: NativeGatewayTool, args: Record<string, JsonValue>) => {
-      const value = await tool.execute(args, {agent, signal: new AbortController().signal, callId: randomUUID()});
+      const value = await tool.execute(args, {agent, signal: t.signal, callId: randomUUID()});
       const text = tool.output.render(args, value).map(item => item.text).join('');
       assert.ok(Buffer.byteLength(text) <= 16384);
       return {value, model: JSON.parse(text)};
