@@ -20,7 +20,7 @@ import React,{useState} from 'react';import {create,act} from 'react-test-render
 import {AppsNativeView,AppsToolView} from './packages/plugin-apps/client/view.tsx';import {AppsSidebarPane} from './packages/plugin-apps/client/sidebar.tsx';import {NativePublicationObserver,CandidateFrameLease} from './packages/plugin-apps/client/native-publication.tsx';import {COMPONENT_CHANNEL} from './packages/component-runtime/src/apps-client.ts';
 import {AppsSaveControls} from './packages/plugin-apps/client/save-controls.tsx';
 import {appsDisplayTime} from './packages/plugin-apps/client/ui.tsx';
-globalThis.IS_REACT_ACT_ENVIRONMENT=true;const actualFetch=fetch,http=[],events=new Map(),posts=[],nodes=[],displays=[],grants=[],releases=[];let owner='A',authError=false,lostOpen=false,holdOpen=false,holdAuthorize=false,catalogError=false,failInitialData=false,readyProbe=false,tree,failure,opened=0,setNavigation,viewBinding,refreshPayload,holdRefresh=false,failRefresh=false,interceptRequest;
+globalThis.IS_REACT_ACT_ENVIRONMENT=true;const actualFetch=fetch,actualSetTimeout=setTimeout,http=[],events=new Map(),posts=[],nodes=[],displays=[],grants=[],releases=[];let owner='A',authError=false,lostOpen=false,holdOpen=false,holdAuthorize=false,catalogError=false,failInitialData=false,readyProbe=false,tree,failure,opened=0,setNavigation,viewBinding,refreshPayload,holdRefresh=false,failRefresh=false,interceptRequest,idleClockEvidence;
 const source={buildId:'preview-build',entry:'index.html',protocol:'dsh.apps.component.v2'},publication={publicationId:'P1',viewId:'V',ownerSessionId:'A',attemptId:'attempt',attemptEpoch:1,expectedViewRevision:2,candidateBuildId:source.buildId,source,state:'prepared',readyDeadlineAt:null},snapshot={viewId:'V',ownerSessionId:'A',title:'Bill 商品',design:{},bindings:[],source,viewRevision:2,pendingPublicationId:'P1',validationStatus:'draft_unpublished'},active={...snapshot,source:null},dataFor=display=>({viewId:'V',bindings:viewBinding?[viewBinding]:[],snapshotBuild:display?.buildId??'active'});
 const server=createServer(async(req,res)=>{let raw='';for await(const chunk of req)raw+=chunk;const query=new URL(req.url,'http://fixture').searchParams,body=raw?JSON.parse(raw):undefined,resource=query.get('resource'),row={path:req.url,method:req.method,resource,body};http.push(row);
  const reply=(status,value)=>{row.status=status;row.response=value;if(!res.destroyed){res.writeHead(status,{'content-type':'application/json'});res.end(JSON.stringify(value));}};
@@ -43,7 +43,7 @@ const server=createServer(async(req,res)=>{let raw='';for await(const chunk of r
 const parent={location:{origin},addEventListener(type,listener){const rows=events.get(type)??new Set();rows.add(listener);events.set(type,rows);},removeEventListener(type,listener){events.get(type)?.delete(listener);},dispatchEvent(event){for(const listener of [...events.get(event.type)??[]])listener(event);return true;}};globalThis.window=parent;
 const mountedListeners=new Set(),sidebar={mounted:{getSnapshot:()=>owner,subscribe:fn=>{mountedListeners.add(fn);return()=>mountedListeners.delete(fn);}},openTab(kind,options){opened++;setNavigation?.({params:options?.params,revision:opened});}},controller=new AbortController();
 const nodeMock=node=>{if(node.type!=='iframe')return null;const childEvents=new Map(),child={location:{origin},postMessage:value=>posts.push(value),addEventListener(type,fn){const rows=childEvents.get(type)??new Set();rows.add(fn);childEvents.set(type,rows);},removeEventListener(type,fn){childEvents.get(type)?.delete(fn);}},element={contentWindow:child,childEvents};nodes.push(element);return element;};
-const settle=(ms=15)=>act(async()=>{await new Promise(resolve=>setTimeout(resolve,ms));}),until=async(predicate,message='Expected fixture condition')=>{for(let n=0;n<100&&!predicate();n++)await settle();assert.ok(predicate(),message);},button=name=>tree.root.findAllByType('button').find(row=>row.children.join('')===name),send=async(data,child=nodes.at(-1).contentWindow,from=origin)=>{await act(async()=>{await Promise.all([...events.get('message')??[]].map(fn=>fn({source:child,origin:from,data})));});};
+const settle=(ms=15)=>act(async()=>{await new Promise(resolve=>actualSetTimeout(resolve,ms));}),until=async(predicate,message='Expected fixture condition')=>{for(let n=0;n<100&&!predicate();n++)await settle();assert.ok(predicate(),message);},button=name=>tree.root.findAllByType('button').find(row=>row.children.join('')===name),send=async(data,child=nodes.at(-1).contentWindow,from=origin)=>{await act(async()=>{await Promise.all([...events.get('message')??[]].map(fn=>fn({source:child,origin:from,data})));});};
 const hello=(nonce='document')=>({channel:COMPONENT_CHANNEL,type:'hello',protocolVersion:'2.0',requestId:'hello-'+nonce,documentNonce:nonce,clientFeatures:['renderReadyV1','uiStateV1']}),packet=()=>{const {protocolVersion,sessionId,viewId,buildId,frameInstanceId}=posts.filter(row=>row.type==='hello').at(-1);return {protocolVersion,sessionId,viewId,buildId,frameInstanceId,channel:COMPONENT_CHANNEL};};
 function Shell(){const [navigation,set]=useState();setNavigation=set;return <><AppsToolView sessionId='A' phase='result' block={{meta:{apps:{sessionId:'A',viewId:'V',publicationId:'P1',buildId:'preview-build',viewRevision:2}}}} sidebarRight={sidebar}/>{navigation?<AppsSidebarPane sessionId='A' sidebarRight={sidebar} useTabInfo={()=>({tab:{navigation,signal:controller.signal,visible:true,actions:{openTab:sidebar.openTab}}})}/>:null}</>;}
 const render=async()=>{await act(async()=>{tree=create(<Shell/>,{createNodeMock:nodeMock});});await until(()=>JSON.stringify(tree.toJSON()).includes('已准备好'));},click=async()=>{await act(async()=>button(displays.length?'重新打开组件 ↗':'打开组件 ↗').props.onClick());await until(()=>tree.root.findAllByType('iframe').length===1);};
@@ -53,11 +53,42 @@ const finish=`
 }catch(error){failure=error instanceof Error?error.stack:String(error);}
 finally{if(tree)await act(async()=>tree.unmount());for(const release of releases)release();await new Promise(resolve=>setTimeout(resolve,30));server.closeAllConnections();await new Promise(resolve=>server.close(resolve));globalThis.fetch=actualFetch;assert.equal(mountedListeners.size,0);for(const rows of events.values())assert.equal(rows.size,0);for(const node of nodes)for(const rows of node.childEvents.values())assert.equal(rows.size,0);}
 const portProbe=await new Promise(resolve=>{const socket=createConnection({host:'127.0.0.1',port});socket.once('connect',()=>{socket.destroy();resolve({connected:true});});socket.once('error',error=>{socket.destroy();resolve({connected:false,code:error.code});});});assert.equal(portProbe.connected,false);
-console.log(JSON.stringify({scope:'ISOLATED_PRODUCTION_REACT_HTTP_DISPLAY_FIXTURE',actualDesktop:false,actualRuntime:false,renderReadySimulated:true,http,displays,grants,posts,iframeNodeCreations:nodes.length,cleanup:{listening:server.listening,mountedListeners:mountedListeners.size,messageListeners:[...events.values()].reduce((n,rows)=>n+rows.size,0),portProbe},failure},null,2));if(failure){console.error(failure);process.exitCode=1;}else console.log('DISPLAY_SURFACE_PASS');
+console.log(JSON.stringify({scope:'ISOLATED_PRODUCTION_REACT_HTTP_DISPLAY_FIXTURE',actualDesktop:false,actualRuntime:false,renderReadySimulated:true,idleClockEvidence,http,displays,grants,posts,iframeNodeCreations:nodes.length,cleanup:{listening:server.listening,mountedListeners:mountedListeners.size,messageListeners:[...events.values()].reduce((n,rows)=>n+rows.size,0),portProbe},failure},null,2));if(failure){console.error(failure);process.exitCode=1;}else console.log('DISPLAY_SURFACE_PASS');
 `;
 
 test('prepared original card waits without an iframe or writes, then an explicit click opens the exact preview build',()=>fixture('wait-click',setup+`
-await render();await settle(16050);assert.equal(opened,0);assert.equal(nodes.length,0);assert.equal(http.some(row=>row.method==='POST'),false);assert.equal(publication.readyDeadlineAt,null);await click();assert.equal(opened,1);assert.equal(displays.length,1);assert.ok(tree.root.findByType('iframe').props.src.includes('preview-build/index.html'));assert.equal(http.some(row=>['startMount','failMount','authorizeFrame'].includes(row.body?.operation)),false);const frame=tree.root.findByType('iframe');await act(async()=>frame.props.onLoad());assert.equal(displays[0].state,'opening');assert.doesNotMatch(JSON.stringify(tree.toJSON()),/已展示/);await send(hello());assert.equal(grants.length,1);assert.equal(grants[0].displayId,displays[0].displayId);const identity=packet();await send({...identity,type:'extension',feature:'renderReadyV1',action:'ready',requestId:'ready',params:{checks:{rendered:true,bridgeReady:true,dataRead:true,unhandledErrors:[],assertionResults:[]}}});assert.equal(displays[0].state,'ready');assert.match(JSON.stringify(tree.toJSON()),/已展示/);
+// Control only the idle clock. Requests still use the real loopback server and JSON body reads.
+// Install before render so a regressed mount-time deadline cannot escape onto the wall clock.
+const {mock}=await import('node:test'),originalClock={Date,setTimeout,clearTimeout,setInterval,clearInterval},originalFetch=fetch,startedAt=Date.now(),pendingRequests=new Map();
+idleClockEvidence={apis:['Date','setTimeout','setInterval'],checkpoints:[],restored:false};
+const track=(promise,label)=>{pendingRequests.set(promise,label);promise.then(()=>pendingRequests.delete(promise),()=>pendingRequests.delete(promise));return promise;};
+const drainRequests=async()=>{
+  const deadline=performance.now()+1500;let quietTurns=0;
+  while(quietTurns<2){
+    // Flush timers already due, including any queued while real I/O was settling.
+    await act(async()=>{mock.timers.tick(0);await new Promise(resolve=>setImmediate(resolve));});
+    assert.ok(performance.now()<deadline,'Real HTTP/React work must settle before advancing the idle clock: '+JSON.stringify([...pendingRequests.values()]));
+    quietTurns=pendingRequests.size===0?quietTurns+1:0;
+  }
+};
+try {
+  globalThis.fetch=(...args)=>track(originalFetch(...args).then(response=>{const json=response.json.bind(response);response.json=(...args)=>track(json(...args),'json '+response.url);return response;}),'fetch '+args[0]);
+  mock.timers.enable({apis:['Date','setTimeout','setInterval'],now:startedAt});
+  await render();
+  // Advance every millisecond, including nested deadlines, and drain each triggered real request.
+  // Keep the former 16.05-second idle window and let real HTTP and React work settle between ticks.
+  for(let elapsed=1;elapsed<=16050;elapsed++){
+    await act(async()=>mock.timers.tick(1));await drainRequests();
+    if([15999,16000,16050].includes(elapsed))idleClockEvidence.checkpoints.push({elapsedMs:Date.now()-startedAt,opened,iframeNodeCreations:nodes.length,postCount:http.filter(row=>row.method==='POST').length,readyDeadlineAt:publication.readyDeadlineAt,pendingRequests:pendingRequests.size});
+  }
+  assert.equal(Date.now()-startedAt,16050);
+  assert.equal(opened,0);assert.equal(nodes.length,0);assert.equal(http.some(row=>row.method==='POST'),false);assert.equal(publication.readyDeadlineAt,null);
+} finally {
+  mock.timers.reset();globalThis.fetch=originalFetch;
+  for(const [name,original] of Object.entries(originalClock))assert.equal(globalThis[name],original,name+' must be restored before click or fixture cleanup');
+  assert.equal(globalThis.fetch,originalFetch);idleClockEvidence.restored=true;
+}
+await click();assert.equal(opened,1);assert.equal(displays.length,1);assert.ok(tree.root.findByType('iframe').props.src.includes('preview-build/index.html'));assert.equal(http.some(row=>['startMount','failMount','authorizeFrame'].includes(row.body?.operation)),false);const frame=tree.root.findByType('iframe');await act(async()=>frame.props.onLoad());assert.equal(displays[0].state,'opening');assert.doesNotMatch(JSON.stringify(tree.toJSON()),/已展示/);await send(hello());assert.equal(grants.length,1);assert.equal(grants[0].displayId,displays[0].displayId);const identity=packet();await send({...identity,type:'extension',feature:'renderReadyV1',action:'ready',requestId:'ready',params:{checks:{rendered:true,bridgeReady:true,dataRead:true,unhandledErrors:[],assertionResults:[]}}});assert.equal(displays[0].state,'ready');assert.match(JSON.stringify(tree.toJSON()),/已展示/);
 `+finish,30000));
 
 test('ordinary session-list reopening of a committed source creates a new exact display before granting its document',()=>fixture('committed-list-reopen',setup+`

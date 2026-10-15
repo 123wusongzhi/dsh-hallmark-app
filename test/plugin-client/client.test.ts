@@ -81,7 +81,7 @@ test('application entry keeps non-modal integration and workspace-navigation sou
 test('workbench preview/read/save are session-independent but chat activation requires exact session',async()=>{
   const bodies:any[]=[];const fetcher=(async(_url:unknown,init:RequestInit)=>{if(init.body)bodies.push(JSON.parse(String(init.body)));return new Response(JSON.stringify({id:'v'}));}) as typeof fetch;const bridge=new HallmarkBridge('',fetcher);const draft=newDraft();await bridge.preview(draft);await bridge.saveComponent('v','Title');await bridge.saveTemplate('v','Template');assert.deepEqual(bodies.map(value=>value.action),['preview','saveComponent','saveTemplate']);assert.ok(bodies.every(value=>!Object.hasOwn(value,'sessionId')&&!Object.hasOwn(value,'userRequest')));await assert.rejects(bridge.activate(),/当前会话/);
 });
-// Rendered tab roles and paging labels are covered by product-image-loading.test.ts;
+// Actual tab roles and paging labels are covered by test/apps-components/product-image-loading.test.ts;
 // keep those contracts independent of JSX spelling or where the label is declared.
 test('source has native React seven-widget interaction and no HTML/raw-result/automatic-save escape hatch',()=>{
   const renderer=readFileSync(new URL('../../packages/dsh-plugin/client/renderer.tsx',import.meta.url),'utf8')+readFileSync(new URL('../../packages/dsh-plugin/client/widgets/product-table.tsx',import.meta.url),'utf8');const entry=readFileSync(new URL('../../packages/dsh-plugin/client/index.tsx',import.meta.url),'utf8');const api=readFileSync(new URL('../../packages/dsh-plugin/client/api.ts',import.meta.url),'utf8');

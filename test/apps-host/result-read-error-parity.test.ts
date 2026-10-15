@@ -21,7 +21,7 @@ async function listen(server:ReturnType<typeof createAppsServer>,signal:AbortSig
         const cleanup=()=>{server.off('listening',ready);server.off('error',failed);signal.removeEventListener('abort',aborted);};
         const ready=()=>{cleanup();resolve();},failed=(error:Error)=>{cleanup();reject(error);},aborted=()=>{cleanup();reject(signal.reason);};
         server.once('listening',ready);server.once('error',failed);signal.addEventListener('abort',aborted,{once:true});
-        server.listen(randomInt(20000,65536),'127.0.0.1');
+        server.listen({port:randomInt(20000,65536),host:'127.0.0.1',signal});
       });
       const address=server.address();assert.ok(address&&typeof address!=='string');return address.port;
     }catch(error){if(!['EADDRINUSE','EACCES'].includes((error as NodeJS.ErrnoException).code??''))throw error;}
@@ -63,8 +63,8 @@ test('long POST result reads preserve real Runtime validation errors through Hos
     const invoke=tools.get('apps_invoke')!,inspect=tools.get('apps_inspect')!,validate=compileSchema(inspect.parameters),execution={agent,signal};
     const args={appId:'readfixture',connectionId:'local',capabilityId:'readfixture.query',capabilityVersion:'1.0.0',input:{},invocationId:'original-read',traceId:'original-trace'};
     const native:any=await invoke.execute(args,execution),visible=JSON.parse(invoke.output.render(args,native).map(part=>part.text).join(''));
-    assert.equal(native.result?.status??native.status,'ok','the original read must succeed before inspecting its retained result');assert.deepEqual(native.result.data,data);assert.equal(visible.status,'ok');assert.equal(visible.fullResultRef,'result:original-read');
-    const resultRef=visible.fullResultRef,retained=structuredClone(store.get('datasets',resultRef)),invocations=structuredClone(store.list('invocations'));
+    assert.equal(native.result?.status??native.status,'ok','the original read must succeed before inspecting its retained result');assert.deepEqual(native.result.data,data);assert.equal(visible.status,'ok');assert.equal(typeof visible.fullResultRef,'string');assert.equal(visible.fullResultRef,'result:original-read');
+    const resultRef=visible.fullResultRef,retained=structuredClone(store.get('datasets',resultRef)),invocations=structuredClone(store.list('invocations'));assert.ok(retained);
     const paths=['/data/short','/data/'+key.replace(/~/g,'~0').replace(/\//g,'~1')];
     const read=async(input:Record<string,JsonValue>,method:'GET'|'POST'):Promise<{model:Record<string,any>;request:Wire}>=>{
       assert.deepEqual(validate(input),[]);const before=wire.length;
@@ -100,7 +100,7 @@ test('long POST result reads preserve real Runtime validation errors through Hos
   }catch(error){testError=error;throw error;}finally{
     const errors:unknown[]=[],results:string[]=[];
     for(const {name,dispose} of cleanup.reverse())try{await boundedCleanup(Promise.resolve().then(dispose),`${name} disposal`);results.push(`${name}:closed`);}catch(error){errors.push(error);results.push(`${name}:failed`);}
-    t.diagnostic(JSON.stringify({cleanup:results}));
+    t.diagnostic(JSON.stringify({cleanup:results,...(errors.length?{originalFailure:testError instanceof Error?testError.message:String(testError),cleanupFailures:errors.map(error=>error instanceof Error?error.message:String(error))}:{})}));
     if(errors.length)throw new AggregateError([...(testError?[testError]:[]),...errors],'Result-read fixture cleanup failed');
   }
 });
