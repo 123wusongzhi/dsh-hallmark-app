@@ -26,8 +26,8 @@ async function fixture(t: any, options: { publicWrongHash?: boolean; importFailu
   const first = join(root, 'first.png'), second = join(root, 'second.png');
   await writeFile(first, png); await writeFile(second, Buffer.concat([png, Buffer.from('second')])) ;
   const records = new Map<string, any>(), assets = new Map<string, Buffer>(), calls: Array<{ path: string; body?: any; auth?: string | null }> = [];
-  // A pending Promise alone does not model fetch I/O: AbortSignal.timeout is unref'ed.
-  // Use a finite slow HTTP response so missing/late aborts return success and fail the assertions.
+  // AbortSignal.timeout does not keep Node alive; a bare Promise is not fetch I/O.
+  // A finite response makes missing or late cancellation fail the result assertions.
   let baseUrl = 'http://provider.example';
   const slowPublish = { requests: 0, responses: 0, closed: 0, waitForClosed: async () => {} };
   if (options.publishDelayMs) {
@@ -68,6 +68,8 @@ async function fixture(t: any, options: { publicWrongHash?: boolean; importFailu
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input)), body = init?.body ? JSON.parse(String(init.body)) : undefined;
     calls.push({ path: url.pathname, body, auth: new Headers(init?.headers).get('authorization') });
+    // Like native fetch, even the immediate fixture responses reject an already-cancelled call.
+    init?.signal?.throwIfAborted();
     if (url.pathname === '/api/images/access') return Response.json({ importRoot: imports, delivery: { mode: 'stable', publicBaseUrl: 'https://images.example' }, stablePublisherConfigured: true });
     if (url.pathname === '/api/images/import/local') {
       const bytes = await readFile(body.filePath), contentHash = hash(bytes), assetId = `image-v1-${contentHash}`;
@@ -232,7 +234,7 @@ test('a call that runs out of its time budget returns per-file retryable results
   assert.ok(r.files.every((file: any) => file.error.code === 'LISTING_ASSET_TIME_BUDGET'));
   assert.equal(f.records.size, 0);
   await f.slowPublish.waitForClosed();
-  // The whole-call budget may expire during file I/O, before the HTTP request is sent.
+  // The whole-call budget can expire during file preparation before HTTP starts.
   assert.ok(f.slowPublish.requests <= 1);
   assert.equal(f.slowPublish.responses, 0, 'budget abort prevents the delayed success response');
   assert.equal(f.slowPublish.closed, f.slowPublish.requests, 'every started publish request is closed');

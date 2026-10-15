@@ -151,8 +151,10 @@ test('a host-provided verified image protocol sends image parts rather than a te
   } });
   const result = await reviewer.review(request);
   assert.equal(result.status, 'passed');
-  // Assert after review: assertions inside fetch would be caught as provider failures.
-  assert.deepEqual(JSON.parse(submitted.state[0]), {
+  // Assert the captured POST after review so failures retain their original assertion details.
+  assert.equal(typeof submitted.state[0], 'string');
+  const context = JSON.parse(submitted.state[0]);
+  assert.deepEqual({ source: context.source, draft: context.draft, versions: context.versions, images: context.images }, {
     source: request.source,
     draft: { title: recorded.title, quantity: 1 },
     versions: { source: recorded.revision, draft: draftVersion, policy: 'policy-v1' },

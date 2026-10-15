@@ -41,9 +41,9 @@ test('C1: 49 MB captured-record load leaves indexed view lookup and verified chu
     const loaded=await counted(lookup);assert.deepEqual(loaded.value,quiet.value);
     assert.deepEqual(loaded.counts,quiet.counts,'unrelated 49 MB must not increase parsed work or archive reads');
     const query="SELECT json_extract(value_json,'$.value') AS value_json FROM provider_records WHERE json_extract(value_json,'$.namespace')='view_revisions' AND json_extract(value_json,'$.value.ownerSessionId')=?1 AND json_extract(value_json,'$.value.viewId')=?2 AND json_extract(value_json,'$.value.source.buildId')=?3 ORDER BY created_at,id";
-    const plan=f.store.db.prepare('EXPLAIN QUERY PLAN '+query).all(session,historical.viewId,historical.source!.buildId);
+    const plan=f.store.db.prepare('EXPLAIN QUERY PLAN '+query).all({'?1':session,'?2':historical.viewId,'?3':historical.source!.buildId});
     assert.match(JSON.stringify(plan),/SEARCH.*provider_records_view_revisions/);
-    const scopePlan=f.store.db.prepare('EXPLAIN QUERY PLAN '+PROVIDER_RECORD_SCOPE_SQL).all('displayreplay','offline','captured_load');assert.match(JSON.stringify(scopePlan),/SEARCH.*provider_records_namespace_connection/);assert.match(JSON.stringify(scopePlan),/provider_records_irregular/);
+    const scopePlan=f.store.db.prepare('EXPLAIN QUERY PLAN '+PROVIDER_RECORD_SCOPE_SQL).all({'?1':'displayreplay','?2':'offline','?3':'captured_load'});assert.match(JSON.stringify(scopePlan),/SEARCH.*provider_records_namespace_connection/);assert.match(JSON.stringify(scopePlan),/provider_records_irregular/);
     const loadedScope=await counted(async()=>f.store.providerRecordScopeCandidates('displayreplay','offline','captured_load'));assert.deepEqual(loadedScope.value,[]);assert.deepEqual(loadedScope.counts,quietScope.counts);
     report.index={before:quiet.counts,after:loaded.counts,plan,scopePlan,scopeBefore:quietScope.counts,scopeAfter:loadedScope.counts};
     const processes=[];

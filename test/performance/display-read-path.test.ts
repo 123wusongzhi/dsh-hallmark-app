@@ -77,6 +77,6 @@ test('view lookup by build returns the legacy result and parses only this view\'
   await check();
   const noisy=await lookup();
   assert.equal(noisy,quiet,'unrelated provider records are never parsed');
-  assert.match(JSON.stringify(f.store.db.prepare("EXPLAIN QUERY PLAN SELECT json_extract(value_json,'$.value') AS value_json FROM provider_records WHERE json_extract(value_json,'$.namespace')='view_revisions' AND json_extract(value_json,'$.value.ownerSessionId')=?1 AND json_extract(value_json,'$.value.viewId')=?2 AND json_extract(value_json,'$.value.source.buildId')=?3 ORDER BY created_at,id").all('A','v','b')),/provider_records_view_revisions/);
+  assert.match(JSON.stringify(f.store.db.prepare("EXPLAIN QUERY PLAN SELECT json_extract(value_json,'$.value') AS value_json FROM provider_records WHERE json_extract(value_json,'$.namespace')='view_revisions' AND json_extract(value_json,'$.value.ownerSessionId')=?1 AND json_extract(value_json,'$.value.viewId')=?2 AND json_extract(value_json,'$.value.source.buildId')=?3 ORDER BY created_at,id").all({'?1':'A','?2':'v','?3':'b'})),/provider_records_view_revisions/);
   console.log(JSON.stringify({metric:'view-route-by-build',unrelatedRows:1500,parsesWithoutNoise:quiet,parsesWithNoise:noisy}));
 });

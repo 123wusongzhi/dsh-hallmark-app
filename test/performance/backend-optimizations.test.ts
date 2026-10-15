@@ -119,6 +119,12 @@ test('view revisions resolve by session, view and build through the index with l
   store.put('provider_records','not-a-revision',{appId:'apps',connectionId:'presentation',namespace:'component_displays',value:{ownerSessionId:'s0',viewId:'v0',source:{buildId:'b0'}}});
   const legacy=(sessionId:string,viewId:string,buildId?:string)=>store.list<any>('provider_records').filter(row=>row.namespace==='view_revisions').map(row=>row.value).filter(view=>view.ownerSessionId===sessionId&&view.viewId===viewId&&(!buildId||view.source?.buildId===buildId));
   for(const [session,view,build] of [['s0','v0','b0'],['s1','v1','b7'],['s2','v0','b49'],['s0','v1',undefined],['s0','v0','missing'],['absent','v0','b0']] as const)assert.deepEqual(store.viewRevisionsForBuild(session,view,build),legacy(session,view,build));
+  const sessionId="session '?2",viewId="view '?1",emptyBuild={ownerSessionId:sessionId,viewId,viewRevision:1,source:{buildId:''}},withoutBuild={ownerSessionId:sessionId,viewId,viewRevision:2},pinned={ownerSessionId:sessionId,viewId,viewRevision:3,source:{buildId:'build ?3'}};
+  for(const [id,value] of [['literal-a',emptyBuild],['literal-b',withoutBuild],['literal-c',pinned]] as const)store.put('provider_records',id,{namespace:'view_revisions',value});
+  assert.deepEqual(store.viewRevisionsForBuild(sessionId,viewId),[emptyBuild,withoutBuild,pinned]);
+  assert.deepEqual(store.viewRevisionsForBuild(sessionId,viewId,''),[emptyBuild],'an empty build ID is a pin, not an omitted filter');
+  assert.deepEqual(store.viewRevisionsForBuild(sessionId,viewId,'build ?3'),[pinned]);
+  assert.deepEqual(store.viewRevisionsForBuild(viewId,sessionId),[],'session and view parameters retain their own identities');
   const {result,parsed}=countParses(()=>store.viewRevisionsForBuild('s0','v0','b0'));assert.ok(result.length>0);assert.equal(parsed,result.length);
   assert.match(JSON.stringify(store.db.prepare("EXPLAIN QUERY PLAN SELECT value_json FROM provider_records WHERE json_extract(value_json,'$.namespace')='view_revisions' AND json_extract(value_json,'$.value.ownerSessionId')=? AND json_extract(value_json,'$.value.viewId')=? AND json_extract(value_json,'$.value.source.buildId')=? ORDER BY created_at,id").all('s','v','b')),/provider_records_view_revisions/);
 });
