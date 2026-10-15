@@ -25,7 +25,7 @@ export function SnapshotView({sessionId,viewId,owned=false,onOpenSidebar}:{sessi
     }catch(e){if(!controller.signal.aborted)setError(errorMessage(e));}finally{if(!controller.signal.aborted)setLoading(false);}})();
     return()=>controller.abort();
   },[bridge,viewId,version,owned]);
-  useEffect(()=>{setRefreshing(false);sourceRefreshPromise.current=undefined;return()=>refreshAbort.current?.abort();},[bridge,viewId,owned]);
+  useEffect(()=>{setRefreshing(false);sourceRefreshPromise.current=undefined;return()=>refreshAbort.current?.abort();},[bridge,viewId,owned,version]);
   useEffect(()=>{
     const changed=(event:Event)=>{
       const detail=(event as CustomEvent).detail;
