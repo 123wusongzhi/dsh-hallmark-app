@@ -325,7 +325,8 @@
     "test/apps-host/connection-status.test.ts",
     "test/apps-runtime/runtime-restart-http.test.ts",
     "test/plugin-apps/connection-status-ui.test.ts",
-    "test/apps-host/explicit-intent-retry.test.ts"
+    "test/apps-host/explicit-intent-retry.test.ts",
+    "test/apps-host/result-read-error-parity.test.ts"
   ],
   "infrastructureReasons": {
     "test/authoring/failed-build-http-recovery.test.ts": "Explicit exit-7 subprocess, real signed authoring evidence, SQLite receipt and actual committed HTTP response loss exercise failure-checkpoint recovery without any browser, commodity data, merchant action or publishable build.",
@@ -487,9 +488,11 @@
     "test/apps-host/connection-status.test.ts": "Connection probe state transitions and restart eligibility; no business facts.",
     "test/apps-runtime/runtime-restart-http.test.ts": "Restart authentication, busy refusal and response ordering; no business facts.",
     "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts.",
-    "test/apps-host/explicit-intent-retry.test.ts": "Synthetic non-business in-memory counter Provider through real Host tools, HTTP, Runtime, SQLite and model JSON rendering verifies committed-response loss, read-only success recovery and explicit stable-intent retries without duplicate execution; no merchant facts, merchant writes, automatic mutation replay, or access-policy controls."
+    "test/apps-host/explicit-intent-retry.test.ts": "Synthetic non-business in-memory counter Provider through real Host tools, HTTP, Runtime, SQLite and model JSON rendering verifies committed-response loss, read-only success recovery and explicit stable-intent retries without duplicate execution; no merchant facts, merchant writes, automatic mutation replay, or access-policy controls.",
+    "test/apps-host/result-read-error-parity.test.ts": "Synthetic JSON values and long escaped keys exercise real read-only Provider, Runtime, HTTP, transport and registered Host result pagination, semantic rejection and corrected reads; no commodity facts, merchant writes or permission-policy controls."
   },
   "fileModes": {
+    "test/apps-host/collection-column-fidelity.test.ts": "Three original SKUs from an unchanged hash-checked frozen detail through real Adapter, CollectionService, Provider, Runtime HTTP and Host renderer; independent source attribute/image expectations and formal image metadata resource reads verify named column fidelity and explicit absent package/price nulls without downloading images.",
     "test/apps-host/collected-empty-search.test.ts": "Two unchanged hash-checked recorded summaries through the real HallmarkClient adapter, Core, HallmarkProvider, Runtime HTTP and Host renderer; explicit query, empty-source subset and failed-read controls distinguish authoritative empty matches from retained raw evidence.",
     "test/source-preview/selection-bulk-chain.test.ts": "25 unchanged hash-checked recorded summaries through the actual source component, original SDK, host selection and native File bridge; page-local select and deselect controls preserve another page's exact recorded attachment identities.",
     "test/source-preview/selection-retry-chain.test.ts": "Two unchanged hash-checked recorded product summaries through the actual collected-products component, original SDK, sourceSelection and native File boundary; explicit native refusal and user retry controls preserve exact recorded selection payloads.",

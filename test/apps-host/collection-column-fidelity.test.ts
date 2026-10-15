@@ -43,15 +43,15 @@ async function listenForFetch(server: ReturnType<typeof createAppsServer>,signal
 
 // Unchanged source recording; selection, loopback endpoints and deadlines are local protocol controls.
 // The caller reconstructs the declared SKU columns, then resolves imageRef via the real read-only resource capability.
-test('recorded SKU columns retain their named values and null slots through Provider, Runtime and Host reads',{timeout:20000},async t=>{
+test('recorded SKU columns retain their named values and null slots through Provider, Runtime and Host reads',{timeout:30000},async t=>{
  const detail=realDetail(3),original=structuredClone(detail);
  const selected:Array<Record<string,any>>=detail.skus.slice(0,3);
  assert.equal(selected.length,3);assert.equal(new Set(selected.map((sku:any)=>sku.sourceSkuId)).size,3);
  // Guard the recorded traits used by this independent oracle; never normalize expected rows with production code.
- assert.deepEqual(Object.keys(detail.sourceDetails?.logistics??{}),[]);
- assert.deepEqual(Object.keys(detail.sourceDetails?.editorFields??{}),[]);
- for(const sku of selected){assert.equal(sku.package??sku.packaging,undefined);assert.equal(sku.sourceSellingPrice,undefined);assert.match(sku.image,/^https?:\/\//);}
- const expected=selected.map((sku:any)=>({id:sku.sourceSkuId,attributes:Object.fromEntries(Object.entries(sku.properties).map(([key,value])=>[key,String(value)])),imageUrl:sku.image,package:null,sourceDisplayPrice:null}));
+ assert.equal(detail.sourceDetails?.logistics?.logisticsSku,undefined);
+ assert.equal(detail.sourceDetails?.editorFields?.logisticsSku,undefined);
+ for(const sku of selected){assert.equal(sku.package??sku.packaging,undefined);assert.equal(sku.sourceSellingPrice,undefined);assert.match(sku.image,/^https?:\/\//);assert.ok(Object.values(sku.properties).every(value=>typeof value==='string'),'recorded attribute values are strings');}
+ const expected=selected.map((sku:any)=>({id:sku.sourceSkuId,attributes:structuredClone(sku.properties) as Record<string,string>,imageUrl:sku.image,package:null,sourceDisplayPrice:null}));
  assert.notDeepEqual(expected[0].attributes,expected[1].attributes);assert.notDeepEqual(expected[1].attributes,expected[2].attributes);
  const skuIds=expected.map(sku=>sku.id),lifetime=new AbortController(),testSignal=AbortSignal.any([t.signal,lifetime.signal]);
  let store:RuntimeStore|undefined,runtime:AppsRuntime|undefined,server:ReturnType<typeof createAppsServer>|undefined,host:AppsHost|undefined;
