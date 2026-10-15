@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { createServer, type ServerResponse } from 'node:http';
+import type { Socket } from 'node:net';
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -17,13 +19,52 @@ test('all failed image deliveries retain per-file reasons through the provider',
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
 const hash = (v: Buffer) => createHash('sha256').update(v).digest('hex');
-async function fixture(t: any, options: { publicWrongHash?: boolean; importFailure?: string; mutateOriginal?: boolean; failureMessage?: string; importedHash?: (digest: string) => string; publishFailure?:(assetIds:string[],attempt:number)=>string|undefined; publishHang?: boolean; timeBudgetMs?: number } = {}) {
+async function fixture(t: any, options: { publicWrongHash?: boolean; importFailure?: string; mutateOriginal?: boolean; failureMessage?: string; importedHash?: (digest: string) => string; publishFailure?:(assetIds:string[],attempt:number)=>string|undefined; publishDelayMs?: number; onPublish?: () => void; timeBudgetMs?: number } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'listing-assets-test-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const imports = join(root, 'imports'); await mkdir(imports);
   const first = join(root, 'first.png'), second = join(root, 'second.png');
   await writeFile(first, png); await writeFile(second, Buffer.concat([png, Buffer.from('second')])) ;
   const records = new Map<string, any>(), assets = new Map<string, Buffer>(), calls: Array<{ path: string; body?: any; auth?: string | null }> = [];
+  // A pending Promise alone does not model fetch I/O: AbortSignal.timeout is unref'ed.
+  // Use a finite slow HTTP response so missing/late aborts return success and fail the assertions.
+  let baseUrl = 'http://provider.example';
+  const slowPublish = { requests: 0, responses: 0, closed: 0, waitForClosed: async () => {} };
+  if (options.publishDelayMs) {
+    const sockets = new Set<Socket>(), pending = new Map<ServerResponse, Promise<void>>();
+    const server = createServer(async (request, response) => {
+      assert.equal(request.method, 'POST'); assert.equal(request.url, '/api/images/publish');
+      const chunks: Buffer[] = [];
+      for await (const chunk of request) chunks.push(Buffer.from(chunk));
+      const body = JSON.parse(Buffer.concat(chunks).toString());
+      slowPublish.requests++;
+      const timer = setTimeout(() => {
+        slowPublish.responses++;
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.end(JSON.stringify({ mode: 'stable', ok: true, assets: body.assetIds.map((assetId: string) => ({ assetId, publicUrl: `https://images.example/images/${assetId}`, reachable: true })) }));
+      }, options.publishDelayMs).unref();
+      pending.set(response, new Promise<void>(resolve => response.once('close', () => {
+        clearTimeout(timer); pending.delete(response); slowPublish.closed++; resolve();
+      })));
+      options.onPublish?.();
+    });
+    server.on('connection', socket => { socket.unref(); sockets.add(socket); socket.once('close', () => sockets.delete(socket)); });
+    t.after(async () => {
+      const disconnected = [...sockets].map(socket => new Promise<void>(resolve => socket.once('close', () => resolve())));
+      await new Promise<void>((resolve, reject) => {
+        server.close(error => error ? reject(error) : resolve());
+        server.closeAllConnections();
+      });
+      await Promise.all(disconnected);
+      assert.equal(pending.size, 0, 'all delayed responses and their timers are cleaned up');
+      assert.equal(sockets.size, 0, 'all HTTP connections are closed');
+      assert.equal(server.listening, false, 'the fixture server is closed');
+    });
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    server.unref();
+    baseUrl = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+    slowPublish.waitForClosed = async () => { await Promise.all([...pending.values()]); };
+  }
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input)), body = init?.body ? JSON.parse(String(init.body)) : undefined;
     calls.push({ path: url.pathname, body, auth: new Headers(init?.headers).get('authorization') });
@@ -38,7 +79,7 @@ async function fixture(t: any, options: { publicWrongHash?: boolean; importFailu
       return Response.json({ kind: 'hallmark-image-asset-v1', formatVersion: 1, assetId, contentHash: options.importedHash?.(contentHash) ?? `sha256:${contentHash}`, mediaType: 'image/png', byteLength: bytes.length, width: 1, height: 1 });
     }
     if (url.pathname === '/api/images/publish') {
-      if (options.publishHang) await new Promise((_, reject) => { const signal = init!.signal!; if (signal.aborted) reject(signal.reason); signal.addEventListener('abort', () => reject(signal.reason), { once: true }); });
+      if (options.publishDelayMs) return fetch(input, init);
       const code=options.publishFailure?.(body.assetIds,calls.filter(c=>c.path==='/api/images/publish').length);
       if(code)return Response.json({ok:false,code,error:'password=private-provider-secret'},{status:400});
       return Response.json({ mode: 'stable', ok: true, assets: body.assetIds.map((assetId: string) => ({ assetId, publicUrl: `https://images.example/images/${assetId}`, reachable: true })) });
@@ -50,8 +91,8 @@ async function fixture(t: any, options: { publicWrongHash?: boolean; importFailu
     }
     throw new Error('unexpected request');
   }) as typeof fetch;
-  const publisher = new ListingAssetPublisher({ baseUrl: 'http://provider.example', operatorToken: 'private-operator-secret', store: { get: <T>(c: string, id: string) => records.get(`${c}/${id}`) as T | undefined, put: <T>(c: string, id: string, value: T) => (records.set(`${c}/${id}`, value), value) }, fetchImpl, ...(options.timeBudgetMs ? { timeBudgetMs: options.timeBudgetMs } : {}) });
-  return { publisher, first, second, imports, calls, records, assets };
+  const publisher = new ListingAssetPublisher({ baseUrl, operatorToken: 'private-operator-secret', store: { get: <T>(c: string, id: string) => records.get(`${c}/${id}`) as T | undefined, put: <T>(c: string, id: string, value: T) => (records.set(`${c}/${id}`, value), value) }, fetchImpl, ...(options.timeBudgetMs ? { timeBudgetMs: options.timeBudgetMs } : {}) });
+  return { publisher, first, second, imports, calls, records, assets, slowPublish };
 }
 
 test('selected local image is snapshotted, published and read back', async t => {
@@ -182,21 +223,32 @@ test('unknown or non-sync provider failures are never retried and only known cod
   }
 });
 
-test('a call that runs out of its time budget returns per-file retryable results and a plain retry succeeds', async t => {
-  const options: { publishHang?: boolean; timeBudgetMs?: number } = { publishHang: true, timeBudgetMs: 200 };
+test('a call that runs out of its time budget returns per-file retryable results and a plain retry succeeds', { timeout: 5000 }, async t => {
+  const options = { publishDelayMs: 1000, timeBudgetMs: 200 };
   const f = await fixture(t, options);
   const started = Date.now(), r = await f.publisher.publish({ files: [{ path: f.first }, { path: f.second }] });
   assert.ok(Date.now() - started < 5000, 'the budget bounds the whole call');
-  assert.equal(r.status, 'failed'); assert.ok(r.files.every((file: any) => file.error.code === 'LISTING_ASSET_TIME_BUDGET'));
+  assert.equal(r.status, 'failed'); assert.equal(r.successCount, 0); assert.equal(r.failureCount, 2); assert.equal(r.files.length, 2);
+  assert.ok(r.files.every((file: any) => file.error.code === 'LISTING_ASSET_TIME_BUDGET'));
   assert.equal(f.records.size, 0);
-  options.publishHang = false;
+  await f.slowPublish.waitForClosed();
+  // The whole-call budget may expire during file I/O, before the HTTP request is sent.
+  assert.ok(f.slowPublish.requests <= 1);
+  assert.equal(f.slowPublish.responses, 0, 'budget abort prevents the delayed success response');
+  assert.equal(f.slowPublish.closed, f.slowPublish.requests, 'every started publish request is closed');
+  t.diagnostic(`budget publish HTTP lifecycle: ${JSON.stringify(f.slowPublish)}`);
+  options.publishDelayMs = 0;
   const retried = await f.publisher.publish({ files: [{ path: f.first }, { path: f.second }] });
   assert.equal(retried.status, 'ready'); assert.equal(retried.successCount, 2);
 });
 
-test('caller cancellation keeps its ordinary failure instead of the time-budget code', async t => {
-  const f = await fixture(t, { publishHang: true }), controller = new AbortController();
-  setTimeout(() => controller.abort(), 50);
+test('caller cancellation keeps its ordinary failure instead of the time-budget code', { timeout: 5000 }, async t => {
+  const controller = new AbortController();
+  const f = await fixture(t, { publishDelayMs: 1000, onPublish: () => controller.abort() });
   const r = await f.publisher.publish({ files: [{ path: f.first }] }, controller.signal);
+  assert.equal(r.status, 'failed'); assert.equal(r.successCount, 0); assert.equal(r.failureCount, 1);
+  assert.equal(r.files[0].error.code, 'LISTING_ASSET_TRANSFER_FAILED');
   assert.notEqual(r.files[0].error.code, 'LISTING_ASSET_TIME_BUDGET');
+  await f.slowPublish.waitForClosed();
+  assert.deepEqual([f.slowPublish.requests, f.slowPublish.responses, f.slowPublish.closed], [1, 0, 1], 'caller abort closes the actual publish request before its delayed response');
 });
