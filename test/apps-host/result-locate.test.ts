@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {randomInt} from 'node:crypto';
 import {AppsRuntime,RuntimeStore} from '../../packages/app-runtime/src/index.ts';
 import {NotesProvider} from '../../packages/app-notes/src/index.ts';
 import {AppsPresentationService} from '../../packages/app-presentation/src/index.ts';
 import {createAppsServer} from '../../packages/service/src/apps-server.ts';
-import {AppsHost,HttpAppsHostTransport} from '../../packages/plugin-apps/src/index.ts';
+import {AppsHost,HttpAppsHostTransport,type NativeGatewayTool} from '../../packages/plugin-apps/src/index.ts';
 import {compileSchema} from '../../packages/app-contracts/src/index.ts';
 
 test('registered Host literal locate preserves permissions, exact Unicode, schema and original read contracts',async()=>{
@@ -59,4 +60,96 @@ test('registered Host literal locate preserves permissions, exact Unicode, schem
   await runtime.updateConnection({appId:'notes',connectionId:'n',enabled:false,expectedConfigRevision:1});assert.equal((await call(args)).error.code,'RESULT_ACCESS_DENIED');
   store.delete('datasets','result:i');assert.equal((await call(args)).error.code,'RESULT_ACCESS_DENIED');
  }finally{await host.dispose();server.closeAllConnections();await new Promise<void>(r=>server.close(()=>r()));await runtime.dispose();store.close();}
+});
+
+// A full traversal must consume locator cursors even when an intermediate scan finds no matches.
+function waitForLocator<T>(operation:Promise<T>,signal:AbortSignal):Promise<T>{
+ return new Promise<T>((done,reject)=>{
+  const aborted=()=>{signal.removeEventListener('abort',aborted);reject(signal.reason);};
+  signal.addEventListener('abort',aborted,{once:true});
+  operation.then(value=>{signal.removeEventListener('abort',aborted);done(value);},error=>{signal.removeEventListener('abort',aborted);reject(error);});
+  if(signal.aborted)aborted();
+ });
+}
+async function listenForLocator(server:ReturnType<typeof createAppsServer>,signal:AbortSignal):Promise<string>{
+ for(let attempt=0;attempt<20;attempt++){
+  try{
+   await new Promise<void>((done,reject)=>{
+    const ready=()=>{server.off('error',failed);done();},failed=(error:Error)=>{server.off('listening',ready);reject(error);};
+    server.once('listening',ready);server.once('error',failed);server.listen({port:randomInt(20000,65536),host:'127.0.0.1',signal});
+   });
+   const address=server.address();assert.ok(address&&typeof address!=='string');return `http://127.0.0.1:${address.port}`;
+  }catch(error){if(!['EADDRINUSE','EACCES'].includes((error as NodeJS.ErrnoException).code??''))throw error;}
+ }
+ throw new Error('No free Fetch-compatible locator fixture port');
+}
+
+test('emitted literal continuations after a long prefix deliver every exact match through HTTP',{timeout:30000},async t=>{
+ // Synthetic protocol text; expected offsets count Unicode code points, independently of UTF-16.
+ const literal='😀K',text='p'.repeat(65536)+literal+'q'.repeat(6)+literal+'r'.repeat(6)+literal,points=Array.from(text);
+ const expected=[{offset:65536,length:2},{offset:65544,length:2},{offset:65552,length:2}];
+ assert.equal(points.length,65554);for(const match of expected)assert.equal(points.slice(match.offset,match.offset+match.length).join(''),literal);
+ const lifetime=new AbortController(),signal=()=>AbortSignal.any([t.signal,lifetime.signal,AbortSignal.timeout(5000)]);
+ let store:RuntimeStore|undefined,runtime:AppsRuntime|undefined,server:ReturnType<typeof createAppsServer>|undefined,host:AppsHost|undefined;
+ t.after(async()=>{
+  lifetime.abort(new Error('Locator fixture teardown'));
+  const failures:unknown[]=[],cleanup=async(work:()=>unknown|Promise<unknown>)=>{try{await waitForLocator(Promise.resolve().then(work),AbortSignal.timeout(5000));}catch(error){failures.push(error);}};
+  await cleanup(()=>host?.dispose());await cleanup(()=>server?.closeAllConnections());
+  await cleanup(()=>server?.listening?new Promise<void>((done,reject)=>server!.close(error=>error?reject(error):done())):undefined);
+  await cleanup(()=>runtime?.dispose());await cleanup(()=>store?.close());
+  if(failures.length)throw new AggregateError(failures,'Locator fixture cleanup failed');
+ });
+ store=new RuntimeStore(':memory:');runtime=new AppsRuntime(store);
+ const agent={id:'literal-paging-reader'},tools=new Map<string,NativeGatewayTool>();let providerCalls=0;
+ runtime.register({manifest:{manifestVersion:1,appId:'fixture',displayName:'Fixture',providerPackage:'fixture',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:['text']},
+  descriptors:[{capabilityId:'fixture.query',version:'1.0.0',title:'Text',description:'Synthetic locator paging text',effect:'query',inputSchema:{type:'object',additionalProperties:false},outputSchema:{type:'object'},execution:{mode:'sync',timeoutMs:5000,concurrency:'declared_safe',lockScope:'connection',idempotency:'not_applicable',completionEvidence:'response'},discovery:{defaultVisible:false,keywords:[]},aliases:[]}],
+  async execute(context){providerCalls++;return {status:'ok',invocationId:context.request.invocationId,traceId:context.request.traceId,data:{text}};},async dispose(){}});
+ runtime.addConnection({appId:'fixture',connectionId:'local',displayName:'Fixture',config:{},configRevision:1,enabled:true});
+ runtime.bind({sessionId:agent.id,appId:'fixture',connectionId:'local',enabled:true,boundAt:new Date().toISOString()});
+ const token='literal-paging-token'.repeat(4);server=createAppsServer({runtime,presentation:new AppsPresentationService({store,runtime}),token});
+ const origin=await waitForLocator(listenForLocator(server,AbortSignal.any([t.signal,lifetime.signal])),signal());
+ host=new AppsHost({agents:{get:id=>id===agent.id?agent:undefined},tools:{register:tool=>{tools.set(tool.name,tool);return()=>tools.delete(tool.name);}}},new HttpAppsHostTransport(origin,token,(input,init)=>{
+  assert.equal(new URL(String(input)).origin,origin);
+  return fetch(input,{...init,signal:AbortSignal.any([signal(),...(init?.signal?[init.signal]:[])])});
+ }));
+ await waitForLocator(host.start(),signal());host.attachApp('fixture');
+ const invoke=tools.get('apps_invoke');assert.ok(invoke);
+ const invokeArgs={appId:'fixture',connectionId:'local',capabilityId:'fixture.query',capabilityVersion:'1.0.0',input:{}},invokeSignal=signal();
+ const invoked:any=await waitForLocator(invoke.execute(invokeArgs,{agent,signal:invokeSignal}),invokeSignal);
+ assert.equal(invoked.result.status,'ok');
+ const view=JSON.parse(invoke.output.render(invokeArgs,invoked).map(item=>item.text??'').join(''));
+ assert.equal(view.completeness,'partial');assert.equal(typeof view.fullResultRef,'string');
+ const retained=store.get<any>('datasets',view.fullResultRef);assert.deepEqual(retained?.result,invoked.result);
+ const inspect=tools.get('apps_inspect');assert.ok(inspect);const validate=compileSchema(inspect.parameters);
+ const read=async(args:any)=>{
+  assert.deepEqual(validate(args),[],'every emitted continuation must be an executable registered read');
+  const readSignal=signal(),raw:any=await waitForLocator(inspect.execute(args,{agent,signal:readSignal}),readSignal);
+  const rendered=inspect.output.render(args,raw).map(item=>item.text??'').join('');assert.ok(Buffer.byteLength(rendered,'utf8')<=16384);
+  const page=JSON.parse(rendered);assert.deepEqual(page,raw);assert.equal(page.error,undefined,rendered);return page;
+ };
+ let args:any={resultRef:view.fullResultRef,path:'/data/text',literal,limit:1,cursor:'0'};
+ const matches:any[]=[],cursors=new Set<string>();let sawEmptyNonterminal=false;
+ for(let pageNumber=0;;pageNumber++){
+  assert.ok(pageNumber<8,'finite text must terminate without repeated cursors');assert.ok(!cursors.has(args.cursor));cursors.add(args.cursor);
+  const page=await read(args);assert.equal(page.kind,'literal-locations');assert.equal(page.resultRef,view.fullResultRef);assert.equal(page.path,'/data/text');
+  assert.equal(page.scanned.from,Number(args.cursor),'Each HTTP page must consume its emitted nonzero cursor');
+  assert.equal(page.returned,page.matches.length);assert.equal(page.literalLength,2);assert.equal(page.cursorUnit,'unicode-code-points');
+  if(!page.done&&!page.matches.length)sawEmptyNonterminal=true;
+  matches.push(...page.matches);assert.equal(page.done,page.nextCursor===null);
+  if(page.done){assert.equal(page.continuation,undefined);assert.equal(page.total,65554);break;}
+  assert.ok(Number(page.nextCursor)>Number(args.cursor));assert.equal(page.nextCursor,String(page.scanned.toExclusive));
+  const next=page.continuation;assert.equal(next.tool,'apps_inspect');
+  assert.equal(next.arguments.resultRef,view.fullResultRef);assert.equal(next.arguments.path,'/data/text');assert.equal(next.arguments.literal,literal);
+  assert.equal(next.arguments.cursor,page.nextCursor);assert.equal(next.arguments.limit,1);args=next.arguments;
+ }
+ t.diagnostic(JSON.stringify({locatorPages:cursors.size,sawEmptyNonterminal}));assert.ok(cursors.size>1);
+ assert.deepEqual(matches.map(({offset,length})=>({offset,length})),expected,'locator traversal must neither lose nor duplicate exact match starts');
+ for(const match of matches){
+  const context=await read({resultRef:view.fullResultRef,path:'/data/text',cursor:match.readCursor,limit:100});
+  assert.equal(context.kind,'string');assert.equal(context.offset,Number(match.readCursor));
+  assert.equal(context.text,points.slice(context.offset,context.offset+context.returned).join(''),'omitting literal reads the unchanged original context');
+  const within=match.offset-context.offset;assert.ok(within>=0);assert.equal(Array.from(context.text as string).slice(within,within+match.length).join(''),literal);
+ }
+ assert.equal(providerCalls,1,'locate and context reads must not repeat the original query');
+ assert.deepEqual(store.get('datasets',view.fullResultRef),retained);assert.equal(store.list('datasets').length,1);assert.equal(store.list('operations').length,0);
 });

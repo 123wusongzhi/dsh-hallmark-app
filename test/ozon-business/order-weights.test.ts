@@ -236,7 +236,11 @@ test('parser excludes mixed, multiple, cancelled and invalid evidence and never 
   ]));
   assert.equal(result.items.length, 1); assert.equal(result.skipped.length, 8); assert.equal(result.items[0].grams, 13);
   assert.throws(() => parseOrderWeightReport(csv().replace('Total actual weight of the shipment', 'New weight header')));
-  assert.throws(() => parseOrderWeightReport(`${csv()}\n"unterminated`));
+  // Keep every column intact so a column-count error cannot mask the missing EOF quote check.
+  const quotedLastColumn = csv([row.map((value, index) => index === row.length - 1 ? `${value};quoted` : value)]);
+  assert.ok(quotedLastColumn.endsWith('"'));
+  assert.deepEqual(parseOrderWeightReport(quotedLastColumn), { items: [{ postingNumber: 'posting-one', offerId: recorded.offerId, sku: recorded.sku, grams: 13, shipmentAt: '2026-09-01T12:00:00.000Z', declaredGrams: 20 }], skipped: [] });
+  assert.throws(() => parseOrderWeightReport(quotedLastColumn.slice(0, -1)), { message: 'WEIGHT_REPORT_CSV_INVALID' });
   const quoted = row.map((value, index) => index === 1 ? 'semi;quote"line\nnext' : value); assert.equal(parseOrderWeightReport(csv([quoted])).items[0].offerId, quoted[1]);
 });
 
