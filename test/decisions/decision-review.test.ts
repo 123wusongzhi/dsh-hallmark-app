@@ -144,15 +144,22 @@ test('a host-provided verified image protocol sends image parts rather than a te
   const pixels = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6t8sAAAAASUVORK5CYII=';
   const request = input();
   request.images = [{ id: 'photo', role: 'source', url: pixels }];
+  let submitted: any;
   const reviewer = createDecisionReviewer({ key: 'test', imageProtocol: createDecisionImageProtocol(), fetchImpl: async (_url, options) => {
-    const body = JSON.parse(String(options?.body));
-    assert.equal(typeof body.state[0], 'string');
-    assert.equal(body.state[1], 'Image photo (source)');
-    assert.deepEqual(body.state[2], { type: 'image_url', image_url: { url: pixels } });
+    submitted = JSON.parse(String(options?.body));
     return resultResponse({ consistent: { type: 'noul', noul: 1 } });
   } });
   const result = await reviewer.review(request);
   assert.equal(result.status, 'passed');
+  // Assert after review: assertions inside fetch would be caught as provider failures.
+  assert.deepEqual(JSON.parse(submitted.state[0]), {
+    source: request.source,
+    draft: { title: recorded.title, quantity: 1 },
+    versions: { source: recorded.revision, draft: draftVersion, policy: 'policy-v1' },
+    images: [{ id: 'photo', role: 'source' }],
+  }, 'visual review must transmit the source and draft facts with their versions');
+  assert.equal(submitted.state[1], 'Image photo (source)');
+  assert.deepEqual(submitted.state[2], { type: 'image_url', image_url: { url: pixels } });
   assert.equal(result.evidence.requests[0].protocol, 'openrouter-decisions-native-images-v1');
 });
 
