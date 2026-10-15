@@ -165,6 +165,7 @@
     "test/plugin-apps/association-overview-ui.test.ts"
   ],
   "infrastructureFiles": [
+    "test/apps-host/explicit-intent-retry.test.ts",
     "test/authoring/failed-build-http-recovery.test.ts",
     "test/source-preview/vite-asset-paths.test.ts",
     "test/apps-host/read-cancellation-recovery.test.ts",
@@ -326,6 +327,7 @@
     "test/plugin-apps/connection-status-ui.test.ts"
   ],
   "infrastructureReasons": {
+    "test/apps-host/explicit-intent-retry.test.ts": "Synthetic non-business counter Provider through real Host tools, HTTP, Runtime and SQLite verifies committed-response loss, read-only success recovery and explicit stable-intent retries without duplicate execution; no merchant facts or automatic mutation replay.",
     "test/authoring/failed-build-http-recovery.test.ts": "Explicit exit-7 subprocess, real signed authoring evidence, SQLite receipt and actual committed HTTP response loss exercise failure-checkpoint recovery without any browser, commodity data, merchant action or publishable build.",
     "test/source-preview/vite-asset-paths.test.ts": "Actual installed Vite builds an isolated copy of the unchanged source template; real preview HTTP serves emitted entry JavaScript and CSS with exact manifest membership, MIME and bytes; no business data or browser execution.",
     "test/apps-host/read-cancellation-recovery.test.ts": "Synthetic exclusive read-only Provider controls through real Host, complete HTTP request, response-close cancellation and Runtime execution settlement; explicit subsequent read proves connection recovery without merchant facts or writes.",
