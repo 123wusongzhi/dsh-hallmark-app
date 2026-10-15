@@ -159,7 +159,8 @@
     "test/acceptance/component-display/run-recovery.mjs",
     "test/apps-runtime/association-overview.test.ts",
     "test/plugin-apps/association-overview-ui.test.ts",
-    "test/source-preview/selection-retry-chain.test.ts"
+    "test/source-preview/selection-retry-chain.test.ts",
+    "test/source-preview/selection-bulk-chain.test.ts"
   ],
   "infrastructureFiles": [
     "test/apps-host/inspection-race.test.ts",
@@ -315,7 +316,8 @@
     "test/apps-host/connection-status.test.ts",
     "test/apps-runtime/runtime-restart-http.test.ts",
     "test/plugin-apps/connection-status-ui.test.ts",
-    "test/apps-host/rate-limit-recovery.test.ts"
+    "test/apps-host/rate-limit-recovery.test.ts",
+    "test/authoring/result-reader-runtime.test.ts"
   ],
   "infrastructureReasons": {
     "test/apps-host/inspection-race.test.ts": "Non-business asynchronous Provider controls through real Runtime, loopback HTTP, Host tools and model-result JSON; promise gates order late inspection without browser or merchant actions.",
@@ -471,7 +473,8 @@
     "test/apps-host/connection-status.test.ts": "Connection probe state transitions and restart eligibility; no business facts.",
     "test/apps-runtime/runtime-restart-http.test.ts": "Restart authentication, busy refusal and response ordering; no business facts.",
     "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts.",
-    "test/apps-host/rate-limit-recovery.test.ts": "Explicit local 429/deadline/empty-response protocol controls pass through the real Hallmark Provider, Runtime, loopback HTTP and Host model renderer; no commodity facts or merchant service calls are fabricated or performed."
+    "test/apps-host/rate-limit-recovery.test.ts": "Explicit local 429/deadline/empty-response protocol controls pass through the real Hallmark Provider, Runtime, loopback HTTP and Host model renderer; no commodity facts or merchant service calls are fabricated or performed.",
+    "test/authoring/result-reader-runtime.test.ts": "Synthetic result transport values verify model spill reference to real Runtime HTTP and file-reader subprocess pagination, Unicode/null fidelity and metadata; no product or merchant facts are fabricated."
   },
   "fileModes": {
     "test/app-hallmark/listing-detail-recovery.test.ts": "Integrity-checked source, SKU and store facts through Provider-owned CollectionService and preparation; transient detail failure, retained ordinary cache, explicit refresh recovery and actual continuation; no publication.",
