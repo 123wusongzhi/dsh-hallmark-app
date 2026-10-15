@@ -226,6 +226,7 @@ test('current inventory products shape retains SKU-zero identities and buffers a
   assert.deepEqual(body.sku,['22']);return {products:[{product_id:2,sku:22,offer_id:'valid',warehouse_id:4,present:5,free_stock:4,reserved:1},{product_id:2,sku:22,offer_id:'valid',warehouse_id:6,present:7,free_stock:7,reserved:0}],has_next:false,cursor:''};
  });
  const first=data(await readOzonData('stocks',{storeId:'s',limit:2},f.store,f.client));assert.deepEqual(first.items.map((r:any)=>r.warehouseId),['4','6']);assert.ok(first.cursor);assert.match(first.warnings[0],/1 个商品/);
+ assert.deepEqual(first.items.map((r:any)=>r.stockAvailable),[4,7]);
  const second=data(await readOzonData('stocks',{storeId:'s',limit:2,cursor:first.cursor},f.store,f.client));assert.equal(second.items[0].offerId,'missing');assert.equal(second.items[0].sku,null);assert.equal(second.items[0].stockAvailable,null);assert.equal(second.cursor,undefined);assert.equal(f.calls.length,3);
 });
 test('current financial total_amount, same-currency commission and non-item fees preserve accounting meaning',async()=>{
