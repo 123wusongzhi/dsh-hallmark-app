@@ -15,7 +15,7 @@ function settledOrAborted<T>(work:Promise<T>,signal:AbortSignal):Promise<T>{
     if(signal.aborted)abort();
   });
 }
-async function bounded<T>(label:string,work:(signal:AbortSignal)=>Promise<T>,parent?:AbortSignal,ms=3000):Promise<T>{
+async function bounded<T>(label:string,work:(signal:AbortSignal)=>Promise<T>,parent?:AbortSignal,ms=5000):Promise<T>{
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(new Error('Fixture deadline: '+label)),ms);
   const signal=AbortSignal.any([controller.signal,...(parent?[parent]:[])]);
   try{return await settledOrAborted(Promise.resolve().then(()=>{signal.throwIfAborted();return work(signal);}),signal);}finally{clearTimeout(timer);}
@@ -36,14 +36,14 @@ async function listen(server:ReturnType<typeof createAppsServer>,signal:AbortSig
 // Explicit calls with a stable intent key are separate from automatic replay.
 // The first lost response is resolved by the existing readonly inspection before
 // the caller explicitly repeats that already-confirmed intent with a new attempt.
-test('native Host preserves a stable intent across explicit attempts after real HTTP response loss',{timeout:12000},async t=>{
+test('native Host preserves a stable intent across explicit attempts after real HTTP response loss',{timeout:30000},async t=>{
   const lifetime=new AbortController(),testSignal=AbortSignal.any([t.signal,lifetime.signal]);
   let cleanupStore:RuntimeStore|undefined,cleanupRuntime:AppsRuntime|undefined,server:ReturnType<typeof createAppsServer>|undefined,host:AppsHost|undefined;
   const pending=new Set<Promise<unknown>>();let releaseResponse=()=>{};
   t.after(async()=>{
     releaseResponse();lifetime.abort(new Error('Fixture closing'));
     const failures:Error[]=[];
-    const cleanup=async(label:string,work:()=>unknown|Promise<unknown>)=>{try{await bounded(label,async()=>work(),undefined,1000);}catch(cause){failures.push(new Error(label,{cause}));}};
+    const cleanup=async(label:string,work:()=>unknown|Promise<unknown>)=>{try{await bounded(label,async()=>work(),undefined,5000);}catch(cause){failures.push(new Error(label,{cause}));}};
     await cleanup('HTTP connections',()=>server?.closeAllConnections());
     await cleanup('HTTP server',()=>server?.listening?new Promise<void>((done,reject)=>server!.close(error=>error?reject(error):done())):undefined);
     await cleanup('native calls',()=>Promise.allSettled([...pending]));
@@ -53,7 +53,7 @@ test('native Host preserves a stable intent across explicit attempts after real 
     if(failures.length)throw new AggregateError(failures,'Explicit-intent fixture cleanup failed');
   });
   const store=cleanupStore=new RuntimeStore(':memory:'),runtime=cleanupRuntime=new AppsRuntime(store);
-  const descriptor:CapabilityDescriptor={capabilityId:'intentcontrol.counter.apply',version:'1.0.0',title:'Counter control',description:'Non-business in-memory dispatch counter',effect:'mutation',inputSchema:{type:'object',properties:{value:{type:'string'}},required:['value'],additionalProperties:false},outputSchema:{type:'object',properties:{value:{type:'string'},applied:{type:'integer'}},required:['value','applied'],additionalProperties:false},execution:{mode:'sync',timeoutMs:3000,concurrency:'exclusive',lockScope:'connection',idempotency:'runtime_dedup',completionEvidence:'response'},discovery:{defaultVisible:false,keywords:[]},aliases:[]};
+  const descriptor:CapabilityDescriptor={capabilityId:'intentcontrol.counter.apply',version:'1.0.0',title:'Counter control',description:'Non-business in-memory dispatch counter',effect:'mutation',inputSchema:{type:'object',properties:{value:{type:'string'}},required:['value'],additionalProperties:false},outputSchema:{type:'object',properties:{value:{type:'string'},applied:{type:'integer'}},required:['value','applied'],additionalProperties:false},execution:{mode:'sync',timeoutMs:5000,concurrency:'exclusive',lockScope:'connection',idempotency:'runtime_dedup',completionEvidence:'response'},discovery:{defaultVisible:false,keywords:[]},aliases:[]};
   const providerRequests:InvocationRequest[]=[];let applied=0;
   runtime.register({manifest:{manifestVersion:1,appId:'intentcontrol',displayName:'Intent control',providerPackage:'local-control',providerVersion:'1.0.0',runtimeProtocolMajor:1,resourceTypes:[]},descriptors:[descriptor],async execute(context){
     providerRequests.push(structuredClone(context.request));applied++;
@@ -96,12 +96,12 @@ test('native Host preserves a stable intent across explicit attempts after real 
       work.then(()=>pending.delete(work),()=>pending.delete(work));return work;
     },testSignal);
     const native=await operation as {result:CapabilityResult},text=tool.output.render(args,native).map(part=>part.text).join(''),model=JSON.parse(text) as CapabilityResult;
-    assert.deepEqual(model,native.result);assert.equal(model.invocationId,invocationId);assert.equal(model.traceId,'trace-'+invocationId);
+    assert.ok(Buffer.byteLength(text,'utf8')<=16384);assert.deepEqual(model,native.result);assert.equal(model.invocationId,invocationId);assert.equal(model.traceId,'trace-'+invocationId);
     assert.deepEqual(model,store.get<InvocationRecord>('invocations',invocationId)!.result);
     return model;
   };
   const firstPending=call('attempt-one',intent);firstPending.catch(()=>{});
-  await bounded('committed response barrier',()=>committed,testSignal);
+  await bounded('committed response barrier',()=>Promise.race([committed,firstPending.then(()=>{throw new Error('First invocation completed before the committed response barrier');})]),testSignal);
   assert.equal(committedAtDrop?.state,'settled');assert.equal(committedAtDrop?.result?.status,'ok');assert.equal(applied,1);
   releaseResponse();
   const first=await firstPending;

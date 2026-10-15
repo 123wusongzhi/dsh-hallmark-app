@@ -487,7 +487,7 @@
     "test/apps-host/connection-status.test.ts": "Connection probe state transitions and restart eligibility; no business facts.",
     "test/apps-runtime/runtime-restart-http.test.ts": "Restart authentication, busy refusal and response ordering; no business facts.",
     "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts.",
-    "test/apps-host/explicit-intent-retry.test.ts": "Synthetic in-memory mutation counter verifies an explicit stable intent through real Host, HTTP response loss, readonly recovery and Runtime deduplication; no business facts, merchant writes, automatic mutation retry, or access-policy controls."
+    "test/apps-host/explicit-intent-retry.test.ts": "Synthetic non-business in-memory counter Provider through real Host tools, HTTP, Runtime, SQLite and model JSON rendering verifies committed-response loss, read-only success recovery and explicit stable-intent retries without duplicate execution; no merchant facts, merchant writes, automatic mutation replay, or access-policy controls."
   },
   "fileModes": {
     "test/apps-host/collected-empty-search.test.ts": "Two unchanged hash-checked recorded summaries through the real HallmarkClient adapter, Core, HallmarkProvider, Runtime HTTP and Host renderer; explicit query, empty-source subset and failed-read controls distinguish authoritative empty matches from retained raw evidence.",
