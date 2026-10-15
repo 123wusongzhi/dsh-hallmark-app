@@ -1,0 +1,32 @@
+[
+  {
+    "id": "00000000-0000-4000-8000-000000000002",
+    "platform": "ozon",
+    "shopName": "测试店铺01",
+    "status": "active",
+    "authStatus": "authorized",
+    "registeredAt": "2026-08-19T06:30:05.104Z",
+    "removed": false,
+    "region": "chn",
+    "currency": "cny",
+    "remark": "测试店铺01",
+    "updatedAt": "2026-08-19T11:41:23.278Z",
+    "hasCredential": true,
+    "activeTaskCount": 86,
+    "blockerTaskCount": 0
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000056",
+    "platform": "ozon",
+    "shopName": "测试店铺02",
+    "status": "active",
+    "authStatus": "authorized",
+    "registeredAt": "2026-10-05T05:51:03.077Z",
+    "removed": false,
+    "remark": "测试店铺02",
+    "updatedAt": "2026-10-05T05:51:43.124Z",
+    "hasCredential": true,
+    "activeTaskCount": 9,
+    "blockerTaskCount": 0
+  }
+]

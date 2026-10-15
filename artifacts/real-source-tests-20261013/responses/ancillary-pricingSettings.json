@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "revision": 0,
+  "updatedAt": null,
+  "fixedMinor": 316,
+  "logisticsMicrosPerGram": 39300,
+  "commissionPpm": 200000,
+  "minimumMarginPpm": 150000
+}

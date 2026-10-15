@@ -1,0 +1,1792 @@
+{
+  "id": "d80bbb57-e22e-4ed1-8c25-9e30a3f53b39",
+  "title": "15EDGVM WJ15EDGVM 3.81mm Pitch Plug in Terminal Connector PCB Header Straight Pin With Flange Ear",
+  "source": "alibaba_com",
+  "sourceLabel": "阿里国际站",
+  "sourceProductId": "1601948780869",
+  "categoryPath": [
+    "电子元器件、配件及通讯",
+    "连接器及配件",
+    "接线端子"
+  ],
+  "categoryId": "201504805",
+  "productGroupPath": [
+    "2026",
+    "wang"
+  ],
+  "productGroupId": "971788882",
+  "sourceSellingPrice": {
+    "role": "seller_sale",
+    "currency": "USD",
+    "min": 0.04,
+    "max": 0.24
+  },
+  "currency": "USD",
+  "mainImage": "https://sc04.alicdn.com/kf/H0dff4c6347654aae87d59c26f04407ff9.png",
+  "skuCount": 11,
+  "originalTitle": "15EDGVM WJ15EDGVM 3.81mm Pitch Plug in Terminal Connector PCB Header Straight Pin With Flange Ear",
+  "attributes": {
+    "原产地": "China",
+    "省份": "Guangdong",
+    "种类": "PCB",
+    "额定电流": "8A",
+    "品牌": "AOSI",
+    "型号": "FPM1.5-381-04"
+  },
+  "skus": [
+    {
+      "id": "109674971602",
+      "idKind": "native",
+      "properties": {
+        "规格": "2P"
+      },
+      "sourceSellingPrice": {
+        "role": "seller_sale",
+        "currency": "USD",
+        "amount": 0.04
+      },
+      "spec": "规格:2P",
+      "sourceSkuId": "109674971602",
+      "price": 0.26,
+      "goodsPrice": 0.26,
+      "stock": 10000,
+      "purchaseRevision": "00000000-0000-4000-8000-000000000024",
+      "currency": "CNY",
+      "purchasePriceSource": "human_override",
+      "purchaseOverride": {
+        "purchaseMinor": 26,
+        "revision": "00000000-0000-4000-8000-000000000024",
+        "updatedAt": "2026-10-11T11:56:50.498Z"
+      }
+    },
+    {
+      "id": "109674971603",
+      "idKind": "native",
+      "properties": {
+        "规格": "3P"
+      },
+      "sourceSellingPrice": {
+        "role": "seller_sale",
+        "currency": "USD",
+        "amount": 0.06
+      },
+      "spec": "规格:3P",
+      "sourceSkuId": "109674971603",
+      "price": 0.39,
+      "goodsPrice": 0.39,
+      "stock": 10000,
+      "purchaseRevision": "00000000-0000-4000-8000-000000000025",
+      "currency": "CNY",
+      "purchasePriceSource": "human_override",
+      "purchaseOverride": {
+        "purchaseMinor": 39,
+        "revision": "00000000-0000-4000-8000-000000000025",
+        "updatedAt": "2026-10-11T11:56:55.875Z"
+      }
+    },
+    {
+      "id": "109674971604",
+      "idKind": "native",
+      "properties": {
+        "规格": "4P"
+      },
+      "sourceSellingPrice": {
+        "role": "seller_sale",
+        "currency": "USD",
+        "amount": 0.08
+      },
+      "spec": "规格:4P",
+      "sourceSkuId": "109674971604",
+      "price": 0.52,
+      "goodsPrice": 0.52,
+      "stock": 10000,
+      "purchaseRevision": "00000000-0000-4000-8000-000000000026",
+      "currency": "CNY",
+      "purchasePriceSource": "human_override",
+      "purchaseOverride": {
+        "purchaseMinor": 52,
+        "revision": "00000000-0000-4000-8000-000000000026",
+        "updatedAt": "2026-10-11T11:57:01.026Z"
+      }
+    },
+    {
+      "id": "109674971605",
+      "idKind": "native",
+      "properties": {
+        "规格": "5P"
+      },
+      "sourceSellingPrice": {
+        "role": "seller_sale",
+        "currency": "USD",
+        "amount": 0.1
+      },
+      "spec": "规格:5P",
+      "sourceSkuId": "109674971605",
+      "price": 0.65,
+      "goodsPrice": 0.65,
+      "stock": 10000,
+      "purchaseRevision": "00000000-0000-4000-8000-000000000027",
+      "currency": "CNY",
+      "purchasePriceSource": "human_override",
+      "purchaseOverride": {
+        "purchaseMinor": 65,
+        "revision": "00000000-0000-4000-8000-000000000027",
+        "updatedAt": "2026-10-11T11:57:05.768Z"
+      }
+    },
+    {
+      "id": "109674971606",
+      "idKind": "native",
+      "properties": {
+        "规格": "6P"
+      },
+      "sourceSellingPrice": {
+        "role": "seller_sale",
+        "currency": "USD",
+        "amount": 0.12
+      },
+      "spec": "规格:6P",
+      "sourceSkuId": "109674971606",
+      "price": 0.78,
+      "goodsPrice": 0.78,
+      "stock": 10000,
+      "purchaseRevision": "00000000-0000-4000-8000-000000000028",
+      "currency": "CNY",
+      "purchasePriceSource": "human_override",
+      "purchaseOverride": {
+        "purchaseMinor": 78,
+        "revision": "00000000-0000-4000-8000-000000000028",
+        "updatedAt": "2026-10-11T11:57:10.479Z"
+      }
+    },
+    {
+      "id": "109674971607",
+      "idKind": "native",
+      "properties": {
+        "规格": "7P"
+      },
+      "sourceSellingPrice": {
+        "role": "seller_sale",
+        "currency": "USD",
+        "amount": 0.14
+      },
+      "spec": "规格:7P",
+      "sourceSkuId": "109674971607",
+      "price": 0.91,
+      "goodsPrice": 0.91,
+      "stock": 10000,
+      "purchaseRevision": "00000000-0000-4000-8000-000000000029",
+      "currency": "CNY",
+      "purchasePriceSource": "human_override",
+      "purchaseOverride": {
+        "purchaseMinor": 91,
+        "revision": "00000000-0000-4000-8000-000000000029",
+        "updatedAt": "2026-10-11T11:57:15.368Z"
+      }
+    },
+    {
+      "id": "109674971608",
+      "idKind": "native",
+      "properties": {
+        "规格": "8P"
+      },
+      "sourceSellingPrice": {
+        "role": "seller_sale",
+        "currency": "USD",
+        "amount": 0.16
+      },
+      "spec": "规格:8P",
+      "sourceSkuId": "109674971608",
+      "price": 1.04,
+      "goodsPrice": 1.04,
+      "stock": 10000,
+      "purchaseRevision": "00000000-0000-4000-8000-000000000030",
+      "currency": "CNY",
+      "purchasePriceSource": "human_override",
+      "purchaseOverride": {
+        "purchaseMinor": 104,
+        "revision": "00000000-0000-4000-8000-000000000030",
+        "updatedAt": "2026-10-11T11:57:19.975Z"
+      }
+    },
+    {
+      "id": "109674971609",
+      "idKind": "native",
+      "properties": {
+        "规格": "9P"
+      },
+      "sourceSellingPrice": {
+        "role": "seller_sale",
+        "currency": "USD",
+        "amount": 0.18
+      },
+      "spec": "规格:9P",
+      "sourceSkuId": "109674971609",
+      "price": 1.17,
+      "goodsPrice": 1.17,
+      "stock": 10000,
+      "purchaseRevision": "00000000-0000-4000-8000-000000000031",
+      "currency": "CNY",
+      "purchasePriceSource": "human_override",
+      "purchaseOverride": {
+        "purchaseMinor": 117,
+        "revision": "00000000-0000-4000-8000-000000000031",
+        "updatedAt": "2026-10-11T11:57:24.792Z"
+      }
+    },
+    {
+      "id": "109674971610",
+      "idKind": "native",
+      "properties": {
+        "规格": "10P"
+      },
+      "sourceSellingPrice": {
+        "role": "seller_sale",
+        "currency": "USD",
+        "amount": 0.2
+      },
+      "spec": "规格:10P",
+      "sourceSkuId": "109674971610",
+      "price": 1.3,
+      "goodsPrice": 1.3,
+      "stock": 10000,
+      "purchaseRevision": "00000000-0000-4000-8000-000000000032",
+      "currency": "CNY",
+      "purchasePriceSource": "human_override",
+      "purchaseOverride": {
+        "purchaseMinor": 130,
+        "revision": "00000000-0000-4000-8000-000000000032",
+        "updatedAt": "2026-10-11T11:57:29.650Z"
+      }
+    },
+    {
+      "id": "109674971611",
+      "idKind": "native",
+      "properties": {
+        "规格": "11P"
+      },
+      "sourceSellingPrice": {
+        "role": "seller_sale",
+        "currency": "USD",
+        "amount": 0.22
+      },
+      "spec": "规格:11P",
+      "sourceSkuId": "109674971611",
+      "price": 1.43,
+      "goodsPrice": 1.43,
+      "stock": 10000,
+      "purchaseRevision": "00000000-0000-4000-8000-000000000033",
+      "currency": "CNY",
+      "purchasePriceSource": "human_override",
+      "purchaseOverride": {
+        "purchaseMinor": 143,
+        "revision": "00000000-0000-4000-8000-000000000033",
+        "updatedAt": "2026-10-11T11:57:34.469Z"
+      }
+    },
+    {
+      "id": "109674971612",
+      "idKind": "native",
+      "properties": {
+        "规格": "12P"
+      },
+      "sourceSellingPrice": {
+        "role": "seller_sale",
+        "currency": "USD",
+        "amount": 0.24
+      },
+      "spec": "规格:12P",
+      "sourceSkuId": "109674971612",
+      "price": 1.56,
+      "goodsPrice": 1.56,
+      "stock": 10000,
+      "purchaseRevision": "00000000-0000-4000-8000-000000000034",
+      "currency": "CNY",
+      "purchasePriceSource": "human_override",
+      "purchaseOverride": {
+        "purchaseMinor": 156,
+        "revision": "00000000-0000-4000-8000-000000000034",
+        "updatedAt": "2026-10-11T11:57:38.591Z"
+      }
+    }
+  ],
+  "images": [
+    "https://sc04.alicdn.com/kf/H0dff4c6347654aae87d59c26f04407ff9.png",
+    "https://sc04.alicdn.com/kf/H90ce3734ab0e4cea9b4d95b7b01c9484P.png",
+    "https://sc04.alicdn.com/kf/H16c7cb81678349bf96691dec0126e89d3.png",
+    "https://sc04.alicdn.com/kf/Ha87ddf35153049b186082399bddacef7l.png",
+    "https://sc04.alicdn.com/kf/H24f1101d3b324a0e9e03e6b76fee7927b.jpg",
+    "https://sc04.alicdn.com/kf/H823d0298214d42b3abc04ee630802e7d8.jpg"
+  ],
+  "descriptionImages": [
+    "https://sc04.alicdn.com/kf/H4ee9e003614149929453cdb40069ac04T.png",
+    "https://sc04.alicdn.com/kf/Hc94c7b49fd4e4951b51a0293e44ecbf44.png",
+    "https://sc04.alicdn.com/kf/Ha3f5c8f834694b16954edea7bd668930N.png",
+    "https://sc04.alicdn.com/kf/H9a02050eaa3e4bf6becb78c850eea3d9G.png",
+    "https://sc04.alicdn.com/kf/Ha0ee8aed76704fe4be9def464dffb755l.png",
+    "https://sc04.alicdn.com/kf/Ha20d0de53c584ff3987664cd43f1d2ee5.png",
+    "https://sc04.alicdn.com/kf/Hd8eaaa7c763a4758b8be674fabdbf023b.png",
+    "https://sc04.alicdn.com/kf/H7d8c83acfc104ea5b72a80047aba8b42x.png",
+    "https://sc04.alicdn.com/kf/H30fdb5cdb18840a78930c1468487ea696.png",
+    "https://sc04.alicdn.com/kf/H4426aa51c1a94e78b05597a47e399b9dZ.png",
+    "https://sc04.alicdn.com/kf/H728d7b8ed9dc44dd92b8b97089c7fec9l.png"
+  ],
+  "description": "Compact Design: Suitable for PCB assembly with 3.81mm pitch.\n8A Current Rating: Supports up to 8A for reliable power transmission.\nFlanged Ear for Secure Installation: Enhances stability during use\nCE, UL, ISO Certified: Meets international quality standards.",
+  "sourceUrl": "https://www.alibaba.com/product-detail/15EDGVM-WJ15EDGVM-3-81mm-Pitch-Plug_1601948780869.html",
+  "sourceDetails": {
+    "productOverview": {
+      "productTitle": "15EDGVM WJ15EDGVM 3.81mm Pitch Plug in Terminal Connector PCB Header Straight Pin With Flange Ear",
+      "productKeywords": [
+        ""
+      ],
+      "multilangInfo": {
+        "productTitle": {
+          "ar_SA": {
+            "content": "موصل طرفي قابل للتوصيل 15EDGVM WJ15EDGVM بمسافة بينية 3.81 مم، رأس لوحة دوائر مطبوعة (PCB) مستقيم مع أذن تثبيت",
+            "isAutoTrans": true
+          },
+          "de_DE": {
+            "content": "15EDGVM WJ15EDGVM 3,81mm Rastermaß Steckverbinder PCB-Anschluss Gerader Stift Mit Flanschöhrchen",
+            "isAutoTrans": true
+          },
+          "es_ES": {
+            "content": "Conector de terminal enchufable 15EDGVM WJ15EDGVM de paso de 3.81mm, cabezal de PCB de pin recto con orejeta",
+            "isAutoTrans": true
+          },
+          "fil_PH": {
+            "content": "15EDGVM WJ15EDGVM 3.81mm Pitch Plug in Terminal Connector PCB Header Straight Pin na May Flange Ear",
+            "isAutoTrans": true
+          },
+          "fr_FR": {
+            "content": "Connecteur de borne enfichable 15EDGVM WJ15EDGVM, pas de 3,81 mm, connecteur de carte de circuit imprimé à broches droites avec oreille de fixation",
+            "isAutoTrans": true
+          },
+          "hi_IN": {
+            "content": "15edgvm wj15edgvm 3.81 मिमी पिच प्लग में टर्मिनल कनेक्टर pcb हेडर सीधे पिन",
+            "isAutoTrans": true
+          },
+          "in_ID": {
+            "content": "15EDGVM WJ15EDGVM Konektor Terminal Plug-in Pitch 3.81mm Header PCB Pin Lurus Dengan Flange Ear",
+            "isAutoTrans": true
+          },
+          "it_IT": {
+            "content": "Connettore Terminale a Innesto 15EDGVM WJ15EDGVM con Passo da 3,81 mm, Pin Dritto per PCB con Orecchio di Fissaggio",
+            "isAutoTrans": true
+          },
+          "iw_IL": {
+            "content": "מחבר מסוף 15EDGVM WJ15EDGVM 3.81mm Pitch Plug-in עם ראש PCB ישר ופין עם אוזן אוגן",
+            "isAutoTrans": true
+          },
+          "ja_JP": {
+            "content": "15EDGVM WJ15EDGVM 3.81mmピッチ プラグイン端子コネクタ PCBヘッダー ストレートピン フランジ耳付き",
+            "isAutoTrans": true
+          },
+          "ko_KR": {
+            "content": "15EDGVM WJ15EDGVM 3.81mm 피치 플러그인 터미널 커넥터 PCB 헤더 플랜지 이어가 있는 직선 핀",
+            "isAutoTrans": true
+          },
+          "nl_NL": {
+            "content": "15EDGVM WJ15EDGVM 3,81 mm pitch plug-in terminalconnector PCB-header rechte pin met flensoor",
+            "isAutoTrans": true
+          },
+          "pl_PL": {
+            "content": "Złącze wtykowe 15EDGVM WJ15EDGVM o rastrze 3.81mm, złącze do montażu na płytce PCB, proste piny z uszkiem.",
+            "isAutoTrans": true
+          },
+          "pt_PT": {
+            "content": "Conector Terminal de Encaixe 15EDGVM WJ15EDGVM com Passo de 3.81mm, Pino Reto para PCB com Orelha de Flange",
+            "isAutoTrans": true
+          },
+          "ru_RU": {
+            "content": "15EDGVM WJ15EDGVM Разъем-клемма с шагом 3,81 мм, прямой штыревой контакт для печатных плат с фланцевым ушком",
+            "isAutoTrans": true
+          },
+          "th_TH": {
+            "content": "ขั้วต่อปลั๊กแบบเสียบขนาด 3.81 มม. รุ่น 15EDGVM WJ15EDGVM สำหรับแผงวงจรพิมพ์ (PCB) แบบขาตรงพร้อมหูยึด",
+            "isAutoTrans": true
+          },
+          "tr_TR": {
+            "content": "15EDGVM WJ15EDGVM 3.81mm Pitchli Tak-Çalıştır Terminal Konnektörü PCB Başlığı Düz Pinli Flanş Kulaklı",
+            "isAutoTrans": true
+          },
+          "vi_VN": {
+            "content": "15EDGVM WJ15EDGVM Đầu nối đầu cuối có chân cắm bước 3,81mm Đầu nối PCB Chân thẳng có tai nối",
+            "isAutoTrans": true
+          },
+          "zh_CN": {
+            "content": "15EDGVM WJ15EDGVM 3.81mm 间距插拔式端子连接器 PCB 接头直针带凸耳",
+            "isAutoTrans": true
+          }
+        }
+      }
+    },
+    "description": {
+      "productDescType": {
+        "text": "智能编辑",
+        "value": 4
+      },
+      "textDesc": "Compact Design: Suitable for PCB assembly with 3.81mm pitch.\n8A Current Rating: Supports up to 8A for reliable power transmission.\nFlanged Ear for Secure Installation: Enhances stability during use\nCE, UL, ISO Certified: Meets international quality standards.",
+      "detailImage": [
+        {
+          "cnName": "参数图",
+          "disabled": false,
+          "enName": "Specifications",
+          "id": 110,
+          "imageList": [
+            {
+              "fileName": "H4ee9e003614149929453cdb40069ac04T.png",
+              "fileURL": "https://sc04.alicdn.com/kf/H4ee9e003614149929453cdb40069ac04T.png",
+              "imgURL": "//sc04.alicdn.com/kf/H4ee9e003614149929453cdb40069ac04T.png_350x350.png"
+            }
+          ],
+          "labelName": "Specifications",
+          "order": 0,
+          "supportText": false,
+          "value": "110"
+        },
+        {
+          "cnName": "Product Specifications",
+          "disabled": false,
+          "enName": "Product Specifications",
+          "id": -2,
+          "imageList": [
+            {
+              "fileName": "Hc94c7b49fd4e4951b51a0293e44ecbf44.png",
+              "fileURL": "https://sc04.alicdn.com/kf/Hc94c7b49fd4e4951b51a0293e44ecbf44.png",
+              "imgURL": "//sc04.alicdn.com/kf/Hc94c7b49fd4e4951b51a0293e44ecbf44.png_350x350.png"
+            }
+          ],
+          "order": 1,
+          "supportText": true,
+          "value": "-2"
+        },
+        {
+          "cnName": "细节图",
+          "disabled": false,
+          "enName": "Detail shot",
+          "id": 300,
+          "imageList": [
+            {
+              "fileName": "Ha3f5c8f834694b16954edea7bd668930N.png",
+              "fileURL": "https://sc04.alicdn.com/kf/Ha3f5c8f834694b16954edea7bd668930N.png",
+              "imgURL": "//sc04.alicdn.com/kf/Ha3f5c8f834694b16954edea7bd668930N.png_350x350.png"
+            },
+            {
+              "fileName": "H9a02050eaa3e4bf6becb78c850eea3d9G.png",
+              "fileURL": "https://sc04.alicdn.com/kf/H9a02050eaa3e4bf6becb78c850eea3d9G.png",
+              "imgURL": "//sc04.alicdn.com/kf/H9a02050eaa3e4bf6becb78c850eea3d9G.png_350x350.png"
+            },
+            {
+              "fileName": "Ha0ee8aed76704fe4be9def464dffb755l.png",
+              "fileURL": "https://sc04.alicdn.com/kf/Ha0ee8aed76704fe4be9def464dffb755l.png",
+              "imgURL": "//sc04.alicdn.com/kf/Ha0ee8aed76704fe4be9def464dffb755l.png_350x350.png"
+            },
+            {
+              "fileName": "Ha20d0de53c584ff3987664cd43f1d2ee5.png",
+              "fileURL": "https://sc04.alicdn.com/kf/Ha20d0de53c584ff3987664cd43f1d2ee5.png",
+              "imgURL": "//sc04.alicdn.com/kf/Ha20d0de53c584ff3987664cd43f1d2ee5.png_350x350.png"
+            }
+          ],
+          "labelName": "detailedDrawing",
+          "order": 2,
+          "supportText": true,
+          "value": "300"
+        }
+      ]
+    },
+    "companyProfile": {
+      "companyDesc": "测试说明1",
+      "companyImage": [
+        {
+          "cnName": "公司介绍",
+          "disabled": false,
+          "enName": "Company overview",
+          "id": 400,
+          "imageList": [
+            {
+              "fileName": "Hd8eaaa7c763a4758b8be674fabdbf023b.png",
+              "fileURL": "https://sc04.alicdn.com/kf/Hd8eaaa7c763a4758b8be674fabdbf023b.png",
+              "imgURL": "//sc04.alicdn.com/kf/Hd8eaaa7c763a4758b8be674fabdbf023b.png_350x350.png"
+            },
+            {
+              "fileName": "H7d8c83acfc104ea5b72a80047aba8b42x.png",
+              "fileURL": "https://sc04.alicdn.com/kf/H7d8c83acfc104ea5b72a80047aba8b42x.png",
+              "imgURL": "//sc04.alicdn.com/kf/H7d8c83acfc104ea5b72a80047aba8b42x.png_350x350.png"
+            },
+            {
+              "fileName": "H30fdb5cdb18840a78930c1468487ea696.png",
+              "fileURL": "https://sc04.alicdn.com/kf/H30fdb5cdb18840a78930c1468487ea696.png",
+              "imgURL": "//sc04.alicdn.com/kf/H30fdb5cdb18840a78930c1468487ea696.png_350x350.png"
+            },
+            {
+              "fileName": "H4426aa51c1a94e78b05597a47e399b9dZ.png",
+              "fileURL": "https://sc04.alicdn.com/kf/H4426aa51c1a94e78b05597a47e399b9dZ.png",
+              "imgURL": "//sc04.alicdn.com/kf/H4426aa51c1a94e78b05597a47e399b9dZ.png_350x350.png"
+            },
+            {
+              "fileName": "H728d7b8ed9dc44dd92b8b97089c7fec9l.png",
+              "fileURL": "https://sc04.alicdn.com/kf/H728d7b8ed9dc44dd92b8b97089c7fec9l.png",
+              "imgURL": "//sc04.alicdn.com/kf/H728d7b8ed9dc44dd92b8b97089c7fec9l.png_350x350.png"
+            }
+          ],
+          "labelName": "companyInfo",
+          "order": 0,
+          "supportText": false,
+          "value": "400"
+        }
+      ]
+    },
+    "packaging": {
+      "pkgMeasure": {
+        "inputArray": [
+          "5",
+          "5",
+          "10"
+        ]
+      },
+      "pkgWeight": 0.001,
+      "boxPackagingManager": {
+        "text": "不支持",
+        "value": 2
+      }
+    },
+    "logistics": {
+      "shippingTemplate": {
+        "shippingTemplateId": 2061608036,
+        "templateType": "freightNegotiation"
+      },
+      "logisticsProperty": [
+        {
+          "label": "普货",
+          "valid": true,
+          "value": "general_cargo_0"
+        }
+      ],
+      "logisticsSku": [],
+      "supportLogisticsSku": false,
+      "tariffsHsCode": [
+        {
+          "hsCode": "85369060",
+          "isOfflineData": false,
+          "stockId": 56859228,
+          "toCountry": "US"
+        }
+      ]
+    },
+    "services": {
+      "serviceType": {
+        "text": "现货",
+        "value": 1
+      },
+      "marketSample": {
+        "text": "不支持",
+        "value": 2
+      },
+      "customizationSupportSample": {
+        "text": "不支持",
+        "value": 2
+      },
+      "halfTubeServiceCheck": false,
+      "saleType": {
+        "text": "按件卖",
+        "value": "normal"
+      },
+      "sellScope": "全球买家",
+      "countryPreference": [],
+      "customerGroup": [],
+      "productVisible": {
+        "text": "不支持",
+        "value": 2
+      }
+    },
+    "pricing": {
+      "priceUnit": {
+        "disabled": false,
+        "text": "Piece/Pieces",
+        "value": 4
+      },
+      "minOrderQuantity": 10,
+      "scPrice": {
+        "text": "根据数量设置FOB阶梯价",
+        "value": 3
+      },
+      "fob": {
+        "disabled": false,
+        "fobType": {
+          "text": "USD",
+          "value": 1
+        }
+      },
+      "countrySku": [],
+      "countryLadderPrice": [],
+      "icbuCountryRegion": []
+    },
+    "attributes": {
+      "icbuCatProp": {
+        "p-1": {
+          "text": "China",
+          "value": 100000458
+        },
+        "p-1-1": {
+          "text": "Guangdong",
+          "value": 100001968
+        },
+        "p-191284008": {
+          "text": "PCB",
+          "value": 3502451
+        },
+        "p-191286330": "8A",
+        "p-210192652": "AOSI",
+        "p-3": "FPM1.5-381-04"
+      },
+      "industryProp": [
+        {
+          "key": "p-3",
+          "label": "型号"
+        },
+        {
+          "key": "p-191284008",
+          "label": "种类"
+        },
+        {
+          "key": "p-210192652",
+          "label": "品牌"
+        },
+        {
+          "key": "p-191286330",
+          "label": "额定电流"
+        },
+        {
+          "key": "p-210190002",
+          "label": "材料"
+        }
+      ],
+      "saleAttributesItems": [
+        {
+          "disabled": false,
+          "text": "规格",
+          "value": "210192334"
+        }
+      ],
+      "saleProp": {
+        "p-210192334": [
+          {
+            "alias": "2P",
+            "text": "2P",
+            "value": -1
+          },
+          {
+            "alias": "3P",
+            "text": "3P",
+            "value": -2
+          },
+          {
+            "alias": "4P",
+            "text": "4P",
+            "value": -3
+          },
+          {
+            "alias": "5P",
+            "text": "5P",
+            "value": -4
+          },
+          {
+            "alias": "6P",
+            "text": "6P",
+            "value": -5
+          },
+          {
+            "alias": "7P",
+            "text": "7P",
+            "value": -6
+          },
+          {
+            "alias": "8P",
+            "text": "8P",
+            "value": -7
+          },
+          {
+            "alias": "9P",
+            "text": "9P",
+            "value": -8
+          },
+          {
+            "alias": "10P",
+            "text": "10P",
+            "value": -9
+          },
+          {
+            "alias": "11P",
+            "text": "11P",
+            "value": -10
+          },
+          {
+            "alias": "12P",
+            "text": "12P",
+            "value": -11
+          }
+        ]
+      },
+      "customMoreProperty": []
+    },
+    "media": {
+      "scImages": {
+        "addPhotobank": false,
+        "addWaterMark": false,
+        "list": [
+          {
+            "fileDestOrder": 1,
+            "fileFlag": "no",
+            "fileId": 0,
+            "fileSrcOrder": 1,
+            "fileURL": "https://sc04.alicdn.com/kf/H0dff4c6347654aae87d59c26f04407ff9.png",
+            "imgURL": "//sc04.alicdn.com/kf/H0dff4c6347654aae87d59c26f04407ff9.png_350x350.png"
+          },
+          {
+            "fileDestOrder": 2,
+            "fileFlag": "no",
+            "fileId": 0,
+            "fileSrcOrder": 2,
+            "fileURL": "https://sc04.alicdn.com/kf/H90ce3734ab0e4cea9b4d95b7b01c9484P.png",
+            "imgURL": "//sc04.alicdn.com/kf/H90ce3734ab0e4cea9b4d95b7b01c9484P.png_350x350.png"
+          },
+          {
+            "fileDestOrder": 3,
+            "fileFlag": "no",
+            "fileId": 0,
+            "fileSrcOrder": 3,
+            "fileURL": "https://sc04.alicdn.com/kf/H16c7cb81678349bf96691dec0126e89d3.png",
+            "imgURL": "//sc04.alicdn.com/kf/H16c7cb81678349bf96691dec0126e89d3.png_350x350.png"
+          },
+          {
+            "fileDestOrder": 4,
+            "fileFlag": "no",
+            "fileId": 0,
+            "fileSrcOrder": 4,
+            "fileURL": "https://sc04.alicdn.com/kf/Ha87ddf35153049b186082399bddacef7l.png",
+            "imgURL": "//sc04.alicdn.com/kf/Ha87ddf35153049b186082399bddacef7l.png_350x350.png"
+          },
+          {
+            "fileDestOrder": 5,
+            "fileFlag": "no",
+            "fileId": 0,
+            "fileSrcOrder": 5,
+            "fileURL": "https://sc04.alicdn.com/kf/H24f1101d3b324a0e9e03e6b76fee7927b.jpg",
+            "imgURL": "//sc04.alicdn.com/kf/H24f1101d3b324a0e9e03e6b76fee7927b.jpg_350x350.jpg"
+          },
+          {
+            "fileDestOrder": 6,
+            "fileFlag": "no",
+            "fileId": 0,
+            "fileSrcOrder": 6,
+            "fileURL": "https://sc04.alicdn.com/kf/H823d0298214d42b3abc04ee630802e7d8.jpg",
+            "imgURL": "//sc04.alicdn.com/kf/H823d0298214d42b3abc04ee630802e7d8.jpg_350x350.jpg"
+          }
+        ],
+        "watermarkPosition": "center",
+        "watermarkStyle": "Y"
+      },
+      "imageMedia": {}
+    },
+    "editorFields": {
+      "boxPackagingManager": {
+        "text": "不支持",
+        "value": 2
+      },
+      "companyDesc": "测试说明1",
+      "companyFaqDesc": [
+        {
+          "answers": "Yes, we welcome sample orders for quality testing. Mixed\u001eitem samples are acceptable.",
+          "question": "Can I have a sample order for Terminal blocks?"
+        },
+        {
+          "answers": "Samples take 1\u001e2 working days. For mass orders over 100K pieces, production lead time is 1\u001e2 weeks.",
+          "question": "What about the lead time?"
+        },
+        {
+          "answers": "Regular items are kept in stock. We can arrange fast shipment per custome's requirements.",
+          "question": "What about the delivery time?"
+        },
+        {
+          "answers": "Yes, we provide quality guarantee for our products.",
+          "question": "Do you offer guarantee for the products?"
+        },
+        {
+          "answers": "Payment terms are flexible based on order quantity and product models. Alibaba Trade Assurance is preferred. For new customers, 100% T/T before shipment is required. For large\u001evolume orders, 30% T/T deposit before production is available.",
+          "question": "What are your payment terms?"
+        },
+        {
+          "answers": "We normally ship via DHL, UPS, FedEx or TNT with 3\u001e5 working\u001eday delivery time. Air freight and sea shipping are also available.",
+          "question": "How do you ship the goods and how long will it take to arrive?"
+        }
+      ],
+      "companyImage": [
+        {
+          "cnName": "公司介绍",
+          "disabled": false,
+          "enName": "Company overview",
+          "id": 400,
+          "imageList": [
+            {
+              "fileName": "Hd8eaaa7c763a4758b8be674fabdbf023b.png",
+              "fileURL": "https://sc04.alicdn.com/kf/Hd8eaaa7c763a4758b8be674fabdbf023b.png",
+              "imgURL": "//sc04.alicdn.com/kf/Hd8eaaa7c763a4758b8be674fabdbf023b.png_350x350.png"
+            },
+            {
+              "fileName": "H7d8c83acfc104ea5b72a80047aba8b42x.png",
+              "fileURL": "https://sc04.alicdn.com/kf/H7d8c83acfc104ea5b72a80047aba8b42x.png",
+              "imgURL": "//sc04.alicdn.com/kf/H7d8c83acfc104ea5b72a80047aba8b42x.png_350x350.png"
+            },
+            {
+              "fileName": "H30fdb5cdb18840a78930c1468487ea696.png",
+              "fileURL": "https://sc04.alicdn.com/kf/H30fdb5cdb18840a78930c1468487ea696.png",
+              "imgURL": "//sc04.alicdn.com/kf/H30fdb5cdb18840a78930c1468487ea696.png_350x350.png"
+            },
+            {
+              "fileName": "H4426aa51c1a94e78b05597a47e399b9dZ.png",
+              "fileURL": "https://sc04.alicdn.com/kf/H4426aa51c1a94e78b05597a47e399b9dZ.png",
+              "imgURL": "//sc04.alicdn.com/kf/H4426aa51c1a94e78b05597a47e399b9dZ.png_350x350.png"
+            },
+            {
+              "fileName": "H728d7b8ed9dc44dd92b8b97089c7fec9l.png",
+              "fileURL": "https://sc04.alicdn.com/kf/H728d7b8ed9dc44dd92b8b97089c7fec9l.png",
+              "imgURL": "//sc04.alicdn.com/kf/H728d7b8ed9dc44dd92b8b97089c7fec9l.png_350x350.png"
+            }
+          ],
+          "labelName": "companyInfo",
+          "order": 0,
+          "supportText": false,
+          "value": "400"
+        }
+      ],
+      "countryLadderPrice": [],
+      "countryPreference": [],
+      "countrySku": [],
+      "customMoreProperty": [],
+      "customerGroup": [],
+      "customizationSupportSample": {
+        "text": "不支持",
+        "value": 2
+      },
+      "detailImage": [
+        {
+          "cnName": "参数图",
+          "disabled": false,
+          "enName": "Specifications",
+          "id": 110,
+          "imageList": [
+            {
+              "fileName": "H4ee9e003614149929453cdb40069ac04T.png",
+              "fileURL": "https://sc04.alicdn.com/kf/H4ee9e003614149929453cdb40069ac04T.png",
+              "imgURL": "//sc04.alicdn.com/kf/H4ee9e003614149929453cdb40069ac04T.png_350x350.png"
+            }
+          ],
+          "labelName": "Specifications",
+          "order": 0,
+          "supportText": false,
+          "value": "110"
+        },
+        {
+          "cnName": "Product Specifications",
+          "disabled": false,
+          "enName": "Product Specifications",
+          "id": -2,
+          "imageList": [
+            {
+              "fileName": "Hc94c7b49fd4e4951b51a0293e44ecbf44.png",
+              "fileURL": "https://sc04.alicdn.com/kf/Hc94c7b49fd4e4951b51a0293e44ecbf44.png",
+              "imgURL": "//sc04.alicdn.com/kf/Hc94c7b49fd4e4951b51a0293e44ecbf44.png_350x350.png"
+            }
+          ],
+          "order": 1,
+          "supportText": true,
+          "value": "-2"
+        },
+        {
+          "cnName": "细节图",
+          "disabled": false,
+          "enName": "Detail shot",
+          "id": 300,
+          "imageList": [
+            {
+              "fileName": "Ha3f5c8f834694b16954edea7bd668930N.png",
+              "fileURL": "https://sc04.alicdn.com/kf/Ha3f5c8f834694b16954edea7bd668930N.png",
+              "imgURL": "//sc04.alicdn.com/kf/Ha3f5c8f834694b16954edea7bd668930N.png_350x350.png"
+            },
+            {
+              "fileName": "H9a02050eaa3e4bf6becb78c850eea3d9G.png",
+              "fileURL": "https://sc04.alicdn.com/kf/H9a02050eaa3e4bf6becb78c850eea3d9G.png",
+              "imgURL": "//sc04.alicdn.com/kf/H9a02050eaa3e4bf6becb78c850eea3d9G.png_350x350.png"
+            },
+            {
+              "fileName": "Ha0ee8aed76704fe4be9def464dffb755l.png",
+              "fileURL": "https://sc04.alicdn.com/kf/Ha0ee8aed76704fe4be9def464dffb755l.png",
+              "imgURL": "//sc04.alicdn.com/kf/Ha0ee8aed76704fe4be9def464dffb755l.png_350x350.png"
+            },
+            {
+              "fileName": "Ha20d0de53c584ff3987664cd43f1d2ee5.png",
+              "fileURL": "https://sc04.alicdn.com/kf/Ha20d0de53c584ff3987664cd43f1d2ee5.png",
+              "imgURL": "//sc04.alicdn.com/kf/Ha20d0de53c584ff3987664cd43f1d2ee5.png_350x350.png"
+            }
+          ],
+          "labelName": "detailedDrawing",
+          "order": 2,
+          "supportText": true,
+          "value": "300"
+        }
+      ],
+      "fob": {
+        "disabled": false,
+        "fobType": {
+          "text": "USD",
+          "value": 1
+        }
+      },
+      "halfTubeServiceCheck": false,
+      "icbuCatProp": {
+        "p-1": {
+          "text": "China",
+          "value": 100000458
+        },
+        "p-1-1": {
+          "text": "Guangdong",
+          "value": 100001968
+        },
+        "p-191284008": {
+          "text": "PCB",
+          "value": 3502451
+        },
+        "p-191286330": "8A",
+        "p-210192652": "AOSI",
+        "p-3": "FPM1.5-381-04"
+      },
+      "icbuCountryRegion": [],
+      "imageMedia": {},
+      "industryProp": [
+        {
+          "key": "p-3",
+          "label": "型号"
+        },
+        {
+          "key": "p-191284008",
+          "label": "种类"
+        },
+        {
+          "key": "p-210192652",
+          "label": "品牌"
+        },
+        {
+          "key": "p-191286330",
+          "label": "额定电流"
+        },
+        {
+          "key": "p-210190002",
+          "label": "材料"
+        }
+      ],
+      "inventory": [],
+      "ladderPeriod": [
+        {
+          "day": 7,
+          "quantity": 100
+        },
+        {
+          "day": 14,
+          "quantity": 10000
+        }
+      ],
+      "logisticsProperty": [
+        {
+          "label": "普货",
+          "valid": true,
+          "value": "general_cargo_0"
+        }
+      ],
+      "logisticsSku": [],
+      "marketSample": {
+        "text": "不支持",
+        "value": 2
+      },
+      "minOrderQuantity": 10,
+      "multilangInfo": {
+        "productTitle": {
+          "ar_SA": {
+            "content": "موصل طرفي قابل للتوصيل 15EDGVM WJ15EDGVM بمسافة بينية 3.81 مم، رأس لوحة دوائر مطبوعة (PCB) مستقيم مع أذن تثبيت",
+            "isAutoTrans": true
+          },
+          "de_DE": {
+            "content": "15EDGVM WJ15EDGVM 3,81mm Rastermaß Steckverbinder PCB-Anschluss Gerader Stift Mit Flanschöhrchen",
+            "isAutoTrans": true
+          },
+          "es_ES": {
+            "content": "Conector de terminal enchufable 15EDGVM WJ15EDGVM de paso de 3.81mm, cabezal de PCB de pin recto con orejeta",
+            "isAutoTrans": true
+          },
+          "fil_PH": {
+            "content": "15EDGVM WJ15EDGVM 3.81mm Pitch Plug in Terminal Connector PCB Header Straight Pin na May Flange Ear",
+            "isAutoTrans": true
+          },
+          "fr_FR": {
+            "content": "Connecteur de borne enfichable 15EDGVM WJ15EDGVM, pas de 3,81 mm, connecteur de carte de circuit imprimé à broches droites avec oreille de fixation",
+            "isAutoTrans": true
+          },
+          "hi_IN": {
+            "content": "15edgvm wj15edgvm 3.81 मिमी पिच प्लग में टर्मिनल कनेक्टर pcb हेडर सीधे पिन",
+            "isAutoTrans": true
+          },
+          "in_ID": {
+            "content": "15EDGVM WJ15EDGVM Konektor Terminal Plug-in Pitch 3.81mm Header PCB Pin Lurus Dengan Flange Ear",
+            "isAutoTrans": true
+          },
+          "it_IT": {
+            "content": "Connettore Terminale a Innesto 15EDGVM WJ15EDGVM con Passo da 3,81 mm, Pin Dritto per PCB con Orecchio di Fissaggio",
+            "isAutoTrans": true
+          },
+          "iw_IL": {
+            "content": "מחבר מסוף 15EDGVM WJ15EDGVM 3.81mm Pitch Plug-in עם ראש PCB ישר ופין עם אוזן אוגן",
+            "isAutoTrans": true
+          },
+          "ja_JP": {
+            "content": "15EDGVM WJ15EDGVM 3.81mmピッチ プラグイン端子コネクタ PCBヘッダー ストレートピン フランジ耳付き",
+            "isAutoTrans": true
+          },
+          "ko_KR": {
+            "content": "15EDGVM WJ15EDGVM 3.81mm 피치 플러그인 터미널 커넥터 PCB 헤더 플랜지 이어가 있는 직선 핀",
+            "isAutoTrans": true
+          },
+          "nl_NL": {
+            "content": "15EDGVM WJ15EDGVM 3,81 mm pitch plug-in terminalconnector PCB-header rechte pin met flensoor",
+            "isAutoTrans": true
+          },
+          "pl_PL": {
+            "content": "Złącze wtykowe 15EDGVM WJ15EDGVM o rastrze 3.81mm, złącze do montażu na płytce PCB, proste piny z uszkiem.",
+            "isAutoTrans": true
+          },
+          "pt_PT": {
+            "content": "Conector Terminal de Encaixe 15EDGVM WJ15EDGVM com Passo de 3.81mm, Pino Reto para PCB com Orelha de Flange",
+            "isAutoTrans": true
+          },
+          "ru_RU": {
+            "content": "15EDGVM WJ15EDGVM Разъем-клемма с шагом 3,81 мм, прямой штыревой контакт для печатных плат с фланцевым ушком",
+            "isAutoTrans": true
+          },
+          "th_TH": {
+            "content": "ขั้วต่อปลั๊กแบบเสียบขนาด 3.81 มม. รุ่น 15EDGVM WJ15EDGVM สำหรับแผงวงจรพิมพ์ (PCB) แบบขาตรงพร้อมหูยึด",
+            "isAutoTrans": true
+          },
+          "tr_TR": {
+            "content": "15EDGVM WJ15EDGVM 3.81mm Pitchli Tak-Çalıştır Terminal Konnektörü PCB Başlığı Düz Pinli Flanş Kulaklı",
+            "isAutoTrans": true
+          },
+          "vi_VN": {
+            "content": "15EDGVM WJ15EDGVM Đầu nối đầu cuối có chân cắm bước 3,81mm Đầu nối PCB Chân thẳng có tai nối",
+            "isAutoTrans": true
+          },
+          "zh_CN": {
+            "content": "15EDGVM WJ15EDGVM 3.81mm 间距插拔式端子连接器 PCB 接头直针带凸耳",
+            "isAutoTrans": true
+          }
+        }
+      },
+      "pkgMeasure": {
+        "inputArray": [
+          "5",
+          "5",
+          "10"
+        ]
+      },
+      "pkgWeight": 0.001,
+      "priceUnit": {
+        "disabled": false,
+        "text": "Piece/Pieces",
+        "value": 4
+      },
+      "productCertificate": [
+        {
+          "body": "CQC",
+          "certType": "产品证书",
+          "certTypeCode": "PRODUCT",
+          "expire": false,
+          "id": "60006070244",
+          "name": "CQC",
+          "nameCode": "CQC",
+          "number": "CQC17003167052",
+          "productQuantity": 312,
+          "status": "验真成功",
+          "type": "PRODUCT",
+          "valid": true,
+          "validityPeriod": "2028-04-22"
+        },
+        {
+          "body": "Other",
+          "certType": "产品证书",
+          "certTypeCode": "PRODUCT",
+          "expire": false,
+          "id": "60006059893",
+          "name": "RoHS",
+          "nameCode": "RoHS",
+          "number": "BT2503D528401EC",
+          "productQuantity": 467,
+          "status": "验真成功",
+          "type": "PRODUCT",
+          "valid": true,
+          "validityPeriod": "2030-03-04"
+        },
+        {
+          "body": "TUV SUD",
+          "certType": "产品证书",
+          "certTypeCode": "PRODUCT",
+          "expire": false,
+          "id": "30000824080",
+          "name": "TUV SUD Mark",
+          "nameCode": "TUV SUD Mark",
+          "number": "B 113884 0002 REV. 00",
+          "productQuantity": 174,
+          "status": "验真成功",
+          "type": "PRODUCT",
+          "valid": true,
+          "validityPeriod": "2027-08-16"
+        },
+        {
+          "body": "TUV SUD",
+          "certType": "产品证书",
+          "certTypeCode": "PRODUCT",
+          "expire": false,
+          "id": "30000834510",
+          "name": "TUV SUD Mark",
+          "nameCode": "TUV SUD Mark",
+          "number": "B 113884 0003 Rev. 00",
+          "productQuantity": 211,
+          "status": "验真成功",
+          "type": "PRODUCT",
+          "valid": true,
+          "validityPeriod": "2027-08-16"
+        }
+      ],
+      "productDescType": {
+        "text": "智能编辑",
+        "value": 4
+      },
+      "productGroup": {
+        "text": [
+          "2026",
+          "wang"
+        ],
+        "value": [
+          "965395779",
+          "971788882"
+        ]
+      },
+      "productKeywords": [
+        ""
+      ],
+      "productTitle": "15EDGVM WJ15EDGVM 3.81mm Pitch Plug in Terminal Connector PCB Header Straight Pin With Flange Ear",
+      "productVisible": {
+        "text": "不支持",
+        "value": 2
+      },
+      "saleAttributesItems": [
+        {
+          "disabled": false,
+          "text": "规格",
+          "value": "210192334"
+        }
+      ],
+      "saleProp": {
+        "p-210192334": [
+          {
+            "alias": "2P",
+            "text": "2P",
+            "value": -1
+          },
+          {
+            "alias": "3P",
+            "text": "3P",
+            "value": -2
+          },
+          {
+            "alias": "4P",
+            "text": "4P",
+            "value": -3
+          },
+          {
+            "alias": "5P",
+            "text": "5P",
+            "value": -4
+          },
+          {
+            "alias": "6P",
+            "text": "6P",
+            "value": -5
+          },
+          {
+            "alias": "7P",
+            "text": "7P",
+            "value": -6
+          },
+          {
+            "alias": "8P",
+            "text": "8P",
+            "value": -7
+          },
+          {
+            "alias": "9P",
+            "text": "9P",
+            "value": -8
+          },
+          {
+            "alias": "10P",
+            "text": "10P",
+            "value": -9
+          },
+          {
+            "alias": "11P",
+            "text": "11P",
+            "value": -10
+          },
+          {
+            "alias": "12P",
+            "text": "12P",
+            "value": -11
+          }
+        ]
+      },
+      "saleType": {
+        "text": "按件卖",
+        "value": "normal"
+      },
+      "sampleSku": [],
+      "scImages": {
+        "addPhotobank": false,
+        "addWaterMark": false,
+        "list": [
+          {
+            "fileDestOrder": 1,
+            "fileFlag": "no",
+            "fileId": 0,
+            "fileSrcOrder": 1,
+            "fileURL": "https://sc04.alicdn.com/kf/H0dff4c6347654aae87d59c26f04407ff9.png",
+            "imgURL": "//sc04.alicdn.com/kf/H0dff4c6347654aae87d59c26f04407ff9.png_350x350.png"
+          },
+          {
+            "fileDestOrder": 2,
+            "fileFlag": "no",
+            "fileId": 0,
+            "fileSrcOrder": 2,
+            "fileURL": "https://sc04.alicdn.com/kf/H90ce3734ab0e4cea9b4d95b7b01c9484P.png",
+            "imgURL": "//sc04.alicdn.com/kf/H90ce3734ab0e4cea9b4d95b7b01c9484P.png_350x350.png"
+          },
+          {
+            "fileDestOrder": 3,
+            "fileFlag": "no",
+            "fileId": 0,
+            "fileSrcOrder": 3,
+            "fileURL": "https://sc04.alicdn.com/kf/H16c7cb81678349bf96691dec0126e89d3.png",
+            "imgURL": "//sc04.alicdn.com/kf/H16c7cb81678349bf96691dec0126e89d3.png_350x350.png"
+          },
+          {
+            "fileDestOrder": 4,
+            "fileFlag": "no",
+            "fileId": 0,
+            "fileSrcOrder": 4,
+            "fileURL": "https://sc04.alicdn.com/kf/Ha87ddf35153049b186082399bddacef7l.png",
+            "imgURL": "//sc04.alicdn.com/kf/Ha87ddf35153049b186082399bddacef7l.png_350x350.png"
+          },
+          {
+            "fileDestOrder": 5,
+            "fileFlag": "no",
+            "fileId": 0,
+            "fileSrcOrder": 5,
+            "fileURL": "https://sc04.alicdn.com/kf/H24f1101d3b324a0e9e03e6b76fee7927b.jpg",
+            "imgURL": "//sc04.alicdn.com/kf/H24f1101d3b324a0e9e03e6b76fee7927b.jpg_350x350.jpg"
+          },
+          {
+            "fileDestOrder": 6,
+            "fileFlag": "no",
+            "fileId": 0,
+            "fileSrcOrder": 6,
+            "fileURL": "https://sc04.alicdn.com/kf/H823d0298214d42b3abc04ee630802e7d8.jpg",
+            "imgURL": "//sc04.alicdn.com/kf/H823d0298214d42b3abc04ee630802e7d8.jpg_350x350.jpg"
+          }
+        ],
+        "watermarkPosition": "center",
+        "watermarkStyle": "Y"
+      },
+      "scPrice": {
+        "text": "根据数量设置FOB阶梯价",
+        "value": 3
+      },
+      "sellScope": "全球买家",
+      "serviceType": {
+        "text": "现货",
+        "value": 1
+      },
+      "shippingTemplate": {
+        "shippingTemplateId": 2061608036,
+        "templateType": "freightNegotiation"
+      },
+      "sku": [
+        {
+          "allProps": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "pname": "规格",
+              "text": "2P",
+              "value": -1
+            }
+          ],
+          "index": 0,
+          "price": "0.04",
+          "props": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "text": "2P",
+              "value": -1
+            }
+          ],
+          "skuId": 109674971602,
+          "skuStock": [
+            {
+              "countryCode": "CN",
+              "defaultWarehouse": true,
+              "srcValue": 10000,
+              "storeType": "SELF",
+              "value": 10000,
+              "warehouseCode": "CN_LOCAL_01"
+            }
+          ]
+        },
+        {
+          "allProps": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "pname": "规格",
+              "text": "3P",
+              "value": -2
+            }
+          ],
+          "index": 1,
+          "price": "0.06",
+          "props": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "text": "3P",
+              "value": -2
+            }
+          ],
+          "skuId": 109674971603,
+          "skuStock": [
+            {
+              "countryCode": "CN",
+              "defaultWarehouse": true,
+              "srcValue": 10000,
+              "storeType": "SELF",
+              "value": 10000,
+              "warehouseCode": "CN_LOCAL_01"
+            }
+          ]
+        },
+        {
+          "allProps": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "pname": "规格",
+              "text": "4P",
+              "value": -3
+            }
+          ],
+          "index": 2,
+          "price": "0.08",
+          "props": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "text": "4P",
+              "value": -3
+            }
+          ],
+          "skuId": 109674971604,
+          "skuStock": [
+            {
+              "countryCode": "CN",
+              "defaultWarehouse": true,
+              "srcValue": 10000,
+              "storeType": "SELF",
+              "value": 10000,
+              "warehouseCode": "CN_LOCAL_01"
+            }
+          ]
+        },
+        {
+          "allProps": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "pname": "规格",
+              "text": "5P",
+              "value": -4
+            }
+          ],
+          "index": 3,
+          "price": "0.10",
+          "props": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "text": "5P",
+              "value": -4
+            }
+          ],
+          "skuId": 109674971605,
+          "skuStock": [
+            {
+              "countryCode": "CN",
+              "defaultWarehouse": true,
+              "srcValue": 10000,
+              "storeType": "SELF",
+              "value": 10000,
+              "warehouseCode": "CN_LOCAL_01"
+            }
+          ]
+        },
+        {
+          "allProps": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "pname": "规格",
+              "text": "6P",
+              "value": -5
+            }
+          ],
+          "index": 4,
+          "price": "0.12",
+          "props": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "text": "6P",
+              "value": -5
+            }
+          ],
+          "skuId": 109674971606,
+          "skuStock": [
+            {
+              "countryCode": "CN",
+              "defaultWarehouse": true,
+              "srcValue": 10000,
+              "storeType": "SELF",
+              "value": 10000,
+              "warehouseCode": "CN_LOCAL_01"
+            }
+          ]
+        },
+        {
+          "allProps": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "pname": "规格",
+              "text": "7P",
+              "value": -6
+            }
+          ],
+          "index": 5,
+          "price": "0.14",
+          "props": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "text": "7P",
+              "value": -6
+            }
+          ],
+          "skuId": 109674971607,
+          "skuStock": [
+            {
+              "countryCode": "CN",
+              "defaultWarehouse": true,
+              "srcValue": 10000,
+              "storeType": "SELF",
+              "value": 10000,
+              "warehouseCode": "CN_LOCAL_01"
+            }
+          ]
+        },
+        {
+          "allProps": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "pname": "规格",
+              "text": "8P",
+              "value": -7
+            }
+          ],
+          "index": 6,
+          "price": "0.16",
+          "props": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "text": "8P",
+              "value": -7
+            }
+          ],
+          "skuId": 109674971608,
+          "skuStock": [
+            {
+              "countryCode": "CN",
+              "defaultWarehouse": true,
+              "srcValue": 10000,
+              "storeType": "SELF",
+              "value": 10000,
+              "warehouseCode": "CN_LOCAL_01"
+            }
+          ]
+        },
+        {
+          "allProps": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "pname": "规格",
+              "text": "9P",
+              "value": -8
+            }
+          ],
+          "index": 7,
+          "price": "0.18",
+          "props": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "text": "9P",
+              "value": -8
+            }
+          ],
+          "skuId": 109674971609,
+          "skuStock": [
+            {
+              "countryCode": "CN",
+              "defaultWarehouse": true,
+              "srcValue": 10000,
+              "storeType": "SELF",
+              "value": 10000,
+              "warehouseCode": "CN_LOCAL_01"
+            }
+          ]
+        },
+        {
+          "allProps": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "pname": "规格",
+              "text": "10P",
+              "value": -9
+            }
+          ],
+          "index": 8,
+          "price": "0.20",
+          "props": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "text": "10P",
+              "value": -9
+            }
+          ],
+          "skuId": 109674971610,
+          "skuStock": [
+            {
+              "countryCode": "CN",
+              "defaultWarehouse": true,
+              "srcValue": 10000,
+              "storeType": "SELF",
+              "value": 10000,
+              "warehouseCode": "CN_LOCAL_01"
+            }
+          ]
+        },
+        {
+          "allProps": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "pname": "规格",
+              "text": "11P",
+              "value": -10
+            }
+          ],
+          "index": 9,
+          "price": "0.22",
+          "props": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "text": "11P",
+              "value": -10
+            }
+          ],
+          "skuId": 109674971611,
+          "skuStock": [
+            {
+              "countryCode": "CN",
+              "defaultWarehouse": true,
+              "srcValue": 10000,
+              "storeType": "SELF",
+              "value": 10000,
+              "warehouseCode": "CN_LOCAL_01"
+            }
+          ]
+        },
+        {
+          "allProps": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "pname": "规格",
+              "text": "12P",
+              "value": -11
+            }
+          ],
+          "index": 10,
+          "price": "0.24",
+          "props": [
+            {
+              "id": 210192334,
+              "name": "p-210192334",
+              "text": "12P",
+              "value": -11
+            }
+          ],
+          "skuId": 109674971612,
+          "skuStock": [
+            {
+              "countryCode": "CN",
+              "defaultWarehouse": true,
+              "srcValue": 10000,
+              "storeType": "SELF",
+              "value": 10000,
+              "warehouseCode": "CN_LOCAL_01"
+            }
+          ]
+        }
+      ],
+      "supportLogisticsSku": false,
+      "tariffsHsCode": [
+        {
+          "hsCode": "85369060",
+          "isOfflineData": false,
+          "stockId": 56859228,
+          "toCountry": "US"
+        }
+      ],
+      "textDesc": "Compact Design: Suitable for PCB assembly with 3.81mm pitch.\n8A Current Rating: Supports up to 8A for reliable power transmission.\nFlanged Ear for Secure Installation: Enhances stability during use\nCE, UL, ISO Certified: Meets international quality standards."
+    },
+    "faq": [
+      {
+        "answers": "Yes, we welcome sample orders for quality testing. Mixed\u001eitem samples are acceptable.",
+        "question": "Can I have a sample order for Terminal blocks?"
+      },
+      {
+        "answers": "Samples take 1\u001e2 working days. For mass orders over 100K pieces, production lead time is 1\u001e2 weeks.",
+        "question": "What about the lead time?"
+      },
+      {
+        "answers": "Regular items are kept in stock. We can arrange fast shipment per custome's requirements.",
+        "question": "What about the delivery time?"
+      },
+      {
+        "answers": "Yes, we provide quality guarantee for our products.",
+        "question": "Do you offer guarantee for the products?"
+      },
+      {
+        "answers": "Payment terms are flexible based on order quantity and product models. Alibaba Trade Assurance is preferred. For new customers, 100% T/T before shipment is required. For large\u001evolume orders, 30% T/T deposit before production is available.",
+        "question": "What are your payment terms?"
+      },
+      {
+        "answers": "We normally ship via DHL, UPS, FedEx or TNT with 3\u001e5 working\u001eday delivery time. Air freight and sea shipping are also available.",
+        "question": "How do you ship the goods and how long will it take to arrive?"
+      }
+    ],
+    "certificates": [
+      {
+        "body": "CQC",
+        "certType": "产品证书",
+        "certTypeCode": "PRODUCT",
+        "expire": false,
+        "id": "60006070244",
+        "name": "CQC",
+        "nameCode": "CQC",
+        "number": "CQC17003167052",
+        "productQuantity": 312,
+        "status": "验真成功",
+        "type": "PRODUCT",
+        "valid": true,
+        "validityPeriod": "2028-04-22"
+      },
+      {
+        "body": "Other",
+        "certType": "产品证书",
+        "certTypeCode": "PRODUCT",
+        "expire": false,
+        "id": "60006059893",
+        "name": "RoHS",
+        "nameCode": "RoHS",
+        "number": "BT2503D528401EC",
+        "productQuantity": 467,
+        "status": "验真成功",
+        "type": "PRODUCT",
+        "valid": true,
+        "validityPeriod": "2030-03-04"
+      },
+      {
+        "body": "TUV SUD",
+        "certType": "产品证书",
+        "certTypeCode": "PRODUCT",
+        "expire": false,
+        "id": "30000824080",
+        "name": "TUV SUD Mark",
+        "nameCode": "TUV SUD Mark",
+        "number": "B 113884 0002 REV. 00",
+        "productQuantity": 174,
+        "status": "验真成功",
+        "type": "PRODUCT",
+        "valid": true,
+        "validityPeriod": "2027-08-16"
+      },
+      {
+        "body": "TUV SUD",
+        "certType": "产品证书",
+        "certTypeCode": "PRODUCT",
+        "expire": false,
+        "id": "30000834510",
+        "name": "TUV SUD Mark",
+        "nameCode": "TUV SUD Mark",
+        "number": "B 113884 0003 Rev. 00",
+        "productQuantity": 211,
+        "status": "验真成功",
+        "type": "PRODUCT",
+        "valid": true,
+        "validityPeriod": "2027-08-16"
+      }
+    ],
+    "leadTimes": [
+      {
+        "day": 7,
+        "quantity": 100
+      },
+      {
+        "day": 14,
+        "quantity": 10000
+      }
+    ]
+  }
+}

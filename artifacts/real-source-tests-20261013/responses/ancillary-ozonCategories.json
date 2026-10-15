@@ -1,0 +1,887 @@
+{
+  "query": "端子",
+  "storeId": "00000000-0000-4000-8000-000000000002",
+  "treeFetchedAt": "2026-10-02T18:02:45.319Z",
+  "searchMode": "hybrid",
+  "availabilityNote": "当前店铺凭据返回的未停用叶子类目；不是商品最终发布保证。未返回不能直接断言无权限，发布以平台反馈为准。",
+  "requestedAspects": [],
+  "matchedTotal": 3353,
+  "candidatePoolSize": 20,
+  "evaluatedCount": 20,
+  "aspectCoverage": "bounded",
+  "treeStale": true,
+  "aliasVersion": "e1966f4f20b8d145f68430f8fcefc972d56b0cbbd123c4a288313335bc7c804f",
+  "results": [
+    {
+      "categoryKey": "17028654:115012248",
+      "descriptionCategoryId": "17028654",
+      "typeId": "115012248",
+      "name": "插头保护",
+      "path": "建筑和装修 > 电气安装产品 > 插头保护",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "17028654",
+          "name": "电气安装产品",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5688259192458016,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "10096",
+          "name": "商品颜色"
+        },
+        {
+          "id": "8962",
+          "name": "一个商品中的件数"
+        }
+      ],
+      "schemaHash": "ae53d21a13fe731c53e23dfd75f417fca96bdc0ccb2a5da97f00c30b3b0116d7",
+      "templateFetchedAt": "2026-10-13T15:33:59.766Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "88265327:970859695",
+      "descriptionCategoryId": "88265327",
+      "typeId": "970859695",
+      "name": "线槽连接器",
+      "path": "建筑和装修 > 电气 > 线槽连接器",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "88265327",
+          "name": "电气",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5687889912757702,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "10096",
+          "name": "商品颜色"
+        },
+        {
+          "id": "6609",
+          "name": "直径，毫米"
+        },
+        {
+          "id": "7362",
+          "name": "管道长度，m"
+        },
+        {
+          "id": "8962",
+          "name": "一个商品中的件数"
+        }
+      ],
+      "schemaHash": "37b9523264308aba70316ce0453e3904e6ab43ffe4c60c0223aff2fe3fb1c266",
+      "templateFetchedAt": "2026-10-13T15:33:49.875Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "17028654:971302037",
+      "descriptionCategoryId": "17028654",
+      "typeId": "971302037",
+      "name": "电源连接套件",
+      "path": "建筑和装修 > 电气安装产品 > 电源连接套件",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "17028654",
+          "name": "电气安装产品",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5675021136467251,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "5269",
+          "name": "防护等级"
+        },
+        {
+          "id": "6387",
+          "name": "模块数量"
+        },
+        {
+          "id": "8962",
+          "name": "一个商品中的件数"
+        }
+      ],
+      "schemaHash": "654bc963d17e08ede659c1048ee48848472d384f292a7dadc5f47b62bb129d35",
+      "templateFetchedAt": "2026-10-13T15:33:51.424Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "88265327:971015745",
+      "descriptionCategoryId": "88265327",
+      "typeId": "971015745",
+      "name": "接地配件",
+      "path": "建筑和装修 > 电气 > 接地配件",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "88265327",
+          "name": "电气",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5672262578282289,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "8962",
+          "name": "一个商品中的件数"
+        },
+        {
+          "id": "9802",
+          "name": "长度，毫米"
+        }
+      ],
+      "schemaHash": "670d7da9a4bcac172a66fd410c6f28bcedd45a76882ff9975bd9f06b51f1b082",
+      "templateFetchedAt": "2026-10-13T15:35:34.402Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "88678206:970861157",
+      "descriptionCategoryId": "88678206",
+      "typeId": "970861157",
+      "name": "钢缆末端接头",
+      "path": "建筑和装修 > 索具 > 钢缆末端接头",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "88678206",
+          "name": "索具",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5404987949767676,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "11092",
+          "name": "承载能力，kg"
+        },
+        {
+          "id": "6609",
+          "name": "直径，毫米"
+        },
+        {
+          "id": "8962",
+          "name": "一个商品中的件数"
+        },
+        {
+          "id": "9802",
+          "name": "长度，毫米"
+        }
+      ],
+      "schemaHash": "c216b2ec5ab7cc0870ea8ae21b6fb8087c834d62c2b351a38065bd60633f41e2",
+      "templateFetchedAt": "2026-10-13T15:35:36.760Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "17028653:92119",
+      "descriptionCategoryId": "17028653",
+      "typeId": "92119",
+      "name": "压接钳",
+      "path": "建筑和装修 > 建筑和装修工具 > 压接钳",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "17028653",
+          "name": "建筑和装修工具",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5368312482433915,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "10096",
+          "name": "商品颜色"
+        },
+        {
+          "id": "9285",
+          "name": "套装中的工具数量，pc。"
+        },
+        {
+          "id": "9802",
+          "name": "长度，毫米"
+        }
+      ],
+      "schemaHash": "3e10b6533a4e16eb22fffc7ce5739f852dd7d826cf28cc5911beacb11ba24730",
+      "templateFetchedAt": "2026-10-13T15:35:35.783Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "88265327:971149511",
+      "descriptionCategoryId": "88265327",
+      "typeId": "971149511",
+      "name": "门用柔性电缆接头",
+      "path": "建筑和装修 > 电气 > 门用柔性电缆接头",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "88265327",
+          "name": "电气",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5357715440266558,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "10096",
+          "name": "商品颜色"
+        },
+        {
+          "id": "6609",
+          "name": "直径，毫米"
+        },
+        {
+          "id": "7362",
+          "name": "管道长度，m"
+        },
+        {
+          "id": "8962",
+          "name": "一个商品中的件数"
+        }
+      ],
+      "schemaHash": "37b9523264308aba70316ce0453e3904e6ab43ffe4c60c0223aff2fe3fb1c266",
+      "templateFetchedAt": "2026-10-13T15:35:36.780Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "17028654:971302800",
+      "descriptionCategoryId": "17028654",
+      "typeId": "971302800",
+      "name": "电表附件",
+      "path": "建筑和装修 > 电气安装产品 > 电表附件",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "17028654",
+          "name": "电气安装产品",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5350387372858592,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "8962",
+          "name": "一个商品中的件数"
+        }
+      ],
+      "schemaHash": "4d26a50e4f3278dd4b665f1c1c90591f5a7a72dfb9a78c8e0d16b838f2e3f0a8",
+      "templateFetchedAt": "2026-10-13T15:35:37.790Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "17028756:94680",
+      "descriptionCategoryId": "17028756",
+      "typeId": "94680",
+      "name": "连接线",
+      "path": "汽车用品 > 乘用车配件 > 连接线",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027495",
+          "name": "汽车用品",
+          "level": 1
+        },
+        {
+          "categoryId": "17028756",
+          "name": "乘用车配件",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5328277686903886,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "9681",
+          "name": "长度，m"
+        }
+      ],
+      "schemaHash": "c03b4a8a3bcff9b8b0e5a8d85ad1c14d6febb094b92407623bfb57e5d6feb6a2",
+      "templateFetchedAt": "2026-10-13T15:33:50.840Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "17028654:94814",
+      "descriptionCategoryId": "17028654",
+      "typeId": "94814",
+      "name": "插座",
+      "path": "建筑和装修 > 电气安装产品 > 插座",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "17028654",
+          "name": "电气安装产品",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5325546872432724,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "10096",
+          "name": "商品颜色"
+        },
+        {
+          "id": "10097",
+          "name": "颜色名称"
+        },
+        {
+          "id": "6862",
+          "name": "帖子数量"
+        }
+      ],
+      "schemaHash": "5016d7e251a823db84a057a6341c9332fbe523090c8c4a6c22e106ea22c7b590",
+      "templateFetchedAt": "2026-10-13T15:35:39.129Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "88265327:970689886",
+      "descriptionCategoryId": "88265327",
+      "typeId": "970689886",
+      "name": "接地套件",
+      "path": "建筑和装修 > 电气 > 接地套件",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "88265327",
+          "name": "电气",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5315728735353851,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "8962",
+          "name": "一个商品中的件数"
+        },
+        {
+          "id": "9802",
+          "name": "长度，毫米"
+        }
+      ],
+      "schemaHash": "670d7da9a4bcac172a66fd410c6f28bcedd45a76882ff9975bd9f06b51f1b082",
+      "templateFetchedAt": "2026-10-13T15:35:39.808Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "17028654:94800",
+      "descriptionCategoryId": "17028654",
+      "typeId": "94800",
+      "name": "断路器",
+      "path": "建筑和装修 > 电气安装产品 > 断路器",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "17028654",
+          "name": "电气安装产品",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5282940821128259,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "11726",
+          "name": "额定分断能力，kA"
+        },
+        {
+          "id": "5776",
+          "name": "额定电流，A"
+        },
+        {
+          "id": "8962",
+          "name": "一个商品中的件数"
+        }
+      ],
+      "schemaHash": "7036327bf3c9ab1ba6fe2ff808b90e8d388331cb4da06f6b3e745af74dd62eeb",
+      "templateFetchedAt": "2026-10-13T15:35:40.814Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "17028756:970863595",
+      "descriptionCategoryId": "17028756",
+      "typeId": "970863595",
+      "name": "火花塞接头",
+      "path": "汽车用品 > 乘用车配件 > 火花塞接头",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027495",
+          "name": "汽车用品",
+          "level": 1
+        },
+        {
+          "categoryId": "17028756",
+          "name": "乘用车配件",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5266663093760465,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [],
+      "schemaHash": "e23682824f0ea20840446ae7855f251700ded13a20696f5ccafe560cd0717ab4",
+      "templateFetchedAt": "2026-10-13T15:35:41.826Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "17028654:99388",
+      "descriptionCategoryId": "17028654",
+      "typeId": "99388",
+      "name": "带插头电源线",
+      "path": "建筑和装修 > 电气安装产品 > 带插头电源线",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "17028654",
+          "name": "电气安装产品",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5235240531278298,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "10096",
+          "name": "商品颜色"
+        },
+        {
+          "id": "8415",
+          "name": "长度，厘米"
+        },
+        {
+          "id": "8962",
+          "name": "一个商品中的件数"
+        }
+      ],
+      "schemaHash": "da82378c61a2975c1f1948f5497951eedd3e1f9bb268e7ec208b0f02891a5de1",
+      "templateFetchedAt": "2026-10-13T15:35:42.806Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "17028654:970791958",
+      "descriptionCategoryId": "17028654",
+      "typeId": "970791958",
+      "name": "保险丝",
+      "path": "建筑和装修 > 电气安装产品 > 保险丝",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "17028654",
+          "name": "电气安装产品",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5233442657527153,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "10945",
+          "name": "操作温度，C"
+        },
+        {
+          "id": "6845",
+          "name": "麦克斯 电流，A"
+        },
+        {
+          "id": "8962",
+          "name": "一个商品中的件数"
+        }
+      ],
+      "schemaHash": "0734d6c44d98bc96377a387026e4b341fd8f3e4f08cfff5809bc0d2dabacd846",
+      "templateFetchedAt": "2026-10-13T15:35:43.828Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "17028756:96853",
+      "descriptionCategoryId": "17028756",
+      "typeId": "96853",
+      "name": "汽车电线电缆",
+      "path": "汽车用品 > 乘用车配件 > 汽车电线电缆",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027495",
+          "name": "汽车用品",
+          "level": 1
+        },
+        {
+          "categoryId": "17028756",
+          "name": "乘用车配件",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5221131456853001,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "9681",
+          "name": "长度，m"
+        }
+      ],
+      "schemaHash": "c03b4a8a3bcff9b8b0e5a8d85ad1c14d6febb094b92407623bfb57e5d6feb6a2",
+      "templateFetchedAt": "2026-10-13T15:35:44.910Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "17028756:970854835",
+      "descriptionCategoryId": "17028756",
+      "typeId": "970854835",
+      "name": "线束",
+      "path": "汽车用品 > 乘用车配件 > 线束",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027495",
+          "name": "汽车用品",
+          "level": 1
+        },
+        {
+          "categoryId": "17028756",
+          "name": "乘用车配件",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5200742921570233,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "9681",
+          "name": "长度，m"
+        }
+      ],
+      "schemaHash": "c03b4a8a3bcff9b8b0e5a8d85ad1c14d6febb094b92407623bfb57e5d6feb6a2",
+      "templateFetchedAt": "2026-10-13T15:35:45.891Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "17028634:95673",
+      "descriptionCategoryId": "17028634",
+      "typeId": "95673",
+      "name": "连接器",
+      "path": "电子产品 > 电缆和适配器 > 连接器",
+      "breadcrumbs": [
+        {
+          "categoryId": "15621042",
+          "name": "电子产品",
+          "level": 1
+        },
+        {
+          "categoryId": "17028634",
+          "name": "电缆和适配器",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5181478027355978,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "10096",
+          "name": "商品颜色"
+        },
+        {
+          "id": "4526",
+          "name": "接口"
+        },
+        {
+          "id": "8962",
+          "name": "一个商品中的件数"
+        }
+      ],
+      "schemaHash": "f09910000d2ee5040a5c2e99a688b2d56575d7fd71026dbd6babc73460545628",
+      "templateFetchedAt": "2026-10-13T15:33:47.008Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "17028654:971062768",
+      "descriptionCategoryId": "17028654",
+      "typeId": "971062768",
+      "name": "电信机柜配件",
+      "path": "建筑和装修 > 电气安装产品 > 电信机柜配件",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "17028654",
+          "name": "电气安装产品",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5167065201235105,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "10096",
+          "name": "商品颜色"
+        },
+        {
+          "id": "9801",
+          "name": "深度，mm"
+        }
+      ],
+      "schemaHash": "ccb48598c5f1d06d8f46aa9d7200592b0bfb47b4fa1a3a8379d77cc37ce1b473",
+      "templateFetchedAt": "2026-10-13T15:35:46.855Z",
+      "templateStale": false
+    },
+    {
+      "categoryKey": "17028654:94821",
+      "descriptionCategoryId": "17028654",
+      "typeId": "94821",
+      "name": "插头转换器",
+      "path": "建筑和装修 > 电气安装产品 > 插头转换器",
+      "breadcrumbs": [
+        {
+          "categoryId": "17027482",
+          "name": "建筑和装修",
+          "level": 1
+        },
+        {
+          "categoryId": "17028654",
+          "name": "电气安装产品",
+          "level": 2
+        }
+      ],
+      "relevanceScore": 0.5156991729913663,
+      "matchedBy": [
+        "semantic"
+      ],
+      "capabilityStatus": "known",
+      "aspectMatch": null,
+      "supportedAspects": [],
+      "missingAspects": [],
+      "unresolvedAspects": [],
+      "aspectBindings": [],
+      "eligibleVariantAttributes": [
+        {
+          "id": "10096",
+          "name": "商品颜色"
+        },
+        {
+          "id": "10097",
+          "name": "颜色名称"
+        },
+        {
+          "id": "6862",
+          "name": "帖子数量"
+        }
+      ],
+      "schemaHash": "5016d7e251a823db84a057a6341c9332fbe523090c8c4a6c22e106ea22c7b590",
+      "templateFetchedAt": "2026-10-13T15:33:57.733Z",
+      "templateStale": false
+    }
+  ]
+}

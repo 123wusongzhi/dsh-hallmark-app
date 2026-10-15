@@ -1,0 +1,476 @@
+{
+  "id": "1cabf905-f47e-43dd-ad33-530dca82c35d",
+  "title": "垃圾袋家用手提加厚加大黑色背心塑料袋厨房宿舍办公室卫生间通用",
+  "source": "taobao_tmall",
+  "sourceLabel": "淘宝 / 天猫",
+  "currency": "CNY",
+  "mainImage": "https://img.alicdn.com/imgextra/i3/2216114472872/O1CN01486Jyl1X5Qb4GHuV7_!!2216114472872.jpg_q50.jpg",
+  "skuCount": 26,
+  "minPrice": 2.75,
+  "maxPrice": 52.7,
+  "goodsMinPrice": 2.75,
+  "goodsMaxPrice": 52.7,
+  "delivery": {
+    "freightVerified": false
+  },
+  "originalTitle": "垃圾袋家用手提加厚加大黑色背心塑料袋厨房宿舍办公室卫生间通用",
+  "attributes": {
+    "主材质": "PE",
+    "厚度": "2丝",
+    "密封方式": "热封",
+    "尺寸": "32x52cm",
+    "承重能力": "10kg",
+    "抽绳类型": "无抽绳",
+    "款式": "背心式",
+    "适用垃圾类型": "通用"
+  },
+  "skus": [
+    {
+      "properties": {
+        "颜色分类": "中号薄款32*52【50个】"
+      },
+      "spec": "颜色分类:中号薄款32*52【50个】",
+      "code": "6116889016116",
+      "sourceSkuId": "6116889016116",
+      "price": 2.75,
+      "goodsPrice": 2.75,
+      "originalPrice": 3.05,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01CYxejJ1X5Qb4uOTAI_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号薄款32*52【100个】"
+      },
+      "spec": "颜色分类:中号薄款32*52【100个】",
+      "code": "6281700946415",
+      "sourceSkuId": "6281700946415",
+      "price": 4.76,
+      "goodsPrice": 4.76,
+      "originalPrice": 4.96,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01CYxejJ1X5Qb4uOTAI_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号常规款32*52【50只】"
+      },
+      "spec": "颜色分类:中号常规款32*52【50只】",
+      "code": "6052287021906",
+      "sourceSkuId": "6052287021906",
+      "price": 3.2,
+      "goodsPrice": 3.2,
+      "originalPrice": 3.2,
+      "stock": 0,
+      "stockStatus": "无货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01a7S6qo1X5QbwPtdJ4_!!2216114472872.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号常规款32*52【100只】"
+      },
+      "spec": "颜色分类:中号常规款32*52【100只】",
+      "code": "6052287021907",
+      "sourceSkuId": "6052287021907",
+      "price": 6.56,
+      "goodsPrice": 6.56,
+      "originalPrice": 6.76,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01a7S6qo1X5QbwPtdJ4_!!2216114472872.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号常规款32*52【200只】"
+      },
+      "spec": "颜色分类:中号常规款32*52【200只】",
+      "code": "6052287021908",
+      "sourceSkuId": "6052287021908",
+      "price": 10.76,
+      "goodsPrice": 10.76,
+      "originalPrice": 10.96,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01a7S6qo1X5QbwPtdJ4_!!2216114472872.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号常规款32*52【300只】"
+      },
+      "spec": "颜色分类:中号常规款32*52【300只】",
+      "code": "6052287021909",
+      "sourceSkuId": "6052287021909",
+      "price": 14.52,
+      "goodsPrice": 14.52,
+      "originalPrice": 14.72,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01a7S6qo1X5QbwPtdJ4_!!2216114472872.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号常规款32*52【400只】"
+      },
+      "spec": "颜色分类:中号常规款32*52【400只】",
+      "code": "6052287021910",
+      "sourceSkuId": "6052287021910",
+      "price": 18.7,
+      "goodsPrice": 18.7,
+      "originalPrice": 29.52,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01a7S6qo1X5QbwPtdJ4_!!2216114472872.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号常规款32*52【600只】"
+      },
+      "spec": "颜色分类:中号常规款32*52【600只】",
+      "code": "6052287021911",
+      "sourceSkuId": "6052287021911",
+      "price": 28.85,
+      "goodsPrice": 28.85,
+      "originalPrice": 29.05,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01a7S6qo1X5QbwPtdJ4_!!2216114472872.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号加厚款32*52【50只】家庭首选-百分之99家庭回购"
+      },
+      "spec": "颜色分类:中号加厚款32*52【50只】家庭首选-百分之99家庭回购",
+      "code": "6052287021896",
+      "sourceSkuId": "6052287021896",
+      "price": 5.1,
+      "goodsPrice": 5.1,
+      "originalPrice": 5.3,
+      "stock": 140,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2216114472872/O1CN018E7yGS1X5Qb4UtNqI_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号加厚款32*52【100只】家庭首选-百分之99家庭回购"
+      },
+      "spec": "颜色分类:中号加厚款32*52【100只】家庭首选-百分之99家庭回购",
+      "code": "6052287021897",
+      "sourceSkuId": "6052287021897",
+      "price": 9.11,
+      "goodsPrice": 9.11,
+      "originalPrice": 9.31,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2216114472872/O1CN018E7yGS1X5Qb4UtNqI_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号加厚款32*52【200只】家庭首选-百分之99家庭回购"
+      },
+      "spec": "颜色分类:中号加厚款32*52【200只】家庭首选-百分之99家庭回购",
+      "code": "6052287021898",
+      "sourceSkuId": "6052287021898",
+      "price": 15.7,
+      "goodsPrice": 15.7,
+      "originalPrice": 15.9,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2216114472872/O1CN018E7yGS1X5Qb4UtNqI_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号加厚款32*52【300只】家庭首选-百分之99家庭回购"
+      },
+      "spec": "颜色分类:中号加厚款32*52【300只】家庭首选-百分之99家庭回购",
+      "code": "6052287021899",
+      "sourceSkuId": "6052287021899",
+      "price": 20.7,
+      "goodsPrice": 20.7,
+      "originalPrice": 20.9,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2216114472872/O1CN018E7yGS1X5Qb4UtNqI_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号加厚款32*52【400只】家庭首选-百分之99家庭回购"
+      },
+      "spec": "颜色分类:中号加厚款32*52【400只】家庭首选-百分之99家庭回购",
+      "code": "6052287021900",
+      "sourceSkuId": "6052287021900",
+      "price": 25.9,
+      "goodsPrice": 25.9,
+      "originalPrice": 53.6,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2216114472872/O1CN018E7yGS1X5Qb4UtNqI_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号加厚款32*52【600只】家庭首选-百分之99家庭回购"
+      },
+      "spec": "颜色分类:中号加厚款32*52【600只】家庭首选-百分之99家庭回购",
+      "code": "6052287021901",
+      "sourceSkuId": "6052287021901",
+      "price": 38.7,
+      "goodsPrice": 38.7,
+      "originalPrice": 79.8,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2216114472872/O1CN018E7yGS1X5Qb4UtNqI_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "特厚旗舰款32*52【50只】品质保障-厨房专用"
+      },
+      "spec": "颜色分类:特厚旗舰款32*52【50只】品质保障-厨房专用",
+      "code": "6052287021903",
+      "sourceSkuId": "6052287021903",
+      "price": 6.1,
+      "goodsPrice": 6.1,
+      "originalPrice": 6.3,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01WAf4rC1X5Qb49H9Kq_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "特厚旗舰款32*52【100只】品质保障-厨房专用"
+      },
+      "spec": "颜色分类:特厚旗舰款32*52【100只】品质保障-厨房专用",
+      "code": "6144597278072",
+      "sourceSkuId": "6144597278072",
+      "price": 9.71,
+      "goodsPrice": 9.71,
+      "originalPrice": 9.91,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01WAf4rC1X5Qb49H9Kq_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "特厚旗舰款32*52【200只】品质保障-厨房专用"
+      },
+      "spec": "颜色分类:特厚旗舰款32*52【200只】品质保障-厨房专用",
+      "code": "6144597278073",
+      "sourceSkuId": "6144597278073",
+      "price": 18.5,
+      "goodsPrice": 18.5,
+      "originalPrice": 18.7,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01WAf4rC1X5Qb49H9Kq_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "特厚旗舰款32*52【300只】品质保障-厨房专用"
+      },
+      "spec": "颜色分类:特厚旗舰款32*52【300只】品质保障-厨房专用",
+      "code": "6144597278074",
+      "sourceSkuId": "6144597278074",
+      "price": 26.18,
+      "goodsPrice": 26.18,
+      "originalPrice": 26.38,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01WAf4rC1X5Qb49H9Kq_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "特厚旗舰款32*52【400只】品质保障-厨房专用"
+      },
+      "spec": "颜色分类:特厚旗舰款32*52【400只】品质保障-厨房专用",
+      "code": "6144597278075",
+      "sourceSkuId": "6144597278075",
+      "price": 29.5,
+      "goodsPrice": 29.5,
+      "originalPrice": 73.8,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01WAf4rC1X5Qb49H9Kq_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "特厚旗舰款32*52【600只】品质保障-厨房专用"
+      },
+      "spec": "颜色分类:特厚旗舰款32*52【600只】品质保障-厨房专用",
+      "code": "6144597278076",
+      "sourceSkuId": "6144597278076",
+      "price": 52.5,
+      "goodsPrice": 52.5,
+      "originalPrice": 105.2,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01WAf4rC1X5Qb49H9Kq_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "大号加厚款40*60【50只】适合油漆桶，大号桶"
+      },
+      "spec": "颜色分类:大号加厚款40*60【50只】适合油漆桶，大号桶",
+      "code": "6144597278077",
+      "sourceSkuId": "6144597278077",
+      "price": 6.1,
+      "goodsPrice": 6.1,
+      "originalPrice": 8.72,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01eAhIey1X5Qb3JKq2m_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "大号加厚款40*60【100只】适合油漆桶，大号桶"
+      },
+      "spec": "颜色分类:大号加厚款40*60【100只】适合油漆桶，大号桶",
+      "code": "6144597278078",
+      "sourceSkuId": "6144597278078",
+      "price": 9.28,
+      "goodsPrice": 9.28,
+      "originalPrice": 14.11,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01eAhIey1X5Qb3JKq2m_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "大号加厚款40*60【200只】适合油漆桶，大号桶"
+      },
+      "spec": "颜色分类:大号加厚款40*60【200只】适合油漆桶，大号桶",
+      "code": "6144597278079",
+      "sourceSkuId": "6144597278079",
+      "price": 18.76,
+      "goodsPrice": 18.76,
+      "originalPrice": 24.99,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01eAhIey1X5Qb3JKq2m_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "大号加厚款40*60【300只】适合油漆桶，大号桶"
+      },
+      "spec": "颜色分类:大号加厚款40*60【300只】适合油漆桶，大号桶",
+      "code": "6144597278080",
+      "sourceSkuId": "6144597278080",
+      "price": 26.5,
+      "goodsPrice": 26.5,
+      "originalPrice": 73.8,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01eAhIey1X5Qb3JKq2m_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "大号加厚款40*60【400只】适合油漆桶，大号桶"
+      },
+      "spec": "颜色分类:大号加厚款40*60【400只】适合油漆桶，大号桶",
+      "code": "6144597278081",
+      "sourceSkuId": "6144597278081",
+      "price": 36.88,
+      "goodsPrice": 36.88,
+      "originalPrice": 92.4,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01eAhIey1X5Qb3JKq2m_!!2216114472872.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "大号加厚款40*60【600只】适合油漆桶，大号桶"
+      },
+      "spec": "颜色分类:大号加厚款40*60【600只】适合油漆桶，大号桶",
+      "code": "6052287021902",
+      "sourceSkuId": "6052287021902",
+      "price": 52.7,
+      "goodsPrice": 52.7,
+      "originalPrice": 137.72,
+      "stock": 200,
+      "stockStatus": "有货(限购1000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2216114472872/O1CN01eAhIey1X5Qb3JKq2m_!!2216114472872.png"
+    }
+  ],
+  "images": [
+    "https://img.alicdn.com/imgextra/i3/2216114472872/O1CN01486Jyl1X5Qb4GHuV7_!!2216114472872.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i4/2216114472872/O1CN01NzScJv1X5Qb3UwFbD_!!2216114472872.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i1/2216114472872/O1CN014xRc4D1X5Qb4kL2rE_!!2216114472872.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i2/2216114472872/O1CN01zO1nFz1X5Qb42DR3U_!!2216114472872.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i1/2216114472872/O1CN01qw4xMv1X5Qb4OTXSm_!!2216114472872.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i3/2216114472872/O1CN01486Jyl1X5Qb4GHuV7_!!2216114472872.jpg"
+  ],
+  "descriptionImages": [
+    "https://img.alicdn.com/imgextra/i3/2216114472872/O1CN01i791FM1X5Qb54H0i0_!!2216114472872.jpg",
+    "https://img.alicdn.com/imgextra/i1/2216114472872/O1CN016uy3bb1X5Qb3JC2rz_!!2216114472872.jpg",
+    "https://img.alicdn.com/imgextra/i3/2216114472872/O1CN01WOmGux1X5Qb4UjJe1_!!2216114472872.jpg",
+    "https://img.alicdn.com/imgextra/i1/2216114472872/O1CN01U8hJA51X5Qb4UlC7h_!!2216114472872.jpg",
+    "https://img.alicdn.com/imgextra/i4/2216114472872/O1CN01xpKkLI1X5Qb4yCPNn_!!2216114472872.jpg",
+    "https://img.alicdn.com/imgextra/i2/2216114472872/O1CN01Ac8sve1X5QayX22cb_!!2216114472872.jpg",
+    "https://img.alicdn.com/imgextra/i4/2216114472872/O1CN012wSMIX1X5Qb3GzM9s_!!2216114472872.jpg",
+    "https://img.alicdn.com/imgextra/i1/2216114472872/O1CN01xnDbRw1X5QayX0Qq9_!!2216114472872.jpg",
+    "https://img.alicdn.com/imgextra/i3/2216114472872/O1CN01q5vQvf1X5Qb48Nz0H_!!2216114472872.jpg",
+    "https://img.alicdn.com/imgextra/i2/2216114472872/O1CN01nWhpVk1X5Qb3qLmPh_!!2216114472872.jpg",
+    "https://img.alicdn.com/imgextra/i2/2216114472872/O1CN01pSlMAS1X5Qb48OvEy_!!2216114472872.jpg",
+    "https://img.alicdn.com/imgextra/i3/2216114472872/O1CN01v3PMy41X5Qb2qvxqK_!!2216114472872.jpg",
+    "https://img.alicdn.com/imgextra/i1/2216114472872/O1CN01wpxAhI1X5Qb3JFw5v_!!2216114472872.jpg",
+    "https://img.alicdn.com/imgextra/i1/2216114472872/O1CN01FRhboU1X5Qb3JFfTa_!!2216114472872.jpg",
+    "https://img.alicdn.com/imgextra/i3/O1CN01XU1Y2d1Sk7fIMOkeU_!!6000000002284-2-tps-1125-1446.png"
+  ],
+  "sourceUrl": "https://item.taobao.com/item.htm?ali_refid=a3_mm_12852562_1778064_116286300242%3A2228812207%3AH%3A%E6%BF%89%E6%88%9E%E6%9E%A1%E7%90%9A%EF%BF%BD%3A6cf5b2695c427c0f1a6c0592a9cdfd3f&ali_trackid=318_6cf5b2695c427c0f1a6c0592a9cdfd3f&id=998512124061&mi_id=00009CpgvjHdd_naQR0CqBYa2KqoxKEuHblHRTqgAvyHHcE&mm_sceneid=0_0_7318634677_0&priceTId=2147846417880661854547435e0e89&skuId=6144597278075&spm=a21n57.1.hoverItem.24&utparam=%7B%22aplus_abtest%22%3A%22753512c6e6225015f725ab62be2c9a9f%22%7D&xxc=taobaoSearch",
+  "ozonPreprocess": {
+    "status": "completed",
+    "sourceImageUrl": "https://img.alicdn.com/imgextra/i3/2216114472872/O1CN01486Jyl1X5Qb4GHuV7_!!2216114472872.jpg_q50.jpg",
+    "candidates": [
+      {
+        "yandexRank": 1,
+        "productUrl": "https://www.ozon.ru/product/meshki-dlya-musora-100-sht-1018072727/",
+        "query": {
+          "status": "succeeded",
+          "product": {
+            "sku": "1018072727",
+            "name": ",100,черный",
+            "brand": null,
+            "priceRub": 23467,
+            "weightKg": 0.022,
+            "weightG": 22,
+            "dimensionsCm": {
+              "length": 20,
+              "width": 20,
+              "height": 20
+            },
+            "volumeCm3": 8000,
+            "volumeL": 8,
+            "descriptiveCategoryId": 17028714,
+            "descriptiveTypeId": 93695,
+            "thumbnailUrl": null,
+            "fetchedAt": "2026-08-30T05:05:41.849Z",
+            "source": "bridge",
+            "stale": false
+          }
+        },
+        "image": {
+          "status": "downloaded",
+          "originalUrl": "https://ir.ozone.ru/s3/multimedia-e/6671476994.jpg",
+          "assetId": "image-v1-0b619801e55f491a4468721dee79e9a05e023e243261411248ac5fc2523a3f07"
+        }
+      }
+    ],
+    "completedAt": "2026-08-30T05:05:43.487Z"
+  },
+  "ozonCategorySuggestion": {
+    "status": "suggested",
+    "categoryKey": "17028714:93695",
+    "descriptionCategoryId": "17028714",
+    "typeId": "93695",
+    "votes": 1,
+    "candidateCount": 1,
+    "categoryCount": 1,
+    "evidence": [
+      {
+        "yandexRank": 1,
+        "categoryKey": "17028714:93695",
+        "sku": "1018072727",
+        "productUrl": "https://www.ozon.ru/product/meshki-dlya-musora-100-sht-1018072727/"
+      }
+    ]
+  }
+}

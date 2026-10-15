@@ -13,7 +13,7 @@ import type {JsonValue} from '../../packages/app-contracts/src/index.ts';
 import {workbenchRoutes} from '../../packages/service/src/workbench-routes.ts';
 
 test('initialize migrates mixed-case shop sources into shared definitions without losing history, layout or same-ID renamed sources; repeated initialization is idempotent',async()=>{
-  const stores=[uiStore({id:'bill-shop'}),uiStore({id:'helen-shop'},1)];
+  const stores=[uiStore({id:'alpha-shop',shopName:'alpha'}),uiStore({id:'beta-shop',shopName:'beta'},1)];
   const requests:string[]=[],invocations:string[]=[];
   const upstream=createServer((request,response)=>{
     requests.push(request.url??'');response.setHeader('Content-Type','application/json');
@@ -43,7 +43,7 @@ test('initialize migrates mixed-case shop sources into shared definitions withou
     rowsPath:'response.result',fields:[{role:'activity.id',path:'id',confirmed:true},{role:'activity.name',path:'title',confirmed:true}],
     operations:{search:{scope:'loaded'},sort:{scope:'loaded'}},
   });
-  const definitions=[legacyProduct('bill-shop','Bill'),legacyProduct('helen-shop','Helen'),activity('legacy:bill:activities','Bill · 活动数据','Bill · 活动接口','bill-shop'),activity('legacy:helen:activities','Helen · 活动数据','Helen · 活动接口','helen-shop'),activity('agent:shared:activities','Bill · 自定义活动','Helen · 已封装活动')];
+  const definitions=[legacyProduct('alpha-shop','Alpha'),legacyProduct('beta-shop','Beta'),activity('legacy:alpha:activities','Alpha · 活动数据','Alpha · 活动接口','alpha-shop'),activity('legacy:beta:activities','Beta · 活动数据','Beta · 活动接口','beta-shop'),activity('agent:shared:activities','Alpha · 自定义活动','Beta · 已封装活动')];
   try{
     const previous=presentation.dataSources.installCatalog(definitions);
     const instances:WorkbenchInstance[]=previous.map((source,index)=>{
@@ -53,14 +53,14 @@ test('initialize migrates mixed-case shop sources into shared definitions withou
       if(product)design.widgets[0].options.columns=[{field:'product.name',label:'我的商品名称'},{field:'price.current',label:'卖家售价'}];
       else design.widgets[0].columns=[{field:'activity.name',label:'自定义活动名称'},{field:'activity.id',label:'活动编号'}];
       const ref:{id:string;revision:number;params:Record<string,JsonValue>}={id:source.id,revision:source.revision,params:product?{cursor:'old-shop-page',limit:7,status:'on_sale'}:{}};
-      return {instanceId:`instance-${index}`,title:`${index%2?'Helen':'Bill'} · 面板 ${index}`,materialId:product?'product-list':'activity-list',materialVersion:1,design:design as unknown as JsonValue,
+      return {instanceId:`instance-${index}`,title:`${index%2?'Beta':'Alpha'} · 面板 ${index}`,materialId:product?'product-list':'activity-list',materialVersion:1,design:design as unknown as JsonValue,
         ...(index===0?{dataSource:ref}:{dataSources:{[design.bindings[0].id]:ref}}),position:{order:index,span:index%2?6:12}};
     });
-    const before=presentation.saveWorkbench('hallmark',{expectedRevision:0,instances,context:{storeId:'bill-shop'}});
+    const before=presentation.saveWorkbench('hallmark',{expectedRevision:0,instances,context:{storeId:'alpha-shop'}});
     const initialized=await routes.write({appId:'hallmark',operation:'initialize',sessionId:'migration-test',params:{}}) as {dataSources:DataSourceDefinition[];stores:{id:string;name:string}[];issues:{id:string;message:string}[];context:{storeId:string}};
     assert.deepEqual(initialized.issues,[]);
-    assert.deepEqual(initialized.context,{storeId:'bill-shop'});
-    assert.deepEqual(initialized.stores.map(item=>item.name),['bill','helen']);
+    assert.deepEqual(initialized.context,{storeId:'alpha-shop'});
+    assert.deepEqual(initialized.stores.map(item=>item.name),stores.map(item=>item.shopName));
     const current=presentation.listDataSources('hallmark'),after=presentation.getWorkbench('hallmark');
     const ozonSources=current.filter(source=>source.capabilityId.startsWith('hallmark.ozon.')&&source.capabilityId!=='hallmark.ozon.compose');
     assert.deepEqual(ozonSources.map(source=>source.capabilityId).sort(),OZON_KINDS.map(kind=>`hallmark.ozon.${kind}`).sort(),'every current Ozon source, including content ratings, exists exactly once');
@@ -69,7 +69,7 @@ test('initialize migrates mixed-case shop sources into shared definitions withou
     assert.equal(current.filter(source=>source.capabilityId==='hallmark.products.list').length,1);
     assert.equal(current.filter(source=>source.capabilityId==='hallmark.api.actions.list').length,2,'two legacy shop activity definitions collapse to one, while the distinct shared custom definition remains');
     for(const source of current){
-      assert.doesNotMatch(`${source.title} ${source.description??''}`,/bill|helen/i,'shop labels are removed from current source names and descriptions regardless of case');
+      assert.doesNotMatch(`${source.title} ${source.description??''}`,/alpha|beta/i,'shop labels are removed from current source names and descriptions regardless of case');
       if(source.storeScoped){assert.equal(Object.hasOwn(source.input,'storeId'),false);assert.equal(source.parameters.find(parameter=>parameter.name==='storeId')?.default,undefined);}
     }
     assert.equal(after.revision,before.revision+1);
@@ -77,16 +77,16 @@ test('initialize migrates mixed-case shop sources into shared definitions withou
     for(const [index,instance] of after.instances.entries()){
       assert.deepEqual(instance.design,before.instances[index].design,'migration preserves customized labels, columns, density and module layout');
       assert.deepEqual(instance.position,before.instances[index].position,'migration preserves board positions and spans');
-      assert.doesNotMatch(instance.title,/bill|helen/i);
+      assert.doesNotMatch(instance.title,/alpha|beta/i);
       assert.equal(instance.title,`面板 ${index}`);
       const ref=Object.values(instance.dataSources!)[0];
       assert.equal(ref.params.cursor,undefined,'old-store pagination is discarded');
       assert.equal(ref.params.storeId,undefined);
-      assert.equal(instance.bindings?.[0].input&&typeof instance.bindings[0].input==='object'&&!Array.isArray(instance.bindings[0].input)?instance.bindings[0].input.storeId:undefined,'bill-shop');
+      assert.equal(instance.bindings?.[0].input&&typeof instance.bindings[0].input==='object'&&!Array.isArray(instance.bindings[0].input)?instance.bindings[0].input.storeId:undefined,'alpha-shop');
       if(index<2){assert.equal(ref.id,'hallmark:platform:products');assert.equal(ref.params.limit,7);assert.equal(ref.params.status,'on_sale');}
     }
     const firstActivities=Object.values(after.instances[2].dataSources!)[0],secondActivities=Object.values(after.instances[3].dataSources!)[0];
-    assert.equal(firstActivities.id,secondActivities.id,'the old Bill/Helen sources resolve to the same business definition');
+    assert.equal(firstActivities.id,secondActivities.id,'the old Alpha/Beta sources resolve to the same business definition');
     const renamed=Object.values(after.instances[4].dataSources!)[0];
     assert.equal(renamed.id,'agent:shared:activities','a shared source is renamed in place');
     assert.equal(renamed.revision,2);
@@ -97,7 +97,7 @@ test('initialize migrates mixed-case shop sources into shared definitions withou
       const historical=presentation.dataSources.get(legacy.id,legacy.revision);
       assert.deepEqual(historical,legacy,'historical versions retain original titles, fixed shop input and fields');
     }
-    assert.equal(presentation.dataSources.get('agent:shared:activities',1).title,'Bill · 自定义活动');
+    assert.equal(presentation.dataSources.get('agent:shared:activities',1).title,'Alpha · 自定义活动');
     const sourceSnapshot=structuredClone(current),boardSnapshot=structuredClone(after);
     const repeated=await routes.write({appId:'hallmark',operation:'initialize',sessionId:'migration-test',params:{}}) as {issues:unknown[]};
     assert.deepEqual(repeated.issues,[]);
