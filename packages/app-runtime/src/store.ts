@@ -140,11 +140,11 @@ export class RuntimeStore {
   }
   /** Indexed by namespace+connection; irregular rows (see IRREGULAR_PROVIDER_RECORD) are always candidates, then the caller applies JS last-key-wins filtering. */
   providerRecordScopeCandidates<T>(appId:string,connectionId:string,namespace:string):T[] {
-    this.table('provider_records');return this.db.prepare(PROVIDER_RECORD_SCOPE_SQL).all(appId,connectionId,namespace).map(row=>JSON.parse(String(row.value_json)) as T);
+    this.table('provider_records');return this.db.prepare(PROVIDER_RECORD_SCOPE_SQL).all({'?1':appId,'?2':connectionId,'?3':namespace}).map(row=>JSON.parse(String(row.value_json)) as T);
   }
   /** View snapshots (namespace 'view_revisions') of one session view, optionally pinned to a build; uses provider_records_view_revisions, never scans other records. Same order as list(). */
   viewRevisionsForBuild<T>(sessionId:string,viewId:string,buildId?:string):T[] {
-    const rows=this.db.prepare(`SELECT json_extract(value_json,'$.value') AS value_json FROM ${this.table('provider_records')} WHERE json_extract(value_json,'$.namespace')='view_revisions' AND json_extract(value_json,'$.value.ownerSessionId')=?1 AND json_extract(value_json,'$.value.viewId')=?2${buildId===undefined?'':" AND json_extract(value_json,'$.value.source.buildId')=?3"} ORDER BY created_at,id`).all(...(buildId===undefined?[sessionId,viewId]:[sessionId,viewId,buildId]));
+    const rows=this.db.prepare(`SELECT json_extract(value_json,'$.value') AS value_json FROM ${this.table('provider_records')} WHERE json_extract(value_json,'$.namespace')='view_revisions' AND json_extract(value_json,'$.value.ownerSessionId')=?1 AND json_extract(value_json,'$.value.viewId')=?2${buildId===undefined?'':" AND json_extract(value_json,'$.value.source.buildId')=?3"} ORDER BY created_at,id`).all({'?1':sessionId,'?2':viewId,...(buildId===undefined?{}:{'?3':buildId})});
     return rows.map(row=>JSON.parse(String(row.value_json)) as T);
   }
   /** Operations currently in any of `states`, via operations_state; same order as list(). */
