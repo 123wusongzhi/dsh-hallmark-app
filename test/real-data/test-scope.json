@@ -155,7 +155,10 @@
     "test/store/store.test.ts",
     "test/acceptance/component-display/run-recovery.mjs",
     "test/apps-runtime/association-overview.test.ts",
-    "test/plugin-apps/association-overview-ui.test.ts"
+    "test/plugin-apps/association-overview-ui.test.ts",
+    "test/app-hallmark/listing-detail-recovery.test.ts",
+    "test/apps-host/business-value-projection.test.ts",
+    "test/source-preview/selection-refresh-chain.test.ts"
   ],
   "infrastructureFiles": [
     "test/plugin-client/application-surfaces.test.ts",
@@ -308,7 +311,9 @@
     "test/performance/chunk-progress-deadline.test.ts",
     "test/apps-host/connection-status.test.ts",
     "test/apps-runtime/runtime-restart-http.test.ts",
-    "test/plugin-apps/connection-status-ui.test.ts"
+    "test/plugin-apps/connection-status-ui.test.ts",
+    "test/apps-host/inspection-race.test.ts",
+    "test/apps-host/catalog-refresh-http.test.ts"
   ],
   "infrastructureReasons": {
     "test/plugin-client/application-surfaces.test.ts": "Production React catalog initial state, non-hidden rail and native sidebar navigation with local control fixtures; no commodity payload, remote service or browser.",
@@ -461,7 +466,9 @@
     "test/performance/chunk-progress-deadline.test.ts": "Protocol transfer identity, bounded progress, cancellation and deadline tests with explicit control byte streams; no commodity or shop facts.",
     "test/apps-host/connection-status.test.ts": "Connection probe state transitions and restart eligibility; no business facts.",
     "test/apps-runtime/runtime-restart-http.test.ts": "Restart authentication, busy refusal and response ordering; no business facts.",
-    "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts."
+    "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts.",
+    "test/apps-host/inspection-race.test.ts": "Explicit non-business asynchronous provider controls with real Runtime, loopback HTTP transport, Host tool execution and model-result JSON rendering; deterministic promise gates exercise late inspection delivery without browser UI or merchant operations.",
+    "test/apps-host/catalog-refresh-http.test.ts": "Protocol-control fixture for a Host spanning two real local HTTP Runtime generations; synthetic versioned capability metadata and inputs only, with no recorded commodity or external source data."
   },
   "fileModes": {
     "test/app-hallmark/listing-category-retry.test.ts": "Integrity-checked recorded stores and category constraints; transient transport control; ordinary reads retry then reuse success, consuming actual paged hints.",
@@ -483,6 +490,7 @@
     "test/app-hallmark/listing-agent-flow.test.ts": "Integrity-checked real products, stores and category template; lifecycle IDs, pagination and composition changes are explicit controls",
     "test/acceptance/component-display/read-scale.test.ts": "Immutable recorded source snapshots replayed offline; explicitly derived 49 MB scale expansion and controlled protocol failures; no live business writes.",
     "test/acceptance/component-display/run-browser.mjs": "Immutable recorded source snapshots replayed offline; explicitly derived 49 MB scale expansion and controlled protocol failures; no live business writes.",
-    "test/acceptance/component-display/run-recovery.mjs": "Immutable recorded source snapshots in an isolated production Runtime child and Chromium; owned process crash, default recovery timing and genuine SDK ready; no live business writes."
+    "test/acceptance/component-display/run-recovery.mjs": "Immutable recorded source snapshots in an isolated production Runtime child and Chromium; owned process crash, default recovery timing and genuine SDK ready; no live business writes.",
+    "test/app-hallmark/listing-detail-recovery.test.ts": "Unchanged recorded source product, SKU and store facts through the real Provider-owned CollectionService and listing preparation; one explicit transient transport failure tests refresh recovery without modifying source facts or default sale IDs."
   }
 }
