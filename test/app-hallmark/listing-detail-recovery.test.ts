@@ -6,9 +6,10 @@ import {HallmarkProvider,HallmarkStorePort} from '../../packages/app-hallmark/sr
 import type {CoreClient} from '../../packages/core/src/types.ts';
 import type {JsonValue} from '../../packages/app-contracts/src/index.ts';
 
-test('a failed detail refresh does not prevent later preparation through the same provider',async t=>{
+test('a failed detail refresh does not prevent later preparation through the same provider',{timeout:30000},async t=>{
   const source=realSourceProducts().find(product=>product.skus.some((sku:any)=>typeof sku.sourceSkuId==='string'&&sku.sourceSkuId))!;
-  assert.ok(source);const sku=source.skus.find((sku:any)=>typeof sku.sourceSkuId==='string'&&sku.sourceSkuId),stores=realStores(),storeId=String(stores[0].id);
+  assert.ok(source,'A recorded product with a stable source SKU is required');const sku=source.skus.find((sku:any)=>typeof sku.sourceSkuId==='string'&&sku.sourceSkuId),stores=realStores(),storeId=String(stores[0].id);
+  assert.ok(sku,'The selected recorded SKU must exist');assert.ok(stores.length,'A recorded store is required');
   const db=new RuntimeStore(':memory:'),port=new HallmarkStorePort(db,'detail-recovery-control'),runtime=new AppsRuntime(db);let detailReads=0,networkCalls=0,serial=0;
   t.mock.method(globalThis,'fetch',async()=>{networkCalls++;throw Error('External requests are forbidden in this local recovery test');});
   const client={getStores:async()=>({status:'ok',raw:structuredClone(stores)}),getCollectedItemDetail:async(id:string)=>{assert.equal(id,source.id);detailReads++;
@@ -18,19 +19,22 @@ test('a failed detail refresh does not prevent later preparation through the sam
   // Deliberately let the real Provider construct and reuse its own CollectionService.
   runtime.register(new HallmarkProvider({store:port,client,broker:{} as any}));
   runtime.addConnection({appId:'hallmark',connectionId:'local',displayName:'Detail recovery control',config:{},configRevision:1,enabled:true});runtime.bind({sessionId:'local',appId:'hallmark',connectionId:'local',enabled:true,boundAt:new Date().toISOString()});
-  const invoke=async(capabilityId:string,input:JsonValue)=>runtime.invoke({protocolVersion:'1.0',appId:'hallmark',connectionId:'local',capabilityId,capabilityVersion:'1.0.0',input,invocationId:`detail-${++serial}`,traceId:'detail-recovery-control',source:{kind:'agent',sessionId:'local',nativeCallId:`detail-${serial}`},deadlineAt:new Date(Date.now()+5000).toISOString()});
+  const invoke=async(capabilityId:string,input:JsonValue)=>runtime.invoke({protocolVersion:'1.0',appId:'hallmark',connectionId:'local',capabilityId,capabilityVersion:'1.0.0',input,invocationId:`detail-${++serial}`,traceId:'detail-recovery-control',source:{kind:'agent',sessionId:'local',nativeCallId:`detail-${serial}`},deadlineAt:new Date(Date.now()+30000).toISOString()});
   try{
     const warm:any=await invoke('hallmark.collection.read',{id:source.id,skuIds:[sku.sourceSkuId]});assert.equal(warm.status,'ok');assert.equal(detailReads,1);
-    const original:any=port.get('collection_products',`local:${source.id}`);assert.ok(original.generation);
+    const original:any=port.get('collection_products',`local:${source.id}`);assert.ok(original?.generation,'The warm read must persist a generated successful cache');
     const failed:any=await invoke('hallmark.collection.read',{id:source.id,skuIds:[sku.sourceSkuId],refresh:true});assert.equal(failed.status,'failed');assert.equal(failed.error.code,'SOURCE_RETRY_CONTROL');assert.equal(detailReads,2);
     assert.equal((port.get<any>('collection_products',`local:${source.id}`)).generation,original.generation);assert.equal(port.list('business_listing_preparations').length,0);
+    // A failed explicit refresh must retain the last successful ordinary-read path.
+    const retained:any=await invoke('hallmark.collection.read',{id:source.id,skuIds:[sku.sourceSkuId]});
+    assert.equal(retained.status,'ok');assert.equal(retained.data.items[0].revision,original.product.revision);assert.equal(detailReads,2);
     let prepared:any=await invoke('hallmark.listing.prepare',{storeId,selections:[{id:source.id,skuIds:[sku.sourceSkuId]}],refresh:true});
     assert.equal(prepared.status,'ok','a later preparation must retry the source after the earlier detail refresh failed');assert.equal(detailReads,3);
     const preparationRevision=prepared.data.preparationRevision,materials:any[]=[],sales:any[]=[];
     for(let pages=0;;pages++){assert.ok(pages<20);materials.push(...prepared.data.materials?.items??[]);sales.push(...prepared.data.sales);if(!prepared.data.continuation)break;prepared=await invoke(prepared.data.continuation.capability,prepared.data.continuation.input);assert.equal(prepared.status,'ok');}
     assert.equal(materials.length,1);assert.equal(materials[0].id,source.id);assert.equal(materials[0].facts.title,source.title);assert.deepEqual(materials[0].skus.rows.map((row:any[])=>row[0]),[sku.sourceSkuId]);
     assert.equal(sales.length,1);assert.deepEqual(sales[0].procurement,[{itemId:source.id,sourceSkuId:sku.sourceSkuId,quantity:1}]);
-    const current:any=port.get('collection_products',`local:${source.id}`),snapshot:any=port.get('business_listing_preparations',preparationRevision);assert.notEqual(current.generation,original.generation);assert.equal(snapshot.sourceRevisions[source.id],current.product.revision);assert.equal(materials[0].revision,current.product.revision);
+    const current:any=port.get('collection_products',`local:${source.id}`),snapshot:any=port.get('business_listing_preparations',preparationRevision);assert.ok(current&&snapshot,'Recovered preparation and refreshed detail must be persisted');assert.notEqual(current.generation,original.generation);assert.equal(snapshot.sourceRevisions[source.id],current.product.revision);assert.equal(materials[0].revision,current.product.revision);
     assert.equal(detailReads,3);assert.equal(db.list('operations').length,0);assert.equal(networkCalls,0);
   }finally{await runtime.dispose();db.close();}
 });

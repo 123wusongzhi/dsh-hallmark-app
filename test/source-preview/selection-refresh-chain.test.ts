@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,rmSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs';
 import {join,relative,resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 import {build} from 'esbuild';
 import {realSourceSummaries} from '../real-data/corpus.ts';
@@ -10,14 +11,16 @@ import {realSourceSummaries} from '../real-data/corpus.ts';
 // Only the browser transport, public native file API, and provider snapshot are
 // local adapters. Business records are unchanged public corpus summaries.
 async function runSelectionChain(mode:'removed-row'|'new-revision'){
-  const root=resolve('test/source-preview/artifacts');mkdirSync(root,{recursive:true});
+  const project=fileURLToPath(new URL('../../',import.meta.url));
+  const root=join(project,'test/source-preview/artifacts');mkdirSync(root,{recursive:true});
   const directory=mkdtempSync(join(root,'selection-refresh-chain-'));
   const samples=realSourceSummaries().sort((a,b)=>Date.parse(b.importedAt??'')-Date.parse(a.importedAt??'')).slice(0,25);
   assert.equal(samples.length,25);
   assert.equal(new Set(samples.map(row=>row.id)).size,25);
+  let passed=false;
   try{
     const entry=join(directory,'test.mjs');
-    await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
+    await build({stdin:{resolveDir:project,loader:'tsx',contents:`
 import React from 'react';
 import {create,act} from 'react-test-renderer';
 import assert from 'node:assert/strict';
@@ -55,6 +58,7 @@ try{
   await act(async()=>{tree=create(<Component/>);});
   assert.equal(tree.root.findByType('main').props['data-ready'],'ready');
   assert.deepEqual(requests.map(request=>request.method),['getData','getContext']);
+  assert.equal(listeners.size,1,'the component must use its actual SDK connection');
   if(mode==='removed-row'){
     await act(async()=>input('选择'+samples[0].title).props.onChange());
     await act(async()=>input('选择'+samples[1].title).props.onChange());
@@ -74,10 +78,14 @@ try{
   assert.equal(refreshes,1);
   await click(attachButton());
   const request=requests.filter(request=>request.method==='attachSelection').at(-1);
+  assert.deepEqual(requests.map(request=>request.method),['getData','getContext','refresh','attachSelection']);
   assert.ok(request,'the actual component must reach the actual SDK attachment method');
   assert.equal(request.params.revision,'snapshot-2','the SDK must forward the refreshed snapshot revision');
   assert.equal(files.length,1,'a successful selection must reach the native file API');
-  assert.equal(attached.length,1);assert.equal(attachmentIds[0],'existing-attachment');
+  assert.ok(files[0] instanceof File,'the native API must receive a real File');
+  assert.equal(files[0].type,'application/json');
+  assert.equal(files[0].name,mode==='removed-row'?'Hallmark-已选产品-2项.json':'Hallmark-已选产品-1项.json');
+  assert.deepEqual(attached,['draft-1-0']);assert.deepEqual(attachmentIds,['existing-attachment','draft-1-0']);
   const expectedIds=mode==='removed-row'?[samples[20].id,samples[1].id]:[samples[1].id];
   assert.deepEqual(JSON.parse(await files[0].text()),{type:'hallmark.product-selection',version:1,sessionId:'selection-session',viewId:'selection-refresh-view',widgetId:'source',bindingId:'collected',datasetKey:'collected:replay',dataTime:'2026-10-15T10:01:00Z',lastSuccessAt:'2026-10-15T10:01:00Z',source:{endpoint:'/api/items',kind:'collected_items'},products:expectedIds.map(itemId=>({kind:'collected_item',itemId}))});
   console.log('SELECTION_REFRESH_CHAIN_PASS:'+mode);
@@ -86,14 +94,16 @@ try{
 }
 assert.equal(listeners.size,0,'the actual SDK must release its listener');
 `},outfile:entry,bundle:true,platform:'node',format:'esm',jsx:'automatic',banner:{js:"import {createRequire} from 'node:module'; const require=createRequire(import.meta.url);"},external:['react','react/jsx-runtime','react-test-renderer']});
-    const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:15000});
-    assert.equal(result.status,0,result.error?.message??result.stderr);
+    const result=spawnSync(process.execPath,[entry],{cwd:project,encoding:'utf8',timeout:15000,maxBuffer:1024*1024});
+    writeFileSync(join(directory,'stdout.txt'),result.stdout??'');writeFileSync(join(directory,'stderr.txt'),result.stderr??'');
+    assert.equal(result.status,0,[result.error?.message,result.stderr,'logs: '+directory].filter(Boolean).join('\n'));
     assert.match(result.stdout,new RegExp('SELECTION_REFRESH_CHAIN_PASS:'+mode));
+    passed=true;
   }finally{
     const within=relative(root,directory);assert.ok(/^selection-refresh-chain-[^/\\]+$/.test(within)&&resolve(root,within)===directory);
-    rmSync(directory,{recursive:true,force:true});
+    if(passed)rmSync(directory,{recursive:true,force:true});
   }
 }
 
-test('real source host, SDK and product table prune removed selections before native attachment after refresh',()=>runSelectionChain('removed-row'));
-test('real source SDK carries the refreshed revision through table selection into the native file attachment',()=>runSelectionChain('new-revision'));
+test('real source host, SDK and product table prune removed selections before native attachment after refresh',{timeout:30000},()=>runSelectionChain('removed-row'));
+test('real source SDK carries the refreshed revision through table selection into the native file attachment',{timeout:30000},()=>runSelectionChain('new-revision'));

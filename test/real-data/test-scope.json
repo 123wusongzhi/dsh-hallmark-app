@@ -2,6 +2,9 @@
   "schemaVersion": 1,
   "policy": "All tests consuming commodity, SKU, collected source, shop, sale, logistics, activity or dictionary facts use recorded snapshots. Original records remain immutable. Alias, omission, failure, numeric boundary and scale modifications are explicit derived cases.",
   "requiredFiles": [
+    "test/app-hallmark/listing-detail-recovery.test.ts",
+    "test/apps-host/business-value-projection.test.ts",
+    "test/source-preview/selection-refresh-chain.test.ts",
     "test/app-hallmark/listing-category-retry.test.ts",
     "test/app-hallmark/listing-provider-revision.test.ts",
     "test/adapter/ozon-store-read.test.ts",
@@ -156,11 +159,10 @@
     "test/acceptance/component-display/run-recovery.mjs",
     "test/apps-runtime/association-overview.test.ts",
     "test/plugin-apps/association-overview-ui.test.ts",
-    "test/app-hallmark/listing-detail-recovery.test.ts",
-    "test/apps-host/business-value-projection.test.ts",
-    "test/source-preview/selection-refresh-chain.test.ts"
+    "test/source-preview/selection-retry-chain.test.ts"
   ],
   "infrastructureFiles": [
+    "test/apps-host/inspection-race.test.ts",
     "test/plugin-client/application-surfaces.test.ts",
     "test/apps-runtime/sdk-generated-call-contract.test.ts",
     "test/acceptance/release-evidence-gate.test.ts",
@@ -195,6 +197,7 @@
     "test/apps-host/audit-regressions.test.ts",
     "test/apps-host/binding-integration.test.ts",
     "test/apps-host/capability-version-diagnostic.test.ts",
+    "test/apps-host/catalog-refresh-http.test.ts",
     "test/apps-host/descriptor-view.test.ts",
     "test/apps-host/listing-image-jobs.test.ts",
     "test/apps-host/long-result-url.test.ts",
@@ -312,10 +315,10 @@
     "test/apps-host/connection-status.test.ts",
     "test/apps-runtime/runtime-restart-http.test.ts",
     "test/plugin-apps/connection-status-ui.test.ts",
-    "test/apps-host/inspection-race.test.ts",
-    "test/apps-host/catalog-refresh-http.test.ts"
+    "test/apps-host/rate-limit-recovery.test.ts"
   ],
   "infrastructureReasons": {
+    "test/apps-host/inspection-race.test.ts": "Non-business asynchronous Provider controls through real Runtime, loopback HTTP, Host tools and model-result JSON; promise gates order late inspection without browser or merchant actions.",
     "test/plugin-client/application-surfaces.test.ts": "Production React catalog initial state, non-hidden rail and native sidebar navigation with local control fixtures; no commodity payload, remote service or browser.",
     "test/apps-runtime/sdk-generated-call-contract.test.ts": "Generated SDK wrapper execution with a non-business descriptor, local transport controls and AbortController; no commodity payload or external action.",
     "test/acceptance/release-evidence-gate.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
@@ -349,6 +352,7 @@
     "test/apps-host/audit-regressions.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/apps-host/binding-integration.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/apps-host/capability-version-diagnostic.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
+    "test/apps-host/catalog-refresh-http.test.ts": "Protocol-control fixture for a Host spanning two real local HTTP Runtime generations; synthetic versioned capability metadata and inputs only, with no recorded commodity or external source data.",
     "test/apps-host/descriptor-view.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/apps-host/listing-image-jobs.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/apps-host/long-result-url.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
@@ -467,10 +471,12 @@
     "test/apps-host/connection-status.test.ts": "Connection probe state transitions and restart eligibility; no business facts.",
     "test/apps-runtime/runtime-restart-http.test.ts": "Restart authentication, busy refusal and response ordering; no business facts.",
     "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts.",
-    "test/apps-host/inspection-race.test.ts": "Explicit non-business asynchronous provider controls with real Runtime, loopback HTTP transport, Host tool execution and model-result JSON rendering; deterministic promise gates exercise late inspection delivery without browser UI or merchant operations.",
-    "test/apps-host/catalog-refresh-http.test.ts": "Protocol-control fixture for a Host spanning two real local HTTP Runtime generations; synthetic versioned capability metadata and inputs only, with no recorded commodity or external source data."
+    "test/apps-host/rate-limit-recovery.test.ts": "Explicit local 429/deadline/empty-response protocol controls pass through the real Hallmark Provider, Runtime, loopback HTTP and Host model renderer; no commodity facts or merchant service calls are fabricated or performed."
   },
   "fileModes": {
+    "test/app-hallmark/listing-detail-recovery.test.ts": "Integrity-checked source, SKU and store facts through Provider-owned CollectionService and preparation; transient detail failure, retained ordinary cache, explicit refresh recovery and actual continuation; no publication.",
+    "test/apps-host/business-value-projection.test.ts": "Recorded sales, warehouse, cost, weight and fee facts with explicit offline stock-zero, unarchive-false and local price controls; real engine, Runtime, HTTP and Host projection preserve exact null and quote semantics.",
+    "test/source-preview/selection-refresh-chain.test.ts": "25 hash-checked recorded product summaries, with only subset and order changes; actual source component, original SDK, sourceSelection and SelectionInputBridge produce a genuine native File attachment after refresh.",
     "test/app-hallmark/listing-category-retry.test.ts": "Integrity-checked recorded stores and category constraints; transient transport control; ordinary reads retry then reuse success, consuming actual paged hints.",
     "test/app-hallmark/listing-provider-revision.test.ts": "Unchanged recorded source, SKU and store facts through real preparation and draft creation; local composition IDs and stale snapshot lifecycle metadata test Provider-to-resolver revision forwarding without publishing.",
     "test/adapter/ozon-store-read.test.ts": "Recorded sales product fields in an isolated price-request route regression; authorization and empty/error receipts are explicit protocol controls.",
@@ -490,7 +496,6 @@
     "test/app-hallmark/listing-agent-flow.test.ts": "Integrity-checked real products, stores and category template; lifecycle IDs, pagination and composition changes are explicit controls",
     "test/acceptance/component-display/read-scale.test.ts": "Immutable recorded source snapshots replayed offline; explicitly derived 49 MB scale expansion and controlled protocol failures; no live business writes.",
     "test/acceptance/component-display/run-browser.mjs": "Immutable recorded source snapshots replayed offline; explicitly derived 49 MB scale expansion and controlled protocol failures; no live business writes.",
-    "test/acceptance/component-display/run-recovery.mjs": "Immutable recorded source snapshots in an isolated production Runtime child and Chromium; owned process crash, default recovery timing and genuine SDK ready; no live business writes.",
-    "test/app-hallmark/listing-detail-recovery.test.ts": "Unchanged recorded source product, SKU and store facts through the real Provider-owned CollectionService and listing preparation; one explicit transient transport failure tests refresh recovery without modifying source facts or default sale IDs."
+    "test/acceptance/component-display/run-recovery.mjs": "Immutable recorded source snapshots in an isolated production Runtime child and Chromium; owned process crash, default recovery timing and genuine SDK ready; no live business writes."
   }
 }
