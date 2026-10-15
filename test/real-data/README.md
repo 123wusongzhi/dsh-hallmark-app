@@ -21,13 +21,13 @@
 
 浏览器 JSX 打包不能使用 Node 文件系统。采集器生成忽略入库的 `test/real-data/browser-data.ts`，导出 `REAL_SOURCE_DETAILS`、`REAL_SOURCE_SUMMARIES`、`REAL_STORES`、`REAL_SALES_PRODUCTS` 四个原始数组，以及 `REAL_SOURCE_IMAGE_DATA` 真实源图片像素。41 张主图会从原 URL 下载并记录 MIME、字节数与 SHA-256；失败保留失败依据，不生成替代图片。加载器校验清单文件本身、原始 HTTP 响应字节、解析后字段和源图片字节，阻止损坏快照进入测试。
 
-浏览器分页和负载测试超过原始记录数时，只复制真实字段并给重放行追加明确的 `:repeat-N` 身份后缀；它不是新增真实商品。协议序号、组件库元数据、会话权限、并发刷新、关闭状态以及故障触发值由测试控制。源商品、销售价格、属性与普通图片的底座都来自私人真实快照。
+浏览器分页和负载测试超过原始记录数时，只复制真实字段并给重放行追加明确的 `:repeat-N` 身份后缀；它不是新增真实商品。协议序号、组件库元数据、会话权限、并发刷新、关闭状态以及故障触发值由测试控制。源商品、销售价格、属性与普通图片的底座默认来自仓库内的公开脱敏快照；`DSH_REAL_CORPUS` 可切换到其他完整快照。
 
-打包隔离验证先通过加载器校验快照，再把私人 `corpus.json` 复制到本次临时 harness，独立打包实现不会从 checkout 导入测试数据模块。`validateArtifact(root, {temporaryRoot})` 可指定没有祖先 `node_modules` 的临时根目录；仅清理本次创建、已检查路径的 `runtime-artifact-*` 子目录，保留隔离与拒绝外部依赖的检查。
+打包隔离验证先通过加载器校验快照，再把所选 `corpus.json` 复制到本次临时 harness，独立打包实现不会从 checkout 导入测试数据模块。`validateArtifact(root, {temporaryRoot})` 可指定没有祖先 `node_modules` 的临时根目录；仅清理本次创建、已检查路径的 `runtime-artifact-*` 子目录，保留隔离与拒绝外部依赖的检查。
 
 ## 测试入口与范围
 
-- `npm run prepare:test-data`：从已校验的私人快照离线重建浏览器数据。换机需提供 `corpus.json`、其 `.sha256` 和清单引用的响应／图片文件，设置 `DSH_REAL_CORPUS` 后执行。测试审计会自动补建缺失文件，但不会静默覆盖现有文件；更换快照时显式运行此命令。
+- `npm run prepare:test-data`：从已校验的快照离线重建浏览器数据。默认读取仓库内的公开脱敏快照，换机克隆后无需另找私人数据或设置环境变量。仅使用其他快照时，提供 `corpus.json`、其 `.sha256` 和清单引用的响应／图片文件，并设置 `DSH_REAL_CORPUS`。生成的 `browser-data.ts` 不入库；测试审计会自动补建缺失文件，但不会静默覆盖现有文件，更换快照时显式运行此命令。
 - `npm run capture:test-data`：重新读取候选池、按覆盖规则选择 20/20/1，并保存源响应与真实图片。默认刷新候选池，`--reuse-pool` 仅供明确复用既有候选时使用。
 - `npm run test:real`：运行数据完整性、逐文件接入检查和 41 个真实来源商品的完整来源回放，包括真实缺价、SKU 分页和嵌套原始资源重建。
 - `npm test` / `npm run test:apps`：运行前执行真实数据接入审计；所有依赖商品、来源、店铺、销售、物流、活动或字典事实的场景读取真实底座。

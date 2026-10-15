@@ -2,7 +2,7 @@
 
 **最新源码基线：`1.0.0-candidate.76`（2026-10-15）。** 包含采集箱与在售商品的精确关联查询、双向关联概览、组件展示与性能门禁、Runtime 健康检测和受管理恢复，以及上品资料与图片任务流程。此次代码审查、修复与验证见 [源码审查记录](docs/source-review-20261015.md)；关联查询的调用方式见 [查询说明](docs/collection-association-query.md)。此前 candidate.76 的安装和仍待完成的界面验收见 [展示状态](docs/component-display-reliability-status.md)。本次更新重建源码包，未安装到桌面；相同版本号不代表包字节相同。下文旧候选记录保留各自历史范围。
 
-开发测试先执行 `npm ci`，再提供完整私人测试快照并设置 `DSH_REAL_CORPUS`，运行 `npm run prepare:test-data`、`npm test`、`npm run typecheck`。快照及生成的浏览器数据不随源码发布，详细准备方式见 [真实测试数据说明](test/real-data/README.md)。
+开发测试使用 Node ≥22.18，根目录按 `pnpm-lock.yaml` 执行 `pnpm install --frozen-lockfile --ignore-scripts`。默认公开脱敏快照及引用文件已随源码发布，无需设置 `DSH_REAL_CORPUS`；运行 `npm run prepare:test-data` 离线生成不入库的浏览器数据，再用 `npm run test:real` 验证快照回放。完整测试需先完成下方 [Apps V1 开发与验证](#apps-v1-开发与验证) 的构建步骤。使用其他快照时才设置 `DSH_REAL_CORPUS`，详细准备方式见 [真实测试数据说明](test/real-data/README.md)。
 
 本项目在原Hallmark插件上覆盖更新，只修改应用工作台、组件区及原聊天 `@` 所需扩展。**candidate.17已官方同名16→17覆盖安装**：812/812、类型/实际SDK与build/preview CLI/Runtime/诊断通过，145输入/33产物冻结；独立包32检查/17负例和官方ValidateOnly通过，独立20文件源码窄复核闭合。实际Runtime17/schema4、健康/Hallmark、Host监听及原2755行会话前缀核验通过；五份受控冷备regular files字节相同、内部junction按新根重定位且拓扑等价，原失败和旧16单文件漂移诊断保留。正式验收为**35 PASS/0 FAIL/45 NOT_RUN**，原35卡不迁移17；Native内存/原输入/侧栏点击重开、模型/业务/切库、四门禁和R未接受。详见[A.2执行记录](docs/apps-a2-execution.md)与[维护手册](docs/apps-migration-runbook.md)。16阶段614814已push apps-component-display-retry，旧main三次失败保留；17最终提交/推送以交付记录为准。
 
