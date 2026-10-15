@@ -34,7 +34,19 @@ test('even continuous validated new chunk progress cannot exceed the 180-second 
 });
 test('mismatched, empty and malformed chunk replies never count as progress',async()=>{
  const transfers=new DataTransfers(),data:JsonValue={bindings:[{bindingId:'control',payload:{blob:'x'.repeat(300000)},resources:[]}]},header=transfers.prepare('owner',data) as any;
- for(const defect of ['id','index','revision','empty','base64'] as const){let count=0;const reader=createDataTransferReader(async(action,params)=>{if(action==='prepare')return header;const input=params as {id:string;index:number},valid=transfers.read('owner',input.id,input.index) as Record<string,JsonValue>,bad={...valid,...(defect==='empty'?{chunk:''}:defect==='base64'?{chunk:'%%%'}:{[defect]:defect==='index'?999:'wrong'})};assert.equal(chunkProgressKey(bad,input),'');return bad;},()=>count++);await assert.rejects(reader({method:'getData'}));assert.equal(count,0);}
+ for(const defect of ['id','index','revision','empty','base64'] as const){
+  let count=0;const replies:{bad:Record<string,JsonValue>;input:{id:string;index:number}}[]=[];
+  const reader=createDataTransferReader(async(action,params)=>{
+   if(action==='prepare')return header;
+   const input=params as {id:string;index:number},valid=transfers.read('owner',input.id,input.index) as Record<string,JsonValue>,bad={...valid,...(defect==='empty'?{chunk:''}:defect==='base64'?{chunk:'%%%'}:{[defect]:defect==='index'?999:'wrong'})};
+   replies.push({bad,input});return bad;
+  },()=>count++);
+  await assert.rejects(reader({method:'getData'}),defect==='base64'?{name:'InvalidCharacterError'}:{message:'INVALID_DATA_TRANSFER'});
+  // Parent progress assertions must stay outside the reader's expected-rejection boundary.
+  assert.ok(replies.length>0,`${defect}: malformed replies reached the reader`);
+  for(const {bad,input} of replies)assert.equal(chunkProgressKey(bad,input),'',`${defect}: malformed replies cannot extend the parent deadline`);
+  assert.equal(count,0,`${defect}: malformed replies cannot advance SDK progress`);
+ }
 });
 
 function clientFixture(stopOnFirst=false){
