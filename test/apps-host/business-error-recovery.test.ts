@@ -37,6 +37,9 @@ test('oversized create, revise and submit issue output supplies executable origi
       assert.equal(view.data.modelProjectionError.code,'ROW_MODEL_BUDGET_EXCEEDED');
       assert.equal(view.read?.tool,'apps_inspect','budget failure must supply a directly callable read');
       const root=await inspectExact(view.read.arguments) as any;assert.equal(root.kind,'array');
+      assert.equal(root.completeness,'partial','scanning the last deferred row must not claim that its correction data was delivered');
+      assert.equal(root.returned,0);assert.deepEqual(root.items,[]);
+      assert.equal(root.nextCursor,null);assert.equal(root.deferred.length,1);
       const readExact=async(args:any):Promise<any>=>{
         let text='',array:any[]=[],object:Record<string,unknown>={};
         for(;;){

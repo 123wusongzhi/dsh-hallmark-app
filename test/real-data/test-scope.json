@@ -2,6 +2,8 @@
   "schemaVersion": 1,
   "policy": "All tests consuming commodity, SKU, collected source, shop, sale, logistics, activity or dictionary facts use recorded snapshots. Original records remain immutable. Alias, omission, failure, numeric boundary and scale modifications are explicit derived cases.",
   "requiredFiles": [
+    "test/app-hallmark/listing-category-retry.test.ts",
+    "test/app-hallmark/listing-provider-revision.test.ts",
     "test/adapter/ozon-store-read.test.ts",
     "test/app-hallmark/listing-reuse-hint.test.ts",
     "test/apps-runtime/business-payload-continuation.test.ts",
@@ -462,6 +464,8 @@
     "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts."
   },
   "fileModes": {
+    "test/app-hallmark/listing-category-retry.test.ts": "Integrity-checked recorded stores and category constraints; transient transport control; ordinary reads retry then reuse success, consuming actual paged hints.",
+    "test/app-hallmark/listing-provider-revision.test.ts": "Unchanged recorded source, SKU and store facts through real preparation and draft creation; local composition IDs and stale snapshot lifecycle metadata test Provider-to-resolver revision forwarding without publishing.",
     "test/adapter/ozon-store-read.test.ts": "Recorded sales product fields in an isolated price-request route regression; authorization and empty/error receipts are explicit protocol controls.",
     "test/app-hallmark/listing-reuse-hint.test.ts": "Integrity-checked recorded product, SKU and store facts; selected SKU and invocation identity are local read-scope controls; the emitted reuse hint executes through the real provider.",
     "test/apps-runtime/business-payload-continuation.test.ts": "Unchanged recorded names and images in local draft rows; real Runtime, provider and model projection follow emitted payload-mode continuations.",
