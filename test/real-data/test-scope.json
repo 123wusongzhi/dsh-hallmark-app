@@ -150,7 +150,11 @@
     "test/store/store.test.ts",
     "test/acceptance/component-display/run-recovery.mjs",
     "test/apps-runtime/association-overview.test.ts",
-    "test/plugin-apps/association-overview-ui.test.ts"
+    "test/plugin-apps/association-overview-ui.test.ts",
+    "test/app-hallmark/listing-reuse-hint.test.ts",
+    "test/apps-runtime/business-payload-continuation.test.ts",
+    "test/app-hallmark/listing-material-description.test.ts",
+    "test/app-hallmark/listing-category-retry.test.ts"
   ],
   "infrastructureFiles": [
     "test/real-data/classification.test.ts",
@@ -303,7 +307,8 @@
     "test/performance/chunk-progress-deadline.test.ts",
     "test/apps-host/connection-status.test.ts",
     "test/apps-runtime/runtime-restart-http.test.ts",
-    "test/plugin-apps/connection-status-ui.test.ts"
+    "test/plugin-apps/connection-status-ui.test.ts",
+    "test/apps-runtime/sdk-generated-call-contract.test.ts"
   ],
   "infrastructureReasons": {
     "test/real-data/classification.test.ts": "Pure file-classification checks with dependency flags and file identities; no corpus loading or business objects.",
@@ -456,7 +461,8 @@
     "test/performance/chunk-progress-deadline.test.ts": "Protocol transfer identity, bounded progress, cancellation and deadline tests with explicit control byte streams; no commodity or shop facts.",
     "test/apps-host/connection-status.test.ts": "Connection probe state transitions and restart eligibility; no business facts.",
     "test/apps-runtime/runtime-restart-http.test.ts": "Restart authentication, busy refusal and response ordering; no business facts.",
-    "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts."
+    "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts.",
+    "test/apps-runtime/sdk-generated-call-contract.test.ts": "Generated SDK wrapper execution with an explicit non-business descriptor, local transport controls and AbortController; no commodity payload or external action."
   },
   "fileModes": {
     "test/adapter/ozon-store-read.test.ts": "Recorded sales product fields in an isolated price-request route regression; allowlist, authorization and empty/error receipts are explicit protocol controls.",
@@ -473,6 +479,10 @@
     "test/app-hallmark/listing-agent-flow.test.ts": "Integrity-checked real products, stores and category template; lifecycle IDs, pagination and composition changes are explicit controls",
     "test/acceptance/component-display/read-scale.test.ts": "Immutable recorded source snapshots replayed offline; explicitly derived 49 MB scale expansion and controlled protocol failures; no live business writes.",
     "test/acceptance/component-display/run-browser.mjs": "Immutable recorded source snapshots replayed offline; explicitly derived 49 MB scale expansion and controlled protocol failures; no live business writes.",
-    "test/acceptance/component-display/run-recovery.mjs": "Immutable recorded source snapshots in an isolated production Runtime child and Chromium; owned process crash, default recovery timing and genuine SDK ready; no live business writes."
+    "test/acceptance/component-display/run-recovery.mjs": "Immutable recorded source snapshots in an isolated production Runtime child and Chromium; owned process crash, default recovery timing and genuine SDK ready; no live business writes.",
+    "test/app-hallmark/listing-reuse-hint.test.ts": "Integrity-checked recorded product/SKU/store facts; the selected SKU and invocation identity are local read-scope controls, and the emitted reuse hint is executed through the real provider.",
+    "test/apps-runtime/business-payload-continuation.test.ts": "Unchanged recorded product names and images inside explicit local draft rows; real Runtime/provider/model projection follows emitted payload-mode continuations.",
+    "test/app-hallmark/listing-material-description.test.ts": "Integrity-checked long recorded source description, products and stores; preparation preview and actual provider resource-read cursors reconstruct the original text exactly.",
+    "test/app-hallmark/listing-category-retry.test.ts": "Unchanged integrity-checked recorded category constraints and stores; an explicit local transient transport failure verifies ordinary retry and successful cache reuse through the Runtime/provider/model boundary."
   }
 }
