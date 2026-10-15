@@ -251,6 +251,9 @@ const first=reports()[0].body.params;
 assert.equal(first.displayId,displays[0].displayId);assert.equal(first.displayGeneration,displays[0].generation);
 assert.deepEqual(first.error,{phase:'data',code:'RUNTIME_STORE_BUSY',message:'数据库繁忙',requestId:'srv-req',retryPolicy:'read_retry',cause:'database is locked',attempts:3});
 assert.equal(displays[0].state,'opening','a missed report leaves the Runtime display unreported');
+// Server receipt precedes fetch rejection and the React notice update. Wait for
+// that observable failed-report state before asking the outbox to retry it.
+await waitFor(()=>JSON.stringify(tree.toJSON()).includes('加载错误尚未同步给 Runtime'),'a failed report must render the unsynchronized Runtime notice before retry');
 assert.equal(reportAttempts,1);assert.match(JSON.stringify(tree.toJSON()),/加载错误尚未同步给 Runtime/);
 for(const listener of [...(docEvents.get('visibilitychange')??[])])listener();
 await waitFor(()=>reports().length===2,'the outbox sends the missed report again once the document is visible');

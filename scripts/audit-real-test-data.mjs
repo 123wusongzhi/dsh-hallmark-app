@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import ts from 'typescript';
 import {realCorpus} from '../test/real-data/corpus.ts';
 import {prepareBrowserData} from './prepare-real-test-data.mjs';
+import {auditTestDataClassification} from './test-data-classification.mjs';
 prepareBrowserData();
 const {REAL_SOURCE_DETAILS,REAL_SOURCE_SUMMARIES,REAL_STORES,REAL_SALES_PRODUCTS,REAL_SOURCE_IMAGE_DATA}=await import('../test/real-data/browser-data.ts');
 import {createHash} from 'node:crypto';
@@ -46,10 +47,7 @@ assert.deepEqual(REAL_STORES,data.ancillary.stores.data,'Browser stores must equ
 assert.deepEqual(REAL_SALES_PRODUCTS,data.ancillary.storeProducts.data.products,'Browser sales must equal immutable captures');
 for(const asset of data.imageAssets??[]){if(asset.status!=='captured')continue;const encoded=REAL_SOURCE_IMAGE_DATA[asset.productId];assert.ok(encoded?.startsWith(`data:${asset.mimeType};base64,`),'Browser image MIME must match captured image');const bytes=Buffer.from(encoded.slice(encoded.indexOf(',')+1),'base64');assert.equal(createHash('sha256').update(bytes).digest('hex'),asset.sha256,'Browser image pixels must match captured image');}
 const all=new Set(files.map(path=>relative(root,path).replaceAll('\\','/')));
-const rows=[],failures=[];
-for(const file of scope.requiredFiles){const path=resolve(root,file);if(!existsSync(path)){failures.push({file,error:'required test/runner missing'});continue;}const recorded=recordingDependency(path);rows.push({file,mode:scope.fileModes?.[file]??'recorded base with explicit scenario variations',recordingDependency:recorded});if(!recorded)failures.push({file,error:'no direct or shared real-corpus dependency'});}
-for(const file of scope.infrastructureFiles){assert.ok(all.has(file),`Infrastructure classification no longer exists: ${file}`);assert.ok(scope.infrastructureReasons[file],`Missing infrastructure reason: ${file}`);}
-for(const file of all)if(!scope.requiredFiles.includes(file)&&!scope.infrastructureFiles.includes(file))failures.push({file,error:'unclassified new test: review its data source'});
+const {rows,failures}=auditTestDataClassification(scope,{testFiles:all,fileExists:file=>existsSync(resolve(root,file)),recordingDependency:file=>recordingDependency(resolve(root,file))});
 const report={schemaVersion:1,checkedAt:new Date().toISOString(),status:failures.length?'FAIL':'PASS',testFiles:all.size,sourceCounts:Object.fromEntries(['taobao_tmall','alibaba_com','pinduoduo'].map(source=>[source,data.records.filter(row=>row.detail.source===source).length])),requiredFiles:rows.length,infrastructureFiles:scope.infrastructureFiles.length,coverage:rows,failures,
   limit:'Dependency and classification audit; business assertions are established by executing the suite. Pristine records, local aliases, faults and scale expansions are distinct.'};
 const output=resolve(root,'artifacts/real-source-tests-20261013/test-data-coverage.json');mkdirSync(dirname(output),{recursive:true});writeFileSync(output,JSON.stringify(report,null,2));

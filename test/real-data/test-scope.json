@@ -14,6 +14,7 @@
     "test/adapter/category-archive.test.ts",
     "test/adapter/error-boundaries.test.ts",
     "test/adapter/ordinary-price-contract.test.ts",
+    "test/adapter/ozon-store-read.test.ts",
     "test/app-contracts/contracts.test.ts",
     "test/app-hallmark/business-plan-pages.test.ts",
     "test/app-hallmark/category-handoff.test.ts",
@@ -152,10 +153,10 @@
     "test/plugin-apps/association-overview-ui.test.ts"
   ],
   "infrastructureFiles": [
+    "test/real-data/classification.test.ts",
     "test/acceptance/release-evidence-gate.test.ts",
     "test/adapter/assignment-route.test.ts",
     "test/adapter/health.test.ts",
-    "test/adapter/ozon-store-read.test.ts",
     "test/app-hallmark/business-generation.test.ts",
     "test/app-hallmark/cancellation.test.ts",
     "test/app-hallmark/listing-assets.test.ts",
@@ -268,6 +269,7 @@
     "test/plugin-apps/workbench-component-actions.test.ts",
     "test/plugin-apps/workspace-performance.test.ts",
     "test/plugin-apps/workspace-tab-close.test.ts",
+    "test/plugin-client/application-surfaces.test.ts",
     "test/plugin-client/chat-entry.test.ts",
     "test/plugin-client/native-draft.test.ts",
     "test/plugin-client/number-format.test.ts",
@@ -304,10 +306,10 @@
     "test/plugin-apps/connection-status-ui.test.ts"
   ],
   "infrastructureReasons": {
+    "test/real-data/classification.test.ts": "Pure file-classification checks with dependency flags and file identities; no corpus loading or business objects.",
     "test/acceptance/release-evidence-gate.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/adapter/assignment-route.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/adapter/health.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
-    "test/adapter/ozon-store-read.test.ts": "Endpoint allowlist/auth/route isolation and empty/error receipt tests; the price submission body is a controlled transport intent, no commodity facts.",
     "test/app-hallmark/business-generation.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/app-hallmark/cancellation.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/app-hallmark/listing-assets.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
@@ -415,6 +417,7 @@
     "test/plugin-apps/workbench-component-actions.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/plugin-apps/workspace-performance.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/plugin-apps/workspace-tab-close.test.ts": "Workspace close behavior and component draft lifecycle; no business product payload.",
+    "test/plugin-client/application-surfaces.test.ts": "Production React catalog state, non-hidden rail and native sidebar navigation with explicit control identities and component metadata; no commodity, SKU, shop or activity payloads.",
     "test/plugin-client/chat-entry.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/plugin-client/native-draft.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/plugin-client/number-format.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
@@ -456,6 +459,7 @@
     "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts."
   },
   "fileModes": {
+    "test/adapter/ozon-store-read.test.ts": "Recorded sales product fields in an isolated price-request route regression; allowlist, authorization and empty/error receipts are explicit protocol controls.",
     "test/collection/real-corpus.test.ts": "all 41 pristine source snapshots and full raw reconstruction",
     "test/performance/runtime-artifact-isolation.test.ts": "recorded corpus copied into isolated packaged runtime; controlled quote boundaries",
     "test/app-hallmark/listing-handoff.test.ts": "recorded source and own SKUs/images; separately captured purchase override and explicit handoff controls",
