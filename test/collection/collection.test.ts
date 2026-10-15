@@ -109,6 +109,7 @@ test('Alibaba logistics packages and SKU images bind by stable identity, never r
   d.sourceDetails = { packaging: { pkgWeight: .33, pkgMeasure: { inputArray: ['25', '10', '10'] } }, logistics: { logisticsSku: [{ skuId: 'native-a', skuOuterId: 'A', pkgWeightSku: .5, pkgMeasureLengthSku: 30, pkgMeasureWidthSku: 20, pkgMeasureHeightSku: 10 }], tariffsHsCode: [{ hsCode: '85369060' }] }, editorFields: { priceUnit: { text: 'Piece/Pieces' }, minOrderQuantity: 1, saleProp: { color: [{ text: '红', imageUrl: 'https://images.example/red.jpg' }] } } };
   const p = normalizeProduct(d);
   assert.equal(p.skus[0].package, null); assert.equal(p.skus[1].package?.weightGrams, 500);
+  assert.deepEqual(p.skus[1].package?.dimensionsMm, { length: 300, width: 200, height: 100 }, 'SKU dimensions preserve length/width/height and convert cm to mm');
   assert.equal(p.package.weightGrams, 330); assert.equal(p.unit, 'Piece/Pieces'); assert.equal(p.minimumOrder, 1);
   assert.deepEqual(p.customsCodes, ['85369060']); assert.deepEqual(p.assets.find(a => a.id === p.skus[1].imageRef)?.skuIds, ['A']);
 });
