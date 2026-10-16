@@ -1,3 +1,4 @@
+import {businessRecoveryAction, businessRecoveryMessage, businessSubmissionScope, businessRecoveryDeadline, businessConfirmationFingerprint} from '../../app-presentation/src/materials/business-recovery.ts';
 import { BusinessDraftRecovery, type BusinessDraftSnapshot, type DraftCacheNotice } from './business-draft-recovery.ts';
 import {ListingDraftEditor} from './listing-draft-editor.tsx';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -45,22 +46,19 @@ export async function businessOperation<T>(scope: Scope, operation: BusinessOper
 export function BusinessOperations({ sessionId, storeId, active = true, onChooseStore }: { sessionId?: string; storeId?: string; active?: boolean; onChooseStore?: () => void }) {
   const storeOwner = JSON.stringify([sessionId, storeId]);
   const [storeRead, setStoreRead] = useState<StoreRead>(), [storeAttempt, setStoreAttempt] = useState(0);
-  const storeController = useRef<AbortController>(), retryCooldown = useRef<ReturnType<typeof setTimeout>>(), currentStoreOwner = useRef(storeOwner);
-  const [retryCooling, setRetryCooling] = useState(false);
-  useEffect(() => () => { clearTimeout(retryCooldown.current); }, []);
+  const storeController = useRef<AbortController>(), retryQueued = useRef(false), currentStoreOwner = useRef(storeOwner);
   currentStoreOwner.current = storeOwner;
   const retryStores = () => {
-    if (retryCooldown.current !== undefined || !active) return;
-    // Collapse separate native double-click events as well as same-batch repeated calls.
-    setRetryCooling(true);
-    retryCooldown.current = setTimeout(() => { retryCooldown.current = undefined; setRetryCooling(false); }, 500);
+    if (retryQueued.current || !active) return;
+    // Coalesce repeated handlers before React starts this explicit replacement read.
+    retryQueued.current = true;
     storeController.current?.abort(); setStoreAttempt(value => value + 1);
   };
   const [drafts] = useState(() => new BusinessDraftRecovery()), [cacheNotice, setCacheNotice] = useState<DraftCacheNotice>(), [, refreshCache] = useState(0);
   useEffect(() => {
     // Successful reads survive ordinary tab hiding; do not remount a dirty editor.
     if (!active || (storeRead?.owner === storeOwner && storeRead.attempt === storeAttempt && storeRead.status === 'ready')) return;
-    const controller = new AbortController(); storeController.current = controller;
+    const controller = new AbortController(); storeController.current = controller; retryQueued.current = false;
     setStoreRead({ owner: storeOwner, attempt: storeAttempt, status: 'loading', stores: [] });
     appsResource<WorkbenchStores>('stores', { appId: 'hallmark' }, controller.signal).then(result => {
       if (!controller.signal.aborted && currentStoreOwner.current === storeOwner) setStoreRead({ owner: storeOwner, attempt: storeAttempt, status: 'ready', stores: result.stores });
@@ -75,11 +73,11 @@ export function BusinessOperations({ sessionId, storeId, active = true, onChoose
   const identity = scope ? scopeKey(scope) : JSON.stringify([sessionId, storeId]);
   return <>
     {cacheNotice ? <p role="status" className="apps-business-notice">{cacheNotice === 'retained' ? '离开的未保存修改已按原聊天和店铺暂存，当前页面不会使用这些修改。' : cacheNotice === 'too_large' ? '未保存修改超过暂存容量，未能保留。' : cacheNotice === 'evicted' ? '较早的未保存修改已因暂存容量上限清除。' : '超过 30 分钟的未保存暂存已清除。'}暂存不等于保存，最多保留 30 分钟；关闭工作区或刷新后清除。请及时保存草稿。<button type="button" onClick={() => setCacheNotice(undefined)}>知道了</button></p> : null}
-    <BusinessOperationsEditor key={identity} sessionId={sessionId} storeId={storeId} store={store} scope={scope} identity={identity} active={active} drafts={drafts} onCacheNotice={setCacheNotice} onRecoveryResolved={() => setCacheNotice(previous => previous === 'retained' ? undefined : previous)} storeRead={currentStoreRead} retryCooling={retryCooling} onRetryStores={retryStores} onChooseStore={onChooseStore}/>
+    <BusinessOperationsEditor key={identity} sessionId={sessionId} storeId={storeId} store={store} scope={scope} identity={identity} active={active} drafts={drafts} onCacheNotice={setCacheNotice} onRecoveryResolved={() => setCacheNotice(previous => previous === 'retained' ? undefined : previous)} storeRead={currentStoreRead} onRetryStores={retryStores} onChooseStore={onChooseStore}/>
   </>;
 }
 
-function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, active, drafts, onCacheNotice, onRecoveryResolved, storeRead, retryCooling, onRetryStores, onChooseStore }: { sessionId?: string; storeId?: string; store?: WorkbenchStoreOption; scope?: Scope; identity: string; active: boolean; drafts: BusinessDraftRecovery; onCacheNotice: (notice: DraftCacheNotice) => void; onRecoveryResolved: () => void; storeRead?: StoreRead; retryCooling: boolean; onRetryStores: () => void; onChooseStore?: () => void }) {
+function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, active, drafts, onCacheNotice, onRecoveryResolved, storeRead, onRetryStores, onChooseStore }: { sessionId?: string; storeId?: string; store?: WorkbenchStoreOption; scope?: Scope; identity: string; active: boolean; drafts: BusinessDraftRecovery; onCacheNotice: (notice: DraftCacheNotice) => void; onRecoveryResolved: () => void; storeRead?: StoreRead; onRetryStores: () => void; onChooseStore?: () => void }) {
   const [plans, setPlans] = useState<BusinessPlan[]>([]), [planId, setPlanId] = useState('');
   const [editingListingId, setEditingListingId] = useState('');
   const [rawEdits, setRawEdits] = useState<Record<string, string>>({}), rawEditedIds = Object.keys(rawEdits), rawDirty = rawEditedIds.length > 0;
@@ -87,6 +85,7 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
   const [edits, setEdits] = useState<Record<string, Record<string, unknown>>>({}), [busy, setBusy] = useState(false), [notice, setNotice] = useState('');
   const [pricingEdits, setPricingEdits] = useState<Record<string, NonNullable<BusinessRowInput['pricing']>>>({}), [pricingConfig, setPricingConfig] = useState<BusinessPricingConfig | null>(null), [pricingError, setPricingError] = useState('');
   const [listError, setListError] = useState(''), [loadingPlans, setLoadingPlans] = useState(false);
+  const [recoveryNow, setRecoveryNow] = useState(() => Date.now());
   const [confirmation, setConfirmation] = useState<BusinessPlan>(), [busyOperation, setBusyOperation] = useState<BusinessOperation>();
   const [pending, setPending] = useState<PendingRequest | undefined>(() => scope ? pendingRequests.get(scopeKey(scope)) : undefined), [refresh, setRefresh] = useState(0), flight = useRef(false);
   const owner = useRef(identity);
@@ -96,6 +95,22 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
   const plan = plans.find(item => item.planId === planId), visible = filterBusinessRows(plan, query, status), dirty = editedIds.size > 0 || rawDirty;
   useEffect(() => { setEditingListingId(''); }, [identity, planId]);
   const listingRows = plan?.rows.filter(row => row.action === 'listing') ?? [], editingListing = listingRows.find(row => row.rowId === editingListingId) ?? listingRows[0];
+  useEffect(() => {
+    if (!active || !plan) return;
+    let timer: ReturnType<typeof setTimeout> | undefined, cancelled = false;
+    const schedule = () => {
+      if (cancelled) return;
+      const now = Date.now(); setRecoveryNow(now);
+      const deadline = businessRecoveryDeadline(plan.rows, now);
+      // Browsers clamp oversized delays to ~1ms. Chunk only genuinely distant deadlines.
+      if (deadline !== undefined) timer = setTimeout(schedule, Math.min(deadline - now, 2_147_483_647));
+    };
+    schedule();
+    return () => { cancelled = true; if (timer !== undefined) clearTimeout(timer); };
+  }, [active, plan]);
+  const currentDecision = useMemo(() => confirmation ? businessConfirmationFingerprint(plan) : '', [plan, !!confirmation]);
+  const confirmedDecision = useMemo(() => businessConfirmationFingerprint(confirmation), [confirmation]);
+  const actionableRows = plan?.rows.filter(row => businessRecoveryAction(row, recoveryNow) === 'submit') ?? [];
   const editedRows = plan?.rows.filter(row => editedIds.has(row.rowId)) ?? [];
   const saveLabel = editedRows.length > 0 && editedRows.every(row => ['price', 'promotion.enroll', 'promotion.update'].includes(row.action)) ? '保存改价草稿' : '保存草稿';
   const accept = (next: BusinessPlan) => { drafts.drop(identity); setPlans(rows => [next, ...rows.filter(item => item.planId !== next.planId)]); setPlanId(next.planId); setEdits({}); setRawEdits({}); setPricingEdits({}); setSelected([]); setConfirmation(undefined); setBatchPrice(''); setBatchCurrency(''); };
@@ -133,14 +148,14 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
   }, [identity, active, refresh, dirty]);
   useEffect(() => {
     if (!confirmation || !active || loadingPlans) return;
-    if (listError || (listVerified && (plan?.planId !== confirmation.planId || plan.revision !== confirmation.revision))) {
+    if (listError || (listVerified && (currentDecision !== confirmedDecision))) {
       setConfirmation(undefined);
       setNotice(listError ? '无法核对最新批次，已取消原提交确认。请重新检查后再确认。' : '批次已变化，已取消原提交确认。请重新检查最新内容后再确认。');
     }
-  }, [confirmation, active, loadingPlans, listVerified, listError, plan?.planId, plan?.revision]);
+  }, [confirmation, active, loadingPlans, listVerified, listError, currentDecision, confirmedDecision]);
   const run = async (operation: BusinessOperation, input: unknown, message: string) => {
     if (!scope || flight.current) return; const target = identity; flight.current = true; setBusy(true); setBusyOperation(operation); setNotice('');
-    try { const next = await businessOperation<BusinessPlan>(scope, operation, input); if (owner.current === target) { accept(next); setNotice(operation === 'submit' || operation === 'inspect' ? `${message} ${businessOutcome(next)}` : message); } }
+    try { const next = await businessOperation<BusinessPlan>(scope, operation, input); if (owner.current === target) { accept(next); setNotice(operation === 'submit' || operation === 'inspect' ? `${message} ${businessOutcome(next)} ${businessSubmissionScope(next.rows).replace('本次可推进', '下一步可推进')}` : message); } }
     catch (error) { if (owner.current === target) setNotice(error instanceof Error ? error.message : String(error)); }
     finally { flight.current = false; if (owner.current === target) { setBusy(false); setBusyOperation(undefined); setPending(pendingRequests.get(scopeKey(scope))); } }
   };
@@ -175,7 +190,7 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
     <header className="apps-business-heading"><div><span className="apps-business-eyebrow">OZON · 经营操作</span><h2>{store?.name ?? '经营操作'}</h2><p>查看改前改后、编辑草稿，确认整批范围后审核并执行。</p></div><button type="button" disabled={!scope || disabled || dirty || loadingPlans} onClick={() => setRefresh(value => value + 1)}>{loadingPlans ? '正在读取…' : '刷新批次'}</button></header>
     {!sessionId ? <p className="apps-business-empty">请选择一个聊天，继续使用同一应用连接。</p> : !storeId ? <div className="apps-business-empty"><p>选择店铺后继续经营操作。</p>{onChooseStore ? <button type="button" onClick={onChooseStore}>选择店铺并继续</button> : <p>先在工作台选择店铺，再打开经营操作。</p>}</div> : !store ? <div className="apps-business-empty">
       {!storeRead || storeRead.status === 'loading' ? <p role="status">正在读取所选店铺的连接…</p> : storeRead.status === 'error' ? <p role="alert">店铺连接读取失败：{storeRead.error}</p> : <p role="status">{storeRead.stores.length ? '所选店铺已不可用或不在当前可用列表，请重新选择店铺。' : '当前没有可用店铺，请检查连接后重新读取。'}</p>}
-      <button type="button" disabled={!active || retryCooling} onClick={onRetryStores}>{!storeRead || storeRead.status === 'loading' ? '取消并重新读取' : '重新读取店铺'}</button>
+      <button type="button" disabled={!active} onClick={onRetryStores}>{!storeRead || storeRead.status === 'loading' ? '取消并重新读取' : '重新读取店铺'}</button>
       {onChooseStore ? <button type="button" onClick={onChooseStore}>重新选择店铺</button> : <p>请返回工作台选择店铺，再打开经营操作。</p>}
     </div> : <>
       <div className="apps-business-toolbar"><label>操作批次<select aria-label="操作批次" disabled={disabled || dirty} value={planId} onChange={event => { setPlanId(event.target.value); setSelected([]); setEdits({}); setRawEdits({}); setPricingEdits({}); }}><option value="">新建批次</option>{plans.map(item => <option key={item.planId} value={item.planId}>{item.title} · {item.rows.length} 个动作</option>)}</select></label><button type="button" disabled={disabled || dirty} onClick={() => { setPlanId(''); setSelected([]); }}>新建批次</button>{plan ? <span className="apps-business-revision">版本 {plan.revision} · {new Date(plan.updatedAt).toLocaleString('zh-CN')}</span> : null}</div>
@@ -189,6 +204,7 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
       {plan ? <><div className="apps-business-toolbar"><input aria-label="筛选商品" disabled={!!confirmation || rawDirty} placeholder="搜索货号、采购 SKU 或问题" value={query} onChange={event => setQuery(event.target.value)}/><select aria-label="筛选执行状态" disabled={!!confirmation || rawDirty} value={status} onChange={event => setStatus(event.target.value)}><option value="">全部状态</option>{Object.entries(BUSINESS_STATUS_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><span>{visible.length} / {plan.rows.length} 个动作</span></div>
         {selected.length ? <div className="apps-business-selection" role="status"><span>已选 {selected.length} 行，当前可见 {selected.length - hiddenSelected} 行{hiddenSelected ? `，隐藏 ${hiddenSelected} 行（不参与批量填价）` : ''}。勾选用于编辑或恢复；提交仍为整批。</span><button type="button" disabled={disabled} onClick={() => setSelected([])}>清空选择</button>{hiddenSelected ? <button type="button" disabled={disabled || rawDirty} onClick={() => { if (rawDirty) return; setQuery(''); setStatus(''); }}>查看隐藏选择</button> : null}</div> : null}
         {selectedPrices.length ? <div className="apps-business-toolbar"><label>批量填写售价<input aria-label="批量填写售价" type="number" min="0" step="any" value={batchPrice} disabled={disabled} onChange={event => setBatchPrice(event.target.value)}/></label><label>售价币种<select aria-label="批量售价币种" value={chosenCurrency} disabled={disabled} onChange={event => setBatchCurrency(event.target.value)}><option value="">请选择币种</option>{batchCurrencies.map(currency => <option key={currency} value={currency}>{currency} · {selectedPrices.filter(row => priceCurrency(edits[row.rowId] ?? row.payload) === currency).length} 行</option>)}</select></label><button type="button" disabled={disabled || rawDirty || !batchRows.length || batchPrice.trim() === '' || !Number.isFinite(Number(batchPrice)) || Number(batchPrice) <= 0} onClick={() => { if (disabled || rawDirty || !batchRows.length || !Number.isFinite(Number(batchPrice)) || Number(batchPrice) <= 0) return; setEdits(previous => ({ ...previous, ...Object.fromEntries(batchRows.map(row => [row.rowId, { ...(previous[row.rowId] ?? row.payload), price: batchPrice }])) })); setPricingEdits(previous => ({ ...previous, ...Object.fromEntries(batchRows.map(row => [row.rowId, { ...rowPricing(row), mode: 'manual' as const }])) })); }}>填入可见所选 {batchRows.length} 行草稿</button><span>{chosenCurrency ? `仅改当前可见所选的 ${chosenCurrency} 行，不换算币种。${selectedPrices.length > batchRows.length ? `另外 ${selectedPrices.length - batchRows.length} 行因其他或缺失币种不会修改。` : ''}` : '请先选币种，避免把相同数值填入不同币种。'}切换为手动定价；保存后重算利润，再确认提交。{selectedPrices.some(row => !priceCurrency(edits[row.rowId] ?? row.payload)) ? ' 币种缺失的行不能批量填价，请先核实商品币种。' : ''}</span></div> : null}
+        {plan.rows.some(row => ['rejected', 'needs_user', 'unknown', 'pending', 'dispatching'].includes(row.status)) ? <section className="apps-business-notice" aria-label="下一步操作"><p>{businessSubmissionScope(plan.rows, recoveryNow)}</p>{plan.rows.filter(row => ['rejected', 'needs_user', 'unknown', 'pending', 'dispatching'].includes(row.status)).map(row => <div key={row.rowId}><p><strong>{row.target.offerId}</strong>：{businessRecoveryMessage(row, recoveryNow)}</p>{row.action === 'listing' && ['edit_save', 'resolve_decision'].includes(businessRecoveryAction(row, recoveryNow)) ? <button type="button" disabled={disabled || rawDirty} onClick={() => setEditingListingId(row.rowId)}>编辑 {row.target.offerId} 上品内容</button> : null}</div>)}</section> : null}
         {editingListing ? <ListingDraftEditor rows={listingRows} row={editingListing} payload={edits[editingListing.rowId] ?? editingListing.payload} editedIds={editedIds} disabled={disabled || rawDirty} onSelect={setEditingListingId} onChange={payload => patch(editingListing, payload)}/> : null}
         <div className="apps-business-table-wrap"><table className="apps-business-table"><thead><tr><th><input type="checkbox" aria-label="选择当前筛选结果" disabled={disabled} checked={visible.length > 0 && visible.every(row => selected.includes(row.rowId))} onChange={event => setSelected(previous => event.target.checked ? [...new Set([...previous, ...visible.map(row => row.rowId)])] : previous.filter(id => !visible.some(row => row.rowId === id)))}/></th><th>商品 / 销售货号</th><th>动作</th><th>改前</th><th>改后</th><th>采购关联 / 成本</th><th>物流与定价</th><th>审核与执行</th></tr></thead><tbody>{visible.map(row => <tr key={row.rowId}>
           <td><input type="checkbox" aria-label={`选择 ${row.target.offerId}`} disabled={disabled} checked={selected.includes(row.rowId)} onChange={event => setSelected(previous => event.target.checked ? [...previous, row.rowId] : previous.filter(id => id !== row.rowId))}/></td>
@@ -199,9 +215,9 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
           <td>{businessPriceAction(row.action) ? <><PricingChoice label={row.target.offerId} config={pricingConfig} value={rowPricing(row)} disabled={disabled || rawDirty || !editableBusinessRow(row)} onChange={value => patchPricing(row, value)}/><PricingQuote row={row} dirty={editedIds.has(row.rowId)}/></> : <span className="apps-business-muted">此动作无需定价</span>}</td>
           <td><span className={`apps-business-status is-${row.status}`}>{BUSINESS_STATUS_LABELS[row.status]}</span>{row.issues.map((issue, index) => <p className="apps-business-issue" key={`${issue.code}:${index}`}>{issue.field ? `${BUSINESS_FIELD_LABELS[issue.field] ?? issue.field}：` : ''}{issue.message}{issue.suggestion ? <small>{issue.suggestion}</small> : null}</p>)}{row.corrections.length ? <details><summary>已自动修正 {row.corrections.length} 项</summary>{row.corrections.map((text, index) => <small key={index}>{text}</small>)}</details> : null}</td>
         </tr>)}</tbody></table>{!visible.length ? <p className="apps-business-empty">当前筛选下没有商品。{query || status ? <button type="button" disabled={disabled || rawDirty} onClick={() => { if (rawDirty) return; setQuery(''); setStatus(''); }}>清除筛选</button> : null}</p> : null}</div>
-        <footer className="apps-business-actions"><span>{dirty ? `${new Set([...editedIds, ...rawEditedIds]).size} 行尚未保存` : `已选 ${selected.length} 行 · 提交范围为整批 ${plan.rows.length} 个动作`}</span><button type="button" disabled={disabled || !dirty || rawDirty} onClick={() => void run('revise', { planId: plan.planId, expectedRevision: plan.revision, rows: editedRows.map(row => businessRowInput(row, edits[row.rowId] ?? row.payload, businessPriceAction(row.action) ? rowPricing(row) : row.pricing)) }, '草稿已保存，尚未提交。')}>{saveLabel}</button><button type="button" disabled={disabled || dirty} onClick={() => void run('inspect', { planId: plan.planId }, '已更新平台处理状态。')}>核查平台状态</button><button type="button" disabled={disabled || dirty || !restorable.length} onClick={() => void run('restore', { planId: plan.planId, rowIds: restorable }, '已生成恢复草稿，请查看后提交。')}>恢复所选已完成项</button><button type="button" className="apps-primary" disabled={disabled || dirty || plan.rows.every(row => ['succeeded', 'unknown', 'pending', 'dispatching', 'reviewing'].includes(row.status))} onClick={() => setConfirmation(structuredClone(plan))}>确认整批范围后提交</button></footer>
+        <footer className="apps-business-actions"><span>{dirty ? `${new Set([...editedIds, ...rawEditedIds]).size} 行尚未保存` : `已选 ${selected.length} 行 · 提交范围为整批 ${plan.rows.length} 个动作`}</span><button type="button" disabled={disabled || !dirty || rawDirty} onClick={() => void run('revise', { planId: plan.planId, expectedRevision: plan.revision, rows: editedRows.map(row => businessRowInput(row, edits[row.rowId] ?? row.payload, businessPriceAction(row.action) ? rowPricing(row) : row.pricing)) }, '草稿已保存，尚未提交。')}>{saveLabel}</button><button type="button" disabled={disabled || dirty} onClick={() => void run('inspect', { planId: plan.planId }, '已更新平台处理状态。')}>核查平台状态</button><button type="button" disabled={disabled || dirty || !restorable.length} onClick={() => void run('restore', { planId: plan.planId, rowIds: restorable }, '已生成恢复草稿，请查看后提交。')}>恢复所选已完成项</button><button type="button" className="apps-primary" disabled={disabled || dirty || !actionableRows.length} onClick={() => setConfirmation(structuredClone(plan))}>确认整批范围后提交</button></footer>
       </> : null}
-      {confirmation ? <SubmissionConfirmation plan={confirmation} storeName={store.name} hiddenCount={confirmation.rows.filter(row => !visible.some(candidate => candidate.rowId === row.rowId)).length} unselectedCount={confirmation.rows.filter(row => !selected.includes(row.rowId)).length} busy={busy || !!pending} checking={!active || loadingPlans || !listVerified} onCancel={() => setConfirmation(undefined)} onConfirm={() => { if (!active || loadingPlans || !listVerified || listError || busy || pending || dirty || plan?.planId !== confirmation.planId || plan.revision !== confirmation.revision) return; const snapshot = confirmation; setConfirmation(undefined); void run('submit', { planId: snapshot.planId, expectedRevision: snapshot.revision }, '审核与提交结果已更新，请查看各行状态。'); }}/> : null}
+      {confirmation ? <SubmissionConfirmation now={recoveryNow} plan={confirmation} storeName={store.name} hiddenCount={confirmation.rows.filter(row => !visible.some(candidate => candidate.rowId === row.rowId)).length} unselectedCount={confirmation.rows.filter(row => !selected.includes(row.rowId)).length} busy={busy || !!pending} checking={!active || loadingPlans || !listVerified || currentDecision !== confirmedDecision} onCancel={() => setConfirmation(undefined)} onConfirm={() => { if (!active || loadingPlans || !listVerified || listError || busy || pending || dirty || !actionableRows.length || currentDecision !== confirmedDecision) return; const snapshot = confirmation; setConfirmation(undefined); void run('submit', { planId: snapshot.planId, expectedRevision: snapshot.revision }, '已取得本次提交结果，请查看各行状态。'); }}/> : null}
       <NewBusinessRow key={`${identity}:${plan?.planId ?? 'new'}`} disabled={disabled || dirty} pricingConfig={pricingConfig} onAdd={(title, row) => void run(plan ? 'revise' : 'create', plan ? { planId: plan.planId, expectedRevision: plan.revision, rows: [row] } : { storeId: store.id, title, rows: [row] }, '草稿已保存，尚未提交。')}/>
     </>}
   </section>;
@@ -217,10 +233,10 @@ function businessOutcome(plan: BusinessPlan): string {
     return count ? `${label} ${count} 行` : '';
   }).filter(Boolean).join('；');
 }
-function SubmissionConfirmation({ plan, storeName, hiddenCount, unselectedCount, busy, checking, onCancel, onConfirm }: { plan: BusinessPlan; storeName: string; hiddenCount: number; unselectedCount: number; busy: boolean; checking: boolean; onCancel: () => void; onConfirm: () => void }) {
+function SubmissionConfirmation({ now, plan, storeName, hiddenCount, unselectedCount, busy, checking, onCancel, onConfirm }: { now: number; plan: BusinessPlan; storeName: string; hiddenCount: number; unselectedCount: number; busy: boolean; checking: boolean; onCancel: () => void; onConfirm: () => void }) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, []);
-  return <section className="apps-business-confirmation" aria-label="提交范围确认"><h3 tabIndex={-1} ref={heading}>确认提交范围</h3><p>{storeName} · {plan.title} · 版本 {plan.revision}</p><p>提交范围为整批 {plan.rows.length} 个动作，其中 {hiddenCount} 个未在当前筛选中显示，{unselectedCount} 个未勾选。勾选和筛选仅用于编辑，不改变提交范围。已完成或结果待核查的动作不会重复发送；其余动作仍须通过经营规则和所需审核。下方为已保存草稿，提交时会重新核实平台值与规则。</p><div className="apps-business-table-wrap"><table className="apps-business-confirmation-table"><thead><tr><th>销售货号 / 动作</th><th>改前</th><th>提交值</th><th>当前状态 / 预计利润</th></tr></thead><tbody>{plan.rows.map(row => { const quote = businessPricingQuote(row); return <tr key={row.rowId}><td><strong>{row.target.offerId}</strong><small>{BUSINESS_ACTION_LABELS[row.action]}</small></td><td><SubmissionValues row={row} payload={row.before ?? {}}/></td><td><SubmissionValues row={row} payload={row.payload}/></td><td><small>{BUSINESS_STATUS_LABELS[row.status]}</small>{quote ? <small>预计利润：{businessMoney(quote.breakdown.profitMinor, quote.currency)} · {quote.breakdown.marginPpm === null ? '利润率待补充' : `${(quote.breakdown.marginPpm / 10000).toFixed(2)}%`}</small> : null}{row.issues.map((issue, index) => <small key={index}>{issue.message}</small>)}</td></tr>; })}</tbody></table></div><div className="apps-business-actions"><button type="button" disabled={busy} onClick={onCancel}>返回检查</button><button type="button" className="apps-primary" disabled={busy || checking} onClick={onConfirm}>{busy ? '正在提交…' : checking ? '正在核对最新批次…' : `确认提交整批 ${plan.rows.length} 个动作`}</button></div></section>;
+  return <section className="apps-business-confirmation" aria-label="提交范围确认"><h3 tabIndex={-1} ref={heading}>确认提交范围</h3><p>{storeName} · {plan.title} · 版本 {plan.revision}</p><p>提交范围为整批 {plan.rows.length} 个动作，其中 {hiddenCount} 个未在当前筛选中显示，{unselectedCount} 个未勾选。勾选和筛选仅用于编辑，不改变提交范围。{businessSubmissionScope(plan.rows, now)}只有可推进的动作进入核查，仍须通过经营规则和所需审核；其余行保留原状态，不会因本次确认而重发。下方为已保存草稿，提交时会重新核实平台值与规则。</p><div className="apps-business-table-wrap"><table className="apps-business-confirmation-table"><thead><tr><th>销售货号 / 动作</th><th>改前</th><th>提交值</th><th>当前状态 / 预计利润</th></tr></thead><tbody>{plan.rows.map(row => { const quote = businessPricingQuote(row); return <tr key={row.rowId}><td><strong>{row.target.offerId}</strong><small>{BUSINESS_ACTION_LABELS[row.action]}</small></td><td><SubmissionValues row={row} payload={row.before ?? {}}/></td><td><SubmissionValues row={row} payload={row.payload}/></td><td><small>{BUSINESS_STATUS_LABELS[row.status]}</small><small>{businessRecoveryMessage(row, now)}</small>{quote ? <small>预计利润：{businessMoney(quote.breakdown.profitMinor, quote.currency)} · {quote.breakdown.marginPpm === null ? '利润率待补充' : `${(quote.breakdown.marginPpm / 10000).toFixed(2)}%`}</small> : null}{row.issues.map((issue, index) => <small key={index}>{issue.message}</small>)}</td></tr>; })}</tbody></table></div><div className="apps-business-actions"><button type="button" disabled={busy} onClick={onCancel}>返回检查</button><button type="button" className="apps-primary" disabled={busy || checking || !plan.rows.some(row => businessRecoveryAction(row, now) === 'submit')} onClick={onConfirm}>{busy ? '正在提交…' : checking ? '正在核对最新批次…' : `确认提交整批 ${plan.rows.length} 个动作`}</button></div></section>;
 }
 
 function SubmissionValues({ row, payload }: { row: BusinessRow; payload: Record<string, unknown> }) {

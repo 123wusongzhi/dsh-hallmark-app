@@ -15,10 +15,7 @@ test('business store reads expose recoverable terminal states and isolate cancel
 ${uiFixturePrelude()}
 import React from 'react'; import {create,act} from 'react-test-renderer'; import assert from 'node:assert/strict';
 import {BusinessOperations} from './packages/plugin-apps/client/business-operations.tsx';
-const realTimeout=globalThis.setTimeout,realClearTimeout=globalThis.clearTimeout,cooldowns=new Map();let timerSerial=0;
-globalThis.setTimeout=(callback,delay,...args)=>{if(delay!==500)return realTimeout(callback,delay,...args);const timer={id:++timerSerial};cooldowns.set(timer,()=>callback(...args));return timer;};
-globalThis.clearTimeout=timer=>{if(!cooldowns.delete(timer))realClearTimeout(timer);};
-const expireCooldown=()=>act(async()=>{const callbacks=[...cooldowns.values()];cooldowns.clear();for(const callback of callbacks)callback();await flush();});
+const originalFetch=globalThis.fetch;
 // Recorded store facts; owner aliases and empty/error/delayed outcomes are explicit local UX controls.
 const stores=[uiStore({id:'shop-a',connectionId:'connection-a'}),uiStore({id:'shop-b',connectionId:'connection-b'},1)];
 let tree, props, mode, calls, held, chosen, commits, capture, withPlans=false;
@@ -54,7 +51,7 @@ try {
   assert.match(text(tree.toJSON()),state==='network'?/Failed to fetch/:state==='403'?/店铺连接无权读取/:state==='empty'?/没有可用店铺/:/所选店铺.*不可用/);
   assert.ok(button('重新读取店铺'));await click('重新选择店铺');assert.equal(chosen,1);
   assert.equal(calls.length,1,'No alternate-store or business request');
-  if(state==='403'){await click('重新读取店铺');assert.equal(storesCalls().length,2);assert.match(text(tree.toJSON()),/店铺连接无权读取/);await expireCooldown();}
+  if(state==='403'){await click('重新读取店铺');assert.equal(storesCalls().length,2);assert.match(text(tree.toJSON()),/店铺连接无权读取/);}
   mode='success';await click('重新读取店铺');assert.equal(tree.root.findByType('h2').children.join(''),stores[0].name);
   assert.ok(calls.filter(c=>c.body).every(c=>c.body.connectionId==='connection-a'));await unmount();
  }
@@ -62,10 +59,10 @@ try {
  await mount('hold');assert.match(text(tree.toJSON()),/正在读取所选店铺的连接/);await click('重新选择店铺');assert.equal(chosen,1);
  await act(async()=>{const retry=button('取消并重新读取');assert.ok(retry);retry.props.onClick();retry.props.onClick();await flush();});
  assert.equal(storesCalls().length,2);
- await act(async()=>{button('取消并重新读取').props.onClick();await flush();});assert.equal(storesCalls().length,2,'Separate-turn double click also deduplicated');assert.equal(button('取消并重新读取').props.disabled,true);
+
  assert.equal(held[0].signal.aborted,true);assert.equal(held[1].signal.aborted,false);
  await release(0,[stores[1]]);assert.match(text(tree.toJSON()),/正在读取所选店铺的连接/);assert.equal(calls.filter(c=>c.body).length,0);
- await expireCooldown();await click('取消并重新读取');assert.equal(storesCalls().length,3);assert.equal(held[1].signal.aborted,true);
+ await click('取消并重新读取');assert.equal(storesCalls().length,3);assert.equal(held[1].signal.aborted,true);
  await release(1,[stores[1]]);assert.match(text(tree.toJSON()),/正在读取所选店铺的连接/);await release(2);assert.equal(tree.root.findByType('h2').children.join(''),stores[0].name);await unmount();
  // Navigation away cancels a hanging request; reopening starts one replacement and cannot accept its predecessor.
  await mount('hold');props={...props,active:false};await render();assert.equal(held[0].signal.aborted,true);
@@ -89,7 +86,7 @@ try {
  props={...props,storeId:'shop-a'};await render();assert.equal(button('恢复修改'),undefined);assert.match(text(tree.toJSON()),/店铺连接无权读取/);
  mode='success';await click('重新读取店铺');assert.ok(button('恢复修改'));await click('恢复修改');assert.equal(field('PRICE 售价').props.value,'77');await unmount();
  console.log('STORE_READ_TERMINAL_RETRY_ABORT_OWNER_KEEPALIVE_DRAFT_PASS');
-} finally {if(tree)await unmount();assert.equal(cooldowns.size,0,'Unmount clears retry cooldown');globalThis.setTimeout=realTimeout;globalThis.clearTimeout=realClearTimeout;}
+} finally {if(tree)await unmount();globalThis.fetch=originalFetch;}
 `}, bundle: true, write: false, platform: 'node', format: 'esm', packages: 'external', plugins: historical ? [{name: 'historical-production', setup(plugin) {plugin.onLoad({filter: /plugin-apps[\\/]client[\\/]business-operations\.tsx$/}, () => ({contents: historical!, loader: 'tsx'}));}}] : []});
   const result = spawnSync(process.execPath, ['--input-type=module'], {input: output.outputFiles[0].text, encoding: 'utf8', timeout: 20_000});
   assert.equal(result.status, 0, result.stdout + result.stderr);

@@ -19,13 +19,13 @@ const button=(tree,name)=>tree.root.findAllByType('button').find(node=>text(node
 const notice=tree=>text(tree.root.findByProps({role:'status'}));
 const state=tree=>tree.root.findByType('section').props['data-agent-state'];
 const trees=[];let platformRequests=0;const nativeFetch=globalThis.fetch;globalThis.fetch=async()=>{platformRequests++;throw new Error('This fixture must never contact a platform');};
-function client(id){const heldUpdate=deferred(),heldRequest=deferred();let updates=0,requests=0;return {heldUpdate,heldRequest,get updates(){return updates;},get requests(){return requests;},apps:{hello:{supportedMethods:['updateContext','requestAgent'],contextRevision:0},context:{contextRevision:0},updateContext:async()=>{updates++;await heldUpdate.promise;return {status:'updated',contextRevision:updates,snapshotId:id,snapshot:{}};},requestAgent:async()=>{requests++;return await heldRequest.promise;}}};}
+function client(id){const heldUpdate=deferred(),heldRequest=deferred();let updates=0,requests=0;return {heldUpdate,heldRequest,get updates(){return updates;},get requests(){return requests;},apps:{hello:{protocolVersion:'2.0',sessionId:'session',viewId:id,buildId:'build',frameInstanceId:id,supportedMethods:['updateContext','requestAgent'],contextRevision:0},context:{contextRevision:0},updateContext:async()=>{updates++;await heldUpdate.promise;return {status:'updated',contextRevision:updates,snapshotId:id,snapshot:{}};},requestAgent:async()=>{requests++;return await heldRequest.promise;}}};}
 async function mount(value,onInspectRequest){let tree;await act(async()=>{tree=create(<AppsAgentActions apps={value.apps} selections={[]} onInspectRequest={onInspectRequest}/>);});trees.push(tree);return tree;}
 async function enter(tree,value='Analyze this selection'){await act(async()=>tree.root.findByType('input').props.onChange({target:{value}}));}
 try{
  const first=client('first'),one=await mount(first);let publishing;
  await act(async()=>{publishing=button(one,'更新上下文').props.onClick();button(one,'更新上下文').props.onClick();});
- assert.equal(first.updates,1);assert.match(notice(one),/正在更新上下文/);assert.equal(state(one),'publishing');assert.equal(button(one,'更新上下文').props['aria-busy'],true);assert.equal(first.requests,0);
+ assert.equal(first.updates,1);assert.match(notice(one),/正在更新上下文/);assert.equal(state(one),'publishing');assert.equal(one.root.findByProps({role:'status'}).props['aria-atomic'],'true');assert.equal(button(one,'更新上下文').props['aria-busy'],true);assert.equal(first.requests,0);
  await act(async()=>{first.heldUpdate.resolve();await publishing;});await enter(one);
  let requesting;await act(async()=>{requesting=button(one,'请求代理').props.onClick();button(one,'请求代理').props.onClick();});
  assert.equal(first.requests,1);assert.match(notice(one),/正在提交任务/);assert.equal(state(one),'submitting');assert.equal(button(one,'请求代理').props['aria-busy'],true);assert.equal(one.root.findByType('input').props.disabled,true);assert.equal(button(one,'请求代理').props.disabled,true);

@@ -4,7 +4,6 @@ import type {AuthoringAssertion,UiSelectionEvidence,UiStateSnapshot} from '../..
 import {createAppsClient,ComponentBridgeError} from './apps-client.ts';
 import type {AppsComponentClient,AppsRefreshOptions,ComponentHello} from './apps-client.ts';
 import {createLatestStateSaver} from './latest-state-saver.ts';
-import {agentReceiptNotice} from './agent-action-status.ts';
 import {createVisibleDeadline,dataProgressKey,DISPLAY_NO_PROGRESS_MS} from './visible-deadline.ts';
 export interface AppsUiStateContract {uiStateSchemaVersion:number;exportState():{value:JsonValue;selectionEvidence:UiSelectionEvidence[]};importState(value:JsonValue,selectionEvidence:UiSelectionEvidence[]):void|Promise<void>;migrateState?(snapshot:UiStateSnapshot,targetSchemaVersion:number):{value:JsonValue;selectionEvidence:UiSelectionEvidence[]}|Promise<{value:JsonValue;selectionEvidence:UiSelectionEvidence[]}>;subscribe?(listener:()=>void):()=>void}
 /** `initialReadRetryDelaysMs` replaces the default backoff (500 ms, 1500 ms: three attempts) of the first data and context reads; at most two delays, each capped at 5s. Readiness has its own idle/absolute cap. */
@@ -251,6 +250,17 @@ function agentRequestNotSubmitted(error:unknown):boolean {
   return details.submitted===false||failure.retryPolicy==='never'&&['INVALID_INPUT','CONTEXT_REVISION_CONFLICT','CONTEXT_NOT_OWNED','CONTEXT_BUDGET_EXCEEDED','APPS_CONTEXT_BUDGET_EXCEEDED','UNSUPPORTED_HOST_CAPABILITY','CANCELLED_BEFORE_DISPATCH','APPS_HOST_CLOSED'].includes(String(failure.code));
 }
 /** Opt-in controls keep local selection, context publication and explicit agent submission separate. */
+/** These are submission receipts, never evidence that the agent finished the task. */
+function agentReceiptNotice(status:ComponentAgentReceipt['status']):string {
+  switch(status){
+    case 'prepared':return '任务已登记，等待派发。请检查原请求，勿重复提交。';
+    case 'dispatching':return '任务正在派发到当前聊天。请检查原请求，勿重复提交。';
+    case 'accepted':return '请求已提交并排队，等待代理处理。后续进展请在当前聊天查看，也可准备新任务。';
+    case 'unknown':return '任务提交结果待确认。请检查原请求，确认前不要重新提交。';
+    case 'failed':return '任务提交未完成。请检查原请求，确认未派发后再决定是否重试。';
+  }
+}
+
 type AppsAgentActionsProps={apps:Pick<ReturnType<typeof useApps>,'hello'|'context'|'updateContext'|'requestAgent'>;selections:SelectionEnvelope[];summary?:string;onInspectRequest?:(requestId:string)=>void};
 export function AppsAgentActions(props:AppsAgentActionsProps) {
   const hello=props.apps.hello;

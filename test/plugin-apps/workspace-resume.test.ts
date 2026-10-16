@@ -1,16 +1,59 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdirSync,mkdtempSync,rmSync} from 'node:fs';
+import {mkdirSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
+const REPO_ROOT=fileURLToPath(new URL('../..',import.meta.url));
 import {join,resolve,sep} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {build} from 'esbuild';
 import {uiFixturePrelude} from '../real-data/ui-scenarios.ts';
 
+test('externally closed native views return to an active workbench while hidden boards stay paused',async()=>{
+ const root=resolve(REPO_ROOT,'.test-tmp');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'workspace-resume-')),entry=join(directory,'fixture.mjs');let passed=false;
+ try{
+  await build({stdin:{resolveDir:REPO_ROOT,loader:'tsx',contents:`
+import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
+${uiFixturePrelude()}
+import {AppsWorkspace} from './packages/plugin-apps/client/workspace.tsx';
+import {WorkbenchBoard} from './packages/plugin-apps/client/workbench-board.tsx';
+import {updateOwnedAppsView} from './packages/plugin-apps/client/native-publication.tsx';
+globalThis.IS_REACT_ACT_ENVIRONMENT=true;globalThis.window=new EventTarget();
+const view={viewId:'native',ownerSessionId:'A',title:'原生组件',panelState:'open',bindings:[],createdAt:'2026-10-16T00:00:00Z',updatedAt:'2026-10-16T00:00:00Z'};
+const board={kind:'workbench',workbenchId:'board',appId:'hallmark',revision:1,instances:[],savedComponents:[]};
+let tree,pageVisible=true,boardReads=0,storeReads=0,denyStores=true;const requests=[];
+globalThis.fetch=async(url,options)=>{assert.notEqual(options?.method,'POST','external close and directory retry are read-only');const resource=new URL(String(url),'http://fixture').searchParams.get('resource');requests.push(resource);
+ if(resource==='views')return Response.json({views:[view]});
+ if(resource==='workbench'){boardReads++;return Response.json(board);}
+ if(resource==='stores'){storeReads++;return denyStores?Response.json({status:'failed',error:{code:'ACCESS_DENIED',message:'店铺目录暂不可读'}},{status:403}):Response.json({stores:[uiStore({id:'shop-a'})]});}
+ throw Error('unexpected resource '+resource);
+};
+const flush=async()=>{for(let n=0;n<8;n++)await new Promise(resolve=>setImmediate(resolve));};
+const text=node=>typeof node==='string'?node:node?.children?.map(text).join('')??'';
+const button=name=>tree.root.findAllByType('button').find(node=>text(node)===name),home=()=>tree.root.findByType(WorkbenchBoard);
+const click=async node=>{assert.ok(node);await act(async()=>{node.props.onClick();await flush();});};
+const draw=()=> <AppsWorkspace currentSessionId='A' usePanelInfo={selector=>selector({activePanelId:pageVisible?'hallmark-apps':'chat'})}/>;
+try{
+ await act(async()=>{tree=create(draw());await flush();});assert.equal(boardReads,1);assert.equal(storeReads,1);
+ await click(button('原生组件'));assert.equal(home().props.active,false);const beforeHidden=[boardReads,storeReads];
+ await click(button('刷新目录'));assert.deepEqual([boardReads,storeReads],beforeHidden,'a hidden workbench does not fetch when its catalogue revision changes');
+ view.panelState='closed';await act(async()=>{updateOwnedAppsView({...view});await flush();});
+ assert.equal(home().parent.props.hidden,false,'external close exposes the fallback workbench');
+ assert.equal(home().props.active,true,'the visible fallback workbench must be active after an external close');
+ assert.equal(boardReads,2,'the visible fallback resumes its pending catalogue refresh');assert.equal(storeReads,2);assert.ok(button('重新读取店铺'));
+ denyStores=false;await click(button('重新读取店铺'));assert.equal(storeReads,3);assert.equal(boardReads,2,'store retry retains the successful workbench catalogue');assert.equal(home().findByProps({'aria-label':'当前店铺'}).props.value,'','recovery does not choose a store for the user');
+ pageVisible=false;const beforePageHide=requests.length;await act(async()=>{tree.update(draw());await flush();});assert.equal(home().props.active,false);assert.equal(home().parent.props.hidden,true);assert.equal(requests.length,beforePageHide,'a hidden workspace remains paused');
+ console.log('EXTERNAL_CLOSE_ACTIVE_WORKBENCH_PASS');
+}finally{if(tree)await act(async()=>tree.unmount());}
+`},plugins:[{name:'isolate-unrelated-native-content',setup(builder){const stubs:Record<string,string>={'directory.tsx':"export function AppsDirectory(p){return <div><button onClick={p.onRefreshViews}>刷新目录</button>{p.navigation}{p.children}</div>}",'view.tsx':"export function AppsNativeView(){return <div>原生内容</div>}",'save-controls.tsx':"export function AppsSaveControls(){return null}",'workbench-component-actions.tsx':"export function CurrentComponentWorkbenchAction(){return null} export function PinSavedComponentButton(){return null}"};builder.onLoad({filter:/[\\/]plugin-apps[\\/]client[\\/](directory|view|save-controls|workbench-component-actions)\.tsx$/},args=>({contents:stubs[args.path.split(/[\\/]/).at(-1)!],loader:'tsx'}));}}],banner:{js:"import {createRequire} from 'node:module';const require=createRequire(import.meta.url);"},outfile:entry,bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-test-renderer']});
+  const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:20000,cwd:REPO_ROOT,windowsHide:true});writeFileSync(join(directory,'stdout.txt'),result.stdout??'');writeFileSync(join(directory,'stderr.txt'),result.stderr??'');assert.equal(result.status,0,(result.stdout??'')+(result.stderr??'')+'\nFixture retained at '+directory);assert.match(result.stdout,/EXTERNAL_CLOSE_ACTIVE_WORKBENCH_PASS/);passed=true;
+ }finally{assert.ok(resolve(directory).startsWith(root+sep+'workspace-resume-'));if(passed)rmSync(directory,{recursive:true,force:true,maxRetries:3});}
+});
+
 // Production workspace, board, reader and table; only the outer app directory is isolated.
 for(const fullDataset of [true,false])test(`workspace returns to a bounded, paused ${fullDataset?'full':'loaded'} data task with its real React search and page intact`,async()=>{
- const root=resolve('.test-tmp');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'workspace-resume-')),entry=join(directory,'fixture.mjs');
+ const root=resolve(REPO_ROOT,'.test-tmp');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'workspace-resume-')),entry=join(directory,'fixture.mjs');let passed=false;
  try{
-  await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
+  await build({stdin:{resolveDir:REPO_ROOT,loader:'tsx',contents:`
 import React from 'react';
 ${uiFixturePrelude()}
 import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
@@ -57,14 +100,14 @@ try{
  assert.ok(requests.filter(row=>row.body).every(row=>row.body.operation==='read'));console.log('WORKSPACE_RESUME_PASS');
 }finally{if(tree)await act(async()=>tree.unmount());}
 `},plugins:[{name:'directory-isolation',setup(builder){builder.onLoad({filter:/[\\/]plugin-apps[\\/]client[\\/]directory\.tsx$/},()=>({contents:"export function AppsDirectory(p){return <div><button data-switch-app='notes' onClick={()=>p.onAppChange('notes')}>笔记应用</button>{p.navigation}{p.children}</div>}",loader:'tsx'}));}}],banner:{js:"import {createRequire} from 'node:module';const require=createRequire(import.meta.url);"},outfile:entry,bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-test-renderer']});
-  const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:20000});assert.equal(result.status,0,result.error?.message??result.stderr);assert.match(result.stdout,/WORKSPACE_RESUME_PASS/);
- }finally{assert.ok(resolve(directory).startsWith(root+sep+'workspace-resume-'));rmSync(directory,{recursive:true,force:true,maxRetries:3});}
+  const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:20000,cwd:REPO_ROOT,windowsHide:true});writeFileSync(join(directory,'stdout.txt'),result.stdout??'');writeFileSync(join(directory,'stderr.txt'),result.stderr??'');assert.equal(result.status,0,(result.stdout??'')+(result.stderr??'')+'\nFixture retained at '+directory);assert.match(result.stdout,/WORKSPACE_RESUME_PASS/);passed=true;
+ }finally{assert.ok(resolve(directory).startsWith(root+sep+'workspace-resume-'));if(passed)rmSync(directory,{recursive:true,force:true,maxRetries:3});}
 });
 
 test('paused data tasks cancel timers and reads, preserve selection, resume the same query and reject stale owners',async()=>{
- const root=resolve('.test-tmp');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'workspace-paused-')),entry=join(directory,'fixture.mjs');
+ const root=resolve(REPO_ROOT,'.test-tmp');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'workspace-paused-')),entry=join(directory,'fixture.mjs');let passed=false;
  try{
-  await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
+  await build({stdin:{resolveDir:REPO_ROOT,loader:'tsx',contents:`
 import React from 'react';
 ${uiFixturePrelude()}
 import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
@@ -103,6 +146,6 @@ try{
  await act(async()=>tree.unmount());tree=undefined;assert.equal(timers.size,0);assert.ok(requests.every(row=>row.body.operation==='read'));console.log('WORKSPACE_PAUSED_READS_PASS');
 }finally{for(const release of releases)release();if(tree)await act(async()=>tree.unmount());}
 `},banner:{js:"import {createRequire} from 'node:module';const require=createRequire(import.meta.url);"},outfile:entry,bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-test-renderer']});
-  const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:20000});assert.equal(result.status,0,result.error?.message??result.stderr);assert.match(result.stdout,/WORKSPACE_PAUSED_READS_PASS/);
- }finally{assert.ok(resolve(directory).startsWith(root+sep+'workspace-paused-'));rmSync(directory,{recursive:true,force:true,maxRetries:3});}
+  const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:20000,cwd:REPO_ROOT,windowsHide:true});writeFileSync(join(directory,'stdout.txt'),result.stdout??'');writeFileSync(join(directory,'stderr.txt'),result.stderr??'');assert.equal(result.status,0,(result.stdout??'')+(result.stderr??'')+'\nFixture retained at '+directory);assert.match(result.stdout,/WORKSPACE_PAUSED_READS_PASS/);passed=true;
+ }finally{assert.ok(resolve(directory).startsWith(root+sep+'workspace-paused-'));if(passed)rmSync(directory,{recursive:true,force:true,maxRetries:3});}
 });

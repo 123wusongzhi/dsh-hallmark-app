@@ -12,8 +12,12 @@ ${uiFixturePrelude()}
 import {create,act} from 'react-test-renderer';
 import assert from 'node:assert/strict';
 import {BusinessSettings} from './packages/plugin-apps/client/business-settings.tsx';
+import {BusinessPackagingRepository} from './packages/business-packaging/src/index.ts';
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
-const originalFetch=globalThis.fetch,requests=[],reads=[];let tree,holdStoreSave=false,releaseStoreSave,holdRead=false,releaseRead,failPricingSave=false,holdPricingSave=false,releasePricingSave,failNextRead=false;
+const originalFetch=globalThis.fetch,requests=[],reads=[];let tree,holdStoreSave=false,releaseStoreSave,holdRead=false,releaseRead,failPricingSave=false,holdPricingSave=false,releasePricingSave,failNextRead=false,nextReadOverride,packagingAvailable=false;
+const packageData=new Map(),packageRepository=new BusinessPackagingRepository({get:(c,id)=>packageData.get(c+id),put:(c,id,value)=>{packageData.set(c+id,value);return value;},list:()=>[...packageData.values()],transaction:fn=>fn()});
+const packageProduct=uiProduct({id:'intent-product'},20),packageMembers=[{itemId:packageProduct.id,sourceSkuId:'intent-sku',quantity:1,title:packageProduct.title,sourceRevision:'v1',commonPackage:packageProduct.sourcePackage}];
+const packageRead=()=>{const result=packageRepository.resolve({members:packageMembers}),override=packageRepository.readOverride(result.target);return {rows:[{key:JSON.stringify(result.target),target:result.target,kind:result.target.kind,composition:packageMembers,result,override:override??null,revision:override?.revision??0}],warnings:[]};};
 const store=(id,name)=>({...uiStore({},id==='bill'?0:1),id,name,platform:'ozon',sourceConnectionId:'board',revision:3,credentialRevision:1,hasCredentials:true,enabled:true,currency:'CNY',createdAt:'2026-10-10',updatedAt:'2026-10-10'});
 let stores=[store('bill','Bill 店铺'),store('helen','Helen 店铺'),{...store('cross','跨连接测试店铺'),sourceConnectionId:'other'}];
 // Pricing ranges and revision transitions are explicit derivatives of the captured pricing settings.
@@ -26,12 +30,16 @@ globalThis.fetch=async(url,options)=>{
  if(String(url).includes('resource=businessSettings')){
   const query=new URL(String(url),'http://local.test').searchParams;reads.push(Object.fromEntries(query));if(failNextRead){failNextRead=false;return Response.json({error:{message:'本地模拟读取失败'}},{status:503});}
   const selected=stores.find(row=>row.id===(query.get('storeId')??'bill'));if(query.get('connectionId')&&query.get('connectionId')!==selected.sourceConnectionId)return Response.json({error:{code:'STORE_NOT_FOUND',message:'店铺不属于当前经营连接。'}},{status:404});
-  const snapshot={connections:[{connectionId:'board',displayName:'原采集平台'},{connectionId:'other',displayName:'测试其他连接'}],connectionId:selected.sourceConnectionId,stores:stores.filter(row=>row.sourceConnectionId===selected.sourceConnectionId),store:selected,pricing:{...config,storeId:selected.id}};
+  const snapshot={connections:[{connectionId:'board',displayName:'原采集平台'},{connectionId:'other',displayName:'测试其他连接'}],connectionId:selected.sourceConnectionId,stores:stores.filter(row=>row.sourceConnectionId===selected.sourceConnectionId),store:selected,pricing:{...config,storeId:selected.id},packagingAvailable};
+  if(nextReadOverride){const override=nextReadOverride;nextReadOverride=undefined;return Response.json({...snapshot,...override});}
   if(holdRead){holdRead=false;await new Promise(resolve=>{releaseRead=resolve;});}
   return Response.json(snapshot);
  }
  const body=JSON.parse(options.body);requests.push(body);assert.equal(body.action,'businessSettings');assert.equal(body.connectionId,'board');
  assert.equal(Object.hasOwn(body,'sessionId'),false,'traditional settings do not require a chat');
+ if(body.operation==='packaging.search')return Response.json({items:[{...packageProduct,source:'alibaba_com',skuCount:1}],total:1});
+ if(body.operation==='packaging.read')return Response.json(packageRead());
+ if(body.operation==='packaging.save'){assert.equal(body.connectionId,'board','packaging stays owned by the original source connection');return Response.json({saved:packageRepository.saveOverrides(body.input.rows)});}
  if(body.operation==='pricing.quote')return Response.json({quote:{status:'ready',planId:body.input.planId??'heavy',planName:'大件渠道',selectionMode:config.logisticsSelection??'fixed',selectionReason:'两个方案重合，按总费用较高的大件渠道计算。',suggestedPlanId:'light',suggestedPlanName:'轻小件渠道',configRevision:7,suggestedPriceMinor:4500,minimumAllowedPriceMinor:3600,breakdown:{purchaseMinor:343,fixedMinor:1400,logisticsMinor:1700,commissionMinor:675,profitMinor:382,marginPpm:84888},issues:[],warnings:[]}});
  if(body.operation==='store.save'){
   if(holdStoreSave)await new Promise(resolve=>{releaseStoreSave=resolve;});
@@ -111,10 +119,10 @@ test('saving shop connection preserves unsaved pricing edits, disables edits whi
  await change('固定费用（元／销售件）','19.99');await change('上品目标利润率（%）','57');await change('店铺名称','Bill 新名称');
  assert.match(text(tree.toJSON()),/有未保存修改/);assert.equal(button('计算价格与利润').props.disabled,true);
  const beforeReads=reads.length;holdStoreSave=true;
- await click('保存店铺连接');assert.equal(tree.root.findByType('fieldset').props.disabled,true,'pending saves disable all editable controls');
+ await click('保存店铺连接');assert.equal(tree.root.findByProps({className:'business-settings-body'}).props.disabled,true,'pending saves disable all editable controls');
  assert.equal(button('重新读取').props.disabled,true);assert.equal(button('保存店铺连接').props.disabled,true);
  await act(async()=>{releaseStoreSave();await settle();});holdStoreSave=false;
- assert.equal(tree.root.findByType('fieldset').props.disabled,false);assert.equal(reads.length,beforeReads,'saving connection must not reload over unsaved rules');
+ assert.equal(tree.root.findByProps({className:'business-settings-body'}).props.disabled,false);assert.equal(reads.length,beforeReads,'saving connection must not reload over unsaved rules');
  assert.equal(control('固定费用（元／销售件）').props.value,'19.99');assert.equal(control('上品目标利润率（%）').props.value,'57');
  assert.equal(control('店铺名称').props.value,'Bill 新名称');assert.match(text(tree.toJSON()),/有未保存修改/);assert.equal(button('计算价格与利润').props.disabled,true);
  await click('保存已修改的经营规则');const saved=requests.find(row=>row.operation==='pricing.save');
@@ -163,7 +171,7 @@ test('reload asks before discarding pricing edits; cancellation preserves inputs
  globalThis.confirm=()=>{throw Error('No synchronous global dialog');};
  await change('固定费用（元／销售件）','19.99');await change('上品目标利润率（%）','57');
  const before=reads.length;await click('重新读取');
- assert.ok(button('保留修改'));assert.ok(button('放弃并重新读取'));assert.equal(tree.root.findByType('fieldset').props.disabled,false);assert.equal(reads.length,before);assert.equal(requests.length,0);
+ assert.ok(button('保留修改'));assert.ok(button('放弃并重新读取'));assert.equal(tree.root.findByProps({className:'business-settings-body'}).props.disabled,false);assert.equal(reads.length,before);assert.equal(requests.length,0);
  assert.equal(control('固定费用（元／销售件）').props.value,'19.99');assert.equal(control('上品目标利润率（%）').props.value,'57');
  assert.equal(control('经营店铺').props.disabled,true);assert.equal(control('采集来源连接').props.disabled,true);
  await click('保留修改');assert.equal(button('放弃并重新读取'),undefined);await click('重新读取');assert.equal(reads.length,before);
@@ -179,7 +187,7 @@ test('failed pricing save retains edits and cancellation still performs no reads
  await click('重新读取');const beforeSave=button('放弃并重新读取').props.onClick;
  await click('保存已修改的经营规则');await act(async()=>{beforeSave();await settle();});assert.match(text(tree.toJSON()),/规则保存失败/);assert.equal(reads.length,before);
  await click('重新读取');await click('保留修改');assert.equal(reads.length,before);assert.equal(control('固定费用（元／销售件）').props.value,'19.99');assert.equal(requests.length,1);
- failPricingSave=false,holdPricingSave=false,releasePricingSave,failNextRead=false;await click('保存已修改的经营规则');assert.equal(requests.length,2);assert.equal(requests[1].input.config.plans[0].fixedMinor,1999);assert.equal(requests[1].input.expectedRevision,7);
+ failPricingSave=false;await click('保存已修改的经营规则');assert.equal(requests.length,2);assert.equal(requests[1].input.config.plans[0].fixedMinor,1999);assert.equal(requests[1].input.expectedRevision,7);
  `);
 });
 
@@ -382,5 +390,62 @@ test('accepted normalized shop name clears the form guard after connection save'
  await runScenario(`
  await change('店铺名称','  本地规范化名称  ');await click('保存店铺连接');
  assert.equal(control('店铺名称').props.value,'本地规范化名称');assert.equal(control('经营店铺').props.disabled,false);assert.equal(button('重新读取').props.disabled,false);
+ `);
+});
+
+test('external routing requires the requested store and a resolved connection before replacing the editor',async()=>{
+ for(const override of [{store:null},{connectionId:null}])await runScenario(`
+ nextReadOverride=${JSON.stringify(override)};await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});
+ assert.equal(control('店铺名称').props.value,'Bill 店铺');assert.equal(control('采集来源连接').props.value,'board');
+ assert.match(text(tree.toJSON()),/目标店铺切换未完成/);assert.equal(button('保存店铺连接').props.disabled,true);
+ await click('取消切换，继续原店铺');assert.equal(control('店铺名称').props.value,'Bill 店铺');assert.equal(button('保存店铺连接').props.disabled,false);assert.equal(requests.length,0);
+ `);
+});
+
+test('a new external intent waits for existing connection form edits and follows after they are restored',async()=>{
+ await runScenario(`
+ await change('店铺名称','未保存的连接名称');const before=reads.length;
+ await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});
+ assert.equal(reads.length,before);assert.equal(control('店铺名称').props.value,'未保存的连接名称');
+ assert.equal(tree.root.findAllByProps({'aria-label':'工作台店铺切换待处理'}).length,1);
+ await change('店铺名称','Bill 店铺');assert.equal(control('店铺名称').props.value,'跨连接测试店铺');
+ assert.equal(reads.filter(row=>row.storeId==='cross').length,1);assert.equal(reads.at(-1).connectionId,undefined);assert.equal(requests.length,0);
+ `);
+});
+
+test('an external cross-connection intent preserves real packaging edits until their original-connection save completes',async()=>{
+ await runScenario(`
+ packagingAvailable=true;await click('重新读取');await click('查找商品');
+ await act(async()=>{tree.root.findByProps({className:'packaging-search-item'}).findByType('input').props.onChange({target:{checked:true}});await settle();});
+ await click('读取所选商品的包装');await act(async()=>{tree.root.findByProps({'aria-label':'intent-sku weight'}).props.onChange({target:{value:'0.5'}});await settle();});
+ await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});
+ assert.equal(reads.filter(row=>row.storeId==='cross').length,0);assert.equal(tree.root.findByProps({'aria-label':'intent-sku weight'}).props.value,'0.5');
+ assert.equal(tree.root.findAllByProps({'aria-label':'工作台店铺切换待处理'}).length,1);
+ await click('保存包装修改');const save=requests.find(row=>row.operation==='packaging.save');assert.equal(save.connectionId,'board');assert.equal(save.input.rows[0].expectedRevision,0);assert.equal(save.input.rows[0].values.weightKg,0.5);
+ assert.equal(control('店铺名称').props.value,'跨连接测试店铺');assert.equal(reads.filter(row=>row.storeId==='cross').length,1);assert.equal(requests.filter(row=>row.operation==='pricing.save'||row.operation==='store.save').length,0);
+ `);
+});
+
+for(const stage of ['composition','bulk'])test(`unapplied ${stage} packaging inputs defer an external switch until explicitly cancelled`,async()=>{
+ const prepare=`
+ packagingAvailable=true;await click('重新读取');await click('查找商品');
+ await act(async()=>{tree.root.findByProps({className:'packaging-search-item'}).findByType('input').props.onChange({target:{checked:true}});await settle();});
+ await click('读取所选商品的包装');
+ await act(async()=>{tree.root.findByProps({'aria-label':'选择当前表格所有包装行'}).props.onChange({target:{checked:true}});await settle();});
+ `;
+ await runScenario(prepare+`
+ ${stage==='composition'?"await click('用所选 SKU 建立组合');await act(async()=>{tree.root.findByProps({'aria-label':'intent-sku 组成数量'}).props.onChange({target:{value:'2'}});await settle();});":"await change('批量重量（kg）','0.7');"}
+ await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});
+ assert.equal(reads.filter(row=>row.storeId==='cross').length,0,'unapplied packaging input must not be unloaded');
+ assert.equal(tree.root.findAllByProps({'aria-label':'工作台店铺切换待处理'}).length,1);
+ ${stage==='composition'?"assert.equal(tree.root.findByProps({'aria-label':'intent-sku 组成数量'}).props.value,2);await click('取消组合编辑');":"assert.equal(control('批量重量（kg）').props.value,'0.7');await change('批量重量（kg）','');"}
+ assert.equal(control('店铺名称').props.value,'跨连接测试店铺');assert.equal(requests.filter(row=>row.operation==='packaging.save').length,0);
+ `);
+ if(stage==='bulk')await runScenario(prepare+`
+ await change('批量重量（kg）','0.7');await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});
+ await click('填入表格草稿');assert.equal(control('批量重量（kg）').props.value,'','applying consumes the transient bulk form');
+ assert.equal(control('店铺名称').props.value,'Bill 店铺','applied row edits still require their original-connection save');
+ await click('保存包装修改');assert.equal(control('店铺名称').props.value,'跨连接测试店铺');
+ const save=requests.find(row=>row.operation==='packaging.save');assert.equal(save.connectionId,'board');assert.equal(save.input.rows[0].values.weightKg,0.7);assert.equal(reads.filter(row=>row.storeId==='cross').length,1);
  `);
 });
