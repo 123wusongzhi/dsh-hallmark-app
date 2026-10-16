@@ -807,3 +807,58 @@ test('automatic repricing evaluates the final suggested tier, ignores a previous
   const manual=await adapter.load({storeId:'bill',row:{...row(),pricing:{mode:'manual',planId:'high'},payload:{price:'134.99',currency_code:'CNY'}},fresh:false});assert.equal(manual.pricingQuote?.evaluatedPriceMinor,13499);assert.equal(manual.pricingQuote?.planId,'low');assert.equal(manual.normalizedPayload?.price,'134.99');assert.equal(f.writes.length,0);
  }finally{f.database.close();}
 });
+
+test('listing packaging keeps rule priority, validates only fallback groups and projects no source evidence',async()=>{
+ const f=fixture();try{
+  f.products([]);f.gateway.listStores=()=>[{id:'bill'}];
+  const collection=new CollectionService({store:f.store,client:f.client}),packaging=new BusinessPackagingRepository(f.store);
+  const adapter=new HallmarkBusinessAdapter({store:f.store,client:f.client,broker:f.broker,gateway:f.gateway,collection,packaging});
+  let reviews=0;const engine=new BusinessOperations({store:f.store,source:adapter,transport:adapter,reviewer:{async review(){reviews++;throw Error('No review allowed');}}});
+  // Only packaging, source aliases and numeric inputs are controlled; product facts are recorded.
+  const configure=(weight:boolean,dimensions:boolean)=>{
+   f.detail(recordedDetail({id:'source',source:'taobao_tmall',package:{...(weight?{weightKg:.05}:{}),...(dimensions?{dimensionsCm:{length:10,width:8,height:2}}:{})}},1));
+  };
+  // Use the recorded SKU identity to avoid changing the collected product's procurement facts.
+  const sku=String(realDetail(1).skus[0].sourceSkuId??realDetail(1).skus[0].code??realDetail(1).skus[0].id);
+  const make=async(payload:Record<string,unknown>)=>engine.create({storeId:'bill',rows:[{action:'listing',target:{offerId:'package-audit'},payload:{name:sourceBaseline.title,price:'20',currency_code:'CNY',custom_unknown:{keep:true},...payload},procurement:[{itemId:'source',sourceSkuId:sku,quantity:1}]}]});
+  const valid={weight:200,weight_unit:'g',depth:500,width:400,height:300,dimension_unit:'mm'};
+  configure(true,true);
+  let plan=await make({...valid,weight_unit:'unsupported',dimension_unit:'m',height:-1});
+  assert.deepEqual(plan.rows[0].context?.listingPackaging,{weight:'rules',dimensions:'rules'});
+  assert.equal(plan.rows[0].payload.weight,50);assert.equal(plan.rows[0].payload.depth,100);
+  assert.equal(plan.rows[0].issues.some(issue=>issue.code==='PACKAGING_DRAFT_INVALID'),false,'stale invalid fallback cannot block authoritative rules');
+  const context=plan.rows[0].context!;(context.listingPackaging as any).secret='never expose';
+  const projected:any=publicPlan(plan);
+  assert.deepEqual(projected.rows[0].listingPackaging,{weight:'rules',dimensions:'rules'});
+  assert.equal(projected.rows[0].context,undefined);assert.equal(projected.rows[0].source,undefined);
+  assert.deepEqual(projected.rows[0].payload.custom_unknown,{keep:true});
+  // Fresh collection reads are required after source updates, exactly as in a new request.
+  const runMissing=async(payload:Record<string,unknown>,weight=false,dimensions=false)=>{
+   configure(weight,dimensions);
+   const freshCollection=new CollectionService({store:f.store,client:f.client});
+   await freshCollection.getProduct('source',{refresh:true});
+   const freshAdapter=new HallmarkBusinessAdapter({store:f.store,client:f.client,broker:f.broker,gateway:f.gateway,collection:freshCollection,packaging});
+   return new BusinessOperations({store:f.store,source:freshAdapter,transport:f.adapter,reviewer:{async review(){reviews++;throw Error('No review allowed');}}}).create({storeId:'bill',rows:[{action:'listing',target:{offerId:'package-audit'},payload:{name:sourceBaseline.title,price:'20',currency_code:'CNY',custom_unknown:{keep:true},...payload},procurement:[{itemId:'source',sourceSkuId:sku,quantity:1}]}]});
+  };
+  for(const values of [valid,{weight:.2,weight_unit:'kg',depth:50,width:40,height:30,dimension_unit:'cm'}]){
+   plan=await runMissing(values);assert.deepEqual(plan.rows[0].context?.listingPackaging,{weight:'draft',dimensions:'draft'});
+   assert.equal(plan.rows[0].payload.weight,200);assert.equal(plan.rows[0].payload.depth,500);assert.equal(plan.rows[0].payload.dimension_unit,'mm');
+   assert.equal(plan.rows[0].issues.some(issue=>issue.code.startsWith('PACKAGING_')),false,JSON.stringify(plan.rows[0].issues));
+  }
+  for(const fault of [{dimension_unit:'m'},{height:0},{width:-1},{depth:''},{height:'bad'},{depth:1e30},{weight:0},{weight:-1},{weight_unit:'lb'},{weight:1e30},{weight:true},{height:true},{weight:1e-20},{depth:1e-20}]){
+   const input:Record<string,unknown>={...valid,...fault};plan=await runMissing(input);const row=plan.rows[0];
+   assert.ok(row.issues.some(issue=>issue.code==='PACKAGING_DRAFT_INVALID'),JSON.stringify(fault));
+   for(const field of Object.keys(fault))assert.deepEqual(row.payload[field],input[field],field+' invalid input survives');
+   if(Object.keys(fault).some(field=>field.startsWith('weight')))assert.equal(row.payload.depth,500);else assert.equal(row.payload.weight,200);
+  }
+  plan=await runMissing({});assert.deepEqual(plan.rows[0].context?.listingPackaging,{weight:'missing',dimensions:'missing'});
+  assert.equal(plan.rows[0].issues.filter(issue=>issue.code==='PACKAGING_VALUE_MISSING').length,2);
+  plan=await runMissing({...valid,dimension_unit:'m'},true,false);
+  assert.deepEqual(plan.rows[0].context?.listingPackaging,{weight:'rules',dimensions:'missing'});assert.equal(plan.rows[0].payload.weight,50);assert.equal(plan.rows[0].payload.dimension_unit,'m');
+  plan=await runMissing({...valid,weight_unit:'lb'},false,true);
+  assert.deepEqual(plan.rows[0].context?.listingPackaging,{weight:'missing',dimensions:'rules'});assert.equal(plan.rows[0].payload.depth,100);assert.equal(plan.rows[0].payload.weight_unit,'lb');
+  // A later source update continues to take priority over old normalized draft values.
+  plan=await runMissing(valid,true,true);assert.equal(plan.rows[0].payload.weight,50);assert.equal(plan.rows[0].payload.depth,100);
+  assert.equal(f.writes.length,0);assert.equal(reviews,0);
+ }finally{f.database.close();}
+});

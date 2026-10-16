@@ -1,3 +1,4 @@
+import {listingPackagingFields, listingPackagingIssues} from './listing-packaging-fields.ts';
 import { normalizeProduct } from '../../collection/src/normalize.ts';
 import { BusinessSourceValidationError } from './operations/types.ts';
 import { createHash, randomUUID } from 'node:crypto';
@@ -128,6 +129,7 @@ export class HallmarkBusinessAdapter implements BusinessSourcePort,BusinessTrans
   async load(input:{storeId:string;row:BusinessRowInput;fresh:boolean;signal?:AbortSignal;listingRepairExecutionId?:string}):Promise<TrustedRowContext>{
     const {storeId,row,fresh,signal}=input;signal?.throwIfAborted();
     const all=await this.snapshot(storeId),prior=exact(all,row.target),policyRecord=this.store.get<RecordData>('business_policies',storeId)??{};
+    let listingPackaging:TrustedRowContext['listingPackaging'];
     let current:RecordData={},identity:TrustedRowContext['identity']={...row.target,storeId},platform:RecordData|undefined;
     const issues:BusinessIssue[]=[],corrections:string[]=[],normalized=clean(row.payload);
     if(normalized.currency!==undefined&&normalized.currency_code===undefined){normalized.currency_code=normalized.currency;delete normalized.currency;corrections.push('币种字段已转换为 currency_code');}
@@ -278,10 +280,13 @@ export class HallmarkBusinessAdapter implements BusinessSourcePort,BusinessTrans
         dimensionsCm:dimensionFactor!==null&&draftDimensions.every(value=>value!==null&&value>0)?{length:draftDimensions[0]!*dimensionFactor,width:draftDimensions[1]!*dimensionFactor,height:draftDimensions[2]!*dimensionFactor}:null,
       }});
       source.packaging=resolved;
-      if(resolved.weightGrams!==null){normalized.weight=resolved.weightGrams;normalized.weight_unit='g';corrections.push(resolved.origin.weight==='draft'?'已采用本次草稿填写的发货重量，未保存为长期包装规则':'已按 SKU 包装规则填入发货重量');}
-      if(resolved.dimensionsMm!==null){normalized.depth=resolved.dimensionsMm.length;normalized.width=resolved.dimensionsMm.width;normalized.height=resolved.dimensionsMm.height;normalized.dimension_unit='mm';corrections.push(resolved.origin.dimensions==='draft'?'已采用本次草稿填写的发货尺寸，未保存为长期包装规则':'已按 SKU 包装规则复用发货尺寸');}
+      listingPackaging=listingPackagingFields(resolved);
+      const packagingDraftIssues=listingPackagingIssues(normalized,listingPackaging);
+      issues.push(...packagingDraftIssues);
+      if(resolved.weightGrams!==null&&!packagingDraftIssues.some(issue=>['weight','weight_unit'].includes(issue.field??''))){normalized.weight=resolved.weightGrams;normalized.weight_unit='g';corrections.push(resolved.origin.weight==='draft'?'已采用本次草稿填写的发货重量，未保存为长期包装规则':'已按 SKU 包装规则填入发货重量');}
+      if(resolved.dimensionsMm!==null&&!packagingDraftIssues.some(issue=>['depth','width','height','dimension_unit'].includes(issue.field??''))){normalized.depth=resolved.dimensionsMm.length;normalized.width=resolved.dimensionsMm.width;normalized.height=resolved.dimensionsMm.height;normalized.dimension_unit='mm';corrections.push(resolved.origin.dimensions==='draft'?'已采用本次草稿填写的发货尺寸，未保存为长期包装规则':'已按 SKU 包装规则复用发货尺寸');}
       // Missing package values are ordinary missing fields, never a separate model review.
-      for(const field of resolved.missing)issues.push(issue('PACKAGING_VALUE_MISSING',field.field==='weightKg'?'缺少发货包装重量；可直接在本行 payload 填写 weight 和 weight_unit，无需先保存包装设置。':'缺少完整发货包装尺寸；可直接在本行 payload 填写 depth、width、height 和 dimension_unit，无需先保存包装设置。','packaging'));
+      for(const field of resolved.missing)issues.push(issue('PACKAGING_VALUE_MISSING',field.field==='weightKg'?'缺少发货包装重量；可直接在本行 payload 填写 weight 和 weight_unit，无需先保存包装设置。':'缺少完整发货包装尺寸；可直接在本行 payload 填写 depth、width、height 和 dimension_unit，无需先保存包装设置。',field.field==='weightKg'?'weight':'depth'));
     }
     // Existing platform declarations are evidence only for a uniquely linked, identical sale composition.
     if(row.action==='listing'&&!this.packaging&&selections.length===1&&selections[0].quantity===1){
@@ -348,7 +353,7 @@ export class HallmarkBusinessAdapter implements BusinessSourcePort,BusinessTrans
       }
     }
     const reviewUnits=row.action==='listing'?this.listingReviewUnits(source,normalized,sourceImages,assets,selections,!!row.listingAssets):undefined;
-    return clean({identity,current,source,procurement,assets,sourceImages,policy,...(pricingQuote?{pricingQuote,normalizedPricing:{...(pricingConfig?.logisticsSelection!=='automatic'&&row.pricing?.planId?{planId:row.pricing.planId}:{}),mode:row.pricing?.mode??(row.payload.price===undefined?'automatic':'manual')}}:{}),...(this.gateway?.getStore(storeId)?{credentialRevision:this.gateway.getStore(storeId)!.credentialRevision}:{}),normalizedPayload:normalized,...(selections.length?{normalizedProcurement:selections}:{}),corrections,issues,...(reviewUnits?{reviewUnits}:{})});
+    return clean({identity,current,source,procurement,assets,sourceImages,policy,...(listingPackaging?{listingPackaging}:{}),...(pricingQuote?{pricingQuote,normalizedPricing:{...(pricingConfig?.logisticsSelection!=='automatic'&&row.pricing?.planId?{planId:row.pricing.planId}:{}),mode:row.pricing?.mode??(row.payload.price===undefined?'automatic':'manual')}}:{}),...(this.gateway?.getStore(storeId)?{credentialRevision:this.gateway.getStore(storeId)!.credentialRevision}:{}),normalizedPayload:normalized,...(selections.length?{normalizedProcurement:selections}:{}),corrections,issues,...(reviewUnits?{reviewUnits}:{})});
   }
   private listingReviewUnits(source:RecordData,draft:RecordData,sourceImages:Array<{id:string;url:string}>,assets:Array<{url:string;contentHash:string}>,composition:BusinessRowInput['procurement'],requireSpecificationText=false):ReviewUnit[]{
     const attributes=Array.isArray(draft.attributes)?draft.attributes:[],shared=attributes.filter((a:RecordData)=>(requireSpecificationText?[4191]:[4191,11254]).includes(a.id)),specific=attributes.filter((a:RecordData)=>![4191,11254,9024].includes(a.id));

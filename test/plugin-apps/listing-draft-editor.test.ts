@@ -57,6 +57,9 @@ const change=async(label,value)=>act(async()=>{tree.root.findByProps({'aria-labe
 try {
  await act(async()=>{tree=create(<BusinessOperations sessionId="listing-session" storeId={store.id}/>);await settle();});
  assert.equal(plan.rows[0].issues[0].code,'TITLE_REQUIRED');
+ assert.match(text(tree.root),/重量来源状态尚未确认/,'older providers remain explicitly unknown, not falsely locked');
+ assert.equal(tree.root.findByProps({'aria-label':'DRAFT-A 发货总重量'}).props.disabled,false);
+ assert.equal(button('按当前包装规则更新草稿').props.disabled,false);
  assert.equal(tree.root.findAllByProps({'aria-label':'DRAFT-A 商品标题'}).length,1,'A listing with missing content must expose a labeled title field, without requiring JSON editing');
  assert.match(JSON.stringify(tree.toJSON()),/请补充商品标题/);
  await change('DRAFT-A 完整字段','{ unfinished JSON');

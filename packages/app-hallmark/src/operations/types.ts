@@ -57,6 +57,7 @@ export class BusinessSourceValidationError extends Error {
 }
 /** Supplied by application code, never by tool input. Each unit contains exactly its real dependencies. */
 export type ReviewUnit = Omit<SemanticReviewRequest, 'versions'> & { id: string; policyVersion?: string };
+export interface ListingPackagingFields { weight?: 'rules' | 'draft' | 'missing'; dimensions?: 'rules' | 'draft' | 'missing' }
 export interface TrustedRowContext {
   /** This is the identity resolved by the source service in the selected store. */
   identity: BusinessTarget & { storeId: string };
@@ -66,6 +67,7 @@ export interface TrustedRowContext {
   procurement: ProcurementSource[];
   credentialRevision?:number;
   pricingQuote?:BusinessPriceQuote;
+  listingPackaging?: ListingPackagingFields;
   normalizedPricing?:BusinessRowInput['pricing'];
   /** Program-published assets and original source assets. A URL here must be bound to this source/SKU. */
   assets?: Array<{ url: string; contentHash: string }>;
@@ -122,6 +124,8 @@ export interface BusinessRow extends BusinessRowInput {
   issues: BusinessIssue[];
   corrections: string[];
   context?: TrustedRowContext;
+  /** Public group-level editing state; omitted for older or unknown providers. */
+  listingPackaging?: ListingPackagingFields;
   before?: Record<string, unknown>;
   beforeHash?: string;
   binding?: PurchaseBinding;

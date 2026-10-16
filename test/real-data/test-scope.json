@@ -174,7 +174,8 @@
     "test/plugin-apps/business-confirmation-revalidation.test.ts",
     "test/plugin-apps/workbench-linked-cancellation.test.ts",
     "test/plugin-apps/business-recovery-actions.test.ts",
-    "test/plugin-apps/business-discard-recovery.test.ts"
+    "test/plugin-apps/business-discard-recovery.test.ts",
+    "test/plugin-apps/listing-packaging.test.ts"
   ],
   "infrastructureFiles": [
     "test/authoring/failed-build-http-recovery.test.ts",

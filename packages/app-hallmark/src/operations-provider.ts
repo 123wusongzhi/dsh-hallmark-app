@@ -2,7 +2,7 @@ import {canonicalJson} from '../../app-contracts/src/index.ts';
 import type {CapabilityDescriptor,CapabilityResult,ExecutionContext,JsonSchema,JsonValue} from '../../app-contracts/src/index.ts';
 import type {CoreStore,CoreClient,RecordData} from '../../core/src/types.ts';
 import {BusinessOperations} from './operations/index.ts';
-import type {BusinessPlan,BusinessRowInput} from './operations/types.ts';
+import type {BusinessPlan,BusinessRowInput,TrustedRowContext} from './operations/types.ts';
 
 const text:JsonSchema={type:'string',minLength:1};
 const object:JsonSchema={type:'object',additionalProperties:true};
@@ -42,9 +42,15 @@ export const BUSINESS_PRICING_DESCRIPTORS:readonly CapabilityDescriptor[]=[
 export const BUSINESS_DESCRIPTORS:readonly CapabilityDescriptor[]=[...Object.keys(inputs).map(operation=>descriptor(operation)),...['create','revise','get','submit'].map(operation=>descriptor(operation,'hallmark.listing.draft'))];
 export const businessOperation=(id:string):string|undefined=>id.startsWith('hallmark.plan.')?id.slice('hallmark.plan.'.length):id.startsWith('hallmark.listing.draft.')?id.slice('hallmark.listing.draft.'.length):undefined;
 export const legacyBusinessKind=(id:string)=>id==='hallmark.products.update_price'||id==='hallmark.api.products.update_price'?'price':id==='hallmark.products.update_stock'?'stock':id==='hallmark.products.list_product'?'listing':undefined;
+function publicListingPackaging(context?:TrustedRowContext) {
+ const fields=context?.listingPackaging;
+ if(!fields)return {};
+ const state=(value:unknown)=>value==='rules'||value==='draft'||value==='missing'?value:undefined;
+ return {listingPackaging:{weight:state(fields.weight),dimensions:state(fields.dimensions)}};
+}
 export function publicPlan(plan:BusinessPlan,includeEvidence=false):JsonValue {
  if(includeEvidence)return JSON.parse(JSON.stringify(plan));
- return JSON.parse(JSON.stringify({...plan,rows:plan.rows.map(({context,repairHistory,beforeHash,...row})=>({...row,...(context?.pricingQuote?{pricingQuote:row.action==='listing'?{status:context.pricingQuote.status,configRevision:context.pricingQuote.configRevision,issues:context.pricingQuote.issues,warnings:context.pricingQuote.warnings}:context.pricingQuote}:{}),receipt:row.receipt?{executionId:(row.receipt as RecordData).executionId,requestId:(row.receipt as RecordData).requestId,taskId:(row.receipt as RecordData).taskId,transport:(row.receipt as RecordData).transport,importTaskId:(row.receipt as RecordData).importTaskId,completion:(row.receipt as RecordData).completion,observed:(row.receipt as RecordData).observed,product:(row.receipt as RecordData).product?{id:(row.receipt as RecordData).product.id,sku:(row.receipt as RecordData).product.sku,statuses:(row.receipt as RecordData).product.statuses,is_archived:(row.receipt as RecordData).product.is_archived}:undefined}:undefined}))}));
+ return JSON.parse(JSON.stringify({...plan,rows:plan.rows.map(({context,repairHistory,beforeHash,...row})=>({...row,...publicListingPackaging(context),...(context?.pricingQuote?{pricingQuote:row.action==='listing'?{status:context.pricingQuote.status,configRevision:context.pricingQuote.configRevision,issues:context.pricingQuote.issues,warnings:context.pricingQuote.warnings}:context.pricingQuote}:{}),receipt:row.receipt?{executionId:(row.receipt as RecordData).executionId,requestId:(row.receipt as RecordData).requestId,taskId:(row.receipt as RecordData).taskId,transport:(row.receipt as RecordData).transport,importTaskId:(row.receipt as RecordData).importTaskId,completion:(row.receipt as RecordData).completion,observed:(row.receipt as RecordData).observed,product:(row.receipt as RecordData).product?{id:(row.receipt as RecordData).product.id,sku:(row.receipt as RecordData).product.sku,statuses:(row.receipt as RecordData).product.statuses,is_archived:(row.receipt as RecordData).product.is_archived}:undefined}:undefined}))}));
 }
 export function businessResult(plan:BusinessPlan,context:ExecutionContext):CapabilityResult {
  const authorized=(row:BusinessPlan['rows'][number])=>plan.submitted?.rowRevisions[row.rowId]===row.revision;
@@ -103,7 +109,7 @@ export async function executeBusiness(operations:BusinessOperations,store:CoreSt
    const rows=args.rowIds?plan.rows.filter(row=>args.rowIds.includes(row.rowId)):plan.rows,offset=Number(args.cursor??0),limit=Number(args.limit??50);
    if(!Number.isSafeInteger(offset)||offset<0||offset>rows.length||!Number.isInteger(limit)||limit<1||limit>200)throw new Error('BUSINESS_PLAN_PAGE_INVALID');
    if(args.rowIds&&new Set(args.rowIds).size!==rows.length)throw new Error('BUSINESS_PLAN_ROW_NOT_FOUND');
-   const selected=rows.slice(offset,offset+limit),data=(args.view==='payload'&&!args.includeEvidence?{planId:plan.planId,revision:plan.revision,storeId:plan.storeId,status:plan.status,rows:selected.map(r=>({rowId:r.rowId,revision:r.revision,action:r.action,target:r.target,status:r.status,payload:r.payload,procurement:r.procurement??[],saleId:r.saleId??null,preparationRevision:r.preparationRevision??null,pricing:r.pricing??null,corrections:r.corrections,issues:r.issues}))}:publicPlan({...plan,rows:selected},args.includeEvidence===true)) as Record<string,JsonValue>;
+   const selected=rows.slice(offset,offset+limit),data=(args.view==='payload'&&!args.includeEvidence?{planId:plan.planId,revision:plan.revision,storeId:plan.storeId,status:plan.status,rows:selected.map(r=>({rowId:r.rowId,revision:r.revision,action:r.action,target:r.target,status:r.status,payload:r.payload,procurement:r.procurement??[],saleId:r.saleId??null,preparationRevision:r.preparationRevision??null,pricing:r.pricing??null,...publicListingPackaging(r.context),corrections:r.corrections,issues:r.issues}))}:publicPlan({...plan,rows:selected},args.includeEvidence===true)) as Record<string,JsonValue>;
    const nextCursor=offset+selected.length<rows.length?String(offset+selected.length):null;
    return {...base,status:'ok',data:{...data,page:{offset,total:rows.length,returned:selected.length,nextCursor},...(nextCursor?{continuation:{tool:'apps_invoke',arguments:{appId:'hallmark',connectionId:context.request.connectionId,capabilityId:context.request.capabilityId,capabilityVersion:'1.0.0',input:{planId,...(args.view?{view:args.view}:{}),...(args.includeEvidence?{includeEvidence:true}:{}),...(args.rowIds?{rowIds:args.rowIds}:{}),cursor:nextCursor,limit}}}}:{})}};
   }
