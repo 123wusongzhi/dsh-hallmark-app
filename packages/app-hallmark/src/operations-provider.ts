@@ -102,6 +102,14 @@ export async function resolveListingRows(store:CoreStore,storeId:string,rows:Bus
   return {...row,preparationRevision:revision,procurement};
  }));
 }
+/** A conflict only suggests an existing read, never a replacement write or an approval. */
+function planConflictDetails(operations:BusinessOperations,planId:string):Record<string,JsonValue>|undefined {
+ let plan:BusinessPlan;
+ try{plan=operations.get(planId);}catch{return undefined;}
+ const guidance='在本次调用的同一连接读取原变更单，核对店铺、目标行、当前内容及状态，并按 continuation 读取其余相关行。读取可能返回更新的版本；observedRevision 仅为冲突后的观察值，不是写入授权。仅在原授权范围内合并仍需修改且未执行的行，再按读取版本保存；提交前核对授权仍覆盖当前内容。不要只替换 expectedRevision、盲目重放写入或另建重复单；pending/unknown 保持原请求核查。';
+ const verified={storeId:plan.storeId,observedRevision:plan.revision,recovery:{capability:'hallmark.plan.get',input:{planId:plan.planId,view:'payload',cursor:'0',limit:10}}};
+ return Buffer.byteLength(JSON.stringify(verified))<=1500?{...verified,guidance}:{guidance,recoveryOmitted:'verified_scope_exceeds_budget'};
+}
 export async function executeBusiness(operations:BusinessOperations,store:CoreStore,context:ExecutionContext,getProductRevision?:(itemId:string)=>Promise<string>):Promise<CapabilityResult>{
  const args=structuredClone(context.request.input) as RecordData,operation=businessOperation(context.request.capabilityId)!,base={invocationId:context.request.invocationId,traceId:context.request.traceId};
  try{
@@ -133,7 +141,7 @@ export async function executeBusiness(operations:BusinessOperations,store:CoreSt
   link(store,context,plan.planId);
   plan=await operations.submit({planId:plan.planId,expectedRevision:operation==='restore'?plan.revision:args.expectedRevision},context.signal);
   return businessResult(plan,context);
- }catch(error){if(error instanceof ListingSourceRevisionError)return {...base,status:'failed',error:{code:error.code,message:'上品准备引用的来源资料已更新，请先读取当前资料并核对销售组成。',retryPolicy:'never',details:error.details}};return {...base,status:'failed',error:{code:error instanceof Error?error.message:'BUSINESS_OPERATION_FAILED',message:error instanceof Error?error.message:'经营操作未完成。',retryPolicy:'never'}};}
+ }catch(error){if(error instanceof Error&&error.message==='BUSINESS_PLAN_VERSION_CHANGED'&&(operation==='revise'||operation==='submit')){const details=planConflictDetails(operations,args.planId);return {...base,status:'failed',error:{code:'BUSINESS_PLAN_VERSION_CHANGED',message:'经营变更单版本已更新，请先读取原单并核对当前内容。',retryPolicy:'never',...(details?{details}:{})}};}if(error instanceof ListingSourceRevisionError)return {...base,status:'failed',error:{code:error.code,message:'上品准备引用的来源资料已更新，请先读取当前资料并核对销售组成。',retryPolicy:'never',details:error.details}};return {...base,status:'failed',error:{code:error instanceof Error?error.message:'BUSINESS_OPERATION_FAILED',message:error instanceof Error?error.message:'经营操作未完成。',retryPolicy:'never'}};}
 }
 export async function executeLegacyBusiness(operations:BusinessOperations,store:CoreStore,client:CoreClient,context:ExecutionContext):Promise<CapabilityResult>{
  const args=context.request.input as RecordData,action=legacyBusinessKind(context.request.capabilityId)!,storeId=args.storeId;
