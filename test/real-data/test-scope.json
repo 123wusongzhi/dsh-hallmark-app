@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "policy": "All tests consuming commodity, SKU, collected source, shop, sale, logistics, activity or dictionary facts use recorded snapshots. Original records remain immutable. Alias, omission, failure, numeric boundary and scale modifications are explicit derived cases.",
   "requiredFiles": [
+    "test/plugin-apps/pricing-validation-recovery.test.ts",
     "test/plugin-apps/table-browse-continuity.test.ts",
     "test/plugin-apps/business-new-form-navigation.test.ts",
     "test/plugin-apps/listing-draft-editor.test.ts",
@@ -201,6 +202,7 @@
     "test/app-hallmark/snapshot-cache.test.ts",
     "test/app-notes/provider.test.ts",
     "test/apps-components/agent-actions.test.ts",
+    "test/apps-components/agent-context-feedback.test.ts",
     "test/apps-components/agent-feedback-boundaries.test.ts",
     "test/apps-components/agent-feedback.test.ts",
     "test/apps-components/agent-recovery.test.ts",
@@ -370,6 +372,7 @@
     "test/app-hallmark/provenance-regression.test.ts": "Metadata provenance fallback over empty snapshots; no commodity fixture.",
     "test/app-hallmark/snapshot-cache.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/app-notes/provider.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
+    "test/apps-components/agent-context-feedback.test.ts": "Production React context controls use a real in-memory Runtime and loopback HTTP bridge with empty selections and local summary text, not business facts. Covers unpublished edits, reversion, publication failure and deferred completion, and prepared-request locks. External HTTP is forbidden and no native dispatch occurs.",
     "test/apps-components/agent-actions.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/apps-components/agent-feedback-boundaries.test.ts": "Production React agent controls tested with deferred context/receipt responses, synthetic bridge identities and transport failures; empty selections and local control inputs contain no commodity, shop, sale or other business facts. Tests publication invalidation, identity isolation and uncertain-submission locks; all fetch calls are prohibited.",
     "test/apps-components/agent-feedback.test.ts": "Production React agent submission feedback tested with deferred Promises, protocol receipt statuses and explicit transport/preflight failures; empty selections and task text are local UI control conditions, not merchant or commodity facts. Tests progress messages, duplicate-click gating and independent controls; all fetch calls are prohibited.",
@@ -557,6 +560,7 @@
     "test/plugin-apps/business-confirmation-revalidation.test.ts": "Recorded uiStore/uiProduct labels with explicit revision, price, missing/denied and delayed read controls. Production React confirmation is exercised across active-panel resume; closed fixture permits only list and resource reads, no merchant writes.",
     "test/plugin-apps/workbench-linked-cancellation.test.ts": "Recorded uiProduct base with explicit owner aliases, linked query/page cancellation, held abort-ignoring success/failure and fake refresh timers. Actual WorkbenchInstanceView, ProductList and SkuDetail run against read-only local fetch fixtures; no merchant network or writes.",
     "test/plugin-apps/business-recovery-actions.test.ts": "Recorded uiStore/uiProduct and purchase-cost evidence with explicit local rejection/decision/retry states. Real React and in-memory business engine verify corrective next actions, mixed batches, clock expiry without automatic resend, and edited-save recovery. Transport is an in-memory recorder; no merchant calls.",
-    "test/plugin-apps/business-new-form-refresh.test.ts": "Recorded product/store base with explicit local offer/price inputs, engine-backed plans and controlled missing/empty/failed/delayed list receipts; no merchant transport."
+    "test/plugin-apps/business-new-form-refresh.test.ts": "Recorded product/store base with explicit local offer/price inputs, engine-backed plans and controlled missing/empty/failed/delayed list receipts; no merchant transport.",
+    "test/plugin-apps/pricing-validation-recovery.test.ts": "Recorded store label and pricing values; explicit invalid rule boundaries and blank required field use enabled React controls with the real BusinessSettingsService, BusinessPricingRepository, RuntimeStore and production error classifier. Local gateway rejects every merchant call. Tests retain rejected inputs, cancel discard, correct and save without duplicating writes."
   }
 }

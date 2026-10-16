@@ -42,7 +42,7 @@ export const businessPricingDraftSchema = z.object({
     for (const field of ['listingTargetMarginPpm', 'manualTargetMarginPpm', 'minimumMarginPpm'] as const) {
       const margin = v[field];
       if (v.logisticsSelection !== 'automatic' && margin !== null && margin + plan.commissionPpm >= 1_000_000)
-        ctx.addIssue({ code: 'custom', path: [field], message: `利润率加方案「${plan.name}」佣金率必须低于 100%` });
+        ctx.addIssue({ code: 'custom', path: [field], message: `利润率加第 ${i + 1} 个物流方案佣金率必须低于 100%` });
     }
   }
   if (v.defaultPlanId !== null && !ids.has(v.defaultPlanId))
@@ -63,13 +63,45 @@ export class BusinessPricingError extends Error {
   }
 }
 
+// Keep validation guidance in the public message: HTTP consumers intentionally do
+// not receive raw schema details, but users still need to locate and repair fields.
+const pricingFieldLabels: Record<string, [string, number?]> = {
+  currency: ['币种'], defaultPlanId: ['默认物流方案'], logisticsSelection: ['物流方案选择'],
+  plans: ['物流报价方案'], id: ['方案编号'], name: ['方案名称'], enabled: ['启用状态'],
+  fixedMinor: ['固定费用（元／销售件）', 100], logisticsMicrosPerGram: ['运费（元／kg）', 1000],
+  commissionPpm: ['佣金比例（%）', 10000], deliveryMethodId: ['对应配送渠道编号'],
+  validFrom: ['有效自'], validUntil: ['有效至'], minWeightGrams: ['最小计费重量（克）'],
+  maxWeightGrams: ['最大计费重量（克）'], minPriceMinor: ['最低允许售价（元）', 100],
+  maxPriceExclusiveMinor: ['适用售价上界（元，不含）', 100],
+  listingTargetMarginPpm: ['上品目标利润率（%）', 10000],
+  manualTargetMarginPpm: ['调价目标利润率（%）', 10000],
+  minimumMarginPpm: ['最低允许利润率（%）', 10000],
+  maxAutoPriceMinor: ['上品自动定价上限（元）', 100], maxPriceMinor: ['最高允许售价（元）', 100],
+};
+function pricingValidationMessage(issues: z.core.$ZodIssue[]): string {
+  const messages = issues.map(issue => {
+    const field = String(issue.path.at(-1) ?? '');
+    const inPlan = issue.path[0] === 'plans' && typeof issue.path[1] === 'number';
+    const [label, scale = 1] = inPlan && field === 'minPriceMinor'
+      ? ['适用售价下限（元，含）', 100] : pricingFieldLabels[field] ?? ['经营规则'];
+    const location = `${inPlan ? `第 ${Number(issue.path[1]) + 1} 个物流方案 · ` : ''}${label}`;
+    const guidance = issue.code === 'custom' ? issue.message
+      : issue.code === 'invalid_type' ? '请填写有效值，必填数值不能留空'
+      : issue.code === 'too_small' ? issue.origin === 'string' ? '不能为空' : `不能小于 ${Number(issue.minimum) / scale}`
+      : issue.code === 'too_big' ? issue.origin === 'string' ? `不能超过 ${issue.maximum} 个字符` : `不能大于 ${Number(issue.maximum) / scale}`
+      : '请检查填写格式或所选值';
+    return `${location}：${guidance}`;
+  });
+  return `经营规则未保存，请修正：${[...new Set(messages)].join('；')}。`;
+}
+
 function asDraft(raw: unknown): BusinessPricingDraft {
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
     // The fixed settings UI may send the complete record it previously read.
     const { schemaVersion: _s, storeId: _i, revision: _r, updatedAt: _t, ...draft } = raw as Record<string, unknown>;
     const parsed = businessPricingDraftSchema.safeParse(draft);
     if (parsed.success) return parsed.data;
-    throw new BusinessPricingError('INVALID_PRICING_CONFIG', '经营规则格式不正确', parsed.error.issues);
+    throw new BusinessPricingError('INVALID_PRICING_CONFIG', pricingValidationMessage(parsed.error.issues), parsed.error.issues);
   }
   throw new BusinessPricingError('INVALID_PRICING_CONFIG', '经营规则必须是对象');
 }

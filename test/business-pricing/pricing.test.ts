@@ -246,3 +246,40 @@ test('settings for one store never overwrite another store', () => {
   assert.equal(repo.get('another')!.manualTargetMarginPpm, 100000);
   assert.equal(repo.list().length, 2);
 });
+
+test('invalid settings expose localized field recovery without relying on raw schema details', () => {
+  const cases: Array<[Record<string, unknown>, RegExp]> = [
+    [{ minPriceMinor: 10000, maxPriceMinor: 5000 }, /最高允许售价（元）：最高售价不能低于最低售价/],
+    [{ manualTargetMarginPpm: 1_000_000 }, /调价目标利润率（%）：不能大于 99\.9999/],
+    [{ plans: [{ ...legacyReferenceDraft(NOW).plans[0], fixedMinor: null }] }, /第 1 个物流方案 · 固定费用.*请填写/],
+    [{ plans: [{ ...legacyReferenceDraft(NOW).plans[0], name: '' }] }, /第 1 个物流方案 · 方案名称：不能为空/],
+    [{ plans: [{ ...legacyReferenceDraft(NOW).plans[0], minPriceMinor: 10000, maxPriceExclusiveMinor: 5000 }] }, /第 1 个物流方案 · 适用售价上界.*售价上界（不含）必须大于售价下界（含）/],
+  ];
+  for (const [patch, guidance] of cases) {
+    const repo = repository();
+    repo.save('bill', legacyReferenceDraft(NOW), 0);
+    assert.throws(() => repo.save('bill', { ...legacyReferenceDraft(NOW), ...patch } as any, 1), (error: unknown) => {
+      assert.ok(error instanceof BusinessPricingError); assert.equal(error.code, 'INVALID_PRICING_CONFIG');
+      assert.match(error.message, guidance); assert.ok(Array.isArray(error.details)); return true;
+    });
+    assert.equal(repo.read('bill')!.revision, 1);
+  }
+});
+
+
+test('pricing validation guidance does not echo user-controlled names, unknown keys or values', () => {
+  const repo = repository(), marker = '<img src=x onerror=private_marker>';
+  const draft = legacyReferenceDraft(NOW);
+  draft.plans[0].name = marker;
+  draft.listingTargetMarginPpm = 999999;
+  assert.throws(() => repo.save('bill', draft, 0), (error: unknown) => {
+    assert.ok(error instanceof BusinessPricingError);
+    assert.match(error.message, /第 1 个物流方案佣金率必须低于 100%/);
+    assert.ok(!error.message.includes(marker));return true;
+  });
+  assert.throws(() => repo.save('bill', { ...legacyReferenceDraft(NOW), [marker]: marker } as any, 0), (error: unknown) => {
+    assert.ok(error instanceof BusinessPricingError);
+    assert.ok(!error.message.includes(marker));assert.match(error.message, /请检查填写格式/);return true;
+  });
+  assert.equal(repo.read('bill'), undefined);
+});
