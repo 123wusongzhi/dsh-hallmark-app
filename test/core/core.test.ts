@@ -22,7 +22,12 @@ const priceArgs={storeId:'s',offerIds:['A'],price:100,currency:'RUB',valueSource
 test('inactive sessions rejected and app_info works offline',async()=>{const f=fixture();f.setUnavailable();assert.equal((await f.core.invoke('hallmark_app_info',{},context)).status,'ok');assert.equal((await f.core.invoke('hallmark_list_stores',{}, {sessionId:'off'})).error?.code,'APP_NOT_ACTIVE');f.store.close();});
 test('all registered contracts are advertised; unknown tool rejected',async()=>{const f=fixture();const result=await f.core.invoke('hallmark_app_info',{},context);assert.deepEqual((result.data as any).tools,TOOL_DEFINITIONS.map(({name,kind})=>({name,kind})));for(const name of ['hallmark_get_category_data','hallmark_open_component'])assert.ok((result.data as any).tools.some((tool:any)=>tool.name===name));assert.equal((await f.core.invoke('fake',{},context)).error?.code,'TOOL_NOT_FOUND');f.store.close();});
 test('store missing and ambiguous are clarification without writes',async()=>{const f=fixture();assert.equal((await f.core.invoke('hallmark_resolve_store',{query:'Al'},context)).status,'needs_clarification');assert.equal((await f.core.invoke('hallmark_update_price',{...priceArgs,storeId:undefined} as any,context)).status,'failed');assert.equal((await f.core.invoke('hallmark_update_price',{price:100},context)).status,'needs_clarification');assert.equal(f.calls.length,0);f.store.close();});
-test('raw snapshot fields preserved and no read writes',async()=>{const f=fixture();const result=await f.core.invoke('hallmark_list_store_products',{storeId:'s'},context);assert.deepEqual((result.data as any).products[0],f.snapshot.products[0]);assert.equal((result.data as any).products.length,2);assert.ok(result.provenance?.dataTime);assert.equal(f.calls.length,0);f.store.close();});
+test('raw snapshot fields preserved and no read writes',async()=>{
+ const f=fixture(),expected=structuredClone(f.snapshot.products[0]);
+ // Returned rows may share source references; capture the expected fields before invoking production.
+ const result=await f.core.invoke('hallmark_list_store_products',{storeId:'s'},context);
+ assert.deepEqual((result.data as any).products[0],expected);assert.equal((result.data as any).products.length,2);assert.ok(result.provenance?.dataTime);assert.equal(f.calls.length,0);f.store.close();
+});
 for(const useSpill of [false,true])test(`legacy product list keeps exact status and filtered pagination${useSpill?' with source spill':''}`,async()=>{
  const f=fixture(),source={stores:f.snapshot.stores,products:[
   recordedProduct({storeId:'s',offerId:'A',status:'on_sale',title:'needle'}),
