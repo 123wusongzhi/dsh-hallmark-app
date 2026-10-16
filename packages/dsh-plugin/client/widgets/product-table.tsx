@@ -36,7 +36,10 @@ export function ProductTable({widget,rows,binding,data,basis,control,visible=tru
   const defaultPageSize=tablePageSize(widget.options?.pageSize);
   const [pagination,setPagination]=useState({pageIndex:0,pageSize:defaultPageSize});
   const [search,setSearch]=useState(()=>fullDataset?control?.appliedSearch??'':'');const [notice,setNotice]=useState('');
-  useEffect(()=>{setNotice('');if(!fullDataset)setPagination(current=>({...current,pageIndex:0}));},[binding,data,rows,fullDataset]);
+  useEffect(()=>{setNotice('');},[binding,data,rows,fullDataset]);
+  // Replacing the same snapshot must not move the user's local reading position.
+  // A different query/batch still starts at its first page, as in ProductList.
+  useEffect(()=>{if(!fullDataset)setPagination(current=>({...current,pageIndex:0}));},[data?.datasetKey,fullDataset]);
   useEffect(()=>{if(fullDataset&&typeof control?.appliedSearch==='string')setSearch(control.appliedSearch);},[fullDataset,control?.appliedSearch]);
   useEffect(()=>{setPagination({pageIndex:0,pageSize:defaultPageSize});},[defaultPageSize]);
   const columnSpecs=useMemo(()=>new Map((widget.columns??[]).map(column=>[column.field,column])),[widget.columns]);

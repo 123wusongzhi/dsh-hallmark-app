@@ -17,14 +17,18 @@ import {create,act} from 'react-test-renderer';
 import assert from 'node:assert/strict';
 import {BusinessOperations} from './packages/plugin-apps/client/business-operations.tsx';
 import {BusinessOperations as Engine} from './packages/app-hallmark/src/operations/index.ts';
+import {BusinessSourceValidationError} from './packages/app-hallmark/src/operations/types.ts';
 import {RuntimeStore} from './packages/app-runtime/src/store.ts';
 import {HallmarkStorePort} from './packages/app-hallmark/src/store.ts';
 ${uiFixturePrelude()}
 const recordedPurchase=${JSON.stringify(realCollection(1).skus[0].purchaseCost)};
 const source=uiProduct({},1),store=uiStore({id:'listing-shop',connectionId:'listing-board'});
 const db=new RuntimeStore(':memory:'),port=new HallmarkStorePort(db,'listing-draft-ui');
-let reviews=0,writes=0,failSave=false,releaseSave;
-const engine=new Engine({store:port,source:{async load({storeId,row}){return {
+let reviews=0,writes=0,failSave=false,releaseSave,sourceFault;
+const engine=new Engine({store:port,source:{async load({storeId,row}){
+ if(sourceFault==='validation')throw new BusinessSourceValidationError([{code:'LOCAL_VALIDATION_FAULT',field:'name',message:'标题校验暂未通过，请修正后保存。'}]);
+ if(sourceFault==='unavailable')throw Error('来源读取暂不可用，请稍后重试。');
+ return {
  identity:{storeId,...row.target},current:{},source,
  procurement:[{itemId:source.id,sourceSkuId:source.sku,unitPrice:recordedPurchase.amount,currency:recordedPurchase.currency,unit:recordedPurchase.unit??'来源 SKU 销售单位'}],
  assets:[{url:source.image,contentHash:'recorded-image'}],
@@ -121,6 +125,33 @@ try {
  assert.equal(tree.root.findByProps({'aria-label':'DRAFT-A 商品标题'}).props.disabled,true,'listing editing is locked during confirmation');
  assert.equal(tree.root.findByProps({'aria-label':'编辑的上品'}).props.disabled,true);
  await click('返回检查');assert.equal(writes,0);assert.equal(reviews,0);
+ // Explicit provider faults exercise the real engine's validation-result path, not HTTP save rejection.
+ for(const fault of ['validation','unavailable']) {
+  sourceFault=fault;
+  const correction=source.title+' · '+fault;
+  await change('DRAFT-A 商品标题',correction);
+  await click('保存草稿');
+  const invalid=engine.get(plan.planId).rows[0];
+  assert.equal(invalid.payload.name,correction,'validation failure retains the actual saved input');
+  assert.equal(tree.root.findByProps({'aria-label':'DRAFT-A 商品标题'}).props.value,correction);
+  assert.equal(invalid.issues[0].code,fault==='validation'?'LOCAL_VALIDATION_FAULT':'SOURCE_UNAVAILABLE');
+  assert.ok(text(tree.root).includes(invalid.issues[0].message),'validation result must remain visible after successful draft persistence');
+  assert.equal(button('保存草稿').props.disabled,true,'persisted validation failure is not an unsaved HTTP failure');
+  sourceFault=undefined;
+  await change('DRAFT-A 商品标题',source.title);
+  await click('保存草稿');
+  const recovered=engine.get(plan.planId).rows[0];
+  assert.equal(recovered.payload.name,source.title);
+  assert.deepEqual(recovered.issues,[],'correcting and saving reruns validation without submission');
+  assert.equal(text(tree.root).includes(invalid.issues[0].message),false,'superseded diagnostic disappears');
+  assert.deepEqual(recovered.payload.attributes,payload.attributes);
+  assert.deepEqual(recovered.payload.custom_platform_field,payload.custom_platform_field);
+  assert.equal(recovered.payload.weight,350);
+  assert.deepEqual(recovered.procurement,procurement);
+  assert.equal(reviews,0);assert.equal(writes,0);
+  assert.equal(requests.some(row=>row.operation==='submit'),false);
+ }
+
  const other={...saved,planId:'another-batch',title:'另一个独立批次',rows:[{...saved.rows[1],rowId:'another-row',target:{offerId:'OTHER-BATCH'}}]};
  port.put('business_plans',other.planId,other);await click('刷新批次');
  await change('编辑的上品',saved.rows[1].rowId);
@@ -132,7 +163,7 @@ try {
  const terminal={...saved,rows:saved.rows.map(row=>({...row,status:'unknown'}))};port.put('business_plans',terminal.planId,terminal);
  await click('刷新批次');assert.equal(tree.root.findByProps({'aria-label':'DRAFT-A 商品标题'}).props.disabled,true);assert.equal(tree.root.findByProps({'aria-label':'DRAFT-A 主图地址'}).props.disabled,true);
  assert.equal(reviews,0);assert.equal(writes,0);
- console.log('LISTING_DRAFT_EDITOR_PASS: actionable correction, row/filter persistence, failed save retry, duplicate guard, preserved fields, terminal lock, review=0, transport=0');
+ console.log('LISTING_DRAFT_EDITOR_PASS: actionable correction, row/filter persistence, failed save retry, source-validation recovery, duplicate guard, preserved fields, terminal lock, review=0, transport=0');
 } finally {if(tree)await act(async()=>tree.unmount());globalThis.fetch=originalFetch;db.close();}
 `},banner:{js:"import {createRequire} from 'node:module';const require=createRequire(import.meta.url);"},outfile:entry,bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-test-renderer']});
   const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:20000});
