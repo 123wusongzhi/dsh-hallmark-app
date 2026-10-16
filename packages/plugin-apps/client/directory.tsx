@@ -21,9 +21,11 @@ interface DirectoryProps {
   summaryRefreshKey?:number;
   navigation?:React.ReactNode;
   onAppChange?:(appId:string)=>void;
+  appSelectionDisabled?:boolean;
   children?:React.ReactNode;
 }
-export function AppsDirectory({useSessions,currentSessionId,onReturn,onOpenView,onCreate,creationDisabled,onRefreshViews,summaryRefreshKey=0,navigation,onAppChange,children}:DirectoryProps) {
+export function AppsDirectory({useSessions,currentSessionId,onReturn,onOpenView,onCreate,creationDisabled,onRefreshViews,summaryRefreshKey=0,navigation,onAppChange,appSelectionDisabled=false,children}:DirectoryProps) {
+  const appSelectionLock=useRef(appSelectionDisabled);appSelectionLock.current=appSelectionDisabled;
   const sessionId=useSessions?useSessions(observeCurrentSession):currentSessionId;
   const [apps,setApps]=useState<AppRow[]>([]),[connections,setConnections]=useState<ConnectionRow[]>([]),[bindings,setBindings]=useState<BindingRow[]>([]);
   const [selected,setSelected]=useState<string>(),[error,setError]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[refresh,setRefresh]=useState(0);
@@ -66,7 +68,8 @@ export function AppsDirectory({useSessions,currentSessionId,onReturn,onOpenView,
       <div className="apps-rail-heading"><h1>应用</h1>{onCreate?<button className="apps-icon-button" aria-label="新建组件工作副本" title="新建组件工作副本" disabled={creationDisabled} onClick={onCreate}><AppsIcon name="plus"/></button>:null}</div>
       <label className="apps-search"><AppsIcon name="search"/><input aria-label="搜索应用" value={query} onChange={event=>setQuery(event.target.value)} placeholder="搜索应用"/></label>
       <p className="apps-rail-caption">全部应用</p>
-      <nav aria-label="应用" className="apps-app-list">{matches.map(app=><button key={app.appId} className="apps-app-row" aria-pressed={current?.appId===app.appId} onClick={()=>setSelected(app.appId)}><AppsAppMark appId={app.appId}/><span><strong>{app.displayName}</strong><small>{description(app)}</small></span>{['unavailable','stopped','stopping'].includes(app.runtimeState)?<span className="apps-badge is-muted">不可用</span>:app.runtimeState==='degraded'?<span className="apps-badge is-muted">受限</span>:null}</button>)}</nav>
+      {appSelectionDisabled?<p role="status" className="apps-muted">保存正在进行，切换应用需等结果。仍可切换工作区标签或返回聊天。</p>:null}
+      <nav aria-label="应用" className="apps-app-list">{matches.map(app=><button key={app.appId} className="apps-app-row" aria-pressed={current?.appId===app.appId} disabled={appSelectionDisabled} title={appSelectionDisabled?'保存正在进行，切换应用需等结果':undefined} onClick={()=>{if(!appSelectionLock.current)setSelected(app.appId);}}><AppsAppMark appId={app.appId}/><span><strong>{app.displayName}</strong><small>{description(app)}</small></span>{['unavailable','stopped','stopping'].includes(app.runtimeState)?<span className="apps-badge is-muted">不可用</span>:app.runtimeState==='degraded'?<span className="apps-badge is-muted">受限</span>:null}</button>)}</nav>
       {!matches.length?<p className="apps-rail-empty">{loading?'正在读取应用…':query?'没有匹配的应用':'暂无已接入应用'}</p>:null}
       <button className="apps-manage-button" aria-pressed={management} onClick={()=>setManagement(value=>!value)}><AppsIcon name="settings"/>管理应用</button>
     </aside>
