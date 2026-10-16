@@ -18,6 +18,7 @@ test('workbench queries require saved explicit instance binding and never gain m
   assert.equal((await runtime.invoke(request())).status,'ok');assert.equal(calls,1);
   const other=await runtime.invoke(request('query','two'));assert.equal('error' in other&&other.error.code,'WORKBENCH_BINDING_REQUIRED');
   const write=await runtime.invoke(request('mutation'));assert.equal('error' in write&&write.error.code,'WORKBENCH_READ_ONLY');assert.equal(calls,1);
+  assert.equal(store.list('operations').length,0,'a rejected read-only workbench request must not reserve a mutation intent');
   store.put('saved_assets','workbench:sample',{kind:'workbench',workbenchId:'workbench:sample',context:{storeId:'A'},instances:[{instanceId:'one',bindings:[{appId:'sample',connectionId:'enabled',capabilityId:'sample.rows.query',capabilityMajor:1,input:{storeId:'A'}}]}]});
   const crossStore=await runtime.invoke({...request(),input:{storeId:'B'}});assert.equal('error' in crossStore&&crossStore.error.code,'WORKBENCH_STORE_MISMATCH');assert.equal(calls,1);
   assert.equal((await runtime.invoke({...request(),input:{storeId:'A'}})).status,'ok');assert.equal(calls,2);
