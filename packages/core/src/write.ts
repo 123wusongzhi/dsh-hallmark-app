@@ -153,9 +153,11 @@ export class WriteOperations {
    const readSequence=op.input.verificationAttempt??0;op.input.verificationAttempt=readSequence+1;this.save(op,{});
    const response=await this.options.client.platformRead(item.taskId,{requestId:this.options.broker.requestId('import_verify',op.operationId,readSequence),agentId:AGENT,path:'/v1/product/import/info',method:'POST',body:{task_id:item.importTaskId}});
    const rows=response.raw?.response?.result?.items??response.raw?.response?.items;if(response.status!=='ok'||!Array.isArray(rows))return;
-   for(const target of op.items){if(target.state!=='unknown')continue;target.readback=clean(response);const row=rows.find((row:RecordData)=>String(row.offer_id)===target.offerId);if(!row)continue;
+   for(const target of op.items){if(target.state!=='unknown')continue;target.readback=clean(response);const matches=rows.filter((row:RecordData)=>row&&typeof row.offer_id==='string'&&row.offer_id===target.offerId);
+    // Conflicting or duplicated receipts cannot establish a terminal outcome. Keep read-only recovery available.
+    const row=matches.length===1?matches[0]:undefined;if(!row)continue;
     if(row.errors?.length||row.status==='failed'||row.status==='rejected'){target.state='failed';target.importErrors=row.errors??row.status;}
-    else if(row.status==='imported'&&Number.isSafeInteger(Number(row.product_id))&&Number(row.product_id)>0){target.state='succeeded';target.productId=row.product_id;target.verifiedAt=now();}
+    else if(row.status==='imported'&&(typeof row.product_id==='number'||typeof row.product_id==='string'&&/^[1-9]\d*$/u.test(row.product_id))&&Number.isSafeInteger(Number(row.product_id))&&Number(row.product_id)>0){target.state='succeeded';target.productId=row.product_id;target.verifiedAt=now();}
    }
    this.save(op,{});
   }catch(error){item.verificationError=error instanceof Error?error.message:'导入回读失败';this.save(op,{});}

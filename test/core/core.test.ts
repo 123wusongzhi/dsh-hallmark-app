@@ -64,3 +64,63 @@ test('listing complete traceable payload assigns context, imports mappings, and 
 test('listing rejects invented images or incomplete categories before creating assignment or importing',async()=>{const f=fixture();let assignments=0;f.core.options.broker.getListingTask=async()=>{assignments++;return ok({taskId:'listing'});};const result=await f.core.invoke('hallmark_list_product',{...listingArgs,importItems:[{...importItem,description_category_id:undefined,images:['https://example.invalid/invented.jpg']}]},{sessionId:'session',userRequest:listingRequest});assert.equal(result.status,'needs_clarification');assert.equal(result.error?.code,'VERIFIED_IMPORT_REQUIRED');assert.equal(assignments,0);assert.equal(f.calls.length,0);f.store.close();});
 test('listing task unavailable (e.g. operator token missing) performs no platform import',async()=>{const f=fixture();f.core.options.broker.getListingTask=async()=>({status:'unavailable',error:{code:'OPERATOR_TOKEN_REQUIRED',message:'No token',retryable:false}});const result=await f.core.invoke('hallmark_list_product',listingArgs,{sessionId:'session',userRequest:listingRequest});assert.equal(result.status,'unavailable');assert.equal(f.calls.length,0);f.store.close();});
 test('listing 200 without confirmed import item remains unknown and never retries write',async()=>{const f=fixture();f.setWrite(ok({outcome:'response_received',httpStatus:200,response:{result:{task_id:99}}}));f.setRead(ok({outcome:'response_received',httpStatus:200,response:{result:{items:[{offer_id:'new-offer',status:'pending',errors:[]}]}}}));const result=await f.core.invoke('hallmark_list_product',listingArgs,{sessionId:'session',userRequest:listingRequest});assert.equal(result.status,'unknown');await f.core.invoke('hallmark_get_operation',{operationId:result.operation!.operationId},context);assert.equal(f.calls.filter(c=>c.write).length,1);const ids=f.calls.filter(c=>!c.write).map(c=>c.requestId);assert.equal(new Set(ids).size,ids.length);f.store.close();});
+
+// Controlled import-info fault injection through the production core, not a live merchant replay.
+for(const reversed of [false,true])test(`listing ambiguous duplicate import rows remain unknown regardless of order (${reversed})`,async()=>{
+ const f=fixture();try{
+  f.setWrite(ok({outcome:'response_received',httpStatus:200,response:{result:{task_id:99}}}));
+  const rows=[{offer_id:'new-offer',product_id:22,status:'imported',errors:[]},{offer_id:'new-offer',status:'rejected',errors:[{code:'DELAYED_REJECTION'}]}];
+  f.setRead(ok({response:{result:{items:reversed?rows.reverse():rows}}}));
+  const initial=await f.core.invoke('hallmark_list_product',listingArgs,{sessionId:'session',userRequest:listingRequest});
+  assert.equal(initial.status,'unknown');assert.equal((initial.data as any).items[0].state,'unknown');
+  const restarted=new AppCore(f.core.options);await restarted.recoverOperations();
+  assert.equal((await restarted.invoke('hallmark_list_product',{...listingArgs,clientOperationKey:'replacement-key'},{sessionId:'session',userRequest:listingRequest})).error?.code,'OPERATION_UNRESOLVED');
+  f.setRead(ok({response:{result:{items:[{offer_id:'new-offer',status:'rejected',errors:[{code:'DELAYED_REJECTION'}]}]}}}));
+  const resolved=await restarted.invoke('hallmark_get_operation',{operationId:initial.operation!.operationId},context);
+  assert.equal(resolved.status,'failed');assert.equal((resolved.data as any).items[0].importErrors[0].code,'DELAYED_REJECTION');
+  const reads=f.calls.filter(c=>!c.write).length;
+  f.setRead(ok({response:{result:{items:[{offer_id:'new-offer',product_id:22,status:'imported',errors:[]}]}}}));
+  assert.equal((await restarted.invoke('hallmark_get_operation',{operationId:initial.operation!.operationId},context)).status,'failed');
+  assert.equal(f.calls.filter(c=>!c.write).length,reads);assert.equal(f.calls.filter(c=>c.write).length,1);
+ }finally{f.store.close();}
+});
+for(const [name,rows] of [
+ ['accepted only',[{offer_id:'new-offer',status:'pending'}]],
+ ['missing row',[]],
+ ['missing identity',[{product_id:22,status:'imported'}]],
+ ['missing product ID',[{offer_id:'new-offer',status:'imported'}]],
+ ['boolean product ID',[{offer_id:'new-offer',product_id:true,status:'imported'}]],
+ ['array product ID',[{offer_id:'new-offer',product_id:[22],status:'imported'}]],
+ ['duplicate identical success',[{offer_id:'new-offer',product_id:22,status:'imported'},{offer_id:'new-offer',product_id:22,status:'imported'}]],
+] as const)test(`listing ${name} cannot establish completion`,async()=>{
+ const f=fixture();try{
+  f.setWrite(ok({outcome:'response_received',httpStatus:200,response:{result:{task_id:99}}}));f.setRead(ok({response:{result:{items:rows}}}));
+  const result=await f.core.invoke('hallmark_list_product',listingArgs,{sessionId:'session',userRequest:listingRequest});assert.equal(result.status,'unknown');
+  await f.core.invoke('hallmark_get_operation',{operationId:result.operation!.operationId},context);assert.equal(f.calls.filter(c=>c.write).length,1);
+ }finally{f.store.close();}
+});
+for(const productId of [22,'22'])test(`listing unique valid ${typeof productId} product identity preserves import-only completion`,async()=>{
+ const f=fixture();try{
+  f.setWrite(ok({outcome:'response_received',httpStatus:200,response:{result:{task_id:99}}}));
+  f.setRead(ok({response:{result:{items:[{offer_id:'new-offer',product_id:productId,status:'imported',errors:[]}]}}}));
+  const result=await f.core.invoke('hallmark_list_product',listingArgs,{sessionId:'session',userRequest:listingRequest});assert.equal(result.status,'ok');
+  assert.equal((result.data as any).acceptance,'imported-not-sellable-verified');assert.equal((result.data as any).items[0].productId,productId);
+  assert.equal(Object.hasOwn(result.data as any,'on_sale'),false);assert.equal(f.calls.filter(c=>c.write).length,1);
+ }finally{f.store.close();}
+});
+test('listing partial receipt keeps missing SKU unknown until its delayed rejection, without replaying import',async()=>{
+ const f=fixture();try{
+  const getDetail=f.core.options.client.getCollectedItemDetail!;
+  f.core.options.client.getCollectedItemDetail=async(id)=>{const response=await getDetail(id);return {...response,raw:{...response.raw,skus:[...response.raw.skus,{...response.raw.skus[0],sourceSkuId:'sku2'}]}};};
+  const args={...listingArgs,skuScope:['sku1','sku2'],scopeConfirmed:true,importItems:[importItem,{...importItem,_sourceSkuId:'sku2',offer_id:'second-offer'}]};
+  f.setWrite(ok({outcome:'response_received',httpStatus:200,response:{result:{task_id:99}}}));
+  const imported={offer_id:'new-offer',product_id:22,status:'imported',errors:[]};
+  f.setRead(ok({response:{result:{items:[imported]}}}));
+  const initial=await f.core.invoke('hallmark_list_product',args,{sessionId:'session',userRequest:listingRequest});
+  assert.equal(initial.status,'unknown');assert.deepEqual((initial.data as any).items.map((i:any)=>i.state),['succeeded','unknown']);
+  f.setRead(ok({response:{result:{items:[imported,{offer_id:'second-offer',status:'rejected',errors:[{code:'INVALID_ATTRIBUTE'}]}]}}}));
+  const resolved=await f.core.invoke('hallmark_get_operation',{operationId:initial.operation!.operationId},context);
+  assert.equal(resolved.status,'partial');assert.deepEqual((resolved.data as any).items.map((i:any)=>i.state),['succeeded','failed']);
+  assert.equal((resolved.data as any).acceptance,'imported-not-sellable-verified');assert.equal(f.calls.filter(c=>c.write).length,1);
+ }finally{f.store.close();}
+});
