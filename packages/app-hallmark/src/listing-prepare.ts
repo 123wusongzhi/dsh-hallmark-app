@@ -136,6 +136,14 @@ export class ListingCategoryReadError extends Error {
  readonly details:RecordData;
  constructor(details:RecordData){super('请求的部分属性不属于此类目。不要重复原请求或猜测替代值；使用 recovery 分页读取同一版本的全部属性约束，再根据真实商品资料选择属性。');this.details=details;}
 }
+export class ListingCategoryCursorError extends Error {
+ readonly code='LISTING_CATEGORY_CURSOR_INVALID';
+ readonly details:RecordData;
+ constructor(input:RecordData,saved?:RecordData){
+  super(saved?'类目分页位置无效。不要重复此游标；使用 recovery 从同一快照第一页重新读取。':'类目分页引用无效、已不存在或不属于当前店铺。不要重复此游标；使用原请求的 descriptionCategoryId、typeId 和筛选范围重新读取第一页，不要猜测类目。');
+  this.details=saved?{selection:saved.selection,revision:saved.revision,recovery:{capability:'hallmark.listing.category.read',input:{storeId:input.storeId,cursor:Buffer.from(JSON.stringify({revision:saved.revision,offset:0})).toString('base64url'),limit:input.limit??30}}}:{requiredInput:['descriptionCategoryId','typeId']};
+ }
+}
 /** Category-only constraints; exact frozen pages never re-prepare sales or return choice dictionaries. */
 export async function readListingCategory(input:RecordData,options:Pick<PrepareOptions,'client'|'store'|'signal'>):Promise<any>{
  checkCancelled(options.signal);
@@ -143,9 +151,18 @@ export async function readListingCategory(input:RecordData,options:Pick<PrepareO
  if(stores.status!=='ok'||!Array.isArray(stores.raw)||!stores.raw.some(s=>String(s.id??s.storeId)===input.storeId))throw Error('STORE_NOT_FOUND');
  let saved:RecordData|undefined,offset=0;
  if(input.cursor){
-  const cursor=JSON.parse(Buffer.from(input.cursor,'base64url').toString('utf8'));
+  let cursor:any;
+  try{
+   if(!/^[A-Za-z0-9_-]+$/.test(input.cursor))throw Error('encoding');
+   const decoded=Buffer.from(input.cursor,'base64url');
+   if(decoded.toString('base64url')!==input.cursor)throw Error('encoding');
+   cursor=JSON.parse(decoded.toString('utf8'));
+  }catch{throw new ListingCategoryCursorError(input);}
+  if(!cursor||typeof cursor!=='object'||Array.isArray(cursor)||typeof cursor.revision!=='string'||!/^[a-f0-9]{64}$/.test(cursor.revision))throw new ListingCategoryCursorError(input);
   saved=options.store.get<RecordData>('business_listing_category_pages',cursor.revision);offset=cursor.offset;
-  if(!saved||saved.storeId!==input.storeId||!Number.isSafeInteger(offset)||offset<0||offset>saved.attributes.length)throw Error('LISTING_CATEGORY_CURSOR_INVALID');
+  // Scope must be verified before any snapshot metadata or executable route is exposed.
+  if(!saved||saved.storeId!==input.storeId)throw new ListingCategoryCursorError(input);
+  if(!Number.isSafeInteger(offset)||offset<0||offset>saved.attributes.length)throw new ListingCategoryCursorError(input,saved);
  }else{
   const id='category',selection={descriptionCategoryId:input.descriptionCategoryId,typeId:input.typeId};
   const parts=await categoryParts({id,category:{path:[]}} as unknown as CollectionProduct,{storeId:input.storeId,categories:{[id]:selection},includeOptionalAttributes:true,refresh:input.refresh},options,new Map());
@@ -164,7 +181,7 @@ export async function readListingCategory(input:RecordData,options:Pick<PrepareO
   const value={storeId:input.storeId,...metadata,scope:input.attributeIds?'selected':input.scope??'required',attributes};
   const snapshot={...value,revision:hash(value)};saved=snapshot;options.store.put('business_listing_category_pages',snapshot.revision,snapshot);
  }
- if(!saved)throw Error('LISTING_CATEGORY_CURSOR_INVALID');
+ if(!saved)throw new ListingCategoryCursorError(input);
  const limit=input.limit??30;if(!Number.isInteger(limit)||limit<1||limit>100)throw Error('LISTING_CATEGORY_PAGE_INVALID');
  const attributes=saved.attributes.slice(offset,offset+limit),{attributes:all,...metadata}=saved;
  const make=()=>{const next=offset+attributes.length<all.length?Buffer.from(JSON.stringify({revision:saved!.revision,offset:offset+attributes.length})).toString('base64url'):null;return {...metadata,attributes,page:{offset,total:all.length,returned:attributes.length,nextCursor:next},...(next?{continuation:{capability:'hallmark.listing.category.read',input:{storeId:input.storeId,cursor:next,limit}}}:{})};};

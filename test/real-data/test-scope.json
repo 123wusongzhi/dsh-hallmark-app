@@ -17,6 +17,7 @@
     "test/app-hallmark/listing-detail-recovery.test.ts",
     "test/apps-host/business-value-projection.test.ts",
     "test/source-preview/selection-refresh-chain.test.ts",
+    "test/app-hallmark/listing-category-cursor.test.ts",
     "test/app-hallmark/listing-category-retry.test.ts",
     "test/app-hallmark/listing-provider-revision.test.ts",
     "test/adapter/ozon-store-read.test.ts",
@@ -574,6 +575,7 @@
     "test/plugin-apps/business-new-form-refresh.test.ts": "Recorded product/store base with explicit local offer/price inputs, engine-backed plans and controlled missing/empty/failed/delayed list receipts; no merchant transport.",
     "test/plugin-apps/pricing-validation-recovery.test.ts": "Recorded store label and pricing values; explicit invalid rule boundaries and blank required field use enabled React controls with the real BusinessSettingsService, BusinessPricingRepository, RuntimeStore and production error classifier. Local gateway rejects every merchant call. Tests retain rejected inputs, cancel discard, correct and save without duplicating writes.",
     "test/plugin-apps/packaging-input-recovery.test.ts": "Frozen corpus common-package product and two SKU facts; local identity aliases, numeric boundaries and explicit blank drafts are controlled derived cases. Enabled React controls route through real BusinessSettingsService, BusinessPackagingRepository and isolated RuntimeStore. No merchant calls; verifies numeric rejection, correction, clear, restore and discard semantics. Browser typing is not claimed.",
-    "test/plugin-apps/business-inspect-selection.test.ts": "Recorded product and store labels through production React and BusinessOperations inspection; explicit local draft/completed/pending states, missing receipt, failed and delayed read controls. No source review or merchant writes; selections, filters and unapplied batch inputs survive inspection."
+    "test/plugin-apps/business-inspect-selection.test.ts": "Recorded product and store labels through production React and BusinessOperations inspection; explicit local draft/completed/pending states, missing receipt, failed and delayed read controls. No source review or merchant writes; selections, filters and unapplied batch inputs survive inspection.",
+    "test/app-hallmark/listing-category-cursor.test.ts": "Integrity-checked recorded stores and category constraints; explicit corrupt/deleted cursor controls; actual Runtime model projection verifies bounded same-snapshot restart and no guessed scope."
   }
 }
