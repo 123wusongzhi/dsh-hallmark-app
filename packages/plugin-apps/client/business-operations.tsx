@@ -1,5 +1,6 @@
+import { BusinessDraftRecovery, type BusinessDraftSnapshot, type DraftCacheNotice } from './business-draft-recovery.ts';
 import {ListingDraftEditor} from './listing-draft-editor.tsx';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { BusinessAction, BusinessPlan, BusinessRow, BusinessRowInput } from '../../app-hallmark/src/operations/types.ts';
 import { BUSINESS_ACTION_LABELS, BUSINESS_FIELD_LABELS, BUSINESS_STATUS_LABELS, businessMoney, businessPriceAction, businessPricingQuote, businessRowInput, businessValue, editableBusinessRow, filterBusinessRows, parseBusinessPayload } from '../../app-presentation/src/materials/business-operations.ts';
 import { appsApiError, appsResource, type WorkbenchStores, type WorkbenchStoreOption } from './api.ts';
@@ -41,27 +42,54 @@ export async function businessOperation<T>(scope: Scope, operation: BusinessOper
 }
 
 export function BusinessOperations({ sessionId, storeId, active = true }: { sessionId?: string; storeId?: string; active?: boolean }) {
-  const [stores, setStores] = useState<WorkbenchStoreOption[]>([]), [plans, setPlans] = useState<BusinessPlan[]>([]), [planId, setPlanId] = useState('');
+  const [stores, setStores] = useState<WorkbenchStoreOption[]>([]), [storeError, setStoreError] = useState('');
+  const [drafts] = useState(() => new BusinessDraftRecovery()), [cacheNotice, setCacheNotice] = useState<DraftCacheNotice>(), [, refreshCache] = useState(0);
+  useEffect(() => { const controller = new AbortController(); appsResource<WorkbenchStores>('stores', { appId: 'hallmark' }, controller.signal).then(result => { if (!controller.signal.aborted) setStores(result.stores); }).catch(error => { if (!controller.signal.aborted) setStoreError(error.message); }); return () => controller.abort(); }, []);
+  useEffect(() => { const timer = setInterval(() => { if (drafts.prune()) { setCacheNotice('expired'); refreshCache(value => value + 1); } }, 60_000); return () => { clearInterval(timer); drafts.clear(); }; }, [drafts]);
+  const store = stores.find(item => item.id === storeId), scope = sessionId && store ? { sessionId, connectionId: store.connectionId, storeId: store.id } : undefined;
+  const identity = scope ? scopeKey(scope) : JSON.stringify([sessionId, storeId]);
+  return <>
+    {cacheNotice ? <p role="status" className="apps-business-notice">{cacheNotice === 'retained' ? '离开的未保存修改已按原聊天和店铺暂存，当前页面不会使用这些修改。' : cacheNotice === 'too_large' ? '未保存修改超过暂存容量，未能保留。' : cacheNotice === 'evicted' ? '较早的未保存修改已因暂存容量上限清除。' : '超过 30 分钟的未保存暂存已清除。'}暂存不等于保存，最多保留 30 分钟；关闭工作区或刷新后清除。请及时保存草稿。<button type="button" onClick={() => setCacheNotice(undefined)}>知道了</button></p> : null}
+    <BusinessOperationsEditor key={identity} sessionId={sessionId} storeId={storeId} store={store} scope={scope} identity={identity} active={active} drafts={drafts} onCacheNotice={setCacheNotice} onRecoveryResolved={() => setCacheNotice(previous => previous === 'retained' ? undefined : previous)} storeError={storeError}/>
+  </>;
+}
+
+function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, active, drafts, onCacheNotice, onRecoveryResolved, storeError }: { sessionId?: string; storeId?: string; store?: WorkbenchStoreOption; scope?: Scope; identity: string; active: boolean; drafts: BusinessDraftRecovery; onCacheNotice: (notice: DraftCacheNotice) => void; onRecoveryResolved: () => void; storeError: string }) {
+  const [plans, setPlans] = useState<BusinessPlan[]>([]), [planId, setPlanId] = useState('');
   const [editingListingId, setEditingListingId] = useState('');
-  const [rawEditedIds, setRawEditedIds] = useState<string[]>([]), rawDirty = rawEditedIds.length > 0;
+  const [rawEdits, setRawEdits] = useState<Record<string, string>>({}), rawEditedIds = Object.keys(rawEdits), rawDirty = rawEditedIds.length > 0;
   const [query, setQuery] = useState(''), [status, setStatus] = useState(''), [selected, setSelected] = useState<string[]>([]), [batchPrice, setBatchPrice] = useState(''), [batchCurrency, setBatchCurrency] = useState('');
   const [edits, setEdits] = useState<Record<string, Record<string, unknown>>>({}), [busy, setBusy] = useState(false), [notice, setNotice] = useState('');
   const [pricingEdits, setPricingEdits] = useState<Record<string, NonNullable<BusinessRowInput['pricing']>>>({}), [pricingConfig, setPricingConfig] = useState<BusinessPricingConfig | null>(null), [pricingError, setPricingError] = useState('');
   const [listError, setListError] = useState(''), [loadingPlans, setLoadingPlans] = useState(false);
   const [confirmation, setConfirmation] = useState<BusinessPlan>(), [busyOperation, setBusyOperation] = useState<BusinessOperation>();
-  const [pending, setPending] = useState<PendingRequest>(), [refresh, setRefresh] = useState(0), flight = useRef(false);
-  const store = stores.find(item => item.id === storeId), scope = sessionId && store ? { sessionId, connectionId: store.connectionId, storeId: store.id } : undefined;
-  const identity = scope ? scopeKey(scope) : `${sessionId ?? ''}:${storeId ?? ''}`, owner = useRef(identity); owner.current = identity;
+  const [pending, setPending] = useState<PendingRequest | undefined>(() => scope ? pendingRequests.get(scopeKey(scope)) : undefined), [refresh, setRefresh] = useState(0), flight = useRef(false);
+  const owner = useRef(identity);
+  useLayoutEffect(() => { owner.current = identity; return () => { owner.current = ''; }; }, [identity]);
+  const [listVerified, setListVerified] = useState(false), [, refreshRecovery] = useState(0);
   const editedIds = new Set([...Object.keys(edits), ...Object.keys(pricingEdits)]);
   const plan = plans.find(item => item.planId === planId), visible = filterBusinessRows(plan, query, status), dirty = editedIds.size > 0 || rawDirty;
   useEffect(() => { setEditingListingId(''); }, [identity, planId]);
   const listingRows = plan?.rows.filter(row => row.action === 'listing') ?? [], editingListing = listingRows.find(row => row.rowId === editingListingId) ?? listingRows[0];
   const editedRows = plan?.rows.filter(row => editedIds.has(row.rowId)) ?? [];
   const saveLabel = editedRows.length > 0 && editedRows.every(row => ['price', 'promotion.enroll', 'promotion.update'].includes(row.action)) ? '保存改价草稿' : '保存草稿';
-  const accept = (next: BusinessPlan) => { setPlans(rows => [next, ...rows.filter(item => item.planId !== next.planId)]); setPlanId(next.planId); setEdits({}); setRawEditedIds([]); setPricingEdits({}); setSelected([]); setConfirmation(undefined); setBatchPrice(''); setBatchCurrency(''); };
+  const accept = (next: BusinessPlan) => { drafts.drop(identity); setPlans(rows => [next, ...rows.filter(item => item.planId !== next.planId)]); setPlanId(next.planId); setEdits({}); setRawEdits({}); setPricingEdits({}); setSelected([]); setConfirmation(undefined); setBatchPrice(''); setBatchCurrency(''); };
   useEffect(() => { setBatchPrice(''); setBatchCurrency(''); }, [planId]);
-  useEffect(() => { const controller = new AbortController(); appsResource<WorkbenchStores>('stores', { appId: 'hallmark' }, controller.signal).then(result => { if (!controller.signal.aborted) setStores(result.stores); }).catch(error => { if (!controller.signal.aborted) setNotice(error.message); }); return () => controller.abort(); }, []);
-  useEffect(() => { setPlans([]); setPlanId(''); setConfirmation(undefined); setBatchPrice(''); setBatchCurrency(''); setEdits({}); setRawEditedIds([]); setPricingEdits({}); setPricingConfig(null); setPricingError(''); setSelected([]); setQuery(''); setStatus(''); setNotice(''); setListError(''); setPending(scope ? pendingRequests.get(scopeKey(scope)) : undefined); }, [identity]);
+  // The keyed editor never renders a previous owner's state, even before effects run.
+  // Capture committed state only; interrupted renders must not overwrite the recovery snapshot.
+  const latestDraft = useRef<BusinessDraftSnapshot>();
+  useLayoutEffect(() => { latestDraft.current = scope && plan && dirty ? { planId: plan.planId, revision: plan.revision, edits, pricingEdits, rawEdits } : undefined; });
+  useLayoutEffect(() => () => {
+    if (latestDraft.current) { const result = drafts.put(identity, latestDraft.current); onCacheNotice(result.notice ?? 'retained'); }
+  }, [drafts, identity]);
+  const recoveryDraft = listVerified && !listError ? drafts.peek(identity) : undefined;
+  const recoveryPlan = recoveryDraft ? plans.find(item => item.planId === recoveryDraft.planId && item.storeId === scope?.storeId && item.revision === recoveryDraft.revision) : undefined;
+  const restoreDraft = () => {
+    const snapshot = listVerified && !listError && !loadingPlans ? drafts.peek(identity) : undefined;
+    const verified = snapshot && plans.find(item => item.planId === snapshot.planId && item.storeId === scope?.storeId && item.revision === snapshot.revision);
+    if (!snapshot || !verified || busy || pending || dirty) return;
+    setPlanId(snapshot.planId); setQuery(''); setStatus(''); setEdits(snapshot.edits); setPricingEdits(snapshot.pricingEdits); setRawEdits(snapshot.rawEdits); drafts.drop(identity); onRecoveryResolved(); refreshRecovery(value => value + 1); setNotice('已恢复未保存修改，请检查后保存草稿；尚未提交。');
+  };
   useEffect(() => {
     if (!scope || !active) return; const controller = new AbortController(), target = identity;
     appsResource<{ pricing: BusinessPricingConfig | null }>('businessSettings', { connectionId: scope.connectionId, storeId: scope.storeId }, controller.signal).then(result => {
@@ -70,11 +98,11 @@ export function BusinessOperations({ sessionId, storeId, active = true }: { sess
     return () => controller.abort();
   }, [identity, active, refresh]);
   useEffect(() => {
-    if (!scope || !active || dirty) { setLoadingPlans(false); return; } const target = identity; let cancelled = false; setLoadingPlans(true);
+    if (!scope || !active || dirty) { setLoadingPlans(false); return; } const target = identity; let cancelled = false; setLoadingPlans(true); setListVerified(false);
     businessOperation<{ plans: BusinessPlan[] } | BusinessPlan[]>(scope, 'list', { storeId: scope.storeId }).then(result => {
       if (cancelled || owner.current !== target) return; const rows = Array.isArray(result) ? result : result.plans;
-      setPlans(rows); setPlanId(current => rows.some(row => row.planId === current) ? current : rows[0]?.planId ?? ''); setListError('');
-    }).catch(error => { if (!cancelled && owner.current === target) setListError(error.message); })
+      setListVerified(true); setPlans(rows); setPlanId(current => rows.some(row => row.planId === current) ? current : rows[0]?.planId ?? ''); setListError('');
+    }).catch(error => { if (!cancelled && owner.current === target) { setListVerified(false); setPlans([]); setListError(error.message); } })
       .finally(() => { if (!cancelled && owner.current === target) setLoadingPlans(false); });
     return () => { cancelled = true; };
   }, [identity, active, refresh, dirty]);
@@ -105,7 +133,7 @@ export function BusinessOperations({ sessionId, storeId, active = true }: { sess
     setPricingEdits(previous => ({ ...previous, [row.rowId]: pricing }));
     if (pricing.mode === 'automatic') setEdits(previous => { const payload = { ...(previous[row.rowId] ?? row.payload) }; delete payload.price; return { ...previous, [row.rowId]: payload }; });
   };
-  const disabled = busy || !!pending || !!confirmation, restorable = plan?.rows.filter(row => selected.includes(row.rowId) && row.status === 'succeeded' && row.action !== 'stock').map(row => row.rowId) ?? [];
+  const disabled = busy || loadingPlans || !!pending || !!confirmation || !!recoveryDraft, restorable = plan?.rows.filter(row => selected.includes(row.rowId) && row.status === 'succeeded' && row.action !== 'stock').map(row => row.rowId) ?? [];
   const selectedPrices = visible.filter(row => selected.includes(row.rowId) && editableBusinessRow(row) && ['price', 'promotion.enroll', 'promotion.update'].includes(row.action));
   const batchCurrencies = [...new Set(selectedPrices.map(row => priceCurrency(edits[row.rowId] ?? row.payload)).filter((value): value is string => !!value))];
   const chosenCurrency = batchCurrencies.includes(batchCurrency) ? batchCurrency : batchCurrencies.length === 1 ? batchCurrencies[0] : '';
@@ -114,8 +142,10 @@ export function BusinessOperations({ sessionId, storeId, active = true }: { sess
   return <section className="apps-business" aria-label="经营操作" aria-busy={busy || loadingPlans}><style>{BUSINESS_STYLES}{BUSINESS_PRICING_STYLES}</style>
     <header className="apps-business-heading"><div><span className="apps-business-eyebrow">OZON · 经营操作</span><h2>{store?.name ?? '经营操作'}</h2><p>查看改前改后、编辑草稿，确认整批范围后审核并执行。</p></div><button type="button" disabled={!scope || disabled || dirty || loadingPlans} onClick={() => setRefresh(value => value + 1)}>{loadingPlans ? '正在读取…' : '刷新批次'}</button></header>
     {!sessionId ? <p className="apps-business-empty">请选择一个聊天，继续使用同一应用连接。</p> : !storeId ? <p className="apps-business-empty">先在工作台选择店铺，再打开经营操作。</p> : !store ? <p className="apps-business-empty">正在读取所选店铺的连接…</p> : <>
-      <div className="apps-business-toolbar"><label>操作批次<select aria-label="操作批次" disabled={disabled || dirty} value={planId} onChange={event => { setPlanId(event.target.value); setSelected([]); setEdits({}); setRawEditedIds([]); setPricingEdits({}); }}><option value="">新建批次</option>{plans.map(item => <option key={item.planId} value={item.planId}>{item.title} · {item.rows.length} 个动作</option>)}</select></label><button type="button" disabled={disabled || dirty} onClick={() => { setPlanId(''); setSelected([]); }}>新建批次</button>{plan ? <span className="apps-business-revision">版本 {plan.revision} · {new Date(plan.updatedAt).toLocaleString('zh-CN')}</span> : null}</div>
+      <div className="apps-business-toolbar"><label>操作批次<select aria-label="操作批次" disabled={disabled || dirty} value={planId} onChange={event => { setPlanId(event.target.value); setSelected([]); setEdits({}); setRawEdits({}); setPricingEdits({}); }}><option value="">新建批次</option>{plans.map(item => <option key={item.planId} value={item.planId}>{item.title} · {item.rows.length} 个动作</option>)}</select></label><button type="button" disabled={disabled || dirty} onClick={() => { setPlanId(''); setSelected([]); }}>新建批次</button>{plan ? <span className="apps-business-revision">版本 {plan.revision} · {new Date(plan.updatedAt).toLocaleString('zh-CN')}</span> : null}</div>
       {pending ? <div className="apps-business-alert" role="status"><span>原操作回执待确认。检查原操作即可继续。</span><button type="button" disabled={busy} onClick={() => void recover()}>检查原操作</button></div> : null}
+      {storeError ? <p role="alert">{storeError}</p> : null}
+      {recoveryDraft ? <section aria-label="恢复未保存修改" className="apps-business-notice"><p>{recoveryPlan ? '发现此聊天和店铺下的未保存修改，原批次版本已核对。' : '暂存对应的批次已变化或不可读取，不能直接恢复旧修改。'}暂存不等于保存，仅在当前工作区保留最多 30 分钟；关闭工作区或刷新后会清除。</p>{recoveryPlan ? <button type="button" disabled={busy || !!pending || dirty || loadingPlans} onClick={restoreDraft}>恢复修改</button> : null}<button type="button" disabled={busy} onClick={() => { drafts.drop(identity); onRecoveryResolved(); refreshRecovery(value => value + 1); }}>放弃暂存</button></section> : null}
       {listError ? <p className="apps-business-notice" role="alert">{listError}</p> : null}
       {pricingError ? <p className="apps-business-notice" role="alert">经营规则暂时无法读取：{pricingError}</p> : null}
       {busy ? <p className="apps-business-notice" role="status">{busyOperation === 'submit' ? '正在审核并提交整批变更，请等待处理结果。' : busyOperation === 'request' ? '正在检查原操作结果，不会重发变更。' : '正在处理，请等待结果。'}</p> : null}
@@ -127,7 +157,7 @@ export function BusinessOperations({ sessionId, storeId, active = true }: { sess
         {editingListing ? <ListingDraftEditor rows={listingRows} row={editingListing} payload={edits[editingListing.rowId] ?? editingListing.payload} editedIds={editedIds} disabled={disabled || rawDirty} onSelect={setEditingListingId} onChange={payload => patch(editingListing, payload)}/> : null}
         <div className="apps-business-table-wrap"><table className="apps-business-table"><thead><tr><th><input type="checkbox" aria-label="选择当前筛选结果" disabled={disabled} checked={visible.length > 0 && visible.every(row => selected.includes(row.rowId))} onChange={event => setSelected(previous => event.target.checked ? [...new Set([...previous, ...visible.map(row => row.rowId)])] : previous.filter(id => !visible.some(row => row.rowId === id)))}/></th><th>商品 / 销售货号</th><th>动作</th><th>改前</th><th>改后</th><th>采购关联 / 成本</th><th>物流与定价</th><th>审核与执行</th></tr></thead><tbody>{visible.map(row => <tr key={row.rowId}>
           <td><input type="checkbox" aria-label={`选择 ${row.target.offerId}`} disabled={disabled} checked={selected.includes(row.rowId)} onChange={event => setSelected(previous => event.target.checked ? [...previous, row.rowId] : previous.filter(id => id !== row.rowId))}/></td>
-          <td><strong>{String(row.payload.name ?? row.target.offerId)}</strong><small>{row.target.offerId}</small>{row.target.sku ? <small>平台 SKU：{row.target.sku}</small> : null}<ContentDetails row={row} payload={edits[row.rowId] ?? row.payload} disabled={disabled || !editableBusinessRow(row)} onDirty={value => setRawEditedIds(previous => value ? [...new Set([...previous, row.rowId])] : previous.filter(id => id !== row.rowId))} onChange={payload => patch(row, payload)}/></td>
+          <td><strong>{String(row.payload.name ?? row.target.offerId)}</strong><small>{row.target.offerId}</small>{row.target.sku ? <small>平台 SKU：{row.target.sku}</small> : null}<ContentDetails row={row} payload={edits[row.rowId] ?? row.payload} disabled={disabled || !editableBusinessRow(row)} rawText={rawEdits[row.rowId]} onRawChange={value => setRawEdits(previous => { const next = { ...previous }; if (value === undefined) delete next[row.rowId]; else next[row.rowId] = value; return next; })} onChange={payload => patch(row, payload)}/></td>
           <td>{BUSINESS_ACTION_LABELS[row.action]}</td><td><FieldValues payload={row.before ?? {}}/></td>
           <td>{['price', 'stock', 'promotion.enroll', 'promotion.update'].includes(row.action) ? <label className="apps-business-inline-value">{row.action === 'stock' ? '库存' : '售价'}<input type="number" min="0" step={row.action === 'stock' ? '1' : 'any'} aria-label={`${row.target.offerId} ${row.action === 'stock' ? '库存' : '售价'}`} placeholder={row.action !== 'stock' && rowPricing(row).mode === 'automatic' ? '保存后自动计算' : undefined} value={String((edits[row.rowId] ?? row.payload)[row.action === 'stock' ? 'stock' : 'price'] ?? '')} disabled={disabled || rawDirty || !editableBusinessRow(row)} onChange={event => patch(row, { ...(edits[row.rowId] ?? row.payload), [row.action === 'stock' ? 'stock' : 'price']: row.action === 'stock' && event.target.value !== '' ? Number(event.target.value) : event.target.value }, row.action !== 'stock')}/>{businessValue((edits[row.rowId] ?? row.payload).currency_code)}</label> : <FieldValues payload={edits[row.rowId] ?? row.payload}/>}</td>
           <td>{row.binding?.components.length ? <>{row.binding.components.map(item => <small key={`${item.itemId}:${item.sourceSkuId}`}>{item.sourceSkuId} × {item.quantity}</small>)}<strong>{row.binding.amount === null ? '采购成本待补充' : `${row.binding.amount} ${row.binding.currency ?? ''}`}</strong></> : <span className="apps-business-muted">尚无采购关联</span>}</td>
@@ -189,12 +219,12 @@ function PricingQuote({ row, dirty }: { row: BusinessRow; dirty: boolean }) {
   </div>;
 }
 const BUSINESS_PRICING_STYLES = `.apps-business-selection{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;background:var(--apps-panel,#f4f8fe);padding:10px;border-radius:6px}.apps-business-selection span{flex:1}.apps-business-confirmation{border:2px solid #2473d5;border-radius:8px;padding:16px;margin:12px 0}.apps-business-confirmation h3{margin-top:0}.apps-business-confirmation p{font-size:12px;line-height:1.6}.apps-business-confirmation-table{width:100%;min-width:600px;text-align:left;font-size:12px;border-collapse:collapse}.apps-business-confirmation-table th,.apps-business-confirmation-table td{padding:10px;vertical-align:top;border-bottom:1px solid var(--apps-line,#e7eef9)}.apps-business-confirmation-table small{display:block;line-height:1.6}.apps-business-confirmation .apps-business-actions{position:static;padding-bottom:0}.apps-business-empty button{margin-left:12px}.apps-business-table{min-width:1180px}.apps-business-table th:nth-child(7){width:210px}.apps-business-table th:nth-child(8){width:200px}.apps-business-pricing-choice{display:grid;gap:8px}.apps-business-pricing-choice label{display:grid;gap:4px;font-size:10px;color:var(--apps-muted,#7086a5)}.apps-business-pricing-choice select{box-sizing:border-box;width:100%;min-width:0;padding:6px;font-size:11px;color:var(--apps-text,#233c61)}.apps-business-quote{margin-top:10px;border-top:1px solid var(--apps-line,#e7eef9);padding-top:6px}.apps-business-quote strong{display:block;margin:4px 0}.apps-business-quote details{margin-top:5px}.apps-business-quote summary{font-size:11px;cursor:pointer;color:#3572bb}.apps-business-add .apps-business-pricing-choice{display:flex;flex-wrap:wrap;gap:10px}.apps-business-add .apps-business-pricing-choice label{min-width:155px}`;
-function ContentDetails({ row, payload, disabled, onChange, onDirty }: { row: BusinessRow; payload: Record<string, unknown>; disabled: boolean; onDirty: (dirty: boolean) => void; onChange: (payload: Record<string, unknown>) => void }) {
+function ContentDetails({ row, payload, disabled, onChange, rawText, onRawChange }: { row: BusinessRow; payload: Record<string, unknown>; disabled: boolean; rawText?: string; onRawChange: (text: string | undefined) => void; onChange: (payload: Record<string, unknown>) => void }) {
   const savedText = useMemo(() => JSON.stringify(payload, null, 2), [payload]);
-  const [text, setText] = useState(savedText), [error, setError] = useState('');
-  useEffect(() => { setText(savedText); setError(''); }, [savedText]);
+  const text = rawText ?? savedText, [error, setError] = useState('');
+  useEffect(() => { setError(''); }, [savedText]);
   const images = [...new Set([payload.primary_image, ...(Array.isArray(payload.images) ? payload.images : [])].filter((url): url is string => typeof url === 'string' && /^https?:\/\//.test(url)))];
-  return <details className="apps-business-content"><summary>查看 / 编辑完整内容</summary>{images.length ? <div className="apps-business-images">{images.map(url => <a key={url} href={url} target="_blank" rel="noreferrer"><img src={url} alt={`${row.target.offerId} 商品图`} loading="lazy"/></a>)}</div> : null}<textarea aria-label={`${row.target.offerId} 完整字段`} value={text} disabled={disabled} onChange={event => { setText(event.target.value); setError(''); onDirty(event.target.value !== savedText); }} spellCheck={false}/><button type="button" disabled={disabled} onClick={() => { try { onChange(parseBusinessPayload(text)); onDirty(false); setError('已应用到待保存草稿。'); } catch { setError('字段格式有误，请保留完整对象及引号。'); } }}>应用字段修改</button>{text !== savedText ? <button type="button" disabled={disabled} onClick={() => { setText(savedText); setError('已放弃未应用的字段修改。'); onDirty(false); }}>放弃字段修改</button> : null}{error ? <small role="status">{error}</small> : null}</details>;
+  return <details className="apps-business-content"><summary>查看 / 编辑完整内容</summary>{images.length ? <div className="apps-business-images">{images.map(url => <a key={url} href={url} target="_blank" rel="noreferrer"><img src={url} alt={`${row.target.offerId} 商品图`} loading="lazy"/></a>)}</div> : null}<textarea aria-label={`${row.target.offerId} 完整字段`} value={text} disabled={disabled} onChange={event => { setError(''); onRawChange(event.target.value === savedText ? undefined : event.target.value); }} spellCheck={false}/><button type="button" disabled={disabled} onClick={() => { try { onChange(parseBusinessPayload(text)); onRawChange(undefined); setError('已应用到待保存草稿。'); } catch { setError('字段格式有误，请保留完整对象及引号。'); } }}>应用字段修改</button>{text !== savedText ? <button type="button" disabled={disabled} onClick={() => { setError('已放弃未应用的字段修改。'); onRawChange(undefined); }}>放弃字段修改</button> : null}{error ? <small role="status">{error}</small> : null}</details>;
 }
 function NewBusinessRow({ disabled, pricingConfig, onAdd }: { disabled: boolean; pricingConfig: BusinessPricingConfig | null; onAdd: (title: string, row: BusinessRowInput) => void }) {
   const [action, setAction] = useState<Exclude<BusinessAction, 'listing'>>('price'), [offerId, setOfferId] = useState(''), [price, setPrice] = useState(''), [stock, setStock] = useState(''), [actionId, setActionId] = useState(''), [warehouseId, setWarehouseId] = useState(''), [error, setError] = useState('');
