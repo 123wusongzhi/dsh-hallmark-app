@@ -74,11 +74,12 @@ async function unmount(){await act(async()=>{tree.unmount();});}
 async function checkHook(fixture:string){
   const root=resolve('test/apps-components/artifacts');mkdirSync(root,{recursive:true});
   const directory=mkdtempSync(join(root,'sdk-cache-')),output=join(directory,'test.mjs');
+  // Resolve every relative SDK import from its real source directory.
   const source=readFileSync('packages/component-runtime/src/apps-react.tsx','utf8').replace(
     "import {createAppsClient,ComponentBridgeError} from './apps-client.ts';",
     'const createAppsClient=()=>globalThis.fakeClient;class ComponentBridgeError extends Error {constructor(failure){super(failure.message);this.code=failure.code;this.failure=failure;}}',
-  ).replace("from './latest-state-saver.ts'","from './packages/component-runtime/src/latest-state-saver.ts'").replace("from './visible-deadline.ts'","from './packages/component-runtime/src/visible-deadline.ts'");
-  await build({stdin:{contents:source+'\n'+harness+'\n'+fixture+'\nconsole.log("CACHE_PASS");',loader:'tsx',resolveDir:resolve('.')},outfile:output,bundle:true,platform:'node',format:'esm',packages:'external'});
+  );
+  await build({stdin:{contents:source+'\n'+harness+'\n'+fixture+'\nconsole.log("CACHE_PASS");',loader:'tsx',resolveDir:resolve('packages/component-runtime/src')},outfile:output,bundle:true,platform:'node',format:'esm',packages:'external'});
   const result=spawnSync(process.execPath,[output],{encoding:'utf8',windowsHide:true,timeout:15000});
   assert.equal(result.status,0,result.stderr||result.error?.message);
   assert.match(result.stdout,/CACHE_PASS/);
@@ -461,7 +462,7 @@ await unmount();
 for(const method of ['readBindingPage','refresh'] as const){
   test(`useApps keeps the previous canonical dataset after ${method} changes only cursor and is rate limited`,async()=>{
     await checkHook(`
-import {datasetId as canonicalDatasetId} from './packages/app-contracts/src/index.ts';
+import {datasetId as canonicalDatasetId} from '../../app-contracts/src/index.ts';
 const originalQuery={appId:'hallmark',connectionId:'shop-connection',capabilityId:'hallmark.ozon.compose',capabilityVersion:'1.0.0',projection:['items'],
   input:{storeId:'shop-a',dateFrom:'2026-10-01',dateTo:'2026-10-09',filter:{status:'all'},cursor:'second'}};
 const page=query=>({...binding('products',180000),appId:query.appId,connectionId:query.connectionId,datasetId:canonicalDatasetId(query),query,

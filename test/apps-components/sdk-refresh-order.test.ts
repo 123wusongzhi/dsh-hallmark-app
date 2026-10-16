@@ -8,7 +8,8 @@ import {build} from 'esbuild';
 test('actual useApps preserves visible data while refreshing and ignores stale refresh completions after a newer page request',async()=>{
  const root=resolve('test/apps-components/artifacts');mkdirSync(root,{recursive:true});
  const directory=mkdtempSync(join(root,'sdk-order-')),output=join(directory,'test.mjs');
- const source=readFileSync('packages/component-runtime/src/apps-react.tsx','utf8').replace("import {createAppsClient,ComponentBridgeError} from './apps-client.ts';",'const createAppsClient=()=>globalThis.fakeClient;class ComponentBridgeError extends Error {constructor(failure){super(failure.message);this.code=failure.code;this.failure=failure;}}').replace("from './latest-state-saver.ts'","from './packages/component-runtime/src/latest-state-saver.ts'").replace("from './visible-deadline.ts'","from './packages/component-runtime/src/visible-deadline.ts'");
+ // Resolve every relative SDK import from its real source directory.
+ const source=readFileSync('packages/component-runtime/src/apps-react.tsx','utf8').replace("import {createAppsClient,ComponentBridgeError} from './apps-client.ts';",'const createAppsClient=()=>globalThis.fakeClient;class ComponentBridgeError extends Error {constructor(failure){super(failure.message);this.code=failure.code;this.failure=failure;}}');
  const fixture=`
 import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
 globalThis.window={addEventListener(){},removeEventListener(){}};
@@ -29,6 +30,6 @@ await act(async()=>{requests[5].resolve('refreshed');await next;requests[4].reso
 await act(async()=>{old=api.refresh();tree.unmount();requests[6].resolve('after close');await old;});
 console.log('ORDER_PASS');
 `;
- await build({stdin:{contents:source+'\n'+fixture,loader:'tsx',resolveDir:resolve('.')},outfile:output,bundle:true,platform:'node',format:'esm',packages:'external'});
+ await build({stdin:{contents:source+'\n'+fixture,loader:'tsx',resolveDir:resolve('packages/component-runtime/src')},outfile:output,bundle:true,platform:'node',format:'esm',packages:'external'});
  const result=spawnSync(process.execPath,[output],{encoding:'utf8',windowsHide:true});assert.equal(result.status,0,result.stderr);assert.match(result.stdout,/ORDER_PASS/);
 });

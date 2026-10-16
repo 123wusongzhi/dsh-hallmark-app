@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "policy": "All tests consuming commodity, SKU, collected source, shop, sale, logistics, activity or dictionary facts use recorded snapshots. Original records remain immutable. Alias, omission, failure, numeric boundary and scale modifications are explicit derived cases.",
   "requiredFiles": [
+    "test/plugin-apps/listing-draft-editor.test.ts",
     "test/apps-host/collected-empty-search.test.ts",
     "test/source-preview/selection-bulk-chain.test.ts",
     "test/source-preview/selection-retry-chain.test.ts",
@@ -163,7 +164,9 @@
     "test/acceptance/component-display/run-recovery.mjs",
     "test/apps-runtime/association-overview.test.ts",
     "test/plugin-apps/association-overview-ui.test.ts",
-    "test/apps-host/collection-column-fidelity.test.ts"
+    "test/apps-host/collection-column-fidelity.test.ts",
+    "test/plugin-apps/business-price-journey.test.ts",
+    "test/plugin-apps/workspace-resume.test.ts"
   ],
   "infrastructureFiles": [
     "test/authoring/failed-build-http-recovery.test.ts",
@@ -186,6 +189,8 @@
     "test/app-hallmark/snapshot-cache.test.ts",
     "test/app-notes/provider.test.ts",
     "test/apps-components/agent-actions.test.ts",
+    "test/apps-components/agent-feedback-boundaries.test.ts",
+    "test/apps-components/agent-feedback.test.ts",
     "test/apps-components/agent-recovery.test.ts",
     "test/apps-components/binding-pages.test.ts",
     "test/apps-components/bridge-failure-contract.test.ts",
@@ -326,7 +331,8 @@
     "test/apps-runtime/runtime-restart-http.test.ts",
     "test/plugin-apps/connection-status-ui.test.ts",
     "test/apps-host/explicit-intent-retry.test.ts",
-    "test/apps-host/result-read-error-parity.test.ts"
+    "test/apps-host/result-read-error-parity.test.ts",
+    "test/plugin-apps/information-owner-review.test.ts"
   ],
   "infrastructureReasons": {
     "test/authoring/failed-build-http-recovery.test.ts": "Explicit exit-7 subprocess, real signed authoring evidence, SQLite receipt and actual committed HTTP response loss exercise failure-checkpoint recovery without any browser, commodity data, merchant action or publishable build.",
@@ -349,6 +355,8 @@
     "test/app-hallmark/snapshot-cache.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/app-notes/provider.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/apps-components/agent-actions.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
+    "test/apps-components/agent-feedback-boundaries.test.ts": "Production React agent controls tested with deferred context/receipt responses, synthetic bridge identities and transport failures; empty selections and local control inputs contain no commodity, shop, sale or other business facts. Tests publication invalidation, identity isolation and uncertain-submission locks; all fetch calls are prohibited.",
+    "test/apps-components/agent-feedback.test.ts": "Production React agent submission feedback tested with deferred Promises, protocol receipt statuses and explicit transport/preflight failures; empty selections and task text are local UI control conditions, not merchant or commodity facts. Tests progress messages, duplicate-click gating and independent controls; all fetch calls are prohibited.",
     "test/apps-components/agent-recovery.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/apps-components/binding-pages.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/apps-components/bridge-failure-contract.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
@@ -489,7 +497,8 @@
     "test/apps-runtime/runtime-restart-http.test.ts": "Restart authentication, busy refusal and response ordering; no business facts.",
     "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts.",
     "test/apps-host/explicit-intent-retry.test.ts": "Synthetic non-business in-memory counter Provider through real Host tools, HTTP, Runtime, SQLite and model JSON rendering verifies committed-response loss, read-only success recovery and explicit stable-intent retries without duplicate execution; no merchant facts, merchant writes, automatic mutation replay, or access-policy controls.",
-    "test/apps-host/result-read-error-parity.test.ts": "Synthetic JSON values and long escaped keys exercise real read-only Provider, Runtime, HTTP, transport and registered Host result pagination, semantic rejection and corrected reads; no commodity facts, merchant writes or permission-policy controls."
+    "test/apps-host/result-read-error-parity.test.ts": "Synthetic JSON values and long escaped keys exercise real read-only Provider, Runtime, HTTP, transport and registered Host result pagination, semantic rejection and corrected reads; no commodity facts, merchant writes or permission-policy controls.",
+    "test/plugin-apps/information-owner-review.test.ts": "Production editor and board lifecycle contract: field keys, owner marker strings, schema metadata and controlled permission responses only; no commodity, stock, price, logistics or real shop facts are constructed."
   },
   "fileModes": {
     "test/apps-host/collection-column-fidelity.test.ts": "Three original SKUs from an unchanged hash-checked frozen detail through real Adapter, CollectionService, Provider, Runtime HTTP and Host renderer; independent source attribute/image expectations and formal image metadata resource reads verify named column fidelity and explicit absent package/price nulls without downloading images.",
@@ -519,6 +528,8 @@
     "test/app-hallmark/listing-agent-flow.test.ts": "Integrity-checked real products, stores and category template; lifecycle IDs, pagination and composition changes are explicit controls",
     "test/acceptance/component-display/read-scale.test.ts": "Immutable recorded source snapshots replayed offline; explicitly derived 49 MB scale expansion and controlled protocol failures; no live business writes.",
     "test/acceptance/component-display/run-browser.mjs": "Immutable recorded source snapshots replayed offline; explicitly derived 49 MB scale expansion and controlled protocol failures; no live business writes.",
-    "test/acceptance/component-display/run-recovery.mjs": "Immutable recorded source snapshots in an isolated production Runtime child and Chromium; owned process crash, default recovery timing and genuine SDK ready; no live business writes."
+    "test/acceptance/component-display/run-recovery.mjs": "Immutable recorded source snapshots in an isolated production Runtime child and Chromium; owned process crash, default recovery timing and genuine SDK ready; no live business writes.",
+    "test/plugin-apps/business-price-journey.test.ts": "Recorded product titles and store labels with explicit local price, currency, selection, transport receipt and fault controls; actual React component and BusinessOperations engine use an in-memory store and a closed fixture endpoint. No merchant network or platform write.",
+    "test/plugin-apps/workspace-resume.test.ts": "Recorded uiProduct/uiStore fixtures with explicit owner aliases, pagination scale and denied/late-response controls for production workspace state retention."
   }
 }

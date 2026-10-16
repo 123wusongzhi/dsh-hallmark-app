@@ -136,7 +136,9 @@ ${uiFixturePrelude()}import {create,act} from 'react-test-renderer';import asser
       const prepare=async(sessionId,text)=>{sequence.push('insert-draft');insertions.push({sessionId,text});},wait=()=>new Promise(resolve=>setTimeout(resolve,10));
       let tree;const text=node=>typeof node==='string'?node:node?.children?.map(text).join('')??'',button=name=>tree.root.findAllByType('button').find(node=>text(node)===name);
       try{
-        await act(async()=>{tree=create(<MaterialLibrary appId='hallmark' sessionId='original-chat' active={false} onComplete={()=>{}} onPrepareDataSource={prepare}/>);await wait();});
+        // Load the catalog while visible without starting a connected preview; hidden panels no longer load resources.
+        await act(async()=>{tree=create(<MaterialLibrary appId='hallmark' onComplete={()=>{}} onPrepareDataSource={prepare}/>);await wait();});
+        await act(async()=>{tree.update(<MaterialLibrary appId='hallmark' sessionId='original-chat' active={false} onComplete={()=>{}} onPrepareDataSource={prepare}/>);await wait();});
         await act(async()=>tree.root.findByProps({'aria-label':'商品列表数据来源'}).props.onChange({target:{value:'selected-products'}}));
         await act(async()=>tree.root.findByProps({'aria-label':'SKU 明细数据来源'}).props.onChange({target:{value:'selected-sku'}}));
         await act(async()=>tree.root.findAllByType(DataSourcePicker)[0].props.onCreate());

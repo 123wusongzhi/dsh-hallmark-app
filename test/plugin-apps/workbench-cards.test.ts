@@ -37,7 +37,7 @@ try{
   assert.doesNotMatch(JSON.stringify(tree.toJSON()),/占满一行|占半行/);
   const savedCard=tree.root.findByProps({'data-component-id':'saved'});await act(async()=>{savedCard.findAllByType('button').find(node=>text(node)==='从工作台移除').props.onClick();await settle();});assert.equal(changed.savedComponents.length,0);assert.equal(tree.root.findAllByProps({'data-component-id':'saved'}).length,0);
   await act(async()=>{tree.update(<WorkbenchBoard {...props} detailInstanceId='products'/>);await settle();});assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,1);assert.equal(requests.filter(row=>row?.operation==='read').length,1);assert.equal(tree.root.findAllByType('button').some(node=>text(node).trim()==='返回工作台'),true);
-  await act(async()=>{tree.update(<WorkbenchBoard {...props} detailInstanceId='products' active={false}/>);await settle();});assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,0,'inactive detail tabs stop readers');
+  await act(async()=>{tree.update(<WorkbenchBoard {...props} detailInstanceId='products' active={false}/>);await settle();});assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,1,'inactive detail tabs retain their UI');assert.equal(tree.root.findByType(WorkbenchInstanceView).props.active,false,'inactive retained readers are paused');assert.equal(requests.filter(row=>row?.operation==='read').length,1);
   console.log('WORKBENCH_CARDS_PASS');
 }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=originalFetch;}
 `},banner:{js:"import {createRequire} from 'node:module';const require=createRequire(import.meta.url);"},outfile:entry,bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-test-renderer']});

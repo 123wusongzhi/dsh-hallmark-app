@@ -8,7 +8,8 @@ import {build} from 'esbuild';
 async function runFixture(scenario:string,hookOptions=''){
  const root=resolve('test/apps-components/artifacts');mkdirSync(root,{recursive:true});
  const directory=mkdtempSync(join(root,'sdk-concurrency-')),output=join(directory,'test.mjs');
- const source=readFileSync('packages/component-runtime/src/apps-react.tsx','utf8').replace("import {createAppsClient,ComponentBridgeError} from './apps-client.ts';",'const createAppsClient=()=>globalThis.fakeClient;class ComponentBridgeError extends Error {constructor(failure){super(failure.message);this.code=failure.code;this.failure=failure;}}').replace("from './latest-state-saver.ts'","from './packages/component-runtime/src/latest-state-saver.ts'").replace("from './visible-deadline.ts'","from './packages/component-runtime/src/visible-deadline.ts'");
+ // Resolve every relative SDK import from its real source directory.
+ const source=readFileSync('packages/component-runtime/src/apps-react.tsx','utf8').replace("import {createAppsClient,ComponentBridgeError} from './apps-client.ts';",'const createAppsClient=()=>globalThis.fakeClient;class ComponentBridgeError extends Error {constructor(failure){super(failure.message);this.code=failure.code;this.failure=failure;}}');
  const fixture=`
 import React from 'react';import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;globalThis.window={addEventListener(){},removeEventListener(){}};
@@ -21,7 +22,7 @@ const values=()=>api.data.bindings.map(binding=>binding.payload);
 ${scenario}
 await act(async()=>tree.unmount());console.log('CONCURRENCY_PASS');
 `;
- await build({stdin:{contents:source+'\n'+fixture,loader:'tsx',resolveDir:resolve('.')},outfile:output,bundle:true,platform:'node',format:'esm',packages:'external'});
+ await build({stdin:{contents:source+'\n'+fixture,loader:'tsx',resolveDir:resolve('packages/component-runtime/src')},outfile:output,bundle:true,platform:'node',format:'esm',packages:'external'});
  const result=spawnSync(process.execPath,[output],{encoding:'utf8',windowsHide:true,timeout:10000});assert.equal(result.status,0,result.error?.message??result.stderr);assert.match(result.stdout,/CONCURRENCY_PASS/);
 }
 
