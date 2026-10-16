@@ -84,7 +84,7 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
   // Read the latest committed form state when a list response settles, without
   // restarting list reads on every keystroke or capturing a stale clean form.
   const newRowDirty = useRef(false);
-  const [navigation, setNavigation] = useState<{ identity: string; from: string; target: string; snapshot: string }>();
+  const [navigation, setNavigation] = useState<{ identity: string; from: string; target: string; snapshot: string; restore?: { plan: BusinessPlan; rowIds: string[] } }>();
   const navigationPermit = useRef<typeof navigation>();
   const reportNewRow = useCallback((snapshot: string, dirty: boolean) => {
     newRowDirty.current = dirty;
@@ -207,7 +207,7 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
     return () => { newRowAddPermit.current = undefined; };
   });
   // Only explicit local navigation is interceptable. Owner changes still retire this editor.
-  useLayoutEffect(() => { setNavigation(undefined); }, [identity, planId, newRowState.snapshot, active, disabled, dirty, plans]);
+  useLayoutEffect(() => { setNavigation(undefined); }, [identity, planId, newRowState.snapshot, active, disabled, dirty, plans, selected]);
   useLayoutEffect(() => {
     navigationPermit.current = active && !disabled && !dirty ? navigation : undefined;
     return () => { navigationPermit.current = undefined; };
@@ -222,6 +222,13 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
     if (newRowState.dirty) setNavigation({ identity, from: planId, target, snapshot: newRowState.snapshot });
     else navigate(target);
   };
+  const restorePermit = useRef<object>(), restoreToken = {};
+  useLayoutEffect(() => { restorePermit.current = active && !disabled && !dirty ? restoreToken : undefined; return () => { restorePermit.current = undefined; }; });
+  const requestRestore = () => {
+    if (restorePermit.current !== restoreToken || flight.current || !plan || !restorable.length) return;
+    if (newRowDirty.current) setNavigation({ identity, from: planId, target: planId, snapshot: newRowState.snapshot, restore: { plan, rowIds: [...restorable] } });
+    else void run('restore', { planId: plan.planId, rowIds: restorable }, '已生成恢复草稿，请查看后提交。');
+  };
   const selectedPrices = visible.filter(row => selected.includes(row.rowId) && editableBusinessRow(row) && ['price', 'promotion.enroll', 'promotion.update'].includes(row.action));
   const batchCurrencies = [...new Set(selectedPrices.map(row => priceCurrency(edits[row.rowId] ?? row.payload)).filter((value): value is string => !!value))];
   const chosenCurrency = batchCurrencies.includes(batchCurrency) ? batchCurrency : batchCurrencies.length === 1 ? batchCurrencies[0] : '';
@@ -235,10 +242,13 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
       {onChooseStore ? <button type="button" onClick={onChooseStore}>重新选择店铺</button> : <p>请返回工作台选择店铺，再打开经营操作。</p>}
     </div> : <>
       <div className="apps-business-toolbar"><label>操作批次<select aria-label="操作批次" disabled={disabled || dirty} value={planId} onChange={event => requestNavigation(event.target.value)}><option value="">新建批次</option>{planId && !plan ? <option value={planId}>原批次暂不可读取</option> : null}{plans.map(item => <option key={item.planId} value={item.planId}>{item.title} · {item.rows.length} 个动作</option>)}</select></label><button type="button" disabled={disabled || dirty} onClick={() => requestNavigation('')}>新建批次</button>{plan ? <span className="apps-business-revision">版本 {plan.revision} · {new Date(plan.updatedAt).toLocaleString('zh-CN')}</span> : null}</div>
-      {navigation ? <section aria-label="放弃新增输入确认" className="apps-business-notice"><p>尚未添加的经营动作包含未保存输入。切换批次会放弃这些输入，此操作不能撤销。</p><button type="button" onClick={() => { navigationPermit.current = undefined; setNavigation(undefined); }}>继续编辑</button><button type="button" disabled={!active || disabled || dirty} onClick={() => {
+      {navigation ? <section aria-label="放弃新增输入确认" className="apps-business-notice"><p>{navigation.restore ? '生成恢复草稿会进入新批次，并放弃下方新增表单中的输入。已添加到原批次的动作会保留；未添加的输入将丢失。请先确认所需内容已保留。' : '尚未添加的经营动作包含未保存输入。切换批次会放弃这些输入，此操作不能撤销。'}</p><button type="button" onClick={() => { navigationPermit.current = undefined; setNavigation(undefined); }}>继续编辑</button><button type="button" disabled={!active || disabled || dirty} onClick={() => {
         if (navigationPermit.current !== navigation || owner.current !== navigation.identity || planId !== navigation.from || newRowState.snapshot !== navigation.snapshot || !active || disabled || flight.current || dirty || (navigation.target && !plans.some(item => item.planId === navigation.target))) return;
-        navigationPermit.current = undefined; navigate(navigation.target);
-      }}>放弃新增输入并切换</button></section> : null}
+        if (navigation.restore && (plan !== navigation.restore.plan || JSON.stringify(restorable) !== JSON.stringify(navigation.restore.rowIds))) return;
+        navigationPermit.current = undefined;
+        if (navigation.restore) { setNavigation(undefined); void run('restore', { planId: navigation.restore.plan.planId, rowIds: navigation.restore.rowIds }, '已生成恢复草稿，请查看后提交。'); }
+        else navigate(navigation.target);
+      }}>{navigation.restore ? '放弃新增输入并生成恢复草稿' : '放弃新增输入并切换'}</button></section> : null}
       {pending ? <div className="apps-business-alert" role="status"><span>原操作回执待确认。检查原操作即可继续。</span><button type="button" disabled={busy} onClick={() => void recover()}>检查原操作</button></div> : null}
       {recoveryDraft ? <section aria-label="恢复未保存修改" className="apps-business-notice"><p>{recoveryPlan ? '发现此聊天和店铺下的未保存修改，原批次版本已核对。' : '暂存对应的批次已变化或不可读取，不能直接恢复旧修改。'}暂存不等于保存，仅在当前工作区保留最多 30 分钟；关闭工作区或刷新后会清除。</p>{recoveryPlan ? <button type="button" disabled={busy || !!pending || dirty || loadingPlans} onClick={restoreDraft}>恢复修改</button> : null}<button type="button" disabled={busy} onClick={() => { drafts.drop(identity); onRecoveryResolved(); refreshRecovery(value => value + 1); }}>放弃暂存</button></section> : null}
       {planId && !plan && newRowState.dirty ? <p className="apps-business-notice" role="status">原批次暂不可读取，新增输入已保留，尚未保存。请刷新批次重试；原批次恢复后可继续添加，或明确放弃新增输入并切换批次。</p> : null}
@@ -266,7 +276,7 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
           <td>{businessPriceAction(row.action) ? <><PricingChoice label={row.target.offerId} config={pricingConfig} value={rowPricing(row)} disabled={disabled || rawDirty || !editableBusinessRow(row)} onChange={value => patchPricing(row, value)}/><PricingQuote row={row} dirty={editedIds.has(row.rowId)}/></> : <span className="apps-business-muted">此动作无需定价</span>}</td>
           <td><span className={`apps-business-status is-${row.status}`}>{BUSINESS_STATUS_LABELS[row.status]}</span>{row.issues.map((issue, index) => <p className="apps-business-issue" key={`${issue.code}:${index}`}>{issue.field ? `${BUSINESS_FIELD_LABELS[issue.field] ?? issue.field}：` : ''}{issue.message}{issue.suggestion ? <small>{issue.suggestion}</small> : null}<ProcurementIssueDetails row={row} issue={issue} verified={active && listVerified && !loadingPlans && !listError && !editedIds.has(row.rowId) && !rawEditedIds.includes(row.rowId)}/></p>)}{row.corrections.length ? <details><summary>已自动修正 {row.corrections.length} 项</summary>{row.corrections.map((text, index) => <small key={index}>{text}</small>)}</details> : null}</td>
         </tr>)}</tbody></table>{!visible.length ? <p className="apps-business-empty">当前筛选下没有商品。{query || status ? <button type="button" disabled={disabled || rawDirty} onClick={() => { if (rawDirty) return; setQuery(''); setStatus(''); }}>清除筛选</button> : null}</p> : null}</div>
-        <footer className="apps-business-actions">{dirty ? <button type="button" disabled={disabled || !active} onClick={() => { if (!disabled && active) setDiscardConfirmation({}); }}>放弃未保存修改</button> : null}<span>{dirty ? `${new Set([...editedIds, ...rawEditedIds]).size} 行尚未保存` : `已选 ${selected.length} 行 · 提交范围为整批 ${plan.rows.length} 个动作`}</span><button type="button" disabled={disabled || !dirty || rawDirty} onClick={() => void run('revise', { planId: plan.planId, expectedRevision: plan.revision, rows: editedRows.map(row => businessRowInput(row, edits[row.rowId] ?? row.payload, businessPriceAction(row.action) ? rowPricing(row) : row.pricing)) }, '草稿已保存，尚未提交。')}>{saveLabel}</button><button type="button" disabled={disabled || dirty} onClick={() => void run('inspect', { planId: plan.planId }, '已更新平台处理状态。')}>核查平台状态</button><button type="button" disabled={disabled || dirty || !restorable.length} onClick={() => void run('restore', { planId: plan.planId, rowIds: restorable }, '已生成恢复草稿，请查看后提交。')}>恢复所选已完成项</button><button type="button" className="apps-primary" disabled={disabled || dirty || !actionableRows.length} onClick={() => setConfirmation(structuredClone(plan))}>确认整批范围后提交</button></footer>
+        <footer className="apps-business-actions">{dirty ? <button type="button" disabled={disabled || !active} onClick={() => { if (!disabled && active) setDiscardConfirmation({}); }}>放弃未保存修改</button> : null}<span>{dirty ? `${new Set([...editedIds, ...rawEditedIds]).size} 行尚未保存` : `已选 ${selected.length} 行 · 提交范围为整批 ${plan.rows.length} 个动作`}</span><button type="button" disabled={disabled || !dirty || rawDirty} onClick={() => void run('revise', { planId: plan.planId, expectedRevision: plan.revision, rows: editedRows.map(row => businessRowInput(row, edits[row.rowId] ?? row.payload, businessPriceAction(row.action) ? rowPricing(row) : row.pricing)) }, '草稿已保存，尚未提交。')}>{saveLabel}</button><button type="button" disabled={disabled || dirty} onClick={() => void run('inspect', { planId: plan.planId }, '已更新平台处理状态。')}>核查平台状态</button><button type="button" disabled={disabled || dirty || !restorable.length} onClick={requestRestore}>恢复所选已完成项</button><button type="button" className="apps-primary" disabled={disabled || dirty || !actionableRows.length} onClick={() => setConfirmation(structuredClone(plan))}>确认整批范围后提交</button></footer>
       </> : null}
       {confirmation ? <SubmissionConfirmation now={recoveryNow} plan={confirmation} storeName={store.name} hiddenCount={confirmation.rows.filter(row => !visible.some(candidate => candidate.rowId === row.rowId)).length} unselectedCount={confirmation.rows.filter(row => !selected.includes(row.rowId)).length} busy={busy || !!pending} checking={!active || loadingPlans || !listVerified || currentDecision !== confirmedDecision} onCancel={() => { confirmationPermit.current = undefined; setConfirmation(undefined); }} onConfirm={() => { if (confirmationPermit.current !== confirmation || !active || loadingPlans || !listVerified || listError || busy || pending || dirty || !actionableRows.length || currentDecision !== confirmedDecision) return; const snapshot = confirmation; confirmationPermit.current = undefined; setConfirmation(undefined); void run('submit', { planId: snapshot.planId, expectedRevision: snapshot.revision }, '已取得本次提交结果，请查看各行状态。'); }}/> : null}
       <NewBusinessRow key={`${identity}:${planId || 'new'}`} disabled={newRowDisabled} pricingConfig={pricingConfig} onStateChange={reportNewRow} onAdd={(title, row) => { if (newRowAddPermit.current !== newRowAddToken || owner.current !== identity) return; void run(plan ? 'revise' : 'create', plan ? { planId: plan.planId, expectedRevision: plan.revision, rows: [row] } : { storeId: store.id, title, rows: [row] }, '草稿已保存，尚未提交。'); }}/>
