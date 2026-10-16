@@ -80,3 +80,137 @@ test('external cross-connection loading disables packaging edits while local can
  assert.ok(input('red weight'));assert.equal(field('采集来源连接').props.value,'source');assert.equal(requests.filter(row=>row.operation==='packaging.save').length,0);
  `,setup);
 });
+
+const receiptFixture=fixture.replace('let tree;', 'let tree,failWrite=false,failRead=false,holdRead=false,releaseRead;').replace(
+ "if(request.operation==='packaging.read')return Response.json(read(request.input));",
+ "if(request.operation==='packaging.read'){if(failRead){failRead=false;return Response.json({error:{message:'刷新暂不可用'}},{status:503});}const snapshot=read(request.input);if(holdRead){holdRead=false;await new Promise(resolve=>releaseRead=resolve);}return Response.json(snapshot);}"
+).replace(
+ "if(request.operation==='packaging.save')return Response.json({saved:repository.saveOverrides(request.input.rows)});",
+ "if(request.operation==='packaging.save'){if(failWrite)return Response.json({error:{message:'写入暂不可用'}},{status:503});try{return Response.json({saved:repository.saveOverrides(request.input.rows)});}catch(error){return Response.json({error:{message:error.message}},{status:409});}}"
+);
+test('packaging write receipt survives failed refresh and read-only recovery preserves newer edits',async()=>scenario(`
+ await change('red weight','0.5');failWrite=true;await click('保存包装修改');
+ assert.equal(input('red weight').props.value,'0.5');assert.equal(repository.list().length,0);assert.equal(button('保存包装修改').props.disabled,false);
+ failWrite=false;failRead=true;await click('保存包装修改');
+ assert.equal(repository.list()[0].revision,1);assert.equal(repository.list()[0].values.weightKg,0.5);
+ assert.match(text(tree.root.findByProps({role:'alert'})),/包装已保存，结果刷新失败/);assert.equal(button('保存包装修改').props.disabled,true);
+ await change('red weight','0.7');const writes=requests.filter(row=>row.operation==='packaging.save').length;
+ await click('重新读取包装结果');assert.equal(requests.filter(row=>row.operation==='packaging.save').length,writes);assert.equal(input('red weight').props.value,'0.7');
+ await click('保存包装修改');assert.equal(requests.filter(row=>row.operation==='packaging.save').at(-1).input.rows[0].expectedRevision,1);
+ assert.equal(repository.list()[0].values.weightKg,0.7);assert.equal(repository.list()[0].revision,2);
+`,receiptFixture));
+test('packaging newer edits can save with receipt CAS before display recovery; genuine conflict stays unsaved',async()=>scenario(`
+ await change('red weight','0.5');failRead=true;await click('保存包装修改');await change('red weight','0.7');await click('保存包装修改');
+ assert.equal(repository.list()[0].revision,2);assert.equal(repository.list()[0].values.weightKg,0.7);
+ repository.saveOverrides([{target:{kind:'sku',itemId:'p1',sourceSkuId:'red'},values:{weightKg:0.8},expectedRevision:2}]);
+ await change('red weight','0.9');const count=requests.length;await click('保存包装修改');
+ assert.match(text(tree.root.findByProps({role:'alert'})),/包装记录已更新/);assert.equal(input('red weight').props.value,'0.9');assert.equal(repository.list()[0].values.weightKg,0.8);
+ assert.deepEqual(requests.slice(count).map(row=>row.operation),['packaging.save']);assert.equal(button('保存包装修改').props.disabled,false);
+`,receiptFixture));
+test('packaging in-flight display refresh retains edit ownership, newer edits, and ignores unmounted completion',async()=>scenario(`
+ await change('red weight','0.5');holdRead=true;await click('保存包装修改');
+ assert.equal(field('采集来源连接').props.disabled,true);assert.equal(input('red weight').props.disabled,true);
+ // Adversarial delayed callback: even an edit delivered while disabled cannot be overwritten by the older snapshot.
+ await change('red weight','0.7');await act(async()=>{releaseRead();await settle();});
+ assert.equal(input('red weight').props.value,'0.7');await click('保存包装修改');assert.equal(repository.list()[0].values.weightKg,0.7);
+ await change('red weight','0.9');holdRead=true;await click('保存包装修改');const oldRelease=releaseRead;
+ await act(async()=>{tree.unmount();tree=create(<BusinessSettings/>);await settle();});
+ await act(async()=>{oldRelease();await settle();});
+ assert.equal(tree.root.findAllByProps({className:'packaging-table'}).length,0);assert.equal(tree.root.findAllByProps({role:'status'}).length,0);
+ assert.equal(repository.list()[0].values.weightKg,0.9);
+`,receiptFixture));
+
+test('packaging display retry never silently rebases a newer draft over another writer',async()=>scenario(`
+ await change('red weight','0.5');failRead=true;await click('保存包装修改');await change('red weight','0.7');
+ repository.saveOverrides([{target:{kind:'sku',itemId:'p1',sourceSkuId:'red'},values:{weightKg:0.8},expectedRevision:1}]);
+ await click('重新读取包装结果');assert.equal(input('red weight').props.value,'0.7');await click('保存包装修改');
+ assert.equal(requests.filter(row=>row.operation==='packaging.save').at(-1).input.rows[0].expectedRevision,1);
+ assert.match(text(tree.root.findByProps({role:'alert'})),/包装记录已更新/);assert.equal(repository.list()[0].values.weightKg,0.8);
+`,receiptFixture));
+test('external store change waits for confirmed packaging refresh and does not receive the old connection result',async()=>{
+ const setup=receiptFixture.replace(
+  "if(String(url).includes('resource=businessSettings'))return Response.json({connections:[{connectionId:'source',displayName:'采集来源'}],connectionId:'source',stores:[],store:null,pricing:null,packagingAvailable:true});",
+  "if(String(url).includes('resource=businessSettings')){const cross=new URL(String(url),'http://local.test').searchParams.get('storeId')==='cross';return Response.json({connections:[{connectionId:'source',displayName:'采集来源'},{connectionId:'other',displayName:'其他连接'}],connectionId:cross?'other':'source',stores:[],store:cross?{...uiStore(),id:'cross',name:'跨连接测试店铺',sourceConnectionId:'other',enabled:true}:null,pricing:null,packagingAvailable:true});}"
+ );
+ await scenario(`
+ await change('red weight','0.5');holdRead=true;await click('保存包装修改');
+ await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});
+ assert.equal(field('采集来源连接').props.value,'source');assert.equal(input('red weight').props.value,'0.5');
+ await act(async()=>{releaseRead();await settle();});
+ assert.equal(field('采集来源连接').props.value,'other');assert.equal(tree.root.findAllByProps({className:'packaging-table'}).length,0);
+ assert.equal(requests.filter(row=>row.operation==='packaging.save').length,1);assert.equal(repository.list()[0].values.weightKg,0.5);
+ `,setup);
+});
+test('packaging acknowledgement clears only the submitted snapshot and keeps a later edit',async()=>{
+ const setup=receiptFixture.replace('let tree,failWrite=', 'let releaseWrite;let tree,failWrite=').replace(
+  "try{return Response.json({saved:repository.saveOverrides(request.input.rows)});}",
+  "try{const saved=repository.saveOverrides(request.input.rows);await new Promise(resolve=>releaseWrite=resolve);return Response.json({saved});}"
+ );
+ await scenario(`
+ await change('red weight','0.5');await click('保存包装修改');await change('red weight','0.7');
+ await act(async()=>{releaseWrite();await settle();});
+ assert.equal(repository.list()[0].values.weightKg,0.5);assert.equal(input('red weight').props.value,'0.7');assert.equal(button('保存包装修改').props.disabled,false);
+ await click('保存包装修改');assert.equal(requests.filter(row=>row.operation==='packaging.save').at(-1).input.rows[0].expectedRevision,1);
+ await act(async()=>{releaseWrite();await settle();});assert.equal(repository.list()[0].values.weightKg,0.7);assert.equal(button('保存包装修改').props.disabled,true);
+ `,setup);
+});
+test('malformed write receipt does not claim success or allow blind replay',async()=>{
+ const setup=receiptFixture.replace('let tree,failWrite=', 'let incomplete=true;let tree,failWrite=').replace(
+  "try{return Response.json({saved:repository.saveOverrides(request.input.rows)});}",
+  "try{const saved=repository.saveOverrides(request.input.rows);return Response.json({saved:incomplete?[]:saved});}"
+ );
+ await scenario(`
+ await change('red weight','0.5');await click('保存包装修改');
+ assert.equal(repository.list()[0].values.weightKg,0.5);assert.equal(input('red weight').props.value,'0.5');
+ assert.match(text(tree.root.findByProps({role:'alert'})),/回执不完整/);assert.equal(tree.root.findAllByProps({role:'status'}).length,0);
+ assert.equal(button('保存包装修改').props.disabled,true);assert.equal(button('恢复自动').props.disabled,true);
+ const count=requests.filter(row=>row.operation==='packaging.save').length;
+ failRead=true;await click('放弃未保存的修改');assert.equal(input('red weight').props.value,'0.5');assert.equal(button('保存包装修改').props.disabled,true);
+ await click('放弃未保存的修改');assert.equal(requests.filter(row=>row.operation==='packaging.save').length,count);
+ incomplete=false;await change('red weight','0.7');await click('保存包装修改');assert.equal(repository.list()[0].values.weightKg,0.7);
+ `,setup);
+});
+
+test('restore receipt survives failed display refresh and retains other dirty rows',async()=>scenario(`
+ await change('red weight','0.5');await change('blue weight','0.6');await click('保存包装修改');
+ await change('blue weight','0.8');failRead=true;await click('恢复自动');
+ const restored=repository.readOverride({kind:'sku',itemId:'p1',sourceSkuId:'red'});
+ assert.equal(restored.revision,2);assert.deepEqual(restored.values,{});
+ assert.equal(input('red weight').props.value,'');assert.equal(input('blue weight').props.value,'0.8');
+ assert.match(text(tree.root.findByProps({role:'alert'})),/已恢复自动.*刷新失败/);
+ await change('red weight','0.7');await click('保存包装修改');
+ const rows=requests.filter(row=>row.operation==='packaging.save').at(-1).input.rows;
+ assert.equal(rows.find(row=>row.target.sourceSkuId==='red').expectedRevision,2);
+ assert.equal(repository.readOverride({kind:'sku',itemId:'p1',sourceSkuId:'red'}).values.weightKg,0.7);
+ assert.equal(repository.readOverride({kind:'sku',itemId:'p1',sourceSkuId:'blue'}).values.weightKg,0.8);
+`,receiptFixture));
+const restoreFixture=receiptFixture.replace('let tree,failWrite=', 'let holdRemove=false,releaseRemove,incompleteRemove=false;let tree,failWrite=').replace(
+ "if(request.operation==='packaging.remove')return Response.json({saved:repository.saveOverrides(request.input.rows.map(row=>({...row,values:{weightKg:null,dimensionsCm:null}})))});",
+ "if(request.operation==='packaging.remove'){if(failWrite)return Response.json({error:{message:'恢复暂不可用'}},{status:503});try{const saved=repository.saveOverrides(request.input.rows.map(row=>({...row,values:{weightKg:null,dimensionsCm:null}})));if(holdRemove){holdRemove=false;await new Promise(resolve=>releaseRemove=resolve);}return Response.json({saved:incompleteRemove?[]:saved});}catch(error){return Response.json({error:{message:error.message}},{status:409});}}"
+);
+test('delayed restore acknowledgement preserves same-row newer edits and unrelated rows',async()=>scenario(`
+ await change('red weight','0.5');await click('保存包装修改');holdRemove=true;await click('恢复自动');
+ await change('red weight','0.7');await change('blue weight','0.8');
+ await act(async()=>{releaseRemove();await settle();});
+ assert.equal(input('red weight').props.value,'0.7');assert.equal(input('blue weight').props.value,'0.8');
+ assert.deepEqual(repository.readOverride({kind:'sku',itemId:'p1',sourceSkuId:'red'}).values,{});
+ await click('保存包装修改');const updates=requests.filter(row=>row.operation==='packaging.save').at(-1).input.rows;
+ assert.equal(updates.find(row=>row.target.sourceSkuId==='red').expectedRevision,2);assert.equal(updates.find(row=>row.target.sourceSkuId==='blue').expectedRevision,0);
+ assert.equal(repository.readOverride({kind:'sku',itemId:'p1',sourceSkuId:'red'}).values.weightKg,0.7);
+ holdRead=true;await click('恢复自动');const oldRelease=releaseRead;
+ await act(async()=>{tree.unmount();tree=create(<BusinessSettings/>);await settle();oldRelease();await settle();});
+ assert.equal(tree.root.findAllByProps({className:'packaging-table'}).length,0);assert.equal(tree.root.findAllByProps({role:'status'}).length,0);
+`,restoreFixture));
+test('restore write failures and malformed acknowledgements never claim a completed reset',async()=>scenario(`
+ await change('red weight','0.5');await click('保存包装修改');failWrite=true;await click('恢复自动');
+ assert.equal(input('red weight').props.value,'0.5');assert.equal(repository.list()[0].revision,1);assert.match(text(tree.root.findByProps({role:'alert'})),/恢复暂不可用/);
+ failWrite=false;repository.saveOverrides([{target:{kind:'sku',itemId:'p1',sourceSkuId:'red'},values:{weightKg:0.6},expectedRevision:1}]);
+ await click('恢复自动');assert.match(text(tree.root.findByProps({role:'alert'})),/包装记录已更新/);assert.equal(repository.list()[0].values.weightKg,0.6);
+ await change('red weight','0.7');await click('放弃未保存的修改');incompleteRemove=true;await click('恢复自动');
+ assert.match(text(tree.root.findByProps({role:'alert'})),/回执不完整/);assert.equal(tree.root.findAllByProps({role:'status'}).length,0);assert.equal(button('恢复自动').props.disabled,true);
+ assert.equal(input('red weight').props.value,'0.6');assert.deepEqual(repository.list()[0].values,{});
+ // Verification remains accessible even when reset began without a table draft.
+ assert.equal(button('放弃未保存的修改').props.disabled,false);failRead=true;await click('放弃未保存的修改');
+ assert.equal(input('red weight').props.value,'0.6');assert.equal(button('恢复自动').props.disabled,true);
+ await click('放弃未保存的修改');assert.equal(input('red weight').props.value,'');assert.equal(button('恢复自动').props.disabled,false);
+`,restoreFixture));
