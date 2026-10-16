@@ -93,6 +93,10 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
   const [editingListingId, setEditingListingId] = useState('');
   const [rawEdits, setRawEdits] = useState<Record<string, string>>({}), rawEditedIds = Object.keys(rawEdits), rawDirty = rawEditedIds.length > 0;
   const [query, setQuery] = useState(''), [status, setStatus] = useState(''), [selected, setSelected] = useState<string[]>([]), [batchPrice, setBatchPrice] = useState(''), [batchCurrency, setBatchCurrency] = useState('');
+  // A read may remove the current batch temporarily. Keep unapplied batch work
+  // attached to that batch, without restarting the read for local input changes.
+  const batchReadIntent = useRef(false);
+  useLayoutEffect(() => { batchReadIntent.current = selected.length > 0 || batchPrice !== '' || batchCurrency !== ''; });
   const [edits, setEdits] = useState<Record<string, Record<string, unknown>>>({}), [busy, setBusy] = useState(false), [notice, setNotice] = useState('');
   const [pricingEdits, setPricingEdits] = useState<Record<string, NonNullable<BusinessRowInput['pricing']>>>({}), [pricingConfig, setPricingConfig] = useState<BusinessPricingConfig | null>(null), [pricingError, setPricingError] = useState('');
   const [listError, setListError] = useState(''), [loadingPlans, setLoadingPlans] = useState(false);
@@ -159,7 +163,7 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
     businessOperation<{ plans: BusinessPlan[] } | BusinessPlan[]>(scope, 'list', { storeId: scope.storeId }).then(result => {
       if (cancelled || owner.current !== target) return; const rows = Array.isArray(result) ? result : result.plans;
       if (discardReloadPlanId) setNotice('已放弃未保存修改；已完成最新批次读取，尚未提交任何经营动作。');
-      setListVerified(true); setPlans(rows); setPlanId(current => discardReloadPlanId ?? (newRowDirty.current || rows.some(row => row.planId === current) ? current : rows[0]?.planId ?? '')); setListError(discardReloadPlanId && !rows.some(row => row.planId === discardReloadPlanId) ? '原批次已不可读取，未切换到其他批次。请刷新重试，或明确选择其他批次。' : '');
+      setListVerified(true); setPlans(rows); setPlanId(current => discardReloadPlanId ?? (newRowDirty.current || batchReadIntent.current || rows.some(row => row.planId === current) ? current : rows[0]?.planId ?? '')); setListError(discardReloadPlanId && !rows.some(row => row.planId === discardReloadPlanId) ? '原批次已不可读取，未切换到其他批次。请刷新重试，或明确选择其他批次。' : '');
     }).catch(error => { if (!cancelled && owner.current === target) { setListVerified(false); setPlans([]); setListError(error.message); if (discardReloadPlanId) setNotice('未保存修改已放弃，但最新批次读取失败。请点击刷新批次重试。'); } })
       .finally(() => { if (!cancelled && owner.current === target) setLoadingPlans(false); });
     return () => { cancelled = true; };
@@ -252,6 +256,7 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
       {pending ? <div className="apps-business-alert" role="status"><span>原操作回执待确认。检查原操作即可继续。</span><button type="button" disabled={busy} onClick={() => void recover()}>检查原操作</button></div> : null}
       {recoveryDraft ? <section aria-label="恢复未保存修改" className="apps-business-notice"><p>{recoveryPlan ? '发现此聊天和店铺下的未保存修改，原批次版本已核对。' : '暂存对应的批次已变化或不可读取，不能直接恢复旧修改。'}暂存不等于保存，仅在当前工作区保留最多 30 分钟；关闭工作区或刷新后会清除。</p>{recoveryPlan ? <button type="button" disabled={busy || !!pending || dirty || loadingPlans} onClick={restoreDraft}>恢复修改</button> : null}<button type="button" disabled={busy} onClick={() => { drafts.drop(identity); onRecoveryResolved(); refreshRecovery(value => value + 1); }}>放弃暂存</button></section> : null}
       {planId && !plan && newRowState.dirty ? <p className="apps-business-notice" role="status">原批次暂不可读取，新增输入已保留，尚未保存。请刷新批次重试；原批次恢复后可继续添加，或明确放弃新增输入并切换批次。</p> : null}
+      {planId && !plan && (selected.length > 0 || batchPrice !== '' || batchCurrency !== '') ? <p className="apps-business-notice" role="status">原批次暂不可读取，批量输入和勾选已保留，尚未应用或保存。请刷新批次重试；原批次恢复后可继续，或选择其他批次放弃这些输入和勾选。</p> : null}
       {listError ? <p className="apps-business-notice" role="alert">{listError}</p> : null}
       {pricingError ? <p className="apps-business-notice" role="alert">经营规则暂时无法读取：{pricingError}</p> : null}
       {busy ? <p className="apps-business-notice" role="status">{busyOperation === 'submit' ? '正在审核并提交整批变更，请等待处理结果。' : busyOperation === 'request' ? '正在检查原操作结果，不会重发变更。' : '正在处理，请等待结果。'}</p> : null}
