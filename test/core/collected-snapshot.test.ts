@@ -31,9 +31,19 @@ test('collected search returns a bindable bounded source-order snapshot without 
 test('collected key separates query/page/page-size; equivalent default paging shares one snapshot',async()=>{
  const f=setup();try{
   const read=async(args:any)=>(await f.core.invoke('hallmark_search_collected_items',args,context)).data as any;
-  const defaults=await read({});assert.equal(defaults.datasetKey,(await read({cursor:'0',limit:100})).datasetKey);
+  const defaults=await read({}),explicitDefaults=await read({cursor:'0',limit:100});assert.equal(defaults.datasetKey,explicitDefaults.datasetKey);
   const pages=await Promise.all([{}, {query:'source'}, {cursor:'1'}, {limit:1}].map(read));assert.equal(new Set(pages.map(page=>page.datasetKey)).size,4);
   assert.deepEqual(pages[2].items,f.items.slice(1));assert.deepEqual(pages[3].items,f.items.slice(0,1));
+  // This source returns all three summaries: full and tail pages must terminate,
+  // while the one-row page must still expose its next offset.
+  const allIds=['newer-by-source','older-by-source','tail'];
+  assert.deepEqual([defaults,explicitDefaults,...pages].map(page=>({ids:page.items.map((item:any)=>item.id),total:page.total,cursor:page.cursor})),[
+   {ids:allIds,total:3,cursor:undefined},{ids:allIds,total:3,cursor:undefined},
+   {ids:allIds,total:3,cursor:undefined},{ids:allIds,total:3,cursor:undefined},
+   {ids:['older-by-source','tail'],total:3,cursor:undefined},
+   {ids:['newer-by-source'],total:3,cursor:'1'},
+  ],'complete source pages terminate without dropping rows or the real continuation');
+  assert.deepEqual([...f.calls].sort(),['','','','','','source']);
  }finally{f.store.close();}
 });
 
