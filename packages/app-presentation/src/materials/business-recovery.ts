@@ -15,6 +15,7 @@ export function businessRecoveryAction(row: BusinessRow, now = Date.now()): Busi
   return 'submit';
 }
 export function businessRecoveryMessage(row: BusinessRow, now = Date.now()): string {
+  if (row.action === 'listing' && ['draft', 'blocked'].includes(row.status) && row.issues.some(issue => issue.code === 'PROCUREMENT_SKU_NOT_UNIQUE')) return '请先核对本行采购关联与下方来源 SKU 候选，在原批次修正采购关联后保存，再重新确认提交。候选不会自动替换；重复提交相同关联不能修正此问题。';
   switch (businessRecoveryAction(row, now)) {
     case 'edit_save': return '本行尚未重试。请修改退回字段并保存草稿，再提交；保存相同内容不会解除退回状态。';
     case 'resolve_decision': return '请先处理本行的经营判断，修改相关内容并保存草稿，再提交。';

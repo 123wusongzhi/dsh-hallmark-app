@@ -131,6 +131,11 @@ async function categoryParts(product:CollectionProduct,input:ListingPrepareInput
  }
  return parts;
 }
+export class ListingCategoryReadError extends Error {
+ readonly code='LISTING_CATEGORY_ATTRIBUTE_NOT_FOUND';
+ readonly details:RecordData;
+ constructor(details:RecordData){super('请求的部分属性不属于此类目。不要重复原请求或猜测替代值；使用 recovery 分页读取同一版本的全部属性约束，再根据真实商品资料选择属性。');this.details=details;}
+}
 /** Category-only constraints; exact frozen pages never re-prepare sales or return choice dictionaries. */
 export async function readListingCategory(input:RecordData,options:Pick<PrepareOptions,'client'|'store'|'signal'>):Promise<any>{
  checkCancelled(options.signal);
@@ -146,8 +151,16 @@ export async function readListingCategory(input:RecordData,options:Pick<PrepareO
   const parts=await categoryParts({id,category:{path:[]}} as unknown as CollectionProduct,{storeId:input.storeId,categories:{[id]:selection},includeOptionalAttributes:true,refresh:input.refresh},options,new Map());
   if(parts[0].data.status!=='selected')return parts[0].data;
   const all=parts.flatMap(p=>p.data.attributes??[]),attributes=all.filter(a=>input.attributeIds?input.attributeIds.includes(String(a.id??a.attribute_id)):input.scope==='all'||a.is_required===true||a.required===true);
-  if(input.attributeIds?.some((id:string)=>!all.some(a=>String(a.id??a.attribute_id)===id)))throw Error('LISTING_CATEGORY_ATTRIBUTE_NOT_FOUND');
+  const unknownAttributeIndexes:number[]=(input.attributeIds??[]).flatMap((id:string,index:number)=>all.some(a=>String(a.id??a.attribute_id)===id)?[]:[index]);
   const {available,attributes:unused,...metadata}=parts[0].data;
+  if(unknownAttributeIndexes.length){
+   // Recovery reuses the existing paginated reader and pins the exact inspected constraints.
+   // Do not echo unbounded caller-controlled attribute strings in a validation error.
+   const value={storeId:input.storeId,...metadata,scope:'all',attributes:all},snapshot={...value,revision:hash(value)};
+   options.store.put('business_listing_category_pages',snapshot.revision,snapshot);
+   const unknownAttributeIds=unknownAttributeIndexes.map(index=>input.attributeIds[index]).filter((id:string)=>id.length<=128).slice(0,20);
+   throw new ListingCategoryReadError({selection,revision:snapshot.revision,unknownAttributeIndexes,unknownAttributeIds,omittedUnknownAttributeIds:unknownAttributeIndexes.length-unknownAttributeIds.length,recovery:{capability:'hallmark.listing.category.read',input:{storeId:input.storeId,cursor:Buffer.from(JSON.stringify({revision:snapshot.revision,offset:0})).toString('base64url'),limit:input.limit??30}}});
+  }
   const value={storeId:input.storeId,...metadata,scope:input.attributeIds?'selected':input.scope??'required',attributes};
   const snapshot={...value,revision:hash(value)};saved=snapshot;options.store.put('business_listing_category_pages',snapshot.revision,snapshot);
  }

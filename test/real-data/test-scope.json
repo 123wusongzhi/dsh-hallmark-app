@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "policy": "All tests consuming commodity, SKU, collected source, shop, sale, logistics, activity or dictionary facts use recorded snapshots. Original records remain immutable. Alias, omission, failure, numeric boundary and scale modifications are explicit derived cases.",
   "requiredFiles": [
+    "test/plugin-apps/procurement-diagnostics.test.ts",
     "test/plugin-apps/business-inspect-selection.test.ts",
     "test/plugin-apps/packaging-input-recovery.test.ts",
     "test/plugin-apps/pricing-validation-recovery.test.ts",

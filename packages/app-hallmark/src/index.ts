@@ -19,7 +19,7 @@ import {DYNAMIC_PROFIT_BASIS} from './dynamic-profit.ts';
 import {CollectionService} from '../../collection/src/index.ts';
 import {BusinessPackagingRepository} from '../../business-packaging/src/index.ts';
 import {COLLECTION_DESCRIPTORS,LISTING_PREPARE_DESCRIPTOR,LISTING_CATEGORY_DESCRIPTOR} from './collection-provider.ts';
-import {prepareListing,collectionListingStates,readListingCategory} from './listing-prepare.ts';
+import {ListingCategoryReadError,prepareListing,collectionListingStates,readListingCategory} from './listing-prepare.ts';
 import {applyExistingPackaging} from './packaging-evidence.ts';
 import {LISTING_ASSET_DESCRIPTOR,type ListingAssetPublisher} from './listing-assets.ts';
 import {BUSINESS_PRICING_DESCRIPTORS,BUSINESS_DESCRIPTORS,businessOperation,legacyBusinessKind,executeBusiness,executeLegacyBusiness,resolveListingRows,businessResult,publicPlan} from './operations-provider.ts';
@@ -197,7 +197,7 @@ export class HallmarkProvider implements AppProvider {
    try{const [row]=await resolveListingRows(this.businessStore(request.connectionId,context.configRevision),args.storeId,[args.row],undefined,async id=>(await this.collection(request.connectionId,context.configRevision).getProduct(id)).revision);const quote=await this.adapter(request.connectionId,context.configRevision).load({storeId:args.storeId,row,fresh:false,signal:context.signal});return {invocationId:request.invocationId,traceId:request.traceId,status:'ok',data:{quote:quote.pricingQuote??null,issues:quote.issues??[],normalizedPayload:quote.normalizedPayload??null} as unknown as JsonValue};}catch(error){return this.failure(context,'PRICING_QUOTE_UNAVAILABLE',error instanceof Error?error.message:'试算未完成');}
   }
   if(request.capabilityId==='hallmark.listing.category.read'){
-   try{return {invocationId:request.invocationId,traceId:request.traceId,status:'ok',data:await readListingCategory(args,{client:domain.options.client,store:this.businessStore(request.connectionId,context.configRevision),signal:context.signal})};}catch(error){return this.failure(context,'LISTING_CATEGORY_READ_FAILED',error instanceof Error?error.message:'类目读取失败');}
+   try{return {invocationId:request.invocationId,traceId:request.traceId,status:'ok',data:await readListingCategory(args,{client:domain.options.client,store:this.businessStore(request.connectionId,context.configRevision),signal:context.signal})};}catch(error){if(error instanceof ListingCategoryReadError)return {invocationId:request.invocationId,traceId:request.traceId,status:'failed',error:{code:error.code,message:error.message,retryPolicy:'never',details:error.details}};return this.failure(context,'LISTING_CATEGORY_READ_FAILED',error instanceof Error?error.message:'类目读取失败');}
   }
   if(businessOperation(request.capabilityId))return executeBusiness(this.business(request.connectionId,context.configRevision),this.businessStore(request.connectionId,context.configRevision),context,async id=>(await this.collection(request.connectionId,context.configRevision).getProduct(id)).revision);
   if(legacyBusinessKind(request.capabilityId)){
