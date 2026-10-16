@@ -6,8 +6,16 @@ export interface WorkbenchStores {stores:WorkbenchStoreOption[]}
 async function fetchRead(url:string,options:RequestInit):Promise<Response>{
   try{return await fetch(url,options);}catch(cause){if(options.signal?.aborted)throw cause;throw Object.assign(new Error(cause instanceof Error?cause.message:'网络暂时无法连接。'),{code:'RUNTIME_UNAVAILABLE',retryPolicy:'read_retry'});}
 }
+/** A read can fail after headers arrive (gateway HTML or an interrupted JSON body). */
+async function readResponseJson(response:Response,signal?:AbortSignal):Promise<any>{
+  try{return await response.json();}catch(cause){
+    if(signal?.aborted)throw cause;
+    // Preserve HTTP authorization/client failures; only safe reads may be retried.
+    throw Object.assign(new Error('数据响应未完整读取，请稍后重试。'),{code:'READ_RESPONSE_UNREADABLE',httpStatus:response.status,retryPolicy:response.ok||response.status===429||response.status>=500&&response.status<=599?'read_retry':'never'});
+  }
+}
 export async function appsRefreshView<T>(sessionId:string,viewId:string,forceRefresh:boolean,signal?:AbortSignal):Promise<T>{
-  const response=await fetchRead('/api/dsh-apps',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'refreshView',sessionId,viewId,forceRefresh}),signal}),value=await response.json();
+  const response=await fetchRead('/api/dsh-apps',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'refreshView',sessionId,viewId,forceRefresh}),signal}),value=await readResponseJson(response,signal);
   if(!response.ok||value?.status==='failed')throw appsApiError(value,response.status,'数据暂时无法更新。');
   return value as T;
 }
@@ -41,7 +49,7 @@ export function mergeCachedAppsData(next:AppsViewData,previous?:AppsViewData,pag
   return {data:{...next,bindings},retained,failed,retryAt};
 }
 const actionKey=(value:JsonValue):string=>Array.isArray(value)?'['+value.map(actionKey).join(',')+']':value!==null&&typeof value==='object'?'{'+Object.keys(value).sort().map(key=>JSON.stringify(key)+':'+actionKey(value[key])).join(',')+'}':JSON.stringify(value);
-export async function appsResource<T>(resource:string,query:Record<string,string>={},signal?:AbortSignal):Promise<T>{const response=await fetchRead(`/api/dsh-apps?${new URLSearchParams({resource,...query})}`,{credentials:'same-origin',signal}),value=await response.json();if(!response.ok||value?.status==='failed')throw appsApiError(value,response.status,'Apps Runtime暂不可用。');return value;}
+export async function appsResource<T>(resource:string,query:Record<string,string>={},signal?:AbortSignal):Promise<T>{const response=await fetchRead(`/api/dsh-apps?${new URLSearchParams({resource,...query})}`,{credentials:'same-origin',signal}),value=await readResponseJson(response,signal);if(!response.ok||value?.status==='failed')throw appsApiError(value,response.status,'Apps Runtime暂不可用。');return value;}
 export interface UnconfirmedPresentation {requestId:string;sessionId:string;capabilityId:string}
 // Retain original IDs across local view/tab unmounts; no implicit retry on re-open.
 const unconfirmed=new Map<string,UnconfirmedPresentation>();
@@ -70,7 +78,7 @@ export async function appsAuthoring<T>(sessionId:string,operation:string,params:
 /** Workbench state belongs to an app; source preparation and previews use the current chat. */
 export async function appsWorkbench<T>(appId:string,operation:'save'|'read'|'preview'|'initialize'|'prepare'|'pinComponent'|'unpinComponent',params:unknown,signal?:AbortSignal,sessionId?:string):Promise<T>{
   const response=await (operation==='read'||operation==='preview'?fetchRead:fetch)('/api/dsh-apps',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'workbench',operation,appId,params,...(sessionId?{sessionId}:{})}),signal});
-  const value=await response.json();
+  const value=await (operation==='read'||operation==='preview'?readResponseJson(response,signal):response.json());
   if(!response.ok||value?.status==='failed')throw appsApiError(value,response.status,'工作台操作未完成。');
   return value as T;
 }

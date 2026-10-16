@@ -43,6 +43,8 @@ try{
   await mount(rows);assert.equal(button('确认整批范围后提交').props.disabled,true);assert.match(text(tree.root.findByProps({'aria-label':'下一步操作'})),expected);
  }
  assert.equal(submits,0);assert.equal(sends.length,0);
+ for(const status of ['blocked','review_pending','ready']){await mount([row(status)]);assert.equal(button('确认整批范围后提交').props.disabled,false,status+' remains eligible for explicit review');}
+ assert.equal(submits,0);assert.equal(sends.length,0,'Eligibility alone does not dispatch');
  await mount([row('unknown')]);assert.equal(button('确认整批范围后提交').props.disabled,true);assert.match(text(tree.root.findByProps({'aria-label':'下一步操作'})),/核查平台状态/);assert.equal(tree.root.findByProps({'aria-label':'AUDIT-unknown 商品标题'}).props.disabled,true);
  await mount([row('draft','', 'DRAFT')]);await click('确认整批范围后提交');assert.match(text(tree.root.findByProps({'aria-label':'提交范围确认'})),/本次可推进 1 行/);await click('确认提交整批 1 个动作');assert.deepEqual(sends,['DRAFT']);
  await mount([row('succeeded'),row('rejected'),row('unknown'),row('draft','','MIXED-DRAFT')]);await click('确认整批范围后提交');const scope=text(tree.root.findByProps({'aria-label':'提交范围确认'}));assert.match(scope,/整批 4 个动作/);assert.match(scope,/本次可推进 1 行/);assert.match(scope,/需先修正或判断 1 行/);await click('确认提交整批 4 个动作');assert.deepEqual(sends,['DRAFT','MIXED-DRAFT']);assert.deepEqual(plan.rows.map(r=>r.status),['succeeded','rejected','unknown','succeeded']);

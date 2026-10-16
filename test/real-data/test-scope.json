@@ -2,9 +2,11 @@
   "schemaVersion": 1,
   "policy": "All tests consuming commodity, SKU, collected source, shop, sale, logistics, activity or dictionary facts use recorded snapshots. Original records remain immutable. Alias, omission, failure, numeric boundary and scale modifications are explicit derived cases.",
   "requiredFiles": [
+    "test/plugin-apps/business-inspect-selection.test.ts",
     "test/plugin-apps/packaging-input-recovery.test.ts",
     "test/plugin-apps/pricing-validation-recovery.test.ts",
     "test/plugin-apps/table-browse-continuity.test.ts",
+    "test/plugin-apps/workbench-read-response-recovery.test.ts",
     "test/plugin-apps/business-new-form-navigation.test.ts",
     "test/plugin-apps/listing-draft-editor.test.ts",
     "test/apps-host/collected-empty-search.test.ts",
@@ -180,7 +182,8 @@
     "test/plugin-apps/business-recovery-actions.test.ts",
     "test/plugin-apps/business-discard-recovery.test.ts",
     "test/plugin-apps/listing-packaging.test.ts",
-    "test/plugin-apps/business-new-form-refresh.test.ts"
+    "test/plugin-apps/business-new-form-refresh.test.ts",
+    "test/plugin-apps/material-range-read-recovery.test.ts"
   ],
   "infrastructureFiles": [
     "test/authoring/failed-build-http-recovery.test.ts",
@@ -352,7 +355,8 @@
     "test/plugin-apps/business-draft-recovery-cache.test.ts",
     "test/plugin-apps/association-loading-lifecycle.test.ts",
     "test/plugin-apps/material-close-draft.test.ts",
-    "test/plugin-apps/material-agent-request.test.ts"
+    "test/plugin-apps/material-agent-request.test.ts",
+    "test/materials/business-recovery.test.ts"
   ],
   "infrastructureReasons": {
     "test/authoring/failed-build-http-recovery.test.ts": "Explicit exit-7 subprocess, real signed authoring evidence, SQLite receipt and actual committed HTTP response loss exercise failure-checkpoint recovery without any browser, commodity data, merchant action or publishable build.",
@@ -524,7 +528,8 @@
     "test/plugin-apps/business-draft-recovery-cache.test.ts": "Pure in-memory cache lifetime, owner-key isolation, byte/count bounds and clone contracts with opaque text and plan/version identifiers; no commodity or shop facts.",
     "test/plugin-apps/association-loading-lifecycle.test.ts": "Real React request/loading lifecycle under isolated deferred fetch, using opaque routing identifiers and empty response envelopes only; no product or merchant-data claims.",
     "test/plugin-apps/material-close-draft.test.ts": "Production React workspace/material editor draft closing with isolated field-definition and transport receipt controls; no business product payload or merchant writes.",
-    "test/plugin-apps/material-agent-request.test.ts": "Production React Agent request draft lifecycle with isolated field definitions and transport receipts; no business product payload, external agent calls or merchant writes."
+    "test/plugin-apps/material-agent-request.test.ts": "Production React Agent request draft lifecycle with isolated field definitions and transport receipts; no business product payload, external agent calls or merchant writes.",
+    "test/materials/business-recovery.test.ts": "Actual engine admission compared with UI guidance using explicit local statuses, error codes and fixed deadlines; source/reviewer/transport denied, no commodity or pricing facts."
   },
   "fileModes": {
     "test/apps-host/collection-column-fidelity.test.ts": "Three original SKUs from an unchanged hash-checked frozen detail through real Adapter, CollectionService, Provider, Runtime HTTP and Host renderer; independent source attribute/image expectations and formal image metadata resource reads verify named column fidelity and explicit absent package/price nulls without downloading images.",
@@ -565,6 +570,7 @@
     "test/plugin-apps/business-recovery-actions.test.ts": "Recorded uiStore/uiProduct and purchase-cost evidence with explicit local rejection/decision/retry states. Real React and in-memory business engine verify corrective next actions, mixed batches, clock expiry without automatic resend, and edited-save recovery. Transport is an in-memory recorder; no merchant calls.",
     "test/plugin-apps/business-new-form-refresh.test.ts": "Recorded product/store base with explicit local offer/price inputs, engine-backed plans and controlled missing/empty/failed/delayed list receipts; no merchant transport.",
     "test/plugin-apps/pricing-validation-recovery.test.ts": "Recorded store label and pricing values; explicit invalid rule boundaries and blank required field use enabled React controls with the real BusinessSettingsService, BusinessPricingRepository, RuntimeStore and production error classifier. Local gateway rejects every merchant call. Tests retain rejected inputs, cancel discard, correct and save without duplicating writes.",
-    "test/plugin-apps/packaging-input-recovery.test.ts": "Frozen corpus common-package product and two SKU facts; local identity aliases, numeric boundaries and explicit blank drafts are controlled derived cases. Enabled React controls route through real BusinessSettingsService, BusinessPackagingRepository and isolated RuntimeStore. No merchant calls; verifies numeric rejection, correction, clear, restore and discard semantics. Browser typing is not claimed."
+    "test/plugin-apps/packaging-input-recovery.test.ts": "Frozen corpus common-package product and two SKU facts; local identity aliases, numeric boundaries and explicit blank drafts are controlled derived cases. Enabled React controls route through real BusinessSettingsService, BusinessPackagingRepository and isolated RuntimeStore. No merchant calls; verifies numeric rejection, correction, clear, restore and discard semantics. Browser typing is not claimed.",
+    "test/plugin-apps/business-inspect-selection.test.ts": "Recorded product and store labels through production React and BusinessOperations inspection; explicit local draft/completed/pending states, missing receipt, failed and delayed read controls. No source review or merchant writes; selections, filters and unapplied batch inputs survive inspection."
   }
 }

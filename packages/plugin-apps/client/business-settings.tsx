@@ -204,13 +204,13 @@ function PackagingSettings({sessionId,connectionId,onDirty}:{sessionId?:string;c
   };
   type PackagingReceipt={saved:Array<{target:PackagingRow['target'];revision:number;values:NonNullable<PackagingRow['override']>['values']}>};
   const consumeReceipt=(receipt:PackagingReceipt,submitted:PackagingRow[],snapshot:Record<string,PackagingForm>)=>{
-    const keyFor=(target:PackagingRow['target'])=>JSON.stringify(target.kind==='sku'?target:['combination',target.composition]);
+    const keyFor=(target:PackagingRow['target']):string|undefined=>target?.kind==='sku'?JSON.stringify(['sku',target.itemId,target.sourceSkuId]):target?.kind==='combination'&&Array.isArray(target.composition)?JSON.stringify(['combination',target.composition.map((part:PackagingComposition)=>[part?.itemId,part?.sourceSkuId,part?.quantity]).sort((a:unknown[],b:unknown[])=>JSON.stringify(a).localeCompare(JSON.stringify(b)))]):undefined;
     const acknowledged=Array.isArray(receipt?.saved)?receipt.saved:[];
-    const expected=new Set(submitted.map(row=>row.key));
-    if(acknowledged.length!==expected.size||acknowledged.some(row=>!row?.target||!expected.delete(keyFor(row.target))||!Number.isSafeInteger(row.revision)||row.revision<1||!row.values)){
+    const wanted=new Map(submitted.map(row=>[keyFor(row.target),row.key])),expected=new Set(wanted.keys());
+    if(wanted.has(undefined)||acknowledged.length!==expected.size||acknowledged.some(row=>!row?.target||!expected.delete(keyFor(row.target))||!Number.isSafeInteger(row.revision)||row.revision<1||!row.values||typeof row.values!=='object'||Array.isArray(row.values))){
       setReceiptUnknown(true);throw new Error('包装操作回执不完整，提交结果尚未核实。当前草稿已保留；请先记下需要保留的修改，再用“放弃未保存的修改”重新读取核查。核查前不会再次提交。');
     }
-    const saved=new Map(acknowledged.map(row=>[keyFor(row.target),row]));
+    const saved=new Map(acknowledged.map(row=>[wanted.get(keyFor(row.target))!,row]));
     const current=latest.current,nextRows=current.rows.map(row=>{const record=saved.get(row.key);return record?{...row,target:record.target,revision:record.revision,override:{values:record.values}}:row;});
     const remaining=current.changed.filter(key=>!saved.has(key)||JSON.stringify(current.forms[key])!==JSON.stringify(snapshot[key]));
     const nextForms={...current.forms};for(const row of nextRows)if(saved.has(row.key)&&!remaining.includes(row.key))nextForms[row.key]=packagingForm(row);

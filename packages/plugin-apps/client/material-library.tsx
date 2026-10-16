@@ -139,7 +139,7 @@ export function MaterialLibrary({appId,sessionId,initial,active=true,currentWork
     }catch(cause){if(owner.current===target)setError(cause instanceof Error?cause.message:String(cause));}finally{inFlight.current=false;savePending.current=false;if(owner.current===target){setSaving(false);onSavingChange?.(false);}}
   };
   const openAgentRequest=(text:string)=>{
-    if(currentRequest?.text){setRequestDraft({...currentRequest,open:true});setNotice('已保留原需求草稿，可继续修改后放入聊天。');return;}
+    if(currentRequest){setRequestDraft({...currentRequest,open:true});setNotice('已保留原需求草稿，可继续修改后放入聊天。');return;}
     setRequestDraft({scope:requestScope,text,template:text,open:true});setNotice('');
   };
   const requestAgent=async()=>{

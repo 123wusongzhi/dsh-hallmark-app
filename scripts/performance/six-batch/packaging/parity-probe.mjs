@@ -72,17 +72,30 @@ try{
  assert.equal(results.packagingConflict.error.code,'PACKAGING_REVISION_CONFLICT');assert.equal(packaging.readRevision({...target,sourceSkuId:'new'}),0,'batch rollback');
  results.packagingResolved=packaging.resolve({members:[{itemId:target.itemId,sourceSkuId:target.sourceSkuId,quantity:2},{itemId:target.itemId,sourceSkuId:target.sourceSkuId,quantity:1}]});
  assert.equal(results.packagingResolved.weightGrams,Math.round(recordedPackaging.weightKg*1000)*3);assert.equal(results.packagingResolved.composition[0].quantity,3);
- const stored=instance.businessGateway.saveStore({name:'Fixture',currency:'CNY',sourceConnectionId:'h',expectedRevision:0});
- pricing.save(stored.id,draft(),0);
- // Store alias and order-weight precedence are controlled conditions; values come from the real record.
- const sales=recordedSalesProduct,port=instance.businessStoreFor('h'),local={...structuredClone(sales),storeId:stored.id,productId:Number(sales.productId),weight:{source:'ozon_order_actual',grams:sales.declaredWeight.grams,revision:'recorded-weight-precedence-condition'}};
- port.put('business_catalog',crypto.createHash('sha256').update(JSON.stringify([stored.id,sales.offerId])).digest('hex'),local);
- const gatewayCalls=[];
- instance.businessGateway.getProducts=async id=>{gatewayCalls.push(['products',id]);return {status:'ok',raw:{response:{items:[{id:Number(sales.productId),offer_id:sales.offerId,sku:Number(sales.sku),name:sales.title,currency_code:sales.currency,statuses:{status_name:sales.platformStatus,moderate_status:'approved',is_created:true},stocks:{has_stock:sales.stock>0},visibility_details:{has_price:true}}]}}};};
- instance.businessGateway.request=async(id,input)=>{gatewayCalls.push([input.path,id]);return {status:'ok',raw:{response:input.path==='/v5/product/info/prices'?{result:{items:[{offer_id:sales.offerId,product_id:Number(sales.productId),price:{price:String(sales.pricing.ordinaryMinor/100),marketing_seller_price:String(sales.pricing.sellerMinor/100),currency_code:sales.currency}}]}}:{result:[{offer_id:sales.offerId,id:Number(sales.productId),weight:sales.declaredWeight.grams,weight_unit:'g'}]}}};};
- results.profit=await instance.runtime.invoke(invocation('profit','hallmark.profit.compute',{storeId:stored.id}));assert.equal(results.profit.status,'ok',JSON.stringify(results.profit));
- assert.equal(results.profit.data.products[0].profit.actualMinor,sales.pricing.sellerMinor);assert.equal(results.profit.data.products[0].profit.pricingQuote.planId,'low');assert.equal(results.profit.data.products[0].profit.packageGrams,sales.declaredWeight.grams);
- results.gatewayCalls=gatewayCalls;
+ results.profitIdentities=[];
+ // Redacted corpus IDs are not Ozon wire IDs. These local protocol aliases retain
+ // every recorded business value. Valid recorded IDs retain their type and precision.
+ const recordedId=recordedSalesProduct.productId;
+ const validRecordedId=typeof recordedId==='string'&&/^[1-9]\d*$/.test(recordedId)||typeof recordedId==='number'&&Number.isSafeInteger(recordedId)&&recordedId>0;
+ const sourceProductId=validRecordedId?recordedId:1;
+ const profitFixtures=new Map();
+ for(const productId of new Set([sourceProductId,1,'1','9007199254740993'])){
+  const stored=instance.businessGateway.saveStore({name:'Fixture',currency:'CNY',sourceConnectionId:'h',expectedRevision:0});
+  pricing.save(stored.id,draft(),0);
+  // Separate stores prevent a cached result from masking either input representation.
+  const sales={...recordedSalesProduct,productId},port=instance.businessStoreFor('h'),local={...structuredClone(sales),storeId:stored.id,weight:{source:'ozon_order_actual',grams:sales.declaredWeight.grams,revision:'recorded-weight-precedence-condition'}};
+  port.put('business_catalog',crypto.createHash('sha256').update(JSON.stringify([stored.id,sales.offerId])).digest('hex'),local);
+  const gatewayCalls=[];
+  profitFixtures.set(stored.id,{sales,productId,gatewayCalls});
+  instance.businessGateway.getProducts=async id=>{const {sales,productId,gatewayCalls}=profitFixtures.get(id);gatewayCalls.push(['products',id]);return {status:'ok',raw:{response:{items:[{id:productId,offer_id:sales.offerId,sku:Number(sales.sku),name:sales.title,currency_code:sales.currency,statuses:{status_name:sales.platformStatus,moderate_status:'approved',is_created:true},stocks:{has_stock:sales.stock>0},visibility_details:{has_price:true}}]}}};};
+  instance.businessGateway.request=async(id,input)=>{const {sales,productId,gatewayCalls}=profitFixtures.get(id);gatewayCalls.push([input.path,id]);return {status:'ok',raw:{response:input.path==='/v5/product/info/prices'?{result:{items:[{offer_id:sales.offerId,product_id:productId,price:{price:String(sales.pricing.ordinaryMinor/100),marketing_seller_price:String(sales.pricing.sellerMinor/100),currency_code:sales.currency}}]}}:{result:[{offer_id:sales.offerId,id:productId,weight:sales.declaredWeight.grams,weight_unit:'g'}]}}};};
+  const profit=await instance.runtime.invoke(invocation(`profit-${typeof productId}-${productId}`,'hallmark.profit.compute',{storeId:stored.id}));assert.equal(profit.status,'ok',JSON.stringify(profit));
+  assert.equal(String(profit.data.products[0].productId),String(productId));
+  assert.equal(profit.data.products[0].profit.actualMinor,sales.pricing.sellerMinor);assert.equal(profit.data.products[0].profit.pricingQuote.planId,'low');assert.equal(profit.data.products[0].profit.packageGrams,sales.declaredWeight.grams);
+  results.profitIdentities.push({productId,profit,gatewayCalls});
+ }
+ // Preserve the original result fields as well as each complete identity-case response.
+ results.profit=results.profitIdentities[0].profit;results.gatewayCalls=results.profitIdentities[0].gatewayCalls;
  results.notes=[];
  for(const [id,cap,input,extra] of [
   ['create','create',{id:'note',title:recordedPackagingDetail.title,content:recordedPackagingDetail.sourceUrl},{idempotencyKey:'create'}],

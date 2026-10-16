@@ -136,3 +136,12 @@ const afterBrowsing=globalThis.materialKeyCalls;console.log(JSON.stringify({phas
 await change(input('工作台组件名称'),'实质修改');const afterEdit=globalThis.materialKeyCalls;assert.equal(afterEdit-afterBrowsing,1,'only the changed draft key is recomputed');await click(label('关闭素材库'));assert.ok(prompt());await click(button('继续编辑'));assert.equal(globalThis.materialKeyCalls,afterEdit,'prompt changes reuse both keys');
 await click(button('刷新目录'));const afterSources=globalThis.materialKeyCalls;assert.ok(afterSources>=afterEdit+2,'new source definitions invalidate both keys');await click(label('关闭素材库'));assert.ok(prompt());await click(button('继续编辑'));await click(button('保存配置'));const afterSave=globalThis.materialKeyCalls;assert.ok(afterSave>afterSources,'saved baseline and normalized draft invalidate keys');await click(label('关闭素材库'));assert.ok(!mounted());console.log(JSON.stringify({phase:'meaningful-changes',afterEdit,afterSources,afterSave}));
 `, '', true));
+
+test('pending save retains its newer draft and keeps app selection aligned until the receipt settles',()=>fixture(`
+await click(button('配置'));await change(input('工作台组件名称'),'请求中的配置');holdSave=true;await click(button('保存配置'));await change(input('工作台组件名称'),'发送后继续编辑');
+const notes=buttons().find(n=>n.props.className==='apps-app-row'&&text(n).includes('Notes'));if(!notes.props.disabled)await click(notes);
+console.log(JSON.stringify({phase:'pending-app-selection',appId:lib().props.appId,title:input('工作台组件名称').props.value,disabled:!!notes.props.disabled}));
+assert.equal(lib().props.appId,'hallmark','switching applications cannot unload the pending editor and its newer edits');assert.equal(input('工作台组件名称').props.value,'发送后继续编辑');assert.equal(notes.props.disabled,true);
+assert.equal(buttons().find(n=>n.props.className==='apps-app-row'&&text(n).includes('Hallmark')).props['aria-pressed'],true);
+await click(button('工作台'));assert.equal(button('工作台').props['aria-pressed'],true,'other local tasks remain available');failSave=true;await act(async()=>releaseSave());await settle();assert.equal(buttons().find(n=>n.props.className==='apps-app-row'&&text(n).includes('Notes')).props.disabled,false);
+`));

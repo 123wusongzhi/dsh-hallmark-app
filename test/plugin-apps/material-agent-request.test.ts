@@ -73,7 +73,7 @@ await click(button('配置'));assert.equal(request(),undefined);assert.equal(wri
 `));
 
 test('clearing the request keeps its editor mounted and disables empty handoff',()=>fixture(`
-await click(button('配置'));await openRequest();await change(request(),'');assert.ok(request());assert.equal(button('放入原聊天输入框').props.disabled,true);await change(request(),custom);assert.equal(button('放入原聊天输入框').props.disabled,false);
+await click(button('配置'));await openRequest();await change(request(),'');assert.ok(request());assert.equal(button('放入原聊天输入框').props.disabled,true);await click(button('收起'));assert.equal(request(),undefined);await openRequest();assert.equal(request().props.value,'','reopening preserves an intentionally empty draft');assert.equal(button('放入原聊天输入框').props.disabled,true);await change(request(),custom);assert.equal(button('放入原聊天输入框').props.disabled,false);
 `));
 
 test('successful handoff is explicitly unsent and clears only the matching request snapshot',()=>fixture(`

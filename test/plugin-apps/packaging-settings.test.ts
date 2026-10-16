@@ -214,3 +214,32 @@ test('restore write failures and malformed acknowledgements never claim a comple
  assert.equal(input('red weight').props.value,'0.6');assert.equal(button('恢复自动').props.disabled,true);
  await click('放弃未保存的修改');assert.equal(input('red weight').props.value,'');assert.equal(button('恢复自动').props.disabled,false);
 `,restoreFixture));
+
+test('authoritative receipts match SKU and composition identity regardless of JSON field order or combination alias',async()=>{
+ const setup=receiptFixture.replace(
+  "try{return Response.json({saved:repository.saveOverrides(request.input.rows)});}",
+  "try{const saved=repository.saveOverrides(request.input.rows);return Response.json({saved:saved.map(record=>({...record,target:record.target.kind==='sku'?{sourceSkuId:record.target.sourceSkuId,itemId:record.target.itemId,kind:'sku'}:{kind:'combination',id:'receipt-alias',composition:[...record.target.composition].reverse().map(part=>({quantity:part.quantity,sourceSkuId:part.sourceSkuId,itemId:part.itemId}))}}))});}"
+ );
+ await scenario(`
+ await change('red weight','0.5');failRead=true;await click('保存包装修改');assert.equal(button('保存包装修改').props.disabled,true);
+ await change('red weight','0.7');await click('保存包装修改');assert.equal(repository.readOverride({kind:'sku',itemId:'p1',sourceSkuId:'red'}).revision,2);
+ await check('选择当前表格所有包装行');await click('用所选 SKU 建立组合');await change('red 组成数量','2');await click('计算组合并加入表格');
+ await click('保存包装修改');assert.ok(repository.list().some(record=>record.target.kind==='combination'&&record.revision===1));assert.equal(button('保存包装修改').props.disabled,true);assert.equal(tree.root.findAllByProps({role:'alert'}).length,0);
+ `,setup);
+});
+
+for(const stage of ['composition','bulk'])test(`read-only receipt refresh preserves a newer ${stage} draft before following an external connection`,async()=>{
+ const setup=receiptFixture.replace(
+  "if(String(url).includes('resource=businessSettings'))return Response.json({connections:[{connectionId:'source',displayName:'采集来源'}],connectionId:'source',stores:[],store:null,pricing:null,packagingAvailable:true});",
+  "if(String(url).includes('resource=businessSettings')){const cross=new URL(String(url),'http://local.test').searchParams.get('storeId')==='cross';return Response.json({connections:[{connectionId:'source',displayName:'采集来源'},{connectionId:'other',displayName:'其他连接'}],connectionId:cross?'other':'source',stores:[],store:cross?{...uiStore(),id:'cross',name:'跨连接测试店铺',sourceConnectionId:'other',enabled:true}:null,pricing:null,packagingAvailable:true});}"
+ );
+ await scenario(`
+ await change('red weight','0.5');failRead=true;await click('保存包装修改');await check('选择当前表格所有包装行');
+ ${stage==='composition'?"await click('用所选 SKU 建立组合');await change('red 组成数量','2');":"await changeField('批量重量（kg）','0.9');"}
+ await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});assert.equal(field('采集来源连接').props.value,'source');
+ const writes=requests.filter(request=>request.operation==='packaging.save').length;await click('重新读取包装结果');
+ assert.equal(field('采集来源连接').props.value,'source','read-only refresh cannot release a newer packaging draft');assert.equal(requests.filter(request=>request.operation==='packaging.save').length,writes);
+ ${stage==='composition'?"assert.equal(input('red 组成数量').props.value,2);await click('取消组合编辑');":"assert.equal(field('批量重量（kg）').props.value,'0.9');await changeField('批量重量（kg）','');"}
+ assert.equal(field('采集来源连接').props.value,'other');assert.equal(tree.root.findAllByProps({className:'packaging-table'}).length,0);assert.equal(repository.list()[0].values.weightKg,0.5);
+ `,setup);
+});

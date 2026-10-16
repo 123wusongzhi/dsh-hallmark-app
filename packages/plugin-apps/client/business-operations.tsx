@@ -128,7 +128,8 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
   const actionableRows = plan?.rows.filter(row => businessRecoveryAction(row, recoveryNow) === 'submit') ?? [];
   const editedRows = plan?.rows.filter(row => editedIds.has(row.rowId)) ?? [];
   const saveLabel = editedRows.length > 0 && editedRows.every(row => ['price', 'promotion.enroll', 'promotion.update'].includes(row.action)) ? '保存改价草稿' : '保存草稿';
-  const accept = (next: BusinessPlan) => { drafts.drop(identity); setPlans(rows => [next, ...rows.filter(item => item.planId !== next.planId)]); setPlanId(next.planId); setEdits({}); setRawEdits({}); setPricingEdits({}); setSelected([]); setConfirmation(undefined); setDiscardConfirmation(undefined); setDiscardReloadPlanId(undefined); setBatchPrice(''); setBatchCurrency(''); };
+  // Inspection refreshes server outcomes without discarding local selection or unapplied batch inputs.
+  const accept = (next: BusinessPlan, preserveSelection = false) => { drafts.drop(identity); setPlans(rows => [next, ...rows.filter(item => item.planId !== next.planId)]); setPlanId(next.planId); setEdits({}); setRawEdits({}); setPricingEdits({}); setSelected(previous => preserveSelection ? previous.filter(id => next.rows.some(row => row.rowId === id)) : []); setConfirmation(undefined); setDiscardConfirmation(undefined); setDiscardReloadPlanId(undefined); if (!preserveSelection) { setBatchPrice(''); setBatchCurrency(''); } };
   useEffect(() => { setBatchPrice(''); setBatchCurrency(''); }, [planId]);
   // The keyed editor never renders a previous owner's state, even before effects run.
   // Capture committed state only; interrupted renders must not overwrite the recovery snapshot.
@@ -172,7 +173,7 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
   }, [confirmation, active, loadingPlans, listVerified, listError, currentDecision, confirmedDecision]);
   const run = async (operation: BusinessOperation, input: unknown, message: string) => {
     if (!scope || flight.current) return; const target = identity; flight.current = true; setBusy(true); setBusyOperation(operation); setNotice('');
-    try { const next = await businessOperation<BusinessPlan>(scope, operation, input); if (owner.current === target) { accept(next); setNotice(operation === 'submit' || operation === 'inspect' ? `${message} ${businessOutcome(next)} ${businessSubmissionScope(next.rows).replace('本次可推进', '下一步可推进')}` : operation === 'revise' && next.rows.some(row => row.issues.some(issue => issue.code === 'PACKAGING_DRAFT_INVALID')) ? `草稿已保留，但包装填写仍有问题；请按字段提示修正后再提交。${message}` : message); } }
+    try { const next = await businessOperation<BusinessPlan>(scope, operation, input); if (owner.current === target) { accept(next, operation === 'inspect'); setNotice(operation === 'submit' || operation === 'inspect' ? `${message} ${businessOutcome(next)} ${businessSubmissionScope(next.rows).replace('本次可推进', '下一步可推进')}` : operation === 'revise' && next.rows.some(row => row.issues.some(issue => issue.code === 'PACKAGING_DRAFT_INVALID')) ? `草稿已保留，但包装填写仍有问题；请按字段提示修正后再提交。${message}` : message); } }
     catch (error) { if (owner.current === target) setNotice(error instanceof Error ? error.message : String(error)); }
     finally { flight.current = false; if (owner.current === target) { setBusy(false); setBusyOperation(undefined); setPending(pendingRequests.get(scopeKey(scope))); } }
   };
