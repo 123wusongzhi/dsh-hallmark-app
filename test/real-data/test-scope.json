@@ -2,6 +2,13 @@
   "schemaVersion": 1,
   "policy": "All tests consuming commodity, SKU, collected source, shop, sale, logistics, activity or dictionary facts use recorded snapshots. Original records remain immutable. Alias, omission, failure, numeric boundary and scale modifications are explicit derived cases.",
   "requiredFiles": [
+    "test/plugin-apps/business-confirmation-revalidation.test.ts",
+    "test/plugin-apps/business-discard-recovery.test.ts",
+    "test/plugin-apps/business-new-form-navigation.test.ts",
+    "test/plugin-apps/business-new-form-refresh.test.ts",
+    "test/plugin-apps/business-recovery-actions.test.ts",
+    "test/plugin-apps/material-range-read-recovery.test.ts",
+    "test/plugin-apps/workbench-linked-cancellation.test.ts",
     "test/apps-host/collection-column-fidelity.test.ts",
     "test/apps-host/collected-empty-search.test.ts",
     "test/source-preview/selection-bulk-chain.test.ts",
@@ -174,6 +181,9 @@
     "test/plugin-apps/workspace-resume.test.ts"
   ],
   "infrastructureFiles": [
+    "test/plugin-apps/material-agent-request.test.ts",
+    "test/plugin-apps/material-close-draft.test.ts",
+    "test/materials/business-recovery.test.ts",
     "test/apps-host/result-read-error-parity.test.ts",
     "test/apps-host/explicit-intent-retry.test.ts",
     "test/authoring/failed-build-http-recovery.test.ts",
@@ -342,6 +352,9 @@
     "test/plugin-apps/information-owner-review.test.ts"
   ],
   "infrastructureReasons": {
+    "test/plugin-apps/material-agent-request.test.ts": "Material Agent request text, empty-input, collapse and handoff lifecycle with opaque schema/routing controls; no commodity or shop payloads.",
+    "test/plugin-apps/material-close-draft.test.ts": "Material schema configuration, close, pending-save and late-receipt navigation lifecycle with explicit empty protocol envelopes; no commercial facts.",
+    "test/materials/business-recovery.test.ts": "Actual engine admission compared with UI guidance using explicit local statuses, error codes and fixed deadlines; source/reviewer/transport denied, no commodity or pricing facts.",
     "test/apps-host/result-read-error-parity.test.ts": "Synthetic retained JSON through real Runtime, short GET and long Unicode POST, Host tools and model renderer verifies exact HTTP-400 rejection semantics, continuation and explicit corrected reads without merchant facts or requerying the Provider.",
     "test/apps-host/explicit-intent-retry.test.ts": "Synthetic non-business counter Provider through real Host tools, HTTP, Runtime and SQLite verifies committed-response loss, read-only success recovery and explicit stable-intent retries without duplicate execution; no merchant facts or automatic mutation replay.",
     "test/authoring/failed-build-http-recovery.test.ts": "Explicit exit-7 subprocess, real signed authoring evidence, SQLite receipt and actual committed HTTP response loss exercise failure-checkpoint recovery without any browser, commodity data, merchant action or publishable build.",

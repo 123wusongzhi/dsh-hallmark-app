@@ -18,8 +18,8 @@ import assert from 'node:assert/strict';
 import {BusinessOperations} from './packages/plugin-apps/client/business-operations.tsx';
 const payload={offer_id:'SKU',name:uiProduct({},39).title,price:'20',currency_code:'CNY',attributes:[{id:4191,values:[{value:'完整说明'}]}],nullable:null};
 let plan={planId:'plan',storeId:'shop',title:'经营草稿',revision:1,status:'draft',rows:[{rowId:'row',action:'listing',target:{offerId:'SKU'},payload,revision:1,status:'draft',issues:[],corrections:[],repairHistory:{}}],createdAt:'2026-10-10T00:00:00Z',updatedAt:'2026-10-10T00:00:00Z'};
-const originalFetch=globalThis.fetch,originalStringify=JSON.stringify;let calls=0,tree;const requests=[];
-JSON.stringify=function(value,replacer,space){if(space===2&&value?.offer_id==='SKU')calls++;return originalStringify(value,replacer,space);};
+const originalFetch=globalThis.fetch,originalStringify=JSON.stringify;let calls=0,decisions=0,tree;const requests=[];
+JSON.stringify=function(value,replacer,space){if(space===2&&value?.offer_id==='SKU')calls++;if(value?.planId&&Array.isArray(value.rows)&&typeof replacer==='function')decisions++;return originalStringify(value,replacer,space);};
 globalThis.fetch=async(url,options)=>{
  if(String(url).includes('resource=stores'))return Response.json({stores:[uiStore({id:'shop',connectionId:'board'})]});
  if(String(url).includes('resource=businessSettings'))return Response.json({pricing:null});
@@ -39,6 +39,7 @@ try{
  await change('选择 SKU',true);await change('选择 SKU',false);await change('筛选商品',payload.name.slice(0,4));await change('筛选商品','');
  await change('SKU 完整字段','{ local text');
  assert.equal(calls,0,'unchanged payload is not serialized on selection/search/typing');
+ assert.equal(decisions,0,'batch decision snapshots are only serialized while confirming a submission');
  await click('应用字段修改');assert.match(JSON.stringify(tree.toJSON()),/字段格式有误/);assert.equal(calls,0);
  const edited={...payload,name:'新标题',attributes:[{id:4191,values:[{value:'新完整说明'}]}]};
  await change('SKU 完整字段',originalStringify(edited));await click('应用字段修改');
@@ -55,6 +56,7 @@ try{
  await click('刷新批次');assert.equal(JSON.parse(field().props.value).name,'后台替换','same row identity still accepts replacement payload');
  await change('筛选商品','absent');assert.equal(tree.root.findAllByProps({'aria-label':'SKU 完整字段'}).length,0);
  await change('筛选商品','');assert.equal(JSON.parse(field().props.value).name,'后台替换','remount initializes latest payload');
+ assert.equal(decisions,0,'editing, saving and refreshing without confirmation do not fingerprint the batch');
  console.log('BUSINESS_CONTENT_LAZY_PASS');
 }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=originalFetch;JSON.stringify=originalStringify;}
 ` }, banner: { js: "import {createRequire} from 'node:module';const require=createRequire(import.meta.url);" }, outfile: entry, bundle: true, platform: 'node', format: 'esm', jsx: 'automatic', external: ['react', 'react/jsx-runtime', 'react-test-renderer'] });

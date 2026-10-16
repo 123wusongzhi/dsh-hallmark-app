@@ -13,7 +13,7 @@ test('workspace tabs close in one click, retain failed tabs, avoid duplicate wri
     'view.tsx':"export function AppsNativeView(p){return <section data-open-view={p.viewId}/>}",
     'save-controls.tsx':"export function AppsSaveControls(){return null}",
     'workbench-board.tsx':"export function WorkbenchBoard(p){return <button onClick={p.onAdd}>打开素材库</button>}",
-    'material-library.tsx':"export function MaterialLibrary(p){return <button onClick={p.onOpenSaved}>打开我的组件</button>}",
+    'material-library.tsx':"import {useEffect,useRef} from 'react';export function MaterialLibrary(p){const request=useRef(p.closeRequest);useEffect(()=>{if(request.current!==p.closeRequest){request.current=p.closeRequest;p.onClose();}},[p.closeRequest]);return <button onClick={p.onOpenSaved}>打开我的组件</button>}",
     'workbench-component-actions.tsx':"export function CurrentComponentWorkbenchAction(){return null}",
   };
   try{

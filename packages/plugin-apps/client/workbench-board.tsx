@@ -112,6 +112,8 @@ export function WorkbenchInstanceView({appId,instance,context,previewSessionId,p
     const widgets=spec?.widgets.filter(widget=>widget.bindingId===bindingId).map(widget=>widget.id)??[],links=spec?.links?.filter(link=>widgets.includes(link.from.widgetId))??[];
     setSelected(current=>Object.fromEntries(Object.entries(current).filter(([id])=>!widgets.includes(id))));
     setLinkedProducts(current=>Object.fromEntries(Object.entries(current).filter(([id])=>!links.some(link=>link.to.bindingId===id))));
+    // The cancelled read's aborted finally cannot clear its busy state.
+    setPending(current=>Object.fromEntries(Object.entries(current).filter(([id])=>!links.some(link=>link.to.bindingId===id))));
     for(const link of links){requests.current.get(link.to.bindingId)?.abort();requests.current.delete(link.to.bindingId);pausedReads.current.delete(link.to.bindingId);delete queryOverrides.current[link.to.bindingId];}
   };
   const select:NonNullable<ViewInteractions['onSelect']>=event=>{
