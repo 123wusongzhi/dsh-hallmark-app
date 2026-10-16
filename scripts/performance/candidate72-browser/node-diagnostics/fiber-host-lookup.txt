@@ -1,0 +1,27 @@
+// DIAGNOSTIC ONLY: pinned ReactTestRenderer 18.3.1 private Fiber access.
+// No Fiber or host props are mutated, and no TestInstances are made per descendant.
+function __diagnosticHostProps(type, property, value) {
+  if (import_react4.default.version !== '18.3.1') throw Error('Unsupported React version for private Fiber diagnostic');
+  const instance = tree.root;
+  if (!instance || typeof instance._currentFiber !== 'function') throw Error('Current Fiber API unavailable');
+  const root = instance._currentFiber();
+  if (!root || root.tag !== 0 || root.type !== Component) throw Error('Unexpected current Component Fiber; refusing diagnostic result');
+  let visited = 0;
+  function visit(node, depth) {
+    if (!node || typeof node !== 'object' || !Number.isInteger(node.tag)) throw Error('Invalid current Fiber');
+    if (++visited > 100000 || depth > 512) throw Error('Unsafe Fiber traversal bound');
+    if (node.tag === 5 && node.type === type) {
+      const props = node.memoizedProps;
+      if (!props || typeof props !== 'object' || node.stateNode?.type !== type || node.stateNode.props !== props) throw Error('Host Fiber props are not the committed host props');
+      if (props[property] === value) return props;
+    }
+    // The pinned renderer findAll walks children in this same depth-first order.
+    // Descend only through child/sibling links; do not rewrite return pointers.
+    for (let child = node.child; child !== null; child = child.sibling) {
+      const result = visit(child, depth + 1);
+      if (result !== undefined) return result;
+    }
+    return undefined;
+  }
+  return visit(root, 0);
+}

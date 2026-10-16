@@ -1,3 +1,4 @@
+import {uiProduct,uiOzonProduct,uiStore,uiDictionaryValue,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHallmarkClient,SOURCE_CHANNEL} from '../../packages/component-runtime/src/client.ts';
@@ -8,7 +9,7 @@ import type {BindingData,SourceView} from '../../packages/presentation/src/types
 import {sourceTheme} from '../../packages/dsh-plugin/client/source-theme.ts';
 
 function fixture(count=2){
-  const rows=Array.from({length:count},(_,i)=>({id:`product-${i}`,title:`商品 ${i}`,profit:{actualMargin:0.239},privateDisplay:'not in attachment'}));
+  const rows=Array.from({length:count},(_,i)=>uiProduct({id:`product-${i}`,profit:{actualMargin:0.239},privateDisplay:'not in attachment'},i%41));
   const spec:SourceView={id:'source-list',title:'采集箱',kind:'source',source:{buildId:'build-one',directory:'E:/project/sample',entry:'index.html',files:['index.html','assets/app.js']},layout:{type:'column',children:[]},widgets:[],bindings:[{id:'collected',datasetKey:'collected:latest',fieldMap:{}}]};
   const data:BindingData[]=[{bindingId:'collected',datasetKey:'collected:latest',payload:{items:rows},state:'ready',provenance:{endpoint:'/api/items'}}];
   return {spec,data,rows};

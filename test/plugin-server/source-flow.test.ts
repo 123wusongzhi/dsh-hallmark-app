@@ -1,7 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
-import {join} from 'node:path';
+import {join,dirname} from 'node:path';
+import {realCorpus,realCorpusPath} from '../real-data/corpus.ts';
 import {tmpdir} from 'node:os';
 import {AppStore} from '../../packages/store/index.ts';
 import {PresentationManager} from '../../packages/presentation/src/index.ts';
@@ -14,11 +15,14 @@ test('actual Host + HTTP service source flow preserves exact dist, refreshes dra
  const directory=mkdtempSync(join(tmpdir(),'hallmark-source-flow-')),project=join(directory,'project'),db=join(directory,'app.db'),sources=join(directory,'sources'),token='b'.repeat(64);
  mkdirSync(join(project,'dist','assets'),{recursive:true});mkdirSync(join(project,'src'));
  writeFileSync(join(directory,'service-key'),token);writeFileSync(join(project,'package.json'),JSON.stringify({name:'source-fixture'}));writeFileSync(join(project,'package-lock.json'),'{}');writeFileSync(join(project,'component.json'),JSON.stringify({title:'彩色采集商品'}));
- const initialHtml='<html><body><script type="module" src="./assets/app.js"></script></body></html>',image=Buffer.from([0,255,128,0,5]);
- writeFileSync(join(project,'dist','index.html'),initialHtml);writeFileSync(join(project,'dist','assets','app.js'),'document.body.dataset.version="one";');writeFileSync(join(project,'dist','assets','图.png'),image);writeFileSync(join(project,'src','Component.tsx'),'export const title="one";');
+ const corpus=realCorpus(),source=corpus.records[0].summary,recordedImage=corpus.imageAssets.find(row=>row.productId===source.id&&row.status==='captured');
+ assert.ok(recordedImage?.file&&recordedImage.mimeType,`Captured image required for source ${source.id}`);
+ const imageName=`图.${recordedImage.mimeType.split('/')[1]}`;
+ const initialHtml='<html><body><script type="module" src="./assets/app.js"></script></body></html>',image=readFileSync(join(dirname(realCorpusPath),recordedImage.file));
+ writeFileSync(join(project,'dist','index.html'),initialHtml);writeFileSync(join(project,'dist','assets','app.js'),'document.body.dataset.version="one";');writeFileSync(join(project,'dist','assets',imageName),image);writeFileSync(join(project,'src','Component.tsx'),'export const title="one";');
  let searches=0;
  const blocked=async()=>{throw new Error('Unexpected business write or unrelated read');};
- const adapter:any={getStores:blocked,getStoreProducts:blocked,syncStoreProducts:blocked,getTargetMargin:blocked,getCollectedItem:blocked,platformCall:blocked,platformRead:blocked,searchCollectedItems:async()=>{searches++;return {status:'ok',raw:[{id:'fixture-one',name:'实际只读结果',profit:{actualMargin:.17}}],provenance:{source:'collected_item',endpoint:'/api/items'}};}};
+ const adapter:any={getStores:blocked,getStoreProducts:blocked,syncStoreProducts:blocked,getTargetMargin:blocked,getCollectedItem:blocked,platformCall:blocked,platformRead:blocked,searchCollectedItems:async()=>{searches++;return {status:'ok',raw:[structuredClone(source)],provenance:{source:'collected_item',endpoint:'/api/items'}};}};
  const broker:any={getStoreTask:blocked,getListingTask:blocked,requestId:()=>''};
  const agent={id:'A'},tools=new Map<string,NativeTool>(),routes=new Map<string,any>();
  let store:AppStore|undefined,presentation:PresentationManager|undefined,core:AppCore|undefined,server:ReturnType<typeof createAppServer>|undefined,plugin:HallmarkPlugin|undefined;
@@ -35,10 +39,10 @@ test('actual Host + HTTP service source flow preserves exact dist, refreshes dra
  try {
   await start();
   const opened=await invoke('hallmark_open_source_component',{directory:project,bindings:[{id:'collected',query:{tool:'hallmark_search_collected_items',params:{limit:50}},fieldMap:{}}]});assert.equal(opened.status,'ok');const first=(opened.data as any).spec,firstBuild=first.source.buildId;
-  assert.equal((await asset(firstBuild,'index.html')).headers.get('content-type'),'text/html; charset=utf-8');assert.equal(await (await asset(firstBuild,'index.html')).text(),initialHtml);assert.deepEqual(Buffer.from(await (await asset(firstBuild,'assets/图.png')).arrayBuffer()),image);
+  assert.equal((await asset(firstBuild,'index.html')).headers.get('content-type'),'text/html; charset=utf-8');assert.equal(await (await asset(firstBuild,'index.html')).text(),initialHtml);assert.deepEqual(Buffer.from(await (await asset(firstBuild,`assets/${imageName}`)).arrayBuffer()),image);
   const datasetKey=first.bindings[0].datasetKey;assert.match(datasetKey,/^query:/);assert.equal(store!.list('components').length,0);assert.equal(store!.list('queries').length,0);assert.deepEqual(core!.getRefreshCandidates(),[]);
   assert.equal(searches,1);assert.equal((opened.data as any).initialData[0].status,'ok');assert.equal(core!.getSessionViewData('A',first.id)?.status,'ok');
-  const refreshed=await invoke('hallmark_refresh_data',{datasetKey});assert.equal(refreshed.status,'ok');assert.equal(searches,2);assert.equal((core!.getSessionViewData('A',first.id)?.data as any).bindings[0].payload.items[0].profit.actualMargin,.17);assert.equal(store!.list('components').length,0);
+  const refreshed=await invoke('hallmark_refresh_data',{datasetKey});assert.equal(refreshed.status,'ok');assert.equal(searches,2);assert.deepEqual((core!.getSessionViewData('A',first.id)?.data as any).bindings[0].payload.items[0],source);assert.equal(store!.list('components').length,0);
   const saved1=await invoke('hallmark_save_component',{viewId:first.id,userRequest:'保存此源码组件',mode:'save_as'});assert.equal(saved1.status,'ok');const component=(saved1.data as any).component;
   const draftResult=await invoke('hallmark_open_component',{componentId:component.id});assert.equal(draftResult.status,'ok');const draft=(draftResult.data as any),secondProject=draft.spec.source.directory;
   writeFileSync(join(secondProject,'src','Component.tsx'),'export const title="two";');writeFileSync(join(secondProject,'dist','assets','app.js'),'document.body.dataset.version="two";');

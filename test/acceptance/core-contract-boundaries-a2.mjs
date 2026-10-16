@@ -1,3 +1,5 @@
+import {realScenarioProduct} from '../real-data/corpus.ts';
+// Real commodity baselines; local identity/state/failure overrides are explicit derived contract conditions.
 /** A.2 TST-003/004/011/012 FIXTURE: public API executions and raw evidence.
  * No original DSH UI/model/business/profile access. No direct database writes.
  * Run: node test/acceptance/core-contract-boundaries-a2.mjs --candidate 1.0.0-candidate.11 --sdk-root bundles/apps
@@ -113,7 +115,7 @@ try {
   // TST-003: an actual stopped HTTP Source, not a boolean pretending a network broke.
   {
     const f = createFixture('003'), sourcePath = join(root, 'fixtures/hallmark-source.json');
-    const source = {fixture: true, stores: [{id: 'shop-fixture', shopName: 'Synthetic only', lastSuccessAt: '2026-10-06T12:00:00Z'}], products: Array.from({length: 8}, (_, n) => ({storeId: 'shop-fixture', offerId: `synthetic-${n}`, productId: n + 1, title: n < 2 ? 'Same synthetic name' : `Synthetic ${n}`, price: 10 + n, stock: [0, 9, 10, 11, 5, 20, 30, 40][n], profit: {costMinor: n === 2 ? null : 500, actualMargin: n === 2 ? null : 0.25}, sourceTime: n === 3 ? null : '2026-10-06T12:00:00Z', original: {owner: 'isolated HTTP source', preserved: true}}))};
+    const source = {fixture: true, stores: [{id: 'shop-fixture', shopName: 'Synthetic only', lastSuccessAt: '2026-10-06T12:00:00Z'}], products: Array.from({length: 8}, (_, n) => realScenarioProduct({storeId: 'shop-fixture', offerId: `synthetic-${n}`, productId: n + 1, price: 10 + n, stock: [0, 9, 10, 11, 5, 20, 30, 40][n], profit: {costMinor: n === 2 ? null : 500, actualMargin: n === 2 ? null : 0.25},sources:[],sourceTime: n === 3 ? null : '2026-10-06T12:00:00Z', original: {owner: 'isolated HTTP source', preserved: true}},n<2?0:n))};
     const sourceRef = json(sourcePath, source), sourceBefore = readFileSync(sourcePath);
     const server = createServer(async (req, res) => {let body = ''; for await (const bytes of req) body += bytes; const record = {at: new Date().toISOString(), method: req.method, path: req.url, body}; http.push(record); res.setHeader('Content-Type', 'application/json');
       const current = JSON.parse(readFileSync(sourcePath, 'utf8')); let output;

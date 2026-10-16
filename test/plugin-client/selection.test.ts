@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiStore,uiListingPayload,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildProductSelection, getProductSelectionRows, SelectionInputBridge, selectionAttachment } from '../../packages/dsh-plugin/client/selection.ts';
@@ -6,7 +7,7 @@ import { nativeAttachmentRuntime, nativeSessionDisabledReason } from '../../pack
 import type { NativeAttachmentRuntime, NativeDraftAttachment, NativeInputBinding } from '../../packages/dsh-plugin/client/selection-native.ts';
 
 function fixture(){
-  const rows=[{id:'item-a',title:'产品甲',secret:'not sent'},{id:'item-b',title:'产品乙'}];
+  const rows=[uiProduct({id:'item-a',secret:'not sent'}),uiProduct({id:'item-b'},1)];
   const binding:DataBinding={id:'items',datasetKey:'query:collected',query:{tool:'hallmark_search_collected_items',params:{}},fieldMap:{id:'title'}};
   const data:BindingData={bindingId:'items',datasetKey:'query:collected',payload:{items:rows},dataTime:'2026-10-06T00:00:00Z',lastSuccessAt:'2026-10-06T00:01:00Z',state:'ready',provenance:{source:'app_snapshot',endpoint:'/api/items'}};
   const widget:WidgetSpec={id:'recent',type:'table',bindingId:'items',columns:[{field:'title',label:'产品'}]};
@@ -33,7 +34,7 @@ function setup(sessionId='a'){const bridge=new SelectionInputBridge(),native=edi
 test('collected selection uses original IDs despite display mappings and excludes all product content',()=>{
   const f=fixture();const context=buildProductSelection('session-a',f.spec,{...f,rows:[f.rows[1]]});
   assert.deepEqual(context.products,[{kind:'collected_item',itemId:'item-b'}]);assert.equal(context.datasetKey,'query:collected');assert.equal(context.widgetId,'recent');assert.equal(context.dataTime,f.data.dataTime);
-  const {content,name}=selectionAttachment(context);assert.ok(content.includes('item-b'));assert.ok(!content.includes('产品乙'));assert.ok(!content.includes('secret'));assert.ok(!content.includes('item-a'));assert.match(name,/1项\.json$/);assert.deepEqual(JSON.parse(content).source,{endpoint:'/api/items',kind:'collected_items'});
+  const {content,name}=selectionAttachment(context);assert.ok(content.includes('item-b'));assert.ok(!content.includes(f.rows[1].title));assert.ok(!content.includes('secret'));assert.ok(!content.includes('item-a'));assert.match(name,/1项\.json$/);assert.deepEqual(JSON.parse(content).source,{endpoint:'/api/items',kind:'collected_items'});
 });
 test('row keys survive sorting and pagination; selected stale objects and duplicate IDs are rejected',()=>{
   const f=fixture();const a=getProductSelectionRows(f.binding,f.data,f.rows),b=getProductSelectionRows(f.binding,f.data,[f.rows[1],f.rows[0]]);

@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { AppStore } from '../../packages/store/src/index.ts';
 import { PresentationManager, applyPatch, validateViewSpec, THEMES, contrastRatio, formatValue, renderViewHTML, WIDGET_TYPES } from '../../packages/presentation/src/index.ts';
 import type { ViewSpec, BindingData } from '../../packages/presentation/src/types.ts';
+import {realStoreProducts} from '../real-data/corpus.ts';
 const spec = (): ViewSpec => ({id:'view',title:'商品',layout:{type:'column',children:['table']},widgets:[{id:'table',type:'table',bindingId:'main',columns:[{field:'name',label:'名称'}]}],bindings:[{id:'main',datasetKey:'store_products:1',fieldMap:{}}]});
 function memory(t: any): {store: AppStore; manager:PresentationManager} {const store = new AppStore(':memory:'); t.after(() => store.close()); return {store,manager:new PresentationManager(store)};}
 test('draft persists without publishing; explicit userRequest required for each library save', t => {
@@ -37,12 +38,15 @@ test('template reuse preserves design, swaps binding; deletion cannot break save
   const {manager,store} = memory(t); manager.renderView(spec()); const template = manager.saveTemplate('view','我的模板','保存模板'); const second = manager.renderFromTemplate(template.id,'店铺2',[{id:'other',datasetKey:'store_products:2',fieldMap:{}}]); assert.deepEqual(second.layout,template.layout); assert.deepEqual(second.widgets,template.widgetStyles); assert.equal(second.bindings[0].datasetKey,'store_products:2'); manager.saveComponent(second.id,'保存组件'); manager.manageSaved('template',template.id,{action:'delete'}); assert.deepEqual(manager.getView(second.id)?.widgets,template.widgetStyles); assert.equal(store.get<any>('components',second.id).template.version,1);
 });
 test('getViewData local snapshots retain layout and previous data after failed refresh; empty/expired recognized', t => {
-  const {manager,store} = memory(t); manager.renderView(spec()); assert.equal(manager.getViewData('view').error?.code,'SNAPSHOT_EMPTY'); store.updateSnapshotSuccess('store_products:1',[{name:'商品A'}],'2026-10-05',{metricBasis:'参考利润，非实际结算'}); const before = manager.getView('view'); store.updateSnapshotState('store_products:1','failed',{message:'offline'}); const data = manager.getViewData('view'); assert.equal(data.status,'ok'); assert.equal(data.data?.bindings[0].state,'failed'); assert.deepEqual(data.data?.bindings[0].payload,[{name:'商品A'}]); assert.deepEqual(manager.getView('view'),before);
+  const sample=realStoreProducts().products[0],rows=[{...sample,name:sample.title}];
+  const {manager,store} = memory(t); manager.renderView(spec()); assert.equal(manager.getViewData('view').error?.code,'SNAPSHOT_EMPTY'); store.updateSnapshotSuccess('store_products:1',rows,'2026-10-05',{metricBasis:'参考利润，非实际结算'}); const before = manager.getView('view'); store.updateSnapshotState('store_products:1','failed',{message:'offline'}); const data = manager.getViewData('view'); assert.equal(data.status,'ok'); assert.equal(data.data?.bindings[0].state,'failed'); assert.deepEqual(data.data?.bindings[0].payload,rows); assert.deepEqual(manager.getView('view'),before);
   const resultSpec = spec(); resultSpec.bindings[0].datasetKey = 'result_set:abc'; manager.renderView(resultSpec); store.put('result_sets','abc',{payload:[{name:'筛选'}],expiresAt:new Date(Date.now()+60_000).toISOString()}); assert.equal(manager.getViewData('view').status,'ok'); store.put('result_sets','abc',{payload:[{name:'筛选'}],expiresAt:'2000-01-01'}); assert.equal(manager.getViewData('view').error?.code,'SNAPSHOT_EMPTY');
 });
 test('all seven widgets render safely with source/time/basis; unknown cost is never zero', () => {
   const view: ViewSpec = {id:'seven',title:'<script>attack</script>',layout:{type:'grid',columns:2,children:WIDGET_TYPES.map(type => type)},widgets:WIDGET_TYPES.map(type => ({id:type,type,...(type === 'text' ? {text:'<img onerror="alert(1)">'} : {bindingId:'main',fields:{value:'margin'},columns:[{field:'margin',label:'参考利润率',format:'percent' as const}]} )})),bindings:[{id:'main',datasetKey:'profit:1',fieldMap:{}}]};
-  const data: BindingData[] = [{bindingId:'main',datasetKey:'profit:1',payload:[{name:'A',margin:0.1,costMissing:true}],state:'ready',dataTime:'2026-10-05',provenance:{source:'app_snapshot'},metricBasis:'参考模型，非实际结算'}];
+  const sample=realStoreProducts().products[0];
+  // Missing-cost state is an explicit fault imposed on a recorded commodity.
+  const data: BindingData[] = [{bindingId:'main',datasetKey:'profit:1',payload:[{...sample,name:sample.title,margin:0.1,costMissing:true}],state:'ready',dataTime:'2026-10-05',provenance:{source:'app_snapshot'},metricBasis:'参考模型，非实际结算'}];
   const html = renderViewHTML(view,data); for (const type of WIDGET_TYPES) assert.ok(html.includes(`data-widget="${type}"`)); assert.ok(html.includes('无法判断（缺成本）')); assert.ok(html.includes('参考模型，非实际结算')); assert.ok(!html.includes('<script>attack')); assert.ok(html.includes('&lt;img onerror='));
   const misleading = spec(); misleading.widgets[0].columns = [{field:'margin',label:'实际结算净利润率'}]; assert.throws(() => validateViewSpec(misleading),/Reference profits/);
 });

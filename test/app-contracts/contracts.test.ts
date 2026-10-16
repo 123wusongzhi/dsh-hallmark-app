@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import {realDetail} from '../real-data/corpus.ts';
 import { canonicalJson, canonicalBinding, datasetId, compileSchema, validateInvocation, validateResult, validateDescriptor, validateManifest, requestHash } from '../../packages/app-contracts/src/index.ts';
 import type { InvocationRequest, CapabilityDescriptor } from '../../packages/app-contracts/src/index.ts';
 
@@ -24,8 +25,9 @@ test('schema compilation rejects unsupported or malformed schemas before dispatc
 });
 test('compiled schema gives exact nested paths and validates unions/open source fields',()=>{
  const check=compileSchema({type:'object',properties:{products:{type:'array',items:{type:'object',properties:{id:{type:'string'}},required:['id'],additionalProperties:true}}},required:['products'],additionalProperties:false});
- assert.deepEqual(check({products:[{id:'1',unknownOriginal:{value:'preserved'}}]}),[]);
- assert.ok(check({products:[{id:1}]}).some(error=>error.includes('$.products[0].id')));
+ const recorded=realDetail();
+ assert.deepEqual(check({products:[recorded]}),[]);
+ assert.ok(check({products:[{...recorded,id:1}]}).some(error=>error.includes('$.products[0].id')));
  assert.ok(check({products:[],invented:true}).some(error=>error.includes('$.invented')));
  const unicode=compileSchema({type:'string',minLength:1,maxLength:1});assert.deepEqual(unicode('😀'),[]);
  const union=compileSchema({oneOf:[{type:'string'},{type:'integer'}]});assert.deepEqual(union('id'),[]);assert.ok(union(1.5).length);

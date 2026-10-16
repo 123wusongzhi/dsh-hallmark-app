@@ -1,0 +1,18 @@
+// Everything below runs after all original measured actions, unmount, and result output.
+import {writeSync as __microWriteSync} from 'node:fs';
+const __microBefore=performance2.now(),__microHrNs=process.hrtime.bigint().toString(),__microEpoch=Date.now(),__microAfter=performance2.now();
+const __microMarkBefore=performance2.now();performance2.mark('__diag:anchor:end');const __microMarkAfter=performance2.now();
+const __microAnchor={name:'end',perfBeforeMs:__microBefore,perfAfterMs:__microAfter,hrNs:__microHrNs,epochMs:__microEpoch,markBeforeMs:__microMarkBefore,markAfterMs:__microMarkAfter};
+let __microGcCalibration;
+if(process.env.DIAG_CALIBRATE_GC==='1'){
+  if(typeof globalThis.gc!=='function')throw Error('GC calibration requires --expose-gc');
+  __microWriteSync(1,'\nDIAG_MARKER '+JSON.stringify({kind:'gc-calibration-start',pid:process.pid,perfMs:performance2.now()})+'\n');
+  const startPerfMs=performance2.now();globalThis.gc();const endPerfMs=performance2.now();
+  __microWriteSync(1,'\nDIAG_MARKER '+JSON.stringify({kind:'gc-calibration-end',pid:process.pid,perfMs:performance2.now(),startPerfMs,endPerfMs})+'\n');
+  __microGcCalibration={startPerfMs,endPerfMs};
+}
+let __microId=0;
+const __microActions=result.timing.samples.flatMap(sample=>sample.actions.map(action=>({id:__microId++,name:action.name,phase:'measured',round:sample.round,startPerfMs:action.startPerfMs,endPerfMs:action.endPerfMs,startEpochMs:performance2.timeOrigin+action.startPerfMs,endEpochMs:performance2.timeOrigin+action.endPerfMs,wallMs:action.wallMs,cpuUs:action.cpuUs,markerBeforeMs:0,markerAfterMs:0})));
+writeFileSync(output+'.diagnostics.json',JSON.stringify({schemaVersion:1,pid:process.pid,variant:process.env.DIAG_VARIANT??null,markerMode:'micro-return-fields',node:process.version,execArgv:process.execArgv,timeOriginEpochMs:performance2.timeOrigin,anchors:[__microAnchor],gcCalibration:__microGcCalibration,actions:__microActions,
+  measurementBoundary:'The only pre-EOF edit adds startPerfMs:start and endPerfMs:start+wallMs to the existing action return object. The timed start/end clock calls, action callbacks, settle sequence and sample loops are untouched. No diagnostic arrays, per-action markers, functions or clock reads are added.',
+  overheadBoundary:'Two properties are added to the existing returned action object (including discarded warmup objects); allocation size/hidden class can still change. Zero markerBefore/After means no marker calls, not zero observation overhead. V8 flags/profiling can perturb behavior. EOF anchors, diagnostics arrays and optional forced GC occur after all measurements.'},null,2));

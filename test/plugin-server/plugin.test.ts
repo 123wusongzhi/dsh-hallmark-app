@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import {realStoreProducts} from '../real-data/corpus.ts';
 import { createServer, type Server } from 'node:http';
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -24,7 +25,7 @@ async function fixture(initial:Record<string,boolean>={A:true}) {
   if(session){if(body)states.set(session[1],body.active);res.end(json({sessionId:session[1],appId:'hallmark',active:states.get(session[1])??false}));return;}
   forwarded.push({path:url.pathname,body});
   if(failTools&&url.pathname.startsWith('/tools/')){res.writeHead(503);res.end(json({status:'failed',error:{code:'SIMULATED_DOWN',message:'down',retryable:false}}));return;}
-  res.end(json({status:'ok',data:{viewId:'view-1',products:[{id:1}]}}));
+  res.end(json({status:'ok',data:{viewId:'view-1',products:realStoreProducts().products.slice(0,1)}}));
  });
  await new Promise<void>(ok=>server.listen(0,'127.0.0.1',ok));const port=(server.address() as {port:number}).port;
  const A={id:'A'},B={id:'B'};const agents=new Map([['A',A],['B',B]]);

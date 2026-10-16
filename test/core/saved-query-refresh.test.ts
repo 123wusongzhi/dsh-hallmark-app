@@ -1,3 +1,4 @@
+import { recordedProduct } from '../adapter/real-scenarios.ts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {AppStore} from '../../packages/store/index.ts';
@@ -9,7 +10,7 @@ const ok=(raw:any):AdapterResponse=>({status:'ok',raw,provenance:{source:'hallma
 function setup(){
  const store=new AppStore(':memory:'),presentation=new PresentationManager(store);
  const shops=[{id:'A',shopName:'Alpha shop',aliases:['A-shop']},{id:'B',shopName:'Alpine shop'},{id:'C',shopName:'Beta shop'}];
- const source={stores:shops.map(shop=>({id:shop.id,lastSuccessAt:'2026-10-05T00:00:00Z'})),products:[{storeId:'A',offerId:'A1',productId:1,price:100,stock:1,profit:{costMinor:30,actualMargin:0.1},unknownSourceField:'retained'},{storeId:'A',offerId:'A2',productId:2,price:50,stock:0,profit:{costMinor:null,actualMargin:null}},{storeId:'B',offerId:'B1',productId:3,profit:{costMinor:20,actualMargin:0.4}},{storeId:'C',offerId:'C1',productId:4,profit:{costMinor:20,actualMargin:0.2}}]};
+ const source={stores:shops.map(shop=>({id:shop.id,lastSuccessAt:'2026-10-05T00:00:00Z'})),products:[recordedProduct({storeId:'A',offerId:'A1',productId:1,price:100,stock:1,profit:{costMinor:30,actualMargin:0.1},unknownSourceField:'retained'}),recordedProduct({storeId:'A',offerId:'A2',productId:2,price:50,stock:0,profit:{costMinor:null,actualMargin:null}}),recordedProduct({storeId:'B',offerId:'B1',productId:3,profit:{costMinor:20,actualMargin:0.4}}),recordedProduct({storeId:'C',offerId:'C1',productId:4,profit:{costMinor:20,actualMargin:0.2}})]};
  const counts={stores:0,sync:0,products:0,business:0},syncArguments:any[][]=[],readArguments:any[][]=[];
  const forbidden=async()=>{counts.business++;return {status:'failed' as const,error:{code:'TEST_BUSINESS_FORBIDDEN',message:'No other business API expected',retryable:false}};};
  const client:CoreClient={getStores:async()=>{counts.stores++;return ok(shops);},syncStoreProducts:async(...args)=>{counts.sync++;syncArguments.push(args);return ok({});},getStoreProducts:async(...args)=>{counts.products++;readArguments.push(args);return ok(source);},getTargetMargin:forbidden,searchCollectedItems:forbidden,getCollectedItem:forbidden,platformCall:forbidden,platformRead:forbidden};
@@ -21,6 +22,33 @@ function setup(){
 }
 function deferred(){let release!:()=>void;const promise=new Promise<void>(resolve=>release=resolve);return {promise,release};}
 const context={sessionId:'background'};
+
+test('saved exact-status queries retain their filtered page on refresh without replacing the store snapshot',async()=>{
+ const f=setup(),source={...f.source,products:[
+  recordedProduct({storeId:'A',offerId:'A1',status:'on_sale',title:'needle first'}),
+  recordedProduct({storeId:'A',offerId:'false-title',status:'archived',title:'on_sale needle'}),
+  recordedProduct({storeId:'A',offerId:'A2',status:'on_sale',title:'needle second'}),
+  recordedProduct({storeId:'A',offerId:'false-history',status:'archived',title:'needle',history:{status:'on_sale'}}),
+  recordedProduct({storeId:'A',offerId:'missing',title:'needle',platformStatus:'Продается'}),
+  recordedProduct({storeId:'A',offerId:'A3',status:'on_sale',title:'needle third'}),
+  recordedProduct({storeId:'A',offerId:'A4',status:'on_sale',title:'other'}),
+  recordedProduct({storeId:'B',offerId:'B1',status:'on_sale',title:'needle foreign'}),
+ ]},spill={path:'synthetic-products.json',bytes:2000000,summary:{count:8},cursor:'spill:fixture:0'},original=structuredClone(source);
+ f.client.getStoreProducts=async()=>({...ok(source),spill});
+ try{
+  await f.refresher.refresh('store_products:A',context);const base=f.store.get('snapshots','store_products:A');
+  for(const cursor of [undefined,'2']){
+   const params={storeId:'A',status:'on_sale',query:'NEEDLE',limit:2,...(cursor?{cursor}:{})},key=f.saveQuery('hallmark_list_store_products',params),query=f.store.get('queries',key.slice(6));
+   const result=await f.refresher.refresh(key,context);assert.equal(result.status,'ok',JSON.stringify(result));
+   const snapshot=f.store.get('snapshots',key)!;assert.deepEqual(snapshot.payload.products.map((row:any)=>row.offerId),cursor?['A3']:['A1','A2']);assert.equal(snapshot.payload.total,3);assert.equal(snapshot.payload.cursor,cursor?undefined:'2');assert.deepEqual(snapshot.sourceSpill,spill);assert.equal(snapshot.payload.spill,undefined);assert.equal((result.data as any).spill,undefined);
+   const view=f.presentation.renderView({id:`status-page-${cursor??'first'}`,title:'Status page',layout:{type:'column',children:['note']},widgets:[{id:'note',type:'text',text:'Products'}],bindings:[{id:'products',datasetKey:key,fieldMap:{}}]});
+   assert.deepEqual(f.presentation.getViewData(view.id).data!.bindings[0].payload,snapshot.payload);
+   assert.deepEqual(f.store.get('queries',key.slice(6)),query);assert.deepEqual(f.store.get('snapshots','store_products:A'),base);
+  }
+  const legacyKey=f.saveQuery('hallmark_list_store_products',{storeId:'A',query:'needle',limit:1,cursor:'1'});assert.equal((await f.refresher.refresh(legacyKey,context)).status,'ok');assert.equal(f.store.get('snapshots',legacyKey)!.payload.products.length,6);
+  assert.deepEqual(source,original);assert.equal(f.counts.business,0);
+ }finally{f.store.close();}
+});
 
 for(const tool of ['hallmark_list_store_products','hallmark_compute_profit','hallmark_filter_products'])test(`saved ${tool} resolves a unique store name without modifying its query definition`,async()=>{
  const f=setup(),params={store:'Alpha shop',...(tool==='hallmark_filter_products'?{maxMargin:0.15}:{})};const key=f.saveQuery(tool,params);const before=f.store.get('queries',key.slice(6));

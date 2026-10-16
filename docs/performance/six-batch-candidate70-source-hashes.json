@@ -1,0 +1,44 @@
+{
+  "baselineCommit": "00b5691e7801e8ec61c25993f73c0d4ec54330b5",
+  "baselineTree": "a3307ed87402f7e75531c51c95e94ef5ba18cbbf",
+  "combinedProductionOnlyTree": "888f1887224c1d937bc9f7d80221257017128984",
+  "patchSha256": "e757a987addd344efa379db170974db539eb77a72487fb45ca94562479493432",
+  "files": {
+    "packages/app-hallmark/src/index.ts": {
+      "baseline": "b1b733f736e41e0f1edce8e588e32451ca0a35fe9e503f57b2cae5f634bd484c",
+      "combined": "2e44289a3ec4372934455a77f03bda48a807381786172fe7803bc543ebdb25e9"
+    },
+    "packages/app-hallmark/src/ozon-compose.ts": {
+      "baseline": "96cb81bc0112d8369d947f646df3d4dbc96ca2de03ebaca0c91ec400b01563b4",
+      "combined": "1565f05df143b8aa54d92ecefd76cb4c2560d423b774a96071b0165f933c73b4"
+    },
+    "packages/app-presentation/src/types.ts": {
+      "baseline": "982c848a7483eba059e34e7c0f718ecf094e67628eb617654ef43dd6f959e8f6",
+      "combined": "e03f07f92251eadcbb61cf785546936e9e5b3e4989a31cb7e32748f6a1f06e6e"
+    },
+    "packages/app-runtime/src/store.ts": {
+      "baseline": "5885775309bea9e921616f15d33644b84f5d1eaabbad597057f902da93272c74",
+      "combined": "3319d0798b65ed848f6f2f1ac0700d8e9b5403cfee8e9d095f9a5533538a6fd3"
+    },
+    "packages/dsh-plugin/client/widgets/material-format.ts": {
+      "baseline": "2c2bc8b4c7c389fcfd805532e4ce19bc2eb57911af529b51d236c4b6d0671b91",
+      "combined": "cf95eaea0bbd7c32926803ce64e46868a70c0a8fdeb041ad4c5474af823422c3"
+    },
+    "packages/dsh-plugin/client/widgets/number-format.ts": {
+      "baseline": null,
+      "combined": "415a90c1c95ce339a933bf94d0944aa7039177ddfdee9e041ef9ebb5a4b4bb10"
+    },
+    "packages/dsh-plugin/client/widgets/procurement-cells.tsx": {
+      "baseline": "37337bfa87bb523bb5897728e3275ec151b2fc8816c6d1a78e2cbebd0ed228c0",
+      "combined": "74d3c1642f4fae3679d0f7fada3ccf936d769e468f002013586327b7a7d11d4c"
+    },
+    "packages/dsh-plugin/client/widgets/product-list.tsx": {
+      "baseline": "3911439c2efd6ed9b7487fee872a42452d2e6d8e710eb21e0efbed87f6bee864",
+      "combined": "f525ebb22952c2bf15c24d2c4c3397e1c764fbdff8690bf246fff795f4f9909f"
+    },
+    "packages/service/src/apps-scheduler.ts": {
+      "baseline": "a510f74ac1cfd11c73a00c058c8bf1ea56604827c01c76ac107438daa2fe862a",
+      "combined": "f7ac3729129054e7de9c652a2fe000ae70a95f7ae4fd56b7ec9c21306c2f4075"
+    }
+  }
+}

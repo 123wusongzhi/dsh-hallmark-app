@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {realSourceProducts,realStores} from '../real-data/corpus.ts';
+import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
+import {HallmarkStorePort,HallmarkProvider,HALLMARK_DESCRIPTORS} from '../../packages/app-hallmark/src/index.ts';
+import {CollectionService} from '../../packages/collection/src/index.ts';
+import {BusinessPackagingRepository} from '../../packages/business-packaging/src/index.ts';
+import {prepareListing} from '../../packages/app-hallmark/src/listing-prepare.ts';
+import {compileSchema} from '../../packages/app-contracts/src/index.ts';
+
+test('known-fact reuse hint reads only the selected recorded SKU and exact source revision',async t=>{
+  const source=realSourceProducts().find(product=>product.skus.length>=2&&product.skus.every((sku:any)=>typeof sku.sourceSkuId==='string'&&sku.sourceSkuId))!;
+  assert.ok(source,'Recorded product needs at least two stable source SKUs');
+  assert.ok(new Set(source.skus.map((sku:any)=>sku.sourceSkuId)).size>=2,'The selected record must contain distinct SKU identities');
+  const expectedSku=source.skus.at(-1).sourceSkuId,stores=realStores(),storeId=String(stores[0].id);
+  const db=new RuntimeStore(':memory:'),store=new HallmarkStorePort(db,'reuse-hint-contract');t.after(()=>db.close());
+  let reads=0;
+  const client:any={getStores:async()=>({status:'ok',raw:structuredClone(stores)}),getCollectedItemDetail:async(id:string)=>{assert.equal(id,source.id);reads++;return {status:'ok',raw:structuredClone(source)};}};
+  const collection=new CollectionService({store,client}),packaging=new BusinessPackagingRepository(store),options={store,client,collection,packaging};
+  const normalized=await collection.getProduct(source.id);
+  const ready=await prepareListing({storeId,selections:[{id:source.id,skuIds:[expectedSku]}],knownRevisions:{[source.id]:normalized.revision}},options);
+  assert.equal(ready.materials,null);assert.equal(ready.reused.length,1);
+  const hint=ready.reused[0].available,descriptor=HALLMARK_DESCRIPTORS.find(value=>value.capabilityId===hint.capability);
+  assert.ok(descriptor,hint.capability);assert.deepEqual(compileSchema(descriptor.inputSchema)(hint.input),[]);
+  assert.equal(hint.input.revision,normalized.revision,'the follow-up read must remain pinned to the reused source revision');
+  const provider=new HallmarkProvider({...options,broker:{} as any});t.after(()=>provider.dispose());
+  const response:any=await provider.execute({request:{protocolVersion:'1.0',appId:'hallmark',connectionId:'local',capabilityId:hint.capability,capabilityVersion:descriptor.version,input:hint.input,invocationId:'reuse-hint',traceId:'reuse-hint',source:{kind:'agent',sessionId:'local',nativeCallId:'reuse-hint'},deadlineAt:new Date(Date.now()+30000).toISOString()},signal:new AbortController().signal,configRevision:1});
+  assert.equal(response.status,'ok',JSON.stringify(response));
+  assert.equal(response.data.items.length,1);const item=response.data.items[0];
+  assert.equal(item.id,source.id);assert.equal(item.revision,normalized.revision);
+  assert.deepEqual(item.skus.rows.map((row:any[])=>row[0]),[expectedSku]);
+  assert.equal(item.skus.total,1);assert.equal(item.skus.nextCursor,null);assert.equal(reads,1);
+});

@@ -5,6 +5,8 @@ import {join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
 import {AppsPresentationService} from '../../packages/app-presentation/src/index.ts';
 import {AppsAuthoringService} from '../../packages/app-presentation/src/authoring.ts';
+import {authoringSummary} from '../../packages/app-presentation/src/authoring-summary.ts';
+import {AWAIT_DISPLAY_MAX_MS,DISPLAY_READY_DEADLINE_MS} from '../../packages/app-presentation/src/authoring-types.ts';
 import {APP_AUTHORING_DESCRIPTORS} from '../../packages/app-presentation/src/authoring-descriptors.ts';
 import type {AuthoringAttempt,AuthoringDraft,AuthoringView,BuildExecutionEvidence,BuildReceipt,DisplayFrameAuthorizationInput,FrameAuthorizationInput,PreviewReceipt,PreviewValidationEvidence,RenderReadyInput,StartMountInput,UiStateSnapshot,ViewPublication} from '../../packages/app-presentation/src/authoring-types.ts';
 import {RuntimeStore} from '../../packages/app-runtime/src/store.ts';
@@ -13,6 +15,7 @@ import {SourceComponentStore} from '../../packages/source-components/src/index.t
 import {AuthoringEvidenceRunner,evidenceFile} from '../../packages/source-components/src/authoring-evidence.ts';
 import {canonicalJson} from '../../packages/app-contracts/src/index.ts';
 import type {CapabilityDescriptor,CapabilityResult,DatasetBinding,InvocationRequest,JsonValue,ResourceRef} from '../../packages/app-contracts/src/index.ts';
+import {performanceEvidence,performanceSample} from './performance-fixture.ts';
 
 const session='original-session-a';
 const assertions=[{id:'unit-coverage',required:true,expected:'Fixture metadata passes',actual:'Fixture metadata passes',status:'PASS' as const,evidenceRefs:[]}];
@@ -48,7 +51,7 @@ function unitPreview(f:ReturnType<typeof setup>,begin:BeginResult,receipt:BuildR
   // Only a hashed evidence-file fixture. This deliberately does not claim actual viewport captures.
   writeFileSync(screenshotPath,Buffer.from('backend-fixture-evidence'));
   const screenshot=evidenceFile(screenshotPath),at=new Date().toISOString();
-  const report:PreviewValidationEvidence={schemaVersion:1,attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,buildReceiptId:receipt.receiptId,buildId:receipt.archiveBuildId!,protocol:'dsh.apps.component.v2',mode:'fixture',runnerVersion:'backend-unit-fixture/1',startedAt:at,finishedAt:at,viewportResults:[420,1040].map(width=>({id:`fixture-${width}`,contentWidthCssPx:width,heightCssPx:800,deviceScaleFactor:1,screenshot,pageErrors:[],unhandledRejections:[],failedRequests:[],bridgeReady:true,assertionIds:['unit-coverage']})),assertionResults:structuredClone(assertions),verdict:'PASS'};
+  const report:PreviewValidationEvidence={schemaVersion:1,attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,buildReceiptId:receipt.receiptId,buildId:receipt.archiveBuildId!,protocol:'dsh.apps.component.v2',mode:'fixture',runnerVersion:'backend-unit-fixture/1',startedAt:at,finishedAt:at,viewportResults:[420,1040].map(width=>({id:`fixture-${width}`,contentWidthCssPx:width,heightCssPx:800,deviceScaleFactor:1,screenshot,pageErrors:[],unhandledRejections:[],failedRequests:[],bridgeReady:true,assertionIds:['unit-coverage'],interactionCaseIds:[]})),assertionResults:structuredClone(assertions),verdict:'PASS',performance:performanceEvidence()};
   change?.(report);return {report,reportRef:f.runner.writeReport('preview',report)};
 }
 async function preview(f:ReturnType<typeof setup>,begin:BeginResult,receipt:BuildReceipt,change?:(value:PreviewValidationEvidence)=>void){
@@ -66,6 +69,27 @@ async function prepared(f:ReturnType<typeof setup>,begin=f.authoring.begin(sessi
 function displayFrame(publication:ViewPublication,display:{displayId:string;generation:number},suffix:string):DisplayFrameAuthorizationInput {
  return {publicationId:publication.publicationId,attemptId:publication.attemptId,attemptEpoch:publication.attemptEpoch,viewId:publication.viewId,buildId:publication.candidateBuildId,displayId:display.displayId,displayGeneration:display.generation,frameInstanceId:'display-frame-'+suffix,documentNonce:'display-nonce-'+suffix};
 }
+
+test('UI state validates selections against the current iframe page and prunes stale pages',async t=>{
+ const f=setup(t);f.presentation.authoring=f.authoring;
+ f.runtime.describe=()=>({...descriptor,inputSchema:{type:'object',properties:{limit:{type:'integer'},cursor:{type:'string'}},additionalProperties:false}});
+ f.runtime.invoke=async request=>({status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{resources:[{appId:'notes',connectionId:'notes-test',resourceType:'note',resourceId:String((request.input as {cursor?:string}).cursor??'first')}]}});
+ const begin=f.authoring.begin(session,{mode:'new',bindings:[{...binding,input:{limit:20}},{...binding,bindingId:'sibling',input:{limit:10}}]}),candidate=await prepared(f,begin,'Paged UI',false);
+ await f.presentation.refreshView(session,begin.view.viewId,{kind:'agent',sessionId:session,nativeCallId:'initial'});
+ const opened=f.authoring.openDisplay(session,{...openInput(candidate.publication),displayId:'paged-ui'}),frame=displayFrame(candidate.publication,opened.display,'paged-ui');
+ f.authoring.authorizeDisplayFrame(session,frame);f.authoring.confirmDisplayReady(session,{...candidate.ready,...frame});
+ const identity={protocolVersion:'2.0' as const,sessionId:session,viewId:frame.viewId,buildId:frame.buildId,frameInstanceId:frame.frameInstanceId},host=f.presentation.createHost(identity,{candidate:{...frame,...identity},clientFeatures:['bindingPagesV1','uiStateV1'],attachSelection:()=>({status:'validated'})});t.after(()=>host.dispose());
+ let id=0;const extension=(feature:string,action:string,params:unknown)=>host.handle({...identity,channel:'dsh.apps.component.v2',requestId:String(++id),type:'extension',feature,action,params}) as Promise<any>;
+ const page=(await extension('bindingPagesV1','read',{bindingId:'notes',cursor:'second'})).result.bindings[0],selection={bindingId:'notes',datasetId:page.datasetId,datasetRevision:page.revision,resources:page.resources};
+ const attached=await host.handle({...identity,channel:'dsh.apps.component.v2',requestId:String(++id),method:'attachSelection',params:{bindingId:selection.bindingId,datasetRevision:selection.datasetRevision,resources:selection.resources}}) as any;assert.equal(attached.result.status,'validated');
+ const written=await extension('uiStateV1','write',{uiStateSchemaVersion:1,expectedStateRevision:0,value:{selected:'second'},selectionEvidence:[selection]});assert.equal(written.error,undefined);assert.equal(written.result.stateRevision,1);
+ const restored=await extension('uiStateV1','read',{uiStateSchemaVersion:1});assert.deepEqual(restored.result.snapshot.selectionEvidence,[selection]);assert.deepEqual(restored.result.removedSelections,[]);
+ const refreshed=await host.handle({...identity,channel:'dsh.apps.component.v2',requestId:String(++id),method:'refresh',params:{bindingIds:['sibling']}}) as any;assert.equal(refreshed.error,undefined);
+ const savedAfterSiblingRefresh=await extension('uiStateV1','write',{uiStateSchemaVersion:1,expectedStateRevision:1,value:{selected:'second'},selectionEvidence:[selection]});assert.equal(savedAfterSiblingRefresh.error,undefined);assert.equal(savedAfterSiblingRefresh.result.stateRevision,2);
+ await extension('bindingPagesV1','read',{bindingId:'notes',cursor:'third'});
+ const stale=await extension('uiStateV1','write',{uiStateSchemaVersion:1,expectedStateRevision:2,value:{selected:'second'},selectionEvidence:[selection]});assert.equal(stale.error.code,'SELECTION_STALE');
+ const pruned=await extension('uiStateV1','read',{uiStateSchemaVersion:1});assert.equal(pruned.result.removedSelections.length,1);assert.deepEqual(pruned.result.snapshot.selectionEvidence,[]);assert.deepEqual(pruned.result.snapshot.value,{selected:'second'});
+});
 
 test('independent display retries preserve one verified build and retire old documents without advancing authoring',async t=>{
  let now=new Date('2026-10-07T00:00:00.000Z');const f=setup(t,{clock:()=>now}),candidate=await prepared(f,undefined,'Reopen',false),target=openInput(candidate.publication);
@@ -183,6 +207,64 @@ test('preview gates reject missing required interactions, invalid width coverage
   }
   const f=setup(t),begin=f.authoring.begin(session,{mode:'new'});project(begin);const built=await build(f,begin),evidence=unitPreview(f,begin,built.receipt);writeFileSync(evidence.report.viewportResults[0].screenshot.path,'altered');
   await assert.rejects(f.authoring.recordPreview(session,{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,buildReceiptId:built.receipt.receiptId,reportRef:evidence.reportRef}),{code:'EVIDENCE_HASH_MISMATCH'});
+});
+
+test('new PASS previews require current signed performance and retain rejected reports for diagnosis',async t=>{
+  const cases:{code:string;change:(value:PreviewValidationEvidence)=>void}[]=[
+    {code:'PREVIEW_PERFORMANCE_REQUIRED',change:value=>{delete value.performance;}},
+    {code:'PREVIEW_PERFORMANCE_POLICY_MISMATCH',change:value=>{Object.assign(value.performance!,{policyVersion:'component-first-screen/0'});}},
+    {code:'PREVIEW_PERFORMANCE_INVALID',change:value=>{value.performance!.viewports[0].initial.readyMs=10000;}},
+    {code:'PREVIEW_PERFORMANCE_FAILED',change:value=>{value.performance!.viewports[0].initial.readyMs=10000;value.performance!.verdict='FAIL';}},
+  ];
+  for(const item of cases){
+    const f=setup(t),begin=f.authoring.begin(session,{mode:'new'});project(begin);const built=await build(f,begin),evidence=unitPreview(f,begin,built.receipt,item.change);
+    await assert.rejects(f.authoring.recordPreview(session,{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,buildReceiptId:built.receipt.receiptId,reportRef:evidence.reportRef}),{code:item.code});
+    const attempt=f.store.get<AuthoringAttempt>('authoring_attempts',begin.attempt.attemptId)!;assert.equal(attempt.state,'preview_failed');assert.ok(attempt.evidenceRefs.some(ref=>ref.sha256===evidence.reportRef.sha256));assert.equal(f.store.list('preview_receipts').length,0);assert.equal(f.store.list('view_publications').length,0);
+    assert.ok(attempt.terminalReason?.startsWith(item.code+':'));const inspected=f.authoring.inspect(session,{attemptId:attempt.attemptId});assert.equal(inspected.summary.nextAction.action,item.code==='PREVIEW_PERFORMANCE_FAILED'?'fix_source':'run_preview');assert.ok(inspected.summary.nextAction.errorCodes.includes(item.code));
+  }
+});
+
+test('honest failed and incomplete performance remains inspectable without becoming publishable',async t=>{
+  for(const status of ['FAIL','INCOMPLETE'] as const){
+    const f=setup(t),begin=f.authoring.begin(session,{mode:'new'});project(begin);const built=await build(f,begin),tested=await preview(f,begin,built.receipt,value=>{
+      value.verdict=status;value.performance!.verdict=status;
+      if(status==='FAIL'){value.performance!.viewports[0].initial.readyMs=10000;value.assertionResults[0].status='BLOCKED';value.assertionResults[0].actual=null;}
+      else {value.viewportResults[0].interactionCaseIds=['filter'];value.performance!.viewports[0].interactions=[{id:'filter',...performanceSample({feedbackMs:null})}];}
+    });
+    assert.deepEqual(tested.receipt.performance,tested.report.performance);const attempt=f.store.get<AuthoringAttempt>('authoring_attempts',begin.attempt.attemptId)!;assert.equal(attempt.state,'preview_failed');
+    assert.match(attempt.terminalReason!,status==='FAIL'?/PREVIEW_PERFORMANCE_FAILED: 420:initial:readyMs \(10000; limit 2500\)/:/PREVIEW_PERFORMANCE_INCOMPLETE: 420:filter:feedbackMs/);
+    const inspected=f.authoring.inspect(session,{attemptId:attempt.attemptId});assert.equal(inspected.summary.nextAction.action,status==='FAIL'?'fix_source':'run_preview');assert.equal(inspected.summary.requiresRebuild,status==='FAIL');
+    const {compileSchema}=await import('../../packages/app-contracts/src/index.ts');assert.deepEqual(compileSchema(APP_AUTHORING_DESCRIPTORS.find(item=>item.capabilityId==='apps.authoring.inspect')!.outputSchema)(JSON.parse(JSON.stringify(inspected))),[]);
+    assert.throws(()=>f.authoring.publish(session,{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,viewId:begin.view.viewId,expectedViewRevision:begin.attempt.expectedViewRevision,buildId:built.receipt.archiveBuildId!,buildReceiptId:built.receipt.receiptId,previewReceiptId:tested.receipt.receiptId}),{code:'ATTEMPT_STATE_INVALID'});
+  }
+});
+
+test('stored pre-policy PASS receipts cannot create a new publication after upgrade',async t=>{
+  for(const variant of ['missing','old','failed'] as const){
+    const f=setup(t),begin=f.authoring.begin(session,{mode:'new'});project(begin);const built=await build(f,begin),evidence=unitPreview(f,begin,built.receipt,value=>{
+      if(variant==='missing')delete value.performance;else if(variant==='old')Object.assign(value.performance!,{policyVersion:'component-first-screen/0'});else {value.performance!.verdict='FAIL';value.performance!.viewports[0].initial.readyMs=10000;}
+    });
+    // Seed immutable persisted rows to model receipts written before the policy upgrade.
+    const {epoch:_epoch,...report}=evidence.report,receipt:PreviewReceipt={...report,receiptId:'pre-policy-'+variant};f.store.put('preview_receipts',receipt.receiptId,receipt);
+    const attempt=f.store.get<AuthoringAttempt>('authoring_attempts',begin.attempt.attemptId)!;f.store.put('authoring_attempts',attempt.attemptId,{...attempt,state:'publish_ready',previewReceiptId:receipt.receiptId,evidenceRefs:[...attempt.evidenceRefs,evidence.reportRef]});
+    const input={attemptId:attempt.attemptId,epoch:attempt.epoch,viewId:begin.view.viewId,expectedViewRevision:attempt.expectedViewRevision,buildId:built.receipt.archiveBuildId!,buildReceiptId:built.receipt.receiptId,previewReceiptId:receipt.receiptId},code=variant==='missing'?'PREVIEW_PERFORMANCE_REQUIRED':variant==='old'?'PREVIEW_PERFORMANCE_POLICY_MISMATCH':'PREVIEW_PERFORMANCE_FAILED';
+    assert.throws(()=>f.authoring.publish(session,input),{code});
+    const inspected=f.authoring.inspect(session,{attemptId:attempt.attemptId});assert.equal(inspected.summary.nextAction.action,variant==='failed'?'fix_source':'run_preview');assert.equal(inspected.summary.preparedBuild,null);
+    const runtime=new AppsRuntime(f.store);f.presentation.authoring=f.authoring;runtime.register(f.presentation.provider());runtime.addConnection({appId:'apps',connectionId:'presentation',displayName:'Presentation',config:{},configRevision:1,enabled:true});runtime.bind({sessionId:session,appId:'apps',connectionId:'presentation',enabled:true,boundAt:new Date().toISOString()});
+    try{const result=await runtime.invoke({protocolVersion:'1.0',appId:'apps',connectionId:'presentation',capabilityId:'apps.authoring.publish',capabilityVersion:'1.0.0',invocationId:'performance-publish-'+variant,traceId:'performance-publish-'+variant,source:{kind:'agent',sessionId:session,nativeCallId:'publish'},deadlineAt:new Date(Date.now()+10000).toISOString(),input});assert.equal(result.status,'failed');assert.equal((result as {error:{code:string}}).error.code,code);}finally{await runtime.dispose();}
+    assert.equal(f.store.list('view_publications').length,0);assert.equal(f.presentation.getView(begin.view.viewId)?.source,undefined);
+  }
+});
+
+test('already published pre-policy evidence still opens and reopens its original historical build',async t=>{
+  const f=setup(t),candidate=await prepared(f,undefined,'Historical policy',false),{performance:_performance,...oldReport}=candidate.tested.report;
+  const reference=f.runner.writeReport('preview',oldReport),{epoch:_epoch,...oldReceipt}=oldReport,receipt:PreviewReceipt={...oldReceipt,receiptId:'historical-preview'};f.store.put('preview_receipts',receipt.receiptId,receipt);
+  const attempt=f.store.get<AuthoringAttempt>('authoring_attempts',candidate.begin.attempt.attemptId)!;
+  f.store.put('authoring_attempts',attempt.attemptId,{...attempt,previewReceiptId:receipt.receiptId,evidenceRefs:attempt.evidenceRefs.map(ref=>ref.sha256===candidate.tested.reportRef.sha256?reference:ref)});
+  const publication={...candidate.publication,previewReceiptId:receipt.receiptId,evidenceRefs:candidate.publication.evidenceRefs.map(ref=>ref.sha256===candidate.tested.reportRef.sha256?reference:ref)};f.store.put('view_publications',publication.publicationId,publication);
+  assert.deepEqual(f.authoring.publish(session,{attemptId:attempt.attemptId,epoch:attempt.epoch,viewId:publication.viewId,expectedViewRevision:publication.expectedViewRevision,buildId:publication.candidateBuildId,buildReceiptId:publication.buildReceiptId,previewReceiptId:publication.previewReceiptId}),publication);
+  f.authoring.startMount(session,openInput(publication));f.authoring.authorizeFrame(session,candidate.identity);assert.equal(f.authoring.confirmReady(session,candidate.ready).publication.state,'mounted');
+  const reopened=f.authoring.openDisplay(session,{...openInput(publication),displayId:'historical-policy-reopen'});assert.equal(reopened.source.buildId,publication.candidateBuildId);assert.equal(reopened.view.viewRevision,2);assert.equal(f.store.get<PreviewReceipt>('preview_receipts',receipt.receiptId)!.performance,undefined);
 });
 
 test('mounting holds the old view until one authorized document confirms render/data/bridge readiness',async t=>{
@@ -305,6 +387,85 @@ test('restart marks only unfinished build/preview/mount attempts interrupted and
   assert.equal(f.store.get<AuthoringAttempt>('authoring_attempts',completed.begin.attempt.attemptId)?.state,'mounted');assert.equal(f.store.get<AuthoringView>('views',mounting.begin.view.viewId)?.pendingPublicationId,null);assert.ok(existsSync(building.draft.workspacePath));assert.equal(f.store.list('components').length,0);
 });
 
+for(const mode of ['open_component','open_saved'])test(`unchanged verified ${mode} saves without new receipts and advances only its own current baseline`,async t=>{
+  const f=setup(t),candidate=await prepared(f),mounted=f.authoring.confirmReady(session,candidate.ready).view;
+  const seed=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Save verified seed',mode:'save_as'});
+  const opened=mode==='open_saved'?f.authoring.begin(session,{mode:'open_saved',componentId:seed.componentId,newCopy:true}).view:f.presentation.openComponent(session,seed.componentId,{newCopy:true}),stale=f.presentation.openComponent(session,seed.componentId,{newCopy:true});
+  const evidence={builds:f.store.list('build_receipts'),previews:f.store.list('preview_receipts'),publications:f.store.list('view_publications')};
+  assert.equal(f.store.list<AuthoringDraft>('authoring_drafts').some(draft=>draft.viewId===opened.viewId),mode==='open_saved');
+  const second=f.authoring.saveComponent(session,{viewId:opened.viewId,expectedViewRevision:opened.viewRevision!,userRequest:'Update reusable component',mode:'update',componentId:seed.componentId,expectedRevision:opened.baseRevision,title:'Second'});
+  assert.equal(second.revision,2);assert.equal(second.view.sourceComponentId,seed.componentId);assert.equal(second.view.baseRevision,2);assert.equal(second.view.baseRevisionAtOpen,1);assert.equal(second.view.selectedSourceRevision,1);assert.deepEqual(second.view,f.presentation.getView(opened.viewId));
+  const third=f.presentation.saveComponent(session,opened.viewId,'Update through shared entry',{mode:'update',componentId:seed.componentId,expectedRevision:second.view.baseRevision,title:'Third'});assert.equal(third.revision,3);
+  const editing=f.authoring.begin(session,{mode:'edit',viewId:opened.viewId});assert.equal(editing.view.baseRevision,3);assert.equal(editing.draft.baseRevisionAtOpen,1);
+  const fourth=f.authoring.saveComponent(session,{viewId:opened.viewId,expectedViewRevision:editing.view.viewRevision,userRequest:'Save unchanged edit',mode:'update',componentId:seed.componentId,expectedRevision:editing.view.baseRevision,title:'Fourth'});assert.equal(fourth.revision,4);
+  assert.equal(f.store.get<AuthoringDraft>('authoring_drafts',editing.draft.draftId)?.sourceComponentId,seed.componentId);assert.deepEqual(fourth.view.source,second.view.source);assert.equal(fourth.view.viewRevision,opened.viewRevision);assert.equal(fourth.view.selectedSourceRevision,1);
+  assert.throws(()=>f.authoring.saveComponent(session,{viewId:stale.viewId,expectedViewRevision:stale.viewRevision!,userRequest:'Stale update',mode:'update',componentId:seed.componentId,expectedRevision:stale.baseRevision}),{code:'COMPONENT_CONFLICT'});
+  assert.throws(()=>f.presentation.saveComponent(session,stale.viewId,'Do not retarget stale copy',{mode:'update',componentId:seed.componentId,expectedRevision:4}),{code:'COMPONENT_CONFLICT'});
+  assert.deepEqual(f.presentation.getView(stale.viewId),stale);assert.deepEqual({builds:f.store.list('build_receipts'),previews:f.store.list('preview_receipts'),publications:f.store.list('view_publications')},evidence);
+});
+
+test('verified source code reuses pinned source references in another shop without rebuilding, but changed definitions need evidence',async t=>{
+  const f=setup(t),scoped={...descriptor,inputSchema:{type:'object',properties:{storeId:{type:'string'},limit:{type:'integer'}},required:['storeId'],additionalProperties:false}};
+  f.runtime.describe=()=>scoped;Object.assign(f.runtime,{getConnection:()=>({enabled:true}),bind:(value:unknown)=>value,sessionBindings:()=>[]});
+  const definition:import('../../packages/app-presentation/src/types.ts').DataSourceDraft={id:'notes-products',title:'商品',appId:'notes',connectionId:'notes-test',capabilityId:'notes.list',capabilityMajor:1,storeScoped:true,input:{limit:1},parameters:[{name:'storeId',label:'店铺',type:'string',required:true,editable:false},{name:'limit',label:'数量',type:'integer'}],rowsPath:'resources',fields:[{path:'resourceId',role:'product.id',confirmed:true}],operations:{search:{scope:'loaded'},sort:{scope:'loaded'}}};
+  f.presentation.dataSources.installCatalog([definition]);
+  const candidate=await prepared(f,f.authoring.begin(session,{mode:'new',sourceRefs:{main:{id:definition.id,revision:1,params:{}}},context:{storeId:'A'}}));
+  const mounted=f.authoring.confirmReady(session,candidate.ready).view,seed=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Save scoped source',mode:'save_as'});
+  const opened=f.authoring.begin(session,{mode:'open_saved',componentId:seed.componentId,context:{storeId:'B'}}).view;
+  assert.equal((opened.bindings[0].input as {storeId:string}).storeId,'B');assert.equal(opened.source?.buildId,seed.view.source?.buildId);assert.equal(f.presentation.canReuseSavedView(opened),true);
+  const receipts=f.store.list('build_receipts');const saved=f.authoring.saveComponent(session,{viewId:opened.viewId,expectedViewRevision:opened.viewRevision,userRequest:'Reuse for shop B',mode:'save_as'});assert.equal(saved.view.context?.storeId,'B');assert.deepEqual(f.store.list('build_receipts'),receipts);
+  f.presentation.dataSources.installCatalog([{...definition,input:{limit:2}}]);
+  const changed=f.presentation.createView(session,{viewId:opened.viewId,title:opened.title,sourceRefs:{main:{id:definition.id,revision:2,params:{}}}});
+  assert.equal(f.presentation.canReuseSavedView(changed),false);assert.throws(()=>f.presentation.saveComponent(session,changed.viewId,'Changed definition',{mode:'save_as'}),{code:'BUILD_EVIDENCE_INVALID'});
+});
+
+test('save-as retargets the same view and draft while preserving historical source numbers',async t=>{
+  const f=setup(t),candidate=await prepared(f),mounted=f.authoring.confirmReady(session,candidate.ready).view,first=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Save original',mode:'save_as'});
+  const second=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Original version two',mode:'update',componentId:first.componentId,expectedRevision:1});
+  const opened=f.authoring.begin(session,{mode:'open_saved',componentId:first.componentId,newCopy:true}),before=f.store.get('components',first.componentId);
+  const copy=f.authoring.saveComponent(session,{viewId:opened.view.viewId,expectedViewRevision:opened.view.viewRevision,userRequest:'Save as independent copy',mode:'save_as',title:'Copy'});
+  assert.notEqual(copy.componentId,first.componentId);assert.equal(copy.view.sourceComponentId,copy.componentId);assert.equal(copy.view.baseRevision,1);assert.equal(copy.view.baseRevisionAtOpen,2);assert.equal(copy.view.selectedSourceRevision,2);assert.deepEqual(copy.view,f.presentation.getView(opened.view.viewId));
+  const draft=f.store.get<AuthoringDraft>('authoring_drafts',opened.draft.draftId)!;assert.equal(draft.sourceComponentId,copy.componentId);assert.equal(draft.baseRevisionAtOpen,2);assert.equal(draft.selectedSourceRevision,2);
+  assert.throws(()=>f.authoring.saveComponent(session,{viewId:copy.view.viewId,expectedViewRevision:copy.view.viewRevision!,userRequest:'Must not write former target',mode:'update',componentId:first.componentId,expectedRevision:second.revision}),{code:'COMPONENT_CONFLICT'});
+  const updated=f.authoring.saveComponent(session,{viewId:copy.view.viewId,expectedViewRevision:copy.view.viewRevision!,userRequest:'Update independent copy',mode:'update',componentId:copy.componentId,expectedRevision:copy.view.baseRevision});assert.equal(updated.revision,2);assert.deepEqual(updated.view,f.presentation.getView(copy.view.viewId));assert.deepEqual(f.store.get('components',first.componentId),before);
+});
+
+test('historical verified content restores without rebuilding and the restored work copy can save again',async t=>{
+  const f=setup(t),candidate=await prepared(f),mounted=f.authoring.confirmReady(session,candidate.ready).view,first=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Save version one',mode:'save_as'});
+  const edit=f.authoring.begin(session,{mode:'open_saved',componentId:first.componentId}),changed=await prepared(f,edit,'Different version two'),newView=f.authoring.confirmReady(session,changed.ready).view;
+  const second=f.authoring.saveComponent(session,{viewId:newView.viewId,expectedViewRevision:newView.viewRevision,userRequest:'Save changed source',mode:'update',componentId:first.componentId,expectedRevision:1});assert.notEqual(first.view.source!.buildId,second.view.source!.buildId);
+  const historical=f.authoring.begin(session,{mode:'open_saved',componentId:first.componentId,revision:1}),history=f.presentation.componentVersions(first.componentId),receipts=f.store.list('build_receipts');
+  assert.equal(historical.view.baseRevision,2);assert.equal(historical.view.selectedSourceRevision,1);
+  const third=f.authoring.saveComponent(session,{viewId:historical.view.viewId,expectedViewRevision:historical.view.viewRevision,userRequest:'Restore version one as a new version',mode:'update',componentId:first.componentId,expectedRevision:historical.view.baseRevision});assert.equal(third.revision,3);assert.equal(third.view.source!.buildId,first.view.source!.buildId);
+  const fourth=f.authoring.saveComponent(session,{viewId:third.view.viewId,expectedViewRevision:third.view.viewRevision!,userRequest:'Save restored work again',mode:'update',componentId:first.componentId,expectedRevision:third.view.baseRevision});assert.equal(fourth.revision,4);assert.equal(fourth.view.selectedSourceRevision,1);assert.equal(fourth.view.baseRevisionAtOpen,2);assert.equal(fourth.view.baseRevision,4);
+  assert.deepEqual(f.presentation.componentVersions(first.componentId).slice(0,2),history);assert.deepEqual(f.store.list('build_receipts'),receipts);
+});
+
+test('changed design or binding cannot reuse a saved or mounted verification; template saving stays independent',async t=>{
+  const f=setup(t),candidate=await prepared(f),mounted=f.authoring.confirmReady(session,candidate.ready).view,seed=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Save original',mode:'save_as'});
+  for(const change of ['design','bindings'])for(const entry of ['opened','mounted']){
+    const view=entry==='opened'?f.authoring.begin(session,{mode:'open_saved',componentId:seed.componentId}).view:f.presentation.getView(mounted.viewId)!;
+    f.presentation.createView(session,{viewId:view.viewId,title:view.title,...(change==='design'?{design:{changed:true}}:{bindings:[binding]})});
+    const before=f.store.list('component_versions');
+    assert.throws(()=>f.authoring.saveComponent(session,{viewId:view.viewId,expectedViewRevision:view.viewRevision!,userRequest:'Unverified change',mode:'save_as'}),{code:'BUILD_EVIDENCE_INVALID'});
+    assert.throws(()=>f.presentation.saveComponent(session,view.viewId,'Unverified change',{mode:'save_as'}),{code:'BUILD_EVIDENCE_INVALID'});assert.deepEqual(f.store.list('component_versions'),before);
+    const template=f.presentation.saveTemplate(session,view.viewId,'Reusable draft template','Save template');assert.equal(template.kind,'template');
+    if(entry==='mounted')f.presentation.createView(session,{viewId:view.viewId,title:view.title,design:seed.view.design,bindings:seed.view.bindings});
+  }
+});
+
+test('changed source and unverified saved source still require authoring validation',async t=>{
+  const f=setup(t),candidate=await prepared(f),mounted=f.authoring.confirmReady(session,candidate.ready).view,seed=f.authoring.saveComponent(session,{viewId:mounted.viewId,expectedViewRevision:mounted.viewRevision,userRequest:'Save verified',mode:'save_as'});
+  const other=join(f.directory,'unverified');mkdirSync(join(other,'dist'),{recursive:true});writeFileSync(join(other,'dist','index.html'),'<p>Changed source</p>');
+  for(const mode of ['open_component','open_saved']){
+    const opened=mode==='open_saved'?f.authoring.begin(session,{mode:'open_saved',componentId:seed.componentId}).view:f.presentation.openComponent(session,seed.componentId),changed=f.presentation.openSource(session,other,{viewId:opened.viewId});assert.notEqual(changed.source!.buildId,seed.view.source!.buildId);
+    assert.throws(()=>f.authoring.saveComponent(session,{viewId:changed.viewId,expectedViewRevision:changed.viewRevision!,userRequest:'Save changed build',mode:'save_as'}),{code:'BUILD_EVIDENCE_INVALID'});assert.throws(()=>f.presentation.saveComponent(session,changed.viewId,'Save changed build',{mode:'save_as'}),{code:'BUILD_EVIDENCE_INVALID'});
+  }
+  const legacy=f.presentation.openSource(session,other),legacySaved=f.presentation.saveComponent(session,legacy.viewId,'Existing compatibility source save',{mode:'save_as'}),unverified=f.presentation.openComponent(session,legacySaved.componentId);
+  assert.throws(()=>f.authoring.saveComponent(session,{viewId:unverified.viewId,expectedViewRevision:unverified.viewRevision!,userRequest:'No verified source to reuse',mode:'save_as'}),{code:'BUILD_EVIDENCE_INVALID'});
+  assert.equal(f.presentation.saveComponent(session,unverified.viewId,'Legacy source remains compatible',{mode:'update',componentId:legacySaved.componentId,expectedRevision:unverified.baseRevision}).revision,2);
+});
+
 test('explicit save requires the confirmed view CAS and history restores compare the current metadata baseline',async t=>{
   const f=setup(t),first=await prepared(f);assert.throws(()=>f.authoring.saveComponent(session,{viewId:first.begin.view.viewId,expectedViewRevision:1,userRequest:'Save as First',mode:'save_as'}),{code:'VIEW_CONFLICT'});
   const good=f.authoring.confirmReady(session,first.ready).view,saved=f.authoring.saveComponent(session,{viewId:good.viewId,expectedViewRevision:good.viewRevision,userRequest:'Save as First',mode:'save_as',title:'First'});assert.equal(saved.revision,1);
@@ -385,4 +546,282 @@ test('UI state size limits and close keep/discard retain workspaces and immutabl
   assert.throws(()=>f.authoring.exportUiState(session,{viewId:view.viewId,sourceBuildId:view.activeBuildId!,uiStateSchemaVersion:1,expectedStateRevision:0,value:{large:'x'.repeat(100)},selectionEvidence:[]}),{code:'UI_STATE_TOO_LARGE'});
   const saved=f.authoring.saveComponent(session,{viewId:view.viewId,expectedViewRevision:view.viewRevision,userRequest:'Save before close',mode:'save_as'}),draft=f.authoring.closeDraft(session,view.viewId,'keep');assert.equal(draft.status,'closed');assert.ok(existsSync(draft.workspacePath));
   const second=f.authoring.begin(session,{mode:'edit',viewId:view.viewId});assert.equal(second.draft.workspacePath,draft.workspacePath);assert.equal(f.authoring.closeDraft(session,view.viewId,'discard').status,'discarded');assert.ok(existsSync(second.draft.workspacePath));assert.ok(f.sources.verify(view.activeBuildId!).valid);assert.ok(f.store.get('components',saved.componentId));
+});
+
+
+test('inspect distinguishes a previously confirmed build from a newer failed display and gives scoped advice',async t=>{
+ const f=setup(t),first=await prepared(f,undefined,'Confirmed',false);
+ const one=f.authoring.openDisplay(session,{...openInput(first.publication),displayId:'confirmed'}),frame=displayFrame(first.publication,one.display,'confirmed');
+ f.authoring.authorizeDisplayFrame(session,frame);f.authoring.confirmDisplayReady(session,{...first.ready,...frame});
+ const second=await prepared(f,f.authoring.begin(session,{mode:'edit',viewId:first.begin.view.viewId}),'New',false);
+ const error=(code:string)=>{const two=f.authoring.openDisplay(session,{...openInput(second.publication),displayId:'failed-'+code});return f.authoring.reportDisplayError(session,{viewId:second.begin.view.viewId,publicationId:second.publication.publicationId,buildId:second.publication.candidateBuildId,displayId:two.display.displayId,displayGeneration:two.display.generation,error:{phase:'bridge',code,message:'Fixture display failure'}});};
+ error('BRIDGE_TIMEOUT');
+ let inspected=f.authoring.inspect(session,{publicationId:second.publication.publicationId}),summary=inspected.summary;
+ assert.equal(summary.lastConfirmedDisplay?.buildId,first.publication.candidateBuildId);
+ assert.equal(summary.preparedBuild?.buildId,second.publication.candidateBuildId);
+ assert.equal(summary.currentDisplay?.state,'failed');assert.equal(summary.nextAction.action,'reopen_same_build');assert.equal(summary.requiresRebuild,false);
+ assert.equal(summary.nextAction.target.publicationId,second.publication.publicationId);
+ const {compileSchema}=await import('../../packages/app-contracts/src/index.ts');assert.deepEqual(compileSchema(APP_AUTHORING_DESCRIPTORS.find(item=>item.capabilityId==='apps.authoring.inspect')!.outputSchema)(JSON.parse(JSON.stringify(inspected))),[]);
+ error('UNCLASSIFIED_ERROR');summary=f.authoring.inspect(session,{publicationId:second.publication.publicationId}).summary;assert.equal(summary.requiresRebuild,null);assert.equal(summary.nextAction.action,'inspect_evidence');
+ error('COMPONENT_SCRIPT_ERROR');summary=f.authoring.inspect(session,{publicationId:second.publication.publicationId}).summary;assert.equal(summary.requiresRebuild,true);assert.equal(summary.nextAction.action,'fix_source');
+ const old=f.authoring.inspect(session,{publicationId:first.publication.publicationId}).summary;assert.equal(old.currentDisplay?.buildId,first.publication.candidateBuildId);
+ // The old publication's display was retired by the newer open: it is superseded (no longer 'open_prepared_build', which an Agent cannot perform and which read like success).
+ assert.equal(old.currentDisplay?.state,'retired');assert.equal(old.outcome,'superseded');assert.equal(old.nextAction.action,'inspect_current_attempt');assert.equal(old.lastConfirmedDisplay?.isCurrentBuild,true);
+});
+
+test('inspect retains a successful build when preview environment is incomplete',async t=>{
+ const f=setup(t),begin=f.authoring.begin(session,{mode:'new'});project(begin);const built=await build(f,begin);
+ assert.equal(f.authoring.inspect(session,{attemptId:begin.attempt.attemptId}).summary.nextAction.action,'run_preview');
+ await preview(f,begin,built.receipt,value=>{value.verdict='INCOMPLETE';value.assertionResults[0].status='BLOCKED';value.assertionResults[0].actual='PREVIEW_CAPABILITY_UNAVAILABLE';});
+ const summary=f.authoring.inspect(session,{attemptId:begin.attempt.attemptId}).summary;
+ assert.equal(summary.blockedStage,'preview');assert.equal(summary.nextAction.action,'repair_preview_environment');assert.equal(summary.requiresRebuild,false);assert.equal(summary.lastConfirmedDisplay,null);assert.equal(summary.preparedBuild,null);
+});
+
+test('W1 review: a replacement document on the same display must obtain its own ready receipt',async t=>{
+ let now=Date.parse('2026-10-15T01:00:00.000Z');const f=setup(t,{clock:()=>new Date(now)}),p=await prepared(f,undefined,'Document readiness',false),a=openedDisplay(f,p.publication,'same-display');
+ const first=f.authoring.confirmDisplayReady(session,a.ready);assert.equal(first.display.readyAt,new Date(now).toISOString());
+ assert.equal(f.authoring.releaseDisplayFrame(session,{displayId:a.frame.displayId,frameInstanceId:a.frame.frameInstanceId,documentNonce:a.frame.documentNonce}),true);
+ now+=5000;const b={...a.frame,frameInstanceId:'replacement-frame',documentNonce:'replacement-nonce'};f.authoring.authorizeDisplayFrame(session,b);
+ const before=await f.authoring.awaitDisplay(session,{publicationId:p.publication.publicationId,waitMs:120});
+ assert.equal(before.summary.outcome,'displaying','a new authorized document has no ready receipt yet');assert.equal(before.awaited.timedOut,true);assert.ok(before.awaited.elapsedMs>=100);assert.equal(before.latestDisplay?.readyAt,undefined);
+ assert.equal(before.summary.lastConfirmedDisplay?.readyAt,first.display.readyAt);assert.equal(before.summary.lastConfirmedDisplay?.frameInstanceId,a.frame.frameInstanceId);assert.equal(before.summary.lastConfirmedDisplay?.documentNonce,a.frame.documentNonce);assert.equal(before.summary.lastConfirmedDisplay?.isCurrentDocument,false);
+ assert.equal(f.authoring.authorizeDisplayFrame(session,b).readyDeadlineAt,before.latestDisplay?.readyDeadlineAt,'repeating one document grant never renews its deadline');
+ assert.throws(()=>f.authoring.confirmDisplayReady(session,a.ready),{code:'BRIDGE_IDENTITY_STALE'});
+ const second=f.authoring.confirmDisplayReady(session,{...b,checks:readyChecks()});assert.equal(second.display.readyAt,new Date(now).toISOString());assert.notEqual(second.display.readyAt,first.display.readyAt);assert.equal(second.view.viewRevision,first.view.viewRevision);
+ assert.equal((await f.authoring.awaitDisplay(session,{publicationId:p.publication.publicationId,waitMs:120})).summary.outcome,'displayed');
+});
+
+for(const prior of ['failed_mount','interrupted'] as const)test(`W1 review: await_display waits for a legitimate reopened ${prior} publication`,async t=>{
+ const f=setup(t),p=await prepared(f);
+ if(prior==='failed_mount')f.authoring.failMount(session,p.publication.publicationId,'Controlled legacy mount failure');else f.authoring.recoverInterrupted();
+ assert.equal(f.authoring.inspect(session,{publicationId:p.publication.publicationId}).attempt.state,prior);
+ const opened=openedDisplay(f,p.publication,'recover-'+prior);let settled=false;
+ const recovering=f.authoring.inspect(session,{publicationId:p.publication.publicationId});assert.equal(recovering.publication?.state,'prepared');assert.equal(recovering.attempt.state,'publish_ready');assert.equal(recovering.summary.outcome,'displaying');assert.equal(recovering.summary.nextAction.action,'await_display');assert.equal(recovering.summary.completionStatement.includes('已在 DSH 展示'),false);
+ const waiting=f.authoring.awaitDisplay(session,{publicationId:p.publication.publicationId,waitMs:1000}).then(result=>{settled=true;return result;});
+ await new Promise(resolve=>setTimeout(resolve,50));const settledBeforeReady=settled;
+ f.authoring.confirmDisplayReady(session,opened.ready);const result=await waiting;
+ assert.equal(settledBeforeReady,false,'the old publication failure must not terminate an active recovery wait');assert.equal(result.summary.outcome,'displayed');assert.equal(result.awaited.timedOut,false);assert.ok(result.awaited.elapsedMs>=40);
+ assert.equal(f.store.list('build_receipts').length,1);assert.equal(f.store.list('preview_receipts').length,1);assert.equal(f.store.list('view_publications').length,1);
+});
+
+for(const prior of ['failed_mount','interrupted'] as const)for(const terminal of ['cancelled','superseded'] as const)test(`W1 review: ${terminal} ends an in-flight ${prior} recovery and rejects later reopening`,async t=>{
+ const f=setup(t),p=await prepared(f);
+ if(prior==='failed_mount')f.authoring.failMount(session,p.publication.publicationId,'Controlled legacy mount failure');else f.authoring.recoverInterrupted();
+ const opened=openedDisplay(f,p.publication,'fenced-'+prior+'-'+terminal);
+ const waiting=f.authoring.awaitDisplay(session,{publicationId:p.publication.publicationId,waitMs:1000});
+ if(terminal==='cancelled')f.authoring.cancel(session,{attemptId:p.publication.attemptId,expectedEpoch:p.publication.attemptEpoch,reason:'Explicit cancellation during recovery'});else f.authoring.begin(session,{mode:'edit',viewId:p.publication.viewId});
+ const result=await waiting;assert.equal(result.summary.outcome,terminal);assert.equal(result.awaited.timedOut,false);assert.equal(result.summary.completionStatement.includes('已在 DSH 展示'),false);
+ const before=canonicalJson({views:f.store.list('views'),publications:f.store.list('view_publications'),records:f.store.list('provider_records')});
+ assert.throws(()=>f.authoring.openDisplay(session,{...openInput(p.publication),displayId:'revive-'+terminal}),{code:'PUBLICATION_UNAVAILABLE'});assert.throws(()=>f.authoring.confirmDisplayReady(session,opened.ready),{code:'PUBLICATION_UNAVAILABLE'});assert.equal(f.authoring.acceptsDisplayFrame({...opened.frame,protocolVersion:'2.0',sessionId:session}),false);
+ assert.equal(canonicalJson({views:f.store.list('views'),publications:f.store.list('view_publications'),records:f.store.list('provider_records')}),before);
+});
+
+test('W1 review: legacy renderReadyV1 without displayId records exact display evidence, not merely mounted metadata',async t=>{
+ const f=setup(t),p=await prepared(f);f.presentation.authoring=f.authoring;
+ const identity={protocolVersion:'2.0' as const,sessionId:session,viewId:p.ready.viewId,buildId:p.ready.buildId,frameInstanceId:p.ready.frameInstanceId},host=f.presentation.createHost(identity,{candidate:{...p.identity,...identity},clientFeatures:['renderReadyV1']});t.after(()=>host.dispose());
+ const waiting=f.authoring.awaitDisplay(session,{publicationId:p.publication.publicationId,waitMs:1000});await new Promise(resolve=>setTimeout(resolve,50));
+ const ready=await host.handle({...identity,channel:'dsh.apps.component.v2',type:'extension',feature:'renderReadyV1',action:'ready',requestId:'legacy-ready',params:{checks:p.ready.checks}});
+ const result=await waiting;assert.equal('error' in ready!,false,JSON.stringify(ready));assert.equal(result.summary.outcome,'displayed');assert.equal(result.awaited.timedOut,false);assert.ok(result.latestDisplay?.readyAt);assert.equal(result.latestDisplay?.frameInstanceId,p.ready.frameInstanceId);assert.equal(result.latestDisplay?.documentNonce,p.ready.documentNonce);assert.equal(result.latestDisplay?.buildId,p.publication.candidateBuildId);
+ assert.deepEqual(result.latestDisplay?.readyReceipt,{frameInstanceId:p.ready.frameInstanceId,documentNonce:p.ready.documentNonce,readyAt:result.latestDisplay?.readyAt});assert.equal(result.latestDisplay?.attemptId,p.publication.attemptId);assert.equal(result.latestDisplay?.attemptEpoch,p.publication.attemptEpoch);assert.equal(result.latestDisplay?.publicationId,p.publication.publicationId);assert.equal(result.latestDisplay?.ownerSessionId,session);
+ f.authoring.confirmReady(session,p.ready);assert.equal(f.authoring.inspect(session,{publicationId:p.publication.publicationId}).displays.length,1,'repeating the validated legacy ready is idempotent');
+ const display=result.latestDisplay!,recordId='component-display:'+display.displayId;
+ f.store.delete('provider_records',recordId);assert.equal(f.authoring.inspect(session,{publicationId:p.publication.publicationId}).summary.outcome,'published_awaiting_display','mounted metadata without exact ready evidence is not displayed');
+});
+
+test('W1 review: a fresh legacy ready after upgrade validates actual checks and original evidence before normalizing a mounted row',async t=>{
+ const f=setup(t),p=await prepared(f),mounted=f.authoring.confirmReady(session,p.ready);
+ for(const display of f.authoring.inspect(session,{publicationId:p.publication.publicationId}).displays)f.store.delete('provider_records','component-display:'+display.displayId);
+ f.authoring=new AppsAuthoringService(f.serviceOptions);f.presentation.authoring=f.authoring;
+ const identity={protocolVersion:'2.0' as const,sessionId:session,viewId:p.ready.viewId,buildId:p.ready.buildId,frameInstanceId:p.ready.frameInstanceId},host=f.presentation.createHost(identity,{candidate:{...p.identity,...identity},clientFeatures:['renderReadyV1']});t.after(()=>host.dispose());
+ let sequence=0;const send=(checks=p.ready.checks)=>host.handle({...identity,channel:'dsh.apps.component.v2',type:'extension',feature:'renderReadyV1',action:'ready',requestId:'legacy-upgrade-'+(++sequence),params:{checks}});
+ const inspect=()=>f.authoring.inspect(session,{publicationId:p.publication.publicationId}),unchanged=()=>canonicalJson({views:f.store.list('views'),publications:f.store.list('view_publications'),records:f.store.list('provider_records')});
+ assert.equal(inspect().summary.outcome,'published_awaiting_display');assert.equal(inspect().displays.length,0);
+ for(const wrong of [{frameInstanceId:'foreign-frame'},{documentNonce:'foreign-nonce'},{attemptId:'foreign-attempt'},{attemptEpoch:p.ready.attemptEpoch+1},{buildId:'f'.repeat(64)}])assert.throws(()=>f.authoring.confirmReady(session,{...p.ready,...wrong}));
+ for(const checks of [{...p.ready.checks,dataRead:false},{...p.ready.checks,rendered:false},{...p.ready.checks,bridgeReady:false},{...p.ready.checks,unhandledErrors:['script failed']},{...p.ready.checks,assertionResults:[{...assertions[0],status:'FAIL' as const}]}]){
+  const before=unchanged(),response=await send(checks);assert.equal((response as any)?.error?.code,'FRAME_RUNTIME_ERROR');assert.equal(unchanged(),before);
+ }
+ const archived=join(f.sources.directory,'builds',p.ready.buildId,'project','dist','index.html');
+ for(const [path,code] of [[p.tested.report.viewportResults[0].screenshot.path,'EVIDENCE_HASH_MISMATCH'],[archived,'BUILD_EVIDENCE_INVALID']]){
+  const original=readFileSync(path),before=unchanged();writeFileSync(path,'changed original evidence');
+  try{const response=await send();assert.equal((response as any)?.error?.code,code);assert.equal(unchanged(),before);}finally{writeFileSync(path,original);}
+ }
+ const waiting=f.authoring.awaitDisplay(session,{publicationId:p.publication.publicationId,waitMs:1000}),response=await send(),result=await waiting;
+ assert.equal((response as any)?.error,undefined);assert.equal(result.summary.outcome,'displayed');assert.equal(result.awaited.timedOut,false);assert.equal(result.displays.length,1);assert.deepEqual(result.latestDisplay?.readyReceipt,{frameInstanceId:p.ready.frameInstanceId,documentNonce:p.ready.documentNonce,readyAt:result.latestDisplay?.readyAt});assert.equal(result.view.viewRevision,mounted.view.viewRevision);
+ await send();assert.equal(inspect().displays.length,1,'repeated ready does not create another normalized display');
+ const next=openedDisplay(f,p.publication,'explicit-after-upgrade');await send();assert.equal(inspect().summary.outcome,'displaying');assert.equal(inspect().latestDisplay?.displayId,next.frame.displayId);assert.equal(inspect().latestDisplay?.readyAt,undefined,'legacy replay cannot confirm a newer explicit document');
+});
+
+// --- Display reliability (A1-A6): program-computed outcome, deadlines and await_display ---
+const publishInput=(p:Awaited<ReturnType<typeof prepared>>)=>({attemptId:p.begin.attempt.attemptId,epoch:p.begin.attempt.epoch,viewId:p.begin.view.viewId,expectedViewRevision:p.begin.attempt.expectedViewRevision,buildId:p.built.receipt.archiveBuildId!,buildReceiptId:p.built.receipt.receiptId,previewReceiptId:p.tested.receipt.receiptId});
+const readyChecks=()=>({rendered:true,bridgeReady:true,dataRead:true,unhandledErrors:[] as string[],assertionResults:structuredClone(assertions)});
+/** Opens a display for the publication and authorizes its iframe document, returning what confirmDisplayReady needs. */
+function openedDisplay(f:ReturnType<typeof setup>,publication:ViewPublication,displayId:string){
+ const opened=f.authoring.openDisplay(session,{...openInput(publication),displayId}),frame=displayFrame(publication,opened.display,displayId);
+ f.authoring.authorizeDisplayFrame(session,frame);return {opened,frame,ready:{...frame,viewId:publication.viewId,checks:readyChecks()}};
+}
+const schemaErrors=(name:string,result:unknown)=>import('../../packages/app-contracts/src/index.ts').then(({compileSchema})=>compileSchema(APP_AUTHORING_DESCRIPTORS.find(item=>item.capabilityId==='apps.authoring.'+name)!.outputSchema)(JSON.parse(JSON.stringify(result))));
+
+test('outcome and completionStatement separate build/preview, publication and display, with a server-side display deadline',async t=>{
+ let now=Date.parse('2026-10-15T00:00:00.000Z');const f=setup(t,{clock:()=>new Date(now)});
+ const begin=f.authoring.begin(session,{mode:'new'});project(begin);
+ const status=(id:{attemptId?:string;publicationId?:string})=>f.authoring.inspect(session,id).summary;
+ let summary=status({attemptId:begin.attempt.attemptId});assert.equal(summary.outcome,'in_progress');assert.equal(summary.completionStatement,'构建尚未完成。');
+ const built=await build(f,begin);summary=status({attemptId:begin.attempt.attemptId});assert.equal(summary.outcome,'in_progress');assert.match(summary.completionStatement,/预览尚未完成/);
+ const tested=await preview(f,begin,built.receipt);summary=status({attemptId:begin.attempt.attemptId});
+ assert.equal(summary.outcome,'build_passed');assert.equal(summary.nextAction.action,'publish');assert.equal(summary.completionStatement,'构建与预览已通过；尚未发布；尚未在 DSH 展示。');
+ // A4/A1: publish only reports acceptance; with no display the agent must ask the user to open the panel.
+ const p={begin,built,tested} as unknown as Awaited<ReturnType<typeof prepared>>;
+ const published=f.authoring.publishWithOutcome(session,publishInput(p));
+ assert.equal(published.state,'prepared');assert.equal(published.outcome,'awaiting_user_view');assert.equal(published.completionStatement,'构建与预览已通过；发布已接受；尚未在 DSH 展示（等待用户打开右侧面板）。');
+ const {compileSchema}=await import('../../packages/app-contracts/src/index.ts');
+ assert.deepEqual(compileSchema(APP_AUTHORING_DESCRIPTORS.find(item=>item.capabilityId==='apps.authoring.publish')!.outputSchema)(JSON.parse(JSON.stringify(published))),[]);
+ assert.equal(f.authoring.publishWithOutcome(session,publishInput(p)).publicationId,published.publicationId,'publish stays idempotent');
+ summary=status({publicationId:published.publicationId});
+ assert.equal(summary.nextAction.action,'ask_user_open_view');assert.equal(summary.requiresRebuild,false);assert.match(summary.nextAction.reason,/右侧面板/);assert.notEqual(summary.nextAction.action,'open_prepared_build');
+ // A3: the deadline is stamped at open and evaluated against the wall clock at read time.
+ const {opened,ready}=openedDisplay(f,published,'deadline');
+ assert.equal(opened.display.openedAt,new Date(now).toISOString());assert.equal(opened.display.readyDeadlineAt,new Date(now+DISPLAY_READY_DEADLINE_MS).toISOString());
+ summary=status({publicationId:published.publicationId});assert.equal(summary.outcome,'displaying');assert.equal(summary.waitedMs,0);assert.equal(summary.nextAction.action,'await_display');assert.match(summary.completionStatement,/正在 DSH 打开，尚未确认展示/);
+ now+=30_000;summary=status({publicationId:published.publicationId});assert.equal(summary.outcome,'displaying');assert.equal(summary.waitedMs,30_000);assert.match(summary.completionStatement,/已等待 30 秒/);
+ now+=DISPLAY_READY_DEADLINE_MS;summary=status({publicationId:published.publicationId});
+ assert.equal(summary.outcome,'display_stalled');assert.equal(summary.waitedMs,30_000+DISPLAY_READY_DEADLINE_MS);assert.equal(summary.nextAction.action,'reopen_same_build');assert.equal(summary.requiresRebuild,false);
+ assert.match(summary.nextAction.reason,new RegExp(`已等待 ${(30_000+DISPLAY_READY_DEADLINE_MS)/1000} 秒`));assert.match(summary.nextAction.reason,new RegExp(`期限 ${DISPLAY_READY_DEADLINE_MS/1000} 秒`));assert.equal(summary.completionStatement.includes('已在 DSH 展示'),false);assert.match(summary.completionStatement,/展示超时/);
+ assert.equal(f.authoring.inspect(session,{publicationId:published.publicationId}).latestDisplay?.state,'opening','reading never mutates the stored display');
+ assert.deepEqual(await schemaErrors('inspect',f.authoring.inspect(session,{publicationId:published.publicationId})),[]);
+ // The ready receipt, not the clock, decides: a late but valid receipt still produces displayed for the current build.
+ f.authoring.confirmDisplayReady(session,ready);
+ summary=status({publicationId:published.publicationId});
+ assert.equal(summary.outcome,'displayed');assert.equal(summary.completionStatement,'构建与预览已通过；发布已接受；已在 DSH 展示（当前发布的当前构建）。');assert.equal(summary.nextAction.action,'none');
+ assert.equal(summary.lastConfirmedDisplay?.isCurrentBuild,true);assert.equal(summary.lastConfirmedDisplay?.isCurrentPublication,true);
+});
+
+test('no path produces displayed without a ready receipt for the current publication build, and an older build never counts',async t=>{
+ const f=setup(t),first=await prepared(f,undefined,'Confirmed',false),one=openedDisplay(f,first.publication,'first');
+ assert.equal(f.authoring.inspect(session,{publicationId:first.publication.publicationId}).summary.outcome,'displaying');
+ f.authoring.confirmDisplayReady(session,one.ready);
+ const done=f.authoring.inspect(session,{publicationId:first.publication.publicationId});assert.equal(done.summary.outcome,'displayed');
+ // Even the real displayed state flips when any part of the receipt contract is missing.
+ const base={attempt:done.attempt,build:f.store.get<BuildReceipt>('build_receipts',done.attempt.buildReceiptId!),preview:f.store.get<PreviewReceipt>('preview_receipts',done.attempt.previewReceiptId!),displays:done.displays,now:new Date()};
+ const outcome=(publication:ViewPublication,currentDisplay:typeof done.displays[number])=>authoringSummary({...base,publication,currentDisplay,displays:[currentDisplay]}).outcome;
+ const display=done.latestDisplay!,publication=done.publication!;
+ assert.equal(outcome(publication,display),'displayed');
+ assert.notEqual(outcome(publication,{...display,readyAt:undefined}),'displayed');
+ assert.notEqual(outcome(publication,{...display,buildId:'e'.repeat(64)}),'displayed');
+ assert.notEqual(outcome(publication,{...display,publicationId:'other'}),'displayed');
+ for(const changed of [{viewId:'other'},{ownerSessionId:'other'},{attemptId:'other'},{attemptEpoch:display.attemptEpoch+1},{frameInstanceId:'new-document'},{documentNonce:'new-nonce'},{readyAt:'2026-10-15T00:00:00.000Z'}])assert.notEqual(outcome(publication,{...display,...changed}),'displayed',JSON.stringify(changed));
+ assert.notEqual(outcome({...publication,state:'prepared'},display),'displayed');
+ for(const state of ['opening','failed','retired'] as const)assert.notEqual(outcome(publication,{...display,state}),'displayed',state);
+ for(const state of ['prepared','mounting','failed_mount','cancelled','superseded','interrupted'] as const)assert.notEqual(outcome({...publication,state},{...display,state:'opening',readyAt:undefined}),'displayed',state);
+ // A newer build is published but not displayed: the older ready display must not make the current outcome displayed.
+ const second=await prepared(f,f.authoring.begin(session,{mode:'edit',viewId:first.begin.view.viewId}),'Newer build',false);
+ let summary=f.authoring.inspect(session,{publicationId:second.publication.publicationId}).summary;
+ assert.equal(summary.outcome,'awaiting_user_view');assert.equal(summary.currentDisplay,null);assert.equal(summary.completionStatement.includes('已在 DSH 展示'),false);
+ assert.equal(summary.lastConfirmedDisplay?.buildId,first.publication.candidateBuildId);assert.equal(summary.lastConfirmedDisplay?.isCurrentBuild,false);assert.equal(summary.lastConfirmedDisplay?.isCurrentPublication,false);
+ // Transport-class failures of a verified build reopen the same build without rebuilding.
+ for(const code of ['RUNTIME_UNAVAILABLE','RUNTIME_REQUEST_TIMEOUT','RUNTIME_CONNECTION_LOST','RUNTIME_INVALID_RESPONSE','BRIDGE_PROXY_UNAVAILABLE','DISPLAY_READY_TIMEOUT','DISPLAY_BRIDGE_TIMEOUT']){
+  const two=f.authoring.openDisplay(session,{...openInput(second.publication),displayId:'failed-'+code});
+  f.authoring.reportDisplayError(session,{viewId:second.begin.view.viewId,publicationId:second.publication.publicationId,buildId:second.publication.candidateBuildId,displayId:two.display.displayId,displayGeneration:two.display.generation,error:{phase:'data',code,message:'Fixture runtime failure',requestId:'req-1',attempts:3,retryPolicy:'safe',cause:'fetch failed'}});
+  summary=f.authoring.inspect(session,{publicationId:second.publication.publicationId}).summary;
+  assert.equal(summary.outcome,'display_failed',code);assert.equal(summary.nextAction.action,'reopen_same_build',code);assert.equal(summary.requiresRebuild,false,code);assert.ok(summary.completionStatement.includes(code));assert.equal(summary.completionStatement.includes('已在 DSH 展示'),false);
+ }
+ // The older publication's display is retired by the newer open; it is superseded, never displayed.
+ const old=f.authoring.inspect(session,{publicationId:first.publication.publicationId}).summary;
+ assert.equal(old.outcome,'superseded');assert.equal(old.completionStatement.includes('已在 DSH 展示'),false);assert.equal(old.nextAction.action,'inspect_current_attempt');
+});
+
+test('await_display returns when the ready receipt arrives, and the current outcome at timeout or cancellation',async t=>{
+ const f=setup(t),p=await prepared(f,undefined,'Awaited',false);
+ // Timeout with nothing opened: awaiting_user_view is returned, not an error and not displayed.
+ const idle=await f.authoring.awaitDisplay(session,{publicationId:p.publication.publicationId,waitMs:120});
+ assert.equal(idle.summary.outcome,'awaiting_user_view');assert.equal(idle.awaited.timedOut,true);assert.ok(idle.awaited.elapsedMs>=100);assert.equal(idle.awaited.requestedMs,120);
+ assert.deepEqual(await schemaErrors('await_display',idle),[]);
+ // The receipt arrives during the wait: the same call returns displayed well before waitMs.
+ const {ready}=openedDisplay(f,p.publication,'during-wait'),started=Date.now();
+ const pending=f.authoring.awaitDisplay(session,{attemptId:p.begin.attempt.attemptId,waitMs:10_000});
+ await new Promise(resolve=>setTimeout(resolve,60));f.authoring.confirmDisplayReady(session,ready);
+ const settled=await pending;assert.equal(settled.summary.outcome,'displayed');assert.equal(settled.awaited.timedOut,false);assert.ok(Date.now()-started<5000);
+ assert.match(settled.summary.completionStatement,/已在 DSH 展示/);
+ // Already settled outcomes return immediately and the call is repeatable.
+ const again=await f.authoring.awaitDisplay(session,{publicationId:p.publication.publicationId,waitMs:10_000});assert.equal(again.summary.outcome,'displayed');assert.ok(again.awaited.elapsedMs<1000);
+ // A failure during the wait settles the wait as display_failed.
+ const q=await prepared(f,f.authoring.begin(session,{mode:'edit',viewId:p.begin.view.viewId}),'Fails while awaited',false),two=f.authoring.openDisplay(session,{...openInput(q.publication),displayId:'fails'});
+ const failing=f.authoring.awaitDisplay(session,{publicationId:q.publication.publicationId,waitMs:10_000});
+ await new Promise(resolve=>setTimeout(resolve,40));f.authoring.reportDisplayError(session,{viewId:q.begin.view.viewId,publicationId:q.publication.publicationId,buildId:q.publication.candidateBuildId,displayId:two.display.displayId,displayGeneration:two.display.generation,error:{phase:'data',code:'RUNTIME_UNAVAILABLE',message:'Runtime unavailable'}});
+ const failed=await failing;assert.equal(failed.summary.outcome,'display_failed');assert.equal(failed.summary.nextAction.action,'reopen_same_build');
+ // Cancellation returns the current state promptly; invalid waits are rejected.
+ const r=await prepared(f,f.authoring.begin(session,{mode:'edit',viewId:p.begin.view.viewId}),'Cancelled wait',false),controller=new AbortController(),cancelledAt=Date.now();
+ setTimeout(()=>controller.abort(),40);const cancelled=await f.authoring.awaitDisplay(session,{publicationId:r.publication.publicationId,waitMs:20_000},controller.signal);
+ assert.equal(cancelled.summary.outcome,'awaiting_user_view');assert.ok(Date.now()-cancelledAt<5000);
+ await assert.rejects(async()=>f.authoring.awaitDisplay(session,{publicationId:r.publication.publicationId,waitMs:25_001}),{code:'INVALID_INPUT'});
+ await assert.rejects(async()=>f.authoring.awaitDisplay(session,{publicationId:r.publication.publicationId,waitMs:-1}),{code:'INVALID_INPUT'});
+ await assert.rejects(async()=>f.authoring.awaitDisplay('other-session',{publicationId:r.publication.publicationId,waitMs:0}),{code:'VIEW_NOT_OWNED'});
+ // The capability dispatch returns the same shape, validated against the declared output schema.
+ const descriptor=APP_AUTHORING_DESCRIPTORS.find(item=>item.capabilityId==='apps.authoring.await_display')!,{compileSchema}=await import('../../packages/app-contracts/src/index.ts');
+ assert.ok(descriptor.execution.timeoutMs>=AWAIT_DISPLAY_MAX_MS+1000);assert.equal(descriptor.effect,'query');
+ const result=await f.authoring.execute({request:{capabilityId:descriptor.capabilityId,invocationId:'i',traceId:'t',input:{publicationId:r.publication.publicationId,waitMs:0},source:{kind:'agent',sessionId:session,nativeCallId:'n'}},signal:new AbortController().signal} as never);
+ assert.equal(result.status,'ok');const data=(result as unknown as {data:{summary:{outcome:string}}}).data;assert.deepEqual(compileSchema(descriptor.outputSchema)(data),[]);assert.equal(data.summary.outcome,'awaiting_user_view');
+ assert.deepEqual(compileSchema(descriptor.inputSchema)({publicationId:'p',waitMs:25_000}),[]);assert.ok(compileSchema(descriptor.inputSchema)({publicationId:'p',waitMs:25_001}).length);assert.ok(compileSchema(descriptor.inputSchema)({waitMs:5}).length);
+});
+
+test('display error records keep bounded request context and reject oversized or unknown fields',async t=>{
+ const f=setup(t),p=await prepared(f,undefined,'Errors',false),{opened}=openedDisplay(f,p.publication,'errors');
+ const report=(error:Record<string,unknown>)=>f.authoring.reportDisplayError(session,{viewId:p.publication.viewId,publicationId:p.publication.publicationId,buildId:p.publication.candidateBuildId,displayId:opened.display.displayId,displayGeneration:opened.display.generation,error:{phase:'data',code:'RUNTIME_REQUEST_TIMEOUT',message:'timed out',...error} as never});
+ for(const bad of [{requestId:'r'.repeat(129)},{cause:'c'.repeat(501)},{retryPolicy:'p'.repeat(33)},{attempts:0},{attempts:11},{attempts:1.5},{attempts:'2'},{requestId:7},{extra:'x'},{message:'x'.repeat(4097)}]){
+  assert.throws(()=>report(bad),{code:'INVALID_INPUT'},JSON.stringify(bad).slice(0,40));
+  assert.equal(f.authoring.inspect(session,{publicationId:p.publication.publicationId}).latestDisplay?.state,'opening','a rejected report must not fail the display');
+ }
+ const failed=report({requestId:'r'.repeat(128),attempts:10,retryPolicy:'safe',cause:'c'.repeat(500)});
+ assert.equal(failed.state,'failed');assert.deepEqual(failed.errors.map(({at:_at,...rest})=>rest),[{phase:'data',code:'RUNTIME_REQUEST_TIMEOUT',message:'timed out',requestId:'r'.repeat(128),attempts:10,retryPolicy:'safe',cause:'c'.repeat(500)}]);
+ assert.ok(failed.errors[0].at);
+ const inspected=f.authoring.inspect(session,{publicationId:p.publication.publicationId});assert.deepEqual(inspected.latestDisplay!.errors[0],failed.errors[0]);assert.deepEqual(await schemaErrors('inspect',inspected),[]);
+ // Legacy three-field reports keep their exact stored shape (no undefined keys), and empty optional strings are dropped.
+ const q=await prepared(f,f.authoring.begin(session,{mode:'edit',viewId:p.begin.view.viewId}),'Plain error',false),plain=f.authoring.openDisplay(session,{...openInput(q.publication),displayId:'plain'});
+ const stored=f.authoring.reportDisplayError(session,{viewId:q.publication.viewId,publicationId:q.publication.publicationId,buildId:q.publication.candidateBuildId,displayId:plain.display.displayId,displayGeneration:plain.display.generation,error:{phase:'script',code:'COMPONENT_SCRIPT_ERROR',message:'boom',cause:''}});
+ assert.deepEqual(Object.keys(stored.errors[0]).sort(),['at','code','message','phase']);
+});
+
+
+test('publish prewarms exactly once per dataset and concurrent slow opens do not await compute',async t=>{
+ const f=setup(t);f.presentation.authoring=f.authoring;
+ let calls=0,release!:()=>void;const slow=new Promise<void>(resolve=>{release=resolve;});
+ f.runtime.invoke=async request=>{calls++;await slow;return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{resources:[]}};};
+ const begin=f.authoring.begin(session,{mode:'new',bindings:[binding,{...binding,bindingId:'same-dataset'}]}),candidate=await prepared(f,begin,'Async prewarm',false);
+ const repeat=f.authoring.publish(session,{attemptId:begin.attempt.attemptId,epoch:begin.attempt.epoch,viewId:begin.view.viewId,expectedViewRevision:begin.attempt.expectedViewRevision,buildId:candidate.built.receipt.archiveBuildId!,buildReceiptId:candidate.built.receipt.receiptId,previewReceiptId:candidate.tested.receipt.receiptId});assert.equal(repeat.publicationId,candidate.publication.publicationId);
+ await new Promise(resolve=>setTimeout(resolve,10));assert.equal(calls,1,'publish alone starts prewarm, before any open');
+ const opened=f.authoring.openDisplay(session,{...openInput(candidate.publication),displayId:'prewarming'}),started=performance.now();
+ const views=await Promise.all(Array.from({length:10},()=>f.presentation.hydrateSourceView(opened.view,{kind:'agent',sessionId:session,nativeCallId:'concurrent-open'})));
+ assert.ok(performance.now()-started<200);assert.equal(calls,1);assert.ok(views.every(view=>view.initialData?.every(binding=>binding.status==='preparing')));
+ const pending=f.presentation.getData(session,opened.view.viewId,{publicationId:candidate.publication.publicationId,buildId:candidate.publication.candidateBuildId,displayId:opened.display.displayId,displayGeneration:opened.display.generation});assert.ok(pending.bindings.every(binding=>binding.state==='preparing'&&binding.payload===null&&!!binding.preparation?.startedAt));assert.equal(f.authoring.inspect(session,{publicationId:candidate.publication.publicationId}).summary.outcome,'displaying');
+ release();await new Promise(resolve=>setTimeout(resolve,10));const ready=f.presentation.getData(session,opened.view.viewId,{publicationId:candidate.publication.publicationId,buildId:candidate.publication.candidateBuildId,displayId:opened.display.displayId,displayGeneration:opened.display.generation});assert.ok(ready.bindings.every(binding=>binding.state==='ready'&&binding.preparation?.state==='ready'&&!!binding.preparation.finishedAt));assert.equal(calls,1);assert.equal(f.authoring.inspect(session,{publicationId:candidate.publication.publicationId}).summary.outcome,'displaying','snapshot readiness alone is not renderReady');
+});
+
+test('cancelled and superseded publications isolate late prewarm responses instead of committing snapshots',async t=>{
+ for(const action of ['cancel','replace'] as const){
+  const f=setup(t);let release!:()=>void;const pending=new Promise<void>(resolve=>{release=resolve;});f.runtime.invoke=async request=>{await pending;return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{resources:[]}};};
+  const begin=f.authoring.begin(session,{mode:'new',bindings:[binding]}),candidate=await prepared(f,begin,'Isolate '+action,false);await new Promise(resolve=>setTimeout(resolve,10));
+  if(action==='cancel')f.authoring.cancel(session,{attemptId:begin.attempt.attemptId,expectedEpoch:begin.attempt.epoch,reason:'controlled cancellation'});else f.authoring.begin(session,{mode:'edit',viewId:begin.view.viewId});
+  release();await new Promise(resolve=>setTimeout(resolve,10));assert.equal(f.store.list('datasets').length,0);assert.notEqual(f.authoring.inspect(session,{publicationId:candidate.publication.publicationId}).summary.outcome,'displayed');
+ }
+});
+
+test('mounted historical Q prepares its fixed publication after current workcopy switches to R, without crossing retirement or revocation',async t=>{
+ const f=setup(t);f.presentation.authoring=f.authoring;let allowed=true;const calls:InvocationRequest[]=[];
+ Object.assign(f.runtime,{getConnection:()=>({enabled:allowed,configRevision:1}),sessionBindings:()=>allowed?[{sessionId:session,appId:'notes',connectionId:'notes-test',enabled:true,boundAt:new Date().toISOString()}]:[]});
+ f.runtime.invoke=async request=>{calls.push(request);return {status:'ok',invocationId:request.invocationId,traceId:request.traceId,data:{resources:[],controlRoute:request.connectionId,cache:{expiresAt:new Date(Date.now()+60000).toISOString()}}};};
+ const begin=f.authoring.begin(session,{mode:'new',bindings:[binding]}),candidate=await prepared(f,begin,'Historical preparation',false);await new Promise(resolve=>setTimeout(resolve,10));
+ const target=openInput(candidate.publication),opened=f.authoring.openDisplay(session,{...target,displayId:'historical-prep-Q'}),frame=displayFrame(candidate.publication,opened.display,'historical-prep-Q');f.authoring.authorizeDisplayFrame(session,frame);f.authoring.confirmDisplayReady(session,{...candidate.ready,...frame});
+ const identity={publicationId:frame.publicationId,buildId:frame.buildId,displayId:frame.displayId,displayGeneration:frame.displayGeneration},original=f.presentation.getData(session,frame.viewId,identity).bindings[0],stored=f.store.get<import('../../packages/app-presentation/src/types.ts').DatasetSnapshot>('datasets',original.datasetId)!;
+ f.store.put('datasets',original.datasetId,{...stored,payload:{...(stored.payload as Record<string,JsonValue>),cache:{expiresAt:'2000-01-01T00:00:00.000Z'}}});
+ f.authoring.begin(session,{mode:'edit',viewId:frame.viewId,bindings:[{...binding,connectionId:'notes-next'}]});const before=calls.length,pending=f.presentation.getData(session,frame.viewId,identity).bindings[0];assert.equal(pending.state,'preparing');assert.equal(pending.connectionId,'notes-test');
+ await new Promise(resolve=>setTimeout(resolve,20));const ready=f.presentation.getData(session,frame.viewId,identity).bindings[0];assert.equal(ready.state,'ready');assert.equal((ready.payload as {controlRoute:string}).controlRoute,'notes-test');assert.equal(calls.length,before+1);assert.ok(calls.every(request=>request.connectionId==='notes-test'),'historical preparation never reads current R');assert.equal(f.presentation.getView(frame.viewId)?.bindings[0].connectionId,'notes-next');assert.ok(f.authoring.acceptedDisplay({...frame,protocolVersion:'2.0',sessionId:session}));
+ const bridgeIdentity={protocolVersion:'2.0' as const,sessionId:session,viewId:frame.viewId,buildId:frame.buildId,frameInstanceId:frame.frameInstanceId},host=f.presentation.createHost(bridgeIdentity,{candidate:{...frame,...bridgeIdentity},clientFeatures:['dataTransferV1']});t.after(()=>host.dispose());
+ let requestId=0;const read=()=>host.handle({...bridgeIdentity,channel:'dsh.apps.component.v2',requestId:'historical-read-'+(++requestId),type:'extension',feature:'dataTransferV1',action:'prepare',params:{method:'getData',documentNonce:frame.documentNonce}}) as Promise<any>;
+ const expire=()=>{const snapshot=f.store.get<import('../../packages/app-presentation/src/types.ts').DatasetSnapshot>('datasets',original.datasetId)!;f.store.put('datasets',original.datasetId,{...snapshot,payload:{...(snapshot.payload as Record<string,JsonValue>),cache:{expiresAt:'2000-01-02T00:00:00.000Z'}}});};
+ expire();const hostBefore=calls.length,preparingTransfer=await read();assert.equal(preparingTransfer.error,undefined);assert.equal(preparingTransfer.result.metadata.bindings[0].state,'preparing');await new Promise(resolve=>setTimeout(resolve,20));const readyTransfer=await read();assert.equal(readyTransfer.error,undefined);assert.equal(readyTransfer.result.metadata.bindings[0].state,'ready');assert.equal(readyTransfer.result.body.bindings[0].payload.controlRoute,'notes-test');assert.equal(calls.length,hostBefore+1);assert.equal(calls.at(-1)?.connectionId,'notes-test','host transfer also prepares fixed Q rather than current R');
+ const newer=f.authoring.openDisplay(session,{...target,displayId:'historical-prep-Q-reopen'}),newIdentity={...identity,displayId:newer.display.displayId,displayGeneration:newer.display.generation};assert.throws(()=>f.presentation.getData(session,frame.viewId,identity),{code:'BRIDGE_IDENTITY_STALE'});assert.equal(f.presentation.getData(session,frame.viewId,newIdentity).bindings[0].state,'ready');
+ assert.equal((await read()).error?.code,'BRIDGE_IDENTITY_STALE','retired iframe cannot keep reading its historical transfer');
+ let release!:()=>void,entered!:()=>void;const started=new Promise<void>(resolve=>{entered=resolve;}),held=new Promise<void>(resolve=>{release=resolve;}),invoke=f.runtime.invoke;f.runtime.invoke=async request=>{entered();await held;return invoke(request);};
+ expire();const revision=f.store.get<import('../../packages/app-presentation/src/types.ts').DatasetSnapshot>('datasets',original.datasetId)!.revision;assert.equal(f.presentation.getData(session,frame.viewId,newIdentity).bindings[0].state,'preparing');await started;allowed=false;release();await new Promise(resolve=>setTimeout(resolve,20));assert.equal(f.store.get<import('../../packages/app-presentation/src/types.ts').DatasetSnapshot>('datasets',original.datasetId)!.revision,revision,'revocation during fixed-publication preparation rejects the late snapshot');
+ allowed=false;const denied=f.presentation.getData(session,frame.viewId,newIdentity).bindings[0];assert.equal(denied.state,'failed');assert.equal(denied.payload,null);assert.equal(denied.error?.code,'CONNECTION_NOT_FOUND');
+ const publication=f.store.get<ViewPublication>('view_publications',target.publicationId)!;f.store.put('view_publications',target.publicationId,{...publication,state:'superseded'});assert.throws(()=>f.presentation.getData(session,frame.viewId,newIdentity));
 });

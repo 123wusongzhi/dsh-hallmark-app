@@ -23,3 +23,29 @@ export function displayPrice(product:Product){
   const format=(value:number)=>{try{return product.currency?new Intl.NumberFormat('zh-CN',{style:'currency',currency:product.currency,maximumFractionDigits:2}).format(value):new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2}).format(value);}catch{return `${value} ${product.currency??''}`.trim();}};
   const min=format(product.price);return product.maxPrice!==undefined&&product.maxPrice>product.price?`${min} – ${format(product.maxPrice)}`:min;
 }
+
+// A fresh bag belongs to one Component invocation, including its default timezone.
+export function createDisplayFormatters(){
+  let dateFormatter:Intl.DateTimeFormat|undefined;
+  const priceFormatters=new Map<string|undefined,Intl.NumberFormat|null>();
+  return {
+    displayDate(value?:string){
+      if(!value)return '时间未提供';const date=new Date(value);if(Number.isNaN(date.getTime()))return '时间未提供';
+      return (dateFormatter??=new Intl.DateTimeFormat('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})).format(date);
+    },
+    displayPrice(product:Product){
+      if(product.price===undefined)return '未提供报价';
+      const format=(value:number)=>{try{
+        let formatter=priceFormatters.get(product.currency);
+        if(formatter===undefined){
+          try{formatter=product.currency?new Intl.NumberFormat('zh-CN',{style:'currency',currency:product.currency,maximumFractionDigits:2}):new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2});}catch{formatter=null;}
+          priceFormatters.set(product.currency,formatter);
+        }
+        if(formatter)return formatter.format(value);
+      }catch{}
+      // Cache only constructor failure; every endpoint keeps its own fallback value.
+      return `${value} ${product.currency??''}`.trim();};
+      const min=format(product.price);return product.maxPrice!==undefined&&product.maxPrice>product.price?`${min} – ${format(product.maxPrice)}`:min;
+    }
+  };
+}

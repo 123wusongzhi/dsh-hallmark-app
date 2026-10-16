@@ -37,7 +37,7 @@ export class AppsSnapshotScheduler {
   idle():Promise<void>{return this.worker.idle();}
   status(){return {workerId:this.workerId,processId:process.pid,startedAt:this.startedAt,state:this.worker.online?'running' as const:'stopped' as const,executing:this.worker.running,missedExecutionPolicy:'coalesce_once' as const,plans:this.list().map(plan=>({scheduleId:plan.scheduleId,revision:plan.revision,enabled:plan.enabled,timeZone:plan.timeZone,nextRunAt:plan.nextRunAt,lastRunAt:plan.lastRunAt??null,lastRunId:plan.lastRunId??null,lastWorkerId:plan.lastWorkerId??null,executionState:plan.executionState??'settled',lastResult:plan.lastResult??null}))};}
   get(scheduleId:string):AppsSchedule|undefined{return this.options.store.get<PlanRecord>('provider_records',id(scheduleId))?.value;}
-  list():AppsSchedule[]{return this.options.store.list<PlanRecord>('provider_records').filter(row=>row.appId==='apps'&&row.connectionId==='presentation'&&row.namespace==='apps_schedules').map(row=>row.value).sort((a,b)=>a.scheduleId.localeCompare(b.scheduleId));}
+  list():AppsSchedule[]{return (this.options.store.providerRecordScopeCandidates?.<PlanRecord>('apps','presentation','apps_schedules')??this.options.store.list<PlanRecord>('provider_records')).filter(row=>row.appId==='apps'&&row.connectionId==='presentation'&&row.namespace==='apps_schedules').map(row=>row.value).sort((a,b)=>a.scheduleId.localeCompare(b.scheduleId));}
   private validate(input:AppsScheduleInput):AppsScheduleInput {
     canonicalJson(input);
     if(Object.keys(input).some(name=>!['scheduleId','binding','timeZone','times','enabled','misfirePolicy'].includes(name)))error('INVALID_SCHEDULE');

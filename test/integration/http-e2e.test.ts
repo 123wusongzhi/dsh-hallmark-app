@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { setup, PRICE_REQUEST, priceArgs, LISTING_REQUEST, listingArgs, importItem, SOURCE_TIME } from './harness.ts';
+import { setup, PRICE_REQUEST, priceArgs, LISTING_REQUEST, listingArgs, importItem, SOURCE_TIME, SOURCE_TITLE } from './harness.ts';
+import { realSourceSummaries, realRawContent } from '../real-data/corpus.ts';
 
 const noSourceWrites = (h: Awaited<ReturnType<typeof setup>>) => assert.equal(h.state.platformWrites.length, 0, 'query/presentation/refresh must not emit platform business writes');
 
@@ -45,7 +46,7 @@ test('complete collected raw endpoint preserves every original field and filters
     await h.activate(); const raw = await h.tool('hallmark_get_collected_item', { itemId: 'item-A' });
     assert.deepEqual(raw.data, { id: 'item-A', content: h.state.rawContent, truncated: false });
     assert.deepEqual(JSON.parse(raw.data.content).nested, { futureField: '全字段原样' }); assert.equal(raw.provenance.dataTime, undefined);
-    const found = await h.tool('hallmark_search_collected_items', { query: 'Source A', limit: 100 });
+    const found = await h.tool('hallmark_search_collected_items', { query: SOURCE_TITLE, limit: 100 });
     const matches = Array.isArray(found.data) ? found.data : found.data.items ?? found.data.matches;
     assert.ok(Array.isArray(matches), 'search returns an explicit candidate array');
     assert.deepEqual(matches.map((item: any) => item.id), ['item-A'], 'query must not return all unrelated collected items');
@@ -56,7 +57,7 @@ test('complete collected raw endpoint preserves every original field and filters
 test('collected search pagination honors explicit cursor/limit without dropping source fields', async () => {
   const h = await setup();
   try {
-    await h.activate(); h.state.summaries = Array.from({ length: 250 }, (_, index) => ({ id: `item-${index}`, title: 'Needle collected product', skuCount: 1, futureField: { retained: index } }));
+    await h.activate(); const recorded = realSourceSummaries(); h.state.summaries = Array.from({ length: 250 }, (_, index) => ({ ...recorded[index % recorded.length], id: `item-${index}`, title: `Needle ${recorded[index % recorded.length].title}`, futureField: { retained: index } }));
     const first = await h.tool('hallmark_search_collected_items', { query: 'Needle', limit: 100 });
     assert.equal(first.data.items.length, 100); assert.equal(first.data.total, 250); assert.equal(first.data.cursor, '100'); assert.deepEqual(first.data.items[0], h.state.summaries[0]);
     const second = await h.tool('hallmark_search_collected_items', { query: 'Needle', limit: 100, cursor: first.data.cursor });
@@ -110,7 +111,7 @@ test('ambiguous store, implicit listing scope and read-path writes never dispatc
   const h = await setup();
   try {
     await h.activate(); assert.equal((await h.tool('hallmark_resolve_store', { query: 'Al' })).status, 'needs_clarification');
-    assert.equal((await h.tool('hallmark_list_product', { storeId: 'store-A' }, '上品')).status, 'needs_clarification');
+    const incomplete=await h.request('/tools/hallmark_list_product',{sessionId:'session-main',arguments:{storeId:'store-A'},userRequest:'上品'});assert.equal(incomplete.httpStatus,400);assert.equal(incomplete.body.error.code,'INVALID_INPUT');assert.match(incomplete.body.error.message,/skuScope: required/);
     const invalidRead = await h.tool('hallmark_get_platform_data', { storeId: 'store-A', path: '/v3/product/import', body: { items: [] } }); assert.equal(invalidRead.error.code, 'ENDPOINT_NOT_ALLOWED');
     const wrongMethod = await h.tool('hallmark_get_platform_data', { storeId: 'store-A', path: '/v3/product/info/list', method: 'GET', body: {} }); assert.equal(wrongMethod.error.code, 'ENDPOINT_NOT_ALLOWED');
     h.state.tasks = []; const noTask = await h.tool('hallmark_get_platform_data', { storeId: 'store-A', path: '/v3/product/info/list' }); assert.equal(noTask.error.code, 'TASK_CONTEXT_REQUIRED');
@@ -239,7 +240,7 @@ test('unknown dataset store cannot publish a successful empty snapshot', async (
 test('large raw is delivered by lossless spill reference without echoing the full inline raw', async () => {
   const h = await setup({ spillThresholdBytes: 8192 });
   try {
-    await h.activate(); h.state.rawContent = JSON.stringify({ sourceBigField: 'x'.repeat(128 * 1024), future: { retained: true } });
+    await h.activate(); h.state.rawContent = JSON.stringify({ ...realRawContent(), sourceBigField: 'x'.repeat(128 * 1024), future: { retained: true } });
     const result = await h.tool('hallmark_get_collected_item', { itemId: 'item-A' }); assert.equal(result.status, 'ok');
     assert.ok(result.data.spill?.path, 'large result has a complete file reference');
     assert.ok(!Object.hasOwn(result.data, 'raw'), 'spill must not duplicate 128KiB raw inline');

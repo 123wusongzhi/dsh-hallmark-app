@@ -1,3 +1,4 @@
+import { recordedProduct } from './real-scenarios.ts';
 /** Synthetic Source contracts only. Never invokes a real Hallmark or Seller API server. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HallmarkClient } from '../../packages/hallmark-adapter/index.ts';
 import type { ArchiveProductsRaw, CategoryDataInput, HallmarkClientOptions, SubmitArchiveProductsInput } from '../../packages/hallmark-adapter/index.ts';
+import { realAncillary } from '../real-data/corpus.ts';
 
 const storeId = 'synthetic-shop-a';
 const pair = { descriptionCategoryId: '123', typeId: '456' };
@@ -31,7 +33,8 @@ for (const [input, path, expected, body] of [
   [{ mode: 'validate_value', storeId, ...pair, attributeId: '789', valueId: '11', dictionaryId: '22' }, '/api/catalog/categories/123/types/456/attributes/789/values/11/validation', { storeId, dictionaryId: '22' }],
   [{ mode: 'sync', storeId }, '/api/catalog/sync', {}, { storeId }],
 ] as const) test(`category ${input.mode} uses exact Source route and parameters without Task or operator token`, async () => {
-  const raw = { sourceMode: input.mode, stale: true, complete: false, additive: { preserved: true } };
+  const recorded = realAncillary(input.mode === 'values' || input.mode === 'validate_value' ? 'ozonDictionary' : input.mode === 'template' ? 'ozonCategoryTemplate' : 'ozonCategories');
+  const raw = { ...recorded, storeId, sourceMode: input.mode, stale: true, complete: false, additive: { preserved: true } }; delete raw.fetchedAt; delete raw.treeFetchedAt;
   let tokenReads = 0;
   const { client, requests } = mock((url, init) => {
     assert.equal(url.pathname, path); assert.deepEqual(Object.fromEntries(url.searchParams), expected);
@@ -83,7 +86,7 @@ test('category missing/extra/unsafe/wildcard/unbounded/ill-typed fields fail bef
 });
 
 test('category Source partial/unknown/stale/candidate flags remain raw, never converted to allowed values', async () => {
-  const raw = { ...pair, categoryKey: '123:456', attributeId: '789', dictionaryId: '22', values: [], complete: false, stale: true,
+  const raw = { ...realAncillary('ozonDictionary'), ...pair, categoryKey: '123:456', attributeId: '789', dictionaryId: '22', values: [], complete: false, stale: true,
     fetchedAt: '2026-01-01T00:00:00.000Z', search: { candidates: [{ id: '11', value: '合成未验证候选' }], validation: 'unavailable',
       fallbackReason: { stage: 'validation', code: 'SOURCE_UNAVAILABLE' } }, capabilityStatus: 'partial', aspectMatch: 'unknown', future: true };
   const { client } = mock(() => json(raw), { now: () => new Date('2026-02-01T00:00:00Z') });
@@ -130,7 +133,7 @@ test('archive rejects implicit/oversized/duplicate/extra scope and underscore re
     { ...archive, selected: [] }, { ...archive, storeId }, { ...archive, path: '/v2/products/delete' },
     { ...archive, selected: [archive.selected[0], archive.selected[0]] },
     { ...archive, selected: [{ storeId: '../shop', offerId: 'offer' }] }, { ...archive, selected: [{ storeId, offerId: ' ' }] },
-    { ...archive, selected: [{ storeId, offerId: ' offer ' }] }, { ...archive, selected: [{ storeId, offerId: 'offer', productId: 1 }] },
+    { ...archive, selected: [{ storeId, offerId: ' offer ' }] }, { ...archive, selected: [recordedProduct({ storeId, offerId: 'offer', productId: 1 })] },
     { ...archive, selected: Array.from({ length: 201 }, (_, i) => ({ storeId, offerId: `synthetic-${i}` })) },
     { ...archive, selected: Array.from({ length: 200 }, (_, i) => ({ storeId, offerId: `${i}${'汉'.repeat(3990)}` })) },
   ];

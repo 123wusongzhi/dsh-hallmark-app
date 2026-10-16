@@ -1,0 +1,267 @@
+import React,{useEffect,useMemo,useRef,useState} from 'react';
+import type {JsonValue} from '../../app-contracts/src/index.ts';
+import type {DataSourceDefinition,DataSourceDraft,Workbench,WorkbenchInstance,WorkbenchInstanceData} from '../../app-presentation/src/types.ts';
+import {dataSourceCompatibility} from '../../app-presentation/src/field-roles.ts';
+import {FIELD_ROLE_MAP} from '../../app-presentation/src/field-roles.ts';
+import {MATERIAL_CATALOG,createMaterialView,getMaterial,materialExampleData,type MaterialDefinition} from '../../app-presentation/src/materials/catalog.ts';
+import type {ViewSpec} from '../../presentation/src/types.ts';
+import {ViewRenderer,RenderBoundary} from '../../dsh-plugin/client/renderer.tsx';
+import {STYLES} from '../../dsh-plugin/client/styles.ts';
+import {appsResource,appsWorkbench,type WorkbenchStoreOption,type WorkbenchStores} from './api.ts';
+import {DataSourcePicker,dataSourceRequest} from './data-source-picker.tsx';
+import {ModuleConfig,QueryParameters,widgetMaterialId,configuredColumns,withDisplayColumns,fieldKey} from './module-config.tsx';
+import {WorkbenchInstanceView,WorkbenchStoreSelector,workbenchRefs} from './workbench-board.tsx';
+import {AppsIcon} from './ui.tsx';
+import {MaterialThumbnail,SourceIcon} from './material-thumbnail.tsx';
+import {InformationPicker} from './information-picker.tsx';
+import {DEFAULT_PRODUCT_FIELDS,createOzonCompositionDraft,type OzonCompositionRecipe} from '../../app-hallmark/src/ozon-composition.ts';
+import {valueAt} from '../../dsh-plugin/client/model.ts';
+import {materialDisplay} from '../../dsh-plugin/client/widgets/material-format.ts';
+import {PROCUREMENT_CAPABILITY,procurementParametersForStore} from './procurement-plan.tsx';
+
+const draftDefinition=(draft:DataSourceDraft):DataSourceDefinition=>({...draft,kind:'data_source',revision:1,validation:{status:'unverified',checkedAt:'',sampleCount:0,issues:[]}});
+const jsonDesign=(spec:ViewSpec)=>spec as unknown as JsonValue;
+const newInstance=(materialId:string):WorkbenchInstance=>({instanceId:globalThis.crypto?.randomUUID?.()??`instance-${Date.now()}-${Math.random().toString(36).slice(2)}`,title:getMaterial(materialId)?.title??'组件',materialId,materialVersion:getMaterial(materialId)?.version??1,design:jsonDesign(createMaterialView(materialId)),dataSources:{},position:{order:0,span:12}});
+
+export interface MaterialClosePrompt {message?:string;continueEditing:()=>void;discard:()=>void}
+const canonicalMaterialValue=(value:unknown):unknown=>Array.isArray(value)?value.map(canonicalMaterialValue):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).filter(([,item])=>item!==undefined).sort(([a],[b])=>a.localeCompare(b)).map(([key,item])=>[key,canonicalMaterialValue(item)])):value;
+const materialValueKey=(value:unknown)=>JSON.stringify(canonicalMaterialValue(value));
+/** Apply automatic/default or server changes only where the user has not made a competing edit. */
+function mergeUneditedMaterial<T>(current:T,before:T,after:T):T {
+  if(materialValueKey(current)===materialValueKey(before))return after;
+  if(materialValueKey(before)===materialValueKey(after))return current;
+  const object=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
+  if(!object(current)||!object(before)||!object(after))return current;
+  if(typeof before.id==='string'&&current.id!==before.id)return current;
+  return Object.fromEntries([...new Set([...Object.keys(current),...Object.keys(before),...Object.keys(after)])].map(key=>[key,mergeUneditedMaterial(current[key],before[key],after[key])]).filter(([,value])=>value!==undefined)) as T;
+}
+
+/** Compare saved meaning, not generated IDs or explicit copies of display defaults. */
+export function materialConfigurationKey(instance:WorkbenchInstance,sources:DataSourceDefinition[]=[]):string {
+  const spec=instance.design as unknown as ViewSpec,refs=workbenchRefs(instance);
+  const design={...spec,widgets:spec.widgets.map(widget=>{
+    const ref=refs[widget.bindingId??'main'],source=ref?.draft?draftDefinition(ref.draft):sources.find(source=>source.id===ref?.id&&source.revision===ref?.revision);
+    return withDisplayColumns({...widget,options:{...widget.options,density:widget.options?.density??'comfortable',pageSize:widget.options?.pageSize??10}},configuredColumns(widget),source);
+  })};
+  // Match resolveDataSourceInput: explicit params equal to input/default values add no saved meaning.
+  const normalizedRefs=Object.fromEntries(Object.entries(refs).map(([bindingId,ref])=>{
+    const source=ref.draft?draftDefinition(ref.draft):sources.find(source=>source.id===ref.id&&source.revision===ref.revision),params={...ref.params};
+    if(source){const defaults={...source.input};for(const parameter of source.parameters)if(defaults[parameter.name]===undefined&&parameter.default!==undefined)defaults[parameter.name]=parameter.default;for(const [name,value] of Object.entries(params))if(materialValueKey(value)===materialValueKey(defaults[name]))delete params[name];}
+    return [bindingId,{...ref,params}];
+  }));
+  return materialValueKey({title:instance.title.trim()||getMaterial(instance.materialId)?.title||'组件',materialId:instance.materialId,materialVersion:instance.materialVersion,design,dataSources:normalizedRefs,span:instance.position.span});
+}
+
+/** Relative dates belong to this instance; a shared source never fixes a shop or period. */
+export function initialSourceParameters(source:DataSourceDefinition,now=new Date()):Record<string,JsonValue>{
+  const end=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate())-86400000),start=new Date(end.getTime()-6*86400000);
+  return {...(source.capabilityId===PROCUREMENT_CAPABILITY?{planMode:'delivery'}:{}),...Object.fromEntries(source.parameters.filter(parameter=>parameter.required&&['dateFrom','dateTo'].includes(parameter.name)).map(parameter=>[parameter.name,(parameter.name==='dateFrom'?start:end).toISOString().slice(0,10)]))};
+}
+
+export function materialBindingRequirements(spec:ViewSpec){
+  return spec.bindings.map(binding=>{
+    const widgets=spec.widgets.filter(widget=>widget.bindingId===binding.id),materials=widgets.map(widget=>getMaterial(widgetMaterialId(widget)));
+    return {bindingId:binding.id,label:widgets.map(widget=>widget.title??'组件').join(' / '),requiredRoles:[...new Set(materials.flatMap(material=>material?.requiredRoles??[]))],linked:!!spec.links?.some(link=>link.to.bindingId===binding.id)};
+  });
+}
+
+export function MaterialLibrary({appId,sessionId,initial,active=true,currentWorkbench,onContextChange,onComplete,onReturn,onPrepareDataSource,onOpenSaved,closeRequest=0,onClose,onSavingChange,onClosePromptChange}:{appId:string;sessionId?:string;initial?:WorkbenchInstance;active?:boolean;currentWorkbench?:Workbench;onContextChange?:(workbench:Workbench)=>void;onComplete:(instance:WorkbenchInstance,workbench:Workbench)=>void;onReturn?:(sessionId:string)=>void;onPrepareDataSource?:(sessionId:string,text:string)=>void|Promise<void>;onOpenSaved?:()=>void;closeRequest?:number;onClose?:()=>void;onSavingChange?:(saving:boolean)=>void;onClosePromptChange?:(prompt:MaterialClosePrompt|undefined)=>void}){
+  const [catalog,setCatalog]=useState<MaterialDefinition[]>(MATERIAL_CATALOG),[sources,setSources]=useState<DataSourceDefinition[]>([]),[workbench,setWorkbench]=useState<Workbench>(),[draft,setDraft]=useState<WorkbenchInstance>(()=>initial?structuredClone(initial):newInstance(appId==='hallmark'?'product-operations':'product-browser'));
+  const baseline=useRef(draft),savePending=useRef(false),lastCloseRequest=useRef(closeRequest);
+  // The request is a local draft, separate from whether its editor is expanded.
+  const requestScope=JSON.stringify([appId,sessionId,initial?.instanceId??'new']);
+  const [requestDraft,setRequestDraft]=useState<{scope:string;text:string;template:string;open:boolean;preparedText?:string}>();
+  const currentRequest=requestDraft?.scope===requestScope?requestDraft:undefined;
+  const agentRequest=currentRequest?.text??'',requestDirty=!!agentRequest.trim()&&agentRequest!==currentRequest?.template&&agentRequest!==currentRequest?.preparedText;
+  const requestOwner=useRef(requestScope),requestEpoch=useRef(0),requestPending=useRef(false);
+  if(requestOwner.current!==requestScope){requestOwner.current=requestScope;requestEpoch.current++;requestPending.current=false;}
+  useEffect(()=>()=>{requestEpoch.current++;requestPending.current=false;},[]);
+
+  const [closeConfirmation,setCloseConfirmation]=useState<{key:string;epoch:number}>();
+  const closeEpoch=useRef(0),closeState=useRef({key:'',active,sessionId});
+  const baselineDraft=baseline.current;
+  const configurationOnlyKey=useMemo(()=>materialConfigurationKey(draft,sources),[draft,sources]);
+  const configurationKey=materialValueKey([configurationOnlyKey,requestDirty?agentRequest:null,requestScope]);
+  const baselineKey=useMemo(()=>materialConfigurationKey(baselineDraft,sources),[baselineDraft,sources]),configurationDirty=configurationOnlyKey!==baselineKey,dirty=configurationDirty||requestDirty;
+  if(closeState.current.key!==configurationKey||closeState.current.active!==active||closeState.current.sessionId!==sessionId){closeEpoch.current++;closeState.current={key:configurationKey,active,sessionId};}
+  const closeCallbacks=useRef({onClose,onClosePromptChange});closeCallbacks.current={onClose,onClosePromptChange};
+  useEffect(()=>()=>{closeEpoch.current++;closeCallbacks.current.onClosePromptChange?.(undefined);},[]);
+  const setAutomaticDraft=(update:(current:WorkbenchInstance)=>WorkbenchInstance)=>setDraft(current=>{
+    const next=update(current);baseline.current=mergeUneditedMaterial(baseline.current,current,next);return next;
+  });
+  useEffect(()=>{
+    if(lastCloseRequest.current===closeRequest)return;lastCloseRequest.current=closeRequest;
+    if(savePending.current)return;
+    if(dirty)setCloseConfirmation({key:configurationKey,epoch:closeEpoch.current});else onClose?.();
+  },[closeRequest]);
+  useEffect(()=>{setCloseConfirmation(undefined);},[configurationKey,active,sessionId]);
+  const [query,setQuery]=useState(''),[category,setCategory]=useState('all'),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[initializing,setInitializing]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[reload,setReload]=useState(0),[previewReady,setPreviewReady]=useState(false),[agentBusy,setAgentBusy]=useState(false);
+  useEffect(()=>{
+    const valid=closeConfirmation&&dirty&&closeConfirmation.key===configurationKey&&closeConfirmation.epoch===closeEpoch.current&&!saving;
+    closeCallbacks.current.onClosePromptChange?.(valid?{
+      message:configurationDirty&&requestDirty?'有未保存的组件配置和未放入聊天的需求修改。关闭将放弃这些修改。':requestDirty?'有未放入聊天的需求修改。关闭将放弃这些修改。':'有未保存的组件配置。关闭将放弃这些修改。',
+      continueEditing:()=>{if(closeConfirmation.epoch!==closeEpoch.current)return;closeEpoch.current++;setCloseConfirmation(undefined);},
+      discard:()=>{if(savePending.current||closeConfirmation.epoch!==closeEpoch.current||closeConfirmation.key!==closeState.current.key)return;closeEpoch.current++;setCloseConfirmation(undefined);closeCallbacks.current.onClose?.();},
+    }:undefined);
+  },[closeConfirmation,dirty,configurationKey,saving,active,sessionId]);
+  const [screen,setScreen]=useState<'library'|'display'|'information'>('library'),[selectedWidgetId,setSelectedWidgetId]=useState<string>(),[snapshot,setSnapshot]=useState<WorkbenchInstanceData>();
+  const [exampleSelected,setExampleSelected]=useState<Record<string,string>>({});
+  const [informationDraft,setInformationDraft]=useState<{identity:string;fields:string[]}>();
+  const [stores,setStores]=useState<WorkbenchStoreOption[]>([]),[storesError,setStoresError]=useState(''),[switchingStore,setSwitchingStore]=useState(false);
+  const owner=useRef(appId),inFlight=useRef(false),loadedCatalog=useRef(''),loadedStores=useRef('');owner.current=appId;
+  useEffect(()=>{if(currentWorkbench?.appId===appId)setWorkbench(currentWorkbench);},[appId,currentWorkbench]);
+  useEffect(()=>{const key=JSON.stringify([appId,reload]);if(!active||appId!=='hallmark'||loadedStores.current===key)return;const controller=new AbortController();setStoresError('');appsResource<WorkbenchStores>('stores',{appId},controller.signal).then(value=>{if(!controller.signal.aborted){loadedStores.current=key;setStores(value.stores);}}).catch(cause=>{if(!controller.signal.aborted)setStoresError(cause instanceof Error?cause.message:String(cause));});return()=>controller.abort();},[appId,reload,active]);
+  useEffect(()=>{const next=initial?structuredClone(initial):newInstance(appId==='hallmark'?'product-operations':'product-browser');baseline.current=next;setDraft(next);setCloseConfirmation(undefined);setPreviewReady(false);setError('');},[appId,initial?.instanceId]);
+  useEffect(()=>{const key=JSON.stringify([appId,initial?.instanceId,reload]);if(!active||loadedCatalog.current===key)return;const controller=new AbortController();setLoading(true);setError('');Promise.all([appsResource<Workbench>('workbench',{appId},controller.signal),appsResource<{dataSources:DataSourceDefinition[]}|DataSourceDefinition[]>('dataSources',{appId},controller.signal),appsResource<{materials:MaterialDefinition[]}|MaterialDefinition[]>('materials',{appId},controller.signal),initial?appsWorkbench<WorkbenchInstanceData>(appId,'read',{instanceId:initial.instanceId,refresh:false},controller.signal).catch(cause=>{if(!controller.signal.aborted)setNotice('当前配置暂时无法读取数据，仍可调整数据源与查询范围。'+(cause instanceof Error?cause.message:String(cause)));return undefined;}):Promise.resolve(undefined)]).then(([board,data,materials,pinned])=>{if(controller.signal.aborted)return;loadedCatalog.current=key;setWorkbench(current=>current?.appId===appId&&current.revision>board.revision?current:board);const definitions=new Map((Array.isArray(data)?data:data.dataSources).map(source=>[source.id,source]));for(const source of Object.values(pinned?.dataSources??{}))definitions.set(source.id,source);setSources([...definitions.values()]);if(!initial&&definitions.size&&![...definitions.values()].some(source=>source.capabilityId.startsWith('hallmark.ozon.')))setAutomaticDraft(value=>value.materialId==='product-operations'?newInstance('product-browser'):value);setCatalog(Array.isArray(materials)?materials:materials.materials);}).catch(cause=>{if(!controller.signal.aborted)setError(cause instanceof Error?cause.message:String(cause));}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});return()=>controller.abort();},[appId,initial?.instanceId,reload,active]);
+  const spec=draft.design as unknown as ViewSpec,material=getMaterial(draft.materialId),requirements=materialBindingRequirements(spec),refs=workbenchRefs(draft);
+  const resolved=Object.fromEntries(requirements.map(requirement=>[requirement.bindingId,refs[requirement.bindingId]?.draft?draftDefinition(refs[requirement.bindingId].draft!):sources.find(source=>source.id===refs[requirement.bindingId]?.id&&source.revision===refs[requirement.bindingId]?.revision)]));
+  const paramsValid=requirements.every(requirement=>{const source=resolved[requirement.bindingId],params=refs[requirement.bindingId]?.params??{};return !!source&&(!source.storeScoped||!!workbench?.context?.storeId)&&source.parameters.every(parameter=>{const value=parameter.name==='storeId'?workbench?.context?.storeId:params[parameter.name]??parameter.default??source.input[parameter.name];return !parameter.required||requirement.linked&&parameter.linked||value!==undefined&&value!==null&&value!=='';});});
+  const compatible=requirements.length>0&&requirements.every(requirement=>{const source=resolved[requirement.bindingId];return !!source&&dataSourceCompatibility(source,requirement.requiredRoles).compatible;});
+  const canPreview=compatible&&paramsValid&&!!sessionId&&!switchingStore;
+  const boundCount=requirements.filter(requirement=>!!resolved[requirement.bindingId]).length;
+  const previewIdentity=JSON.stringify([appId,workbench?.context?.storeId,draft.instanceId,refs,spec.bindings.map(binding=>binding.id),spec.links]);
+  useEffect(()=>setPreviewReady(false),[previewIdentity,canPreview]);
+  const previousStore=useRef<string>();
+  useEffect(()=>{const storeId=workbench?.context?.storeId;if(previousStore.current&&previousStore.current!==storeId){setAutomaticDraft(value=>({...value,dataSources:Object.fromEntries(Object.entries(workbenchRefs(value)).map(([bindingId,ref])=>{const source=sources.find(item=>item.id===ref.id),privateParams=new Set(['storeId','productId','sku','skuId','warehouseId','actionId',source?.operations.pagination?.cursorParam,...(source?.parameters.filter(parameter=>parameter.linked).map(parameter=>parameter.name)??[])]);return [bindingId,{...ref,params:Object.fromEntries(Object.entries(source?.capabilityId===PROCUREMENT_CAPABILITY||(value.design as unknown as ViewSpec).widgets.some(widget=>widget.bindingId===bindingId&&widgetMaterialId(widget)==='product-procurement')?procurementParametersForStore(ref.params??{}):ref.params??{}).filter(([name])=>!privateParams.has(name)))}];}))}));setExampleSelected({});}previousStore.current=storeId;},[workbench?.context?.storeId]);
+  const visible=catalog.filter(item=>(category==='all'||category==='product'&&['product-procurement','product-operations','product-list','product-browser','sku-detail'].includes(item.id)||category==='business'&&['data-table','activity-list'].includes(item.id)||category==='collected'&&item.id==='collection-box')&&`${item.title} ${item.description}`.normalize('NFKC').toLocaleLowerCase().includes(query.normalize('NFKC').toLocaleLowerCase()));
+  const updateSpec=(next:ViewSpec)=>setDraft(value=>({...value,design:jsonDesign(next),dataSources:Object.fromEntries(next.bindings.map(binding=>[binding.id,workbenchRefs(value)[binding.id]]).filter((entry):entry is [string,NonNullable<WorkbenchInstance['dataSource']>]=>!!entry[1]))}));
+  const setSource=(bindingId:string,id:string)=>{
+    const source=sources.find(source=>source.id===id),next={...refs};
+    if(source)next[bindingId]={id:source.id,revision:source.revision,params:initialSourceParameters(source)};else delete next[bindingId];
+    const linkedParameter=source?.parameters.find(parameter=>parameter.linked);
+    setDraft(value=>({...value,dataSources:next,design:jsonDesign({...spec,widgets:spec.widgets.map(widget=>widget.bindingId===bindingId&&widgetMaterialId(widget)==='data-table'&&source?{...widget,options:{...widget.options,displayColumns:undefined},columns:source.fields.filter(field=>FIELD_ROLE_MAP[field.role]?.format!=='image').slice(0,8).map(field=>({field:fieldKey(field),label:field.label??FIELD_ROLE_MAP[field.role]?.label??field.role}))}:widget),links:spec.links?.map(link=>link.to.bindingId===bindingId&&linkedParameter?{...link,to:{...link.to,param:linkedParameter.name}}:link)})}));
+  };
+  const initialize=async()=>{if(!sessionId||initializing)return;setInitializing(true);setError('');try{const result=await appsWorkbench<{dataSources:DataSourceDefinition[];issues:{id:string;message:string}[];stores?:WorkbenchStoreOption[]}>(appId,'initialize',workbench?.context?{storeId:workbench.context.storeId}:{},undefined,sessionId);if(owner.current===appId){if(result.stores)setStores(result.stores);setReload(value=>value+1);setNotice(result.issues?.length?`已载入 ${result.dataSources.length} 个数据源。${result.issues.map(issue=>issue.message).join('；')}`:'平台数据目录已更新，选择数据源即可读取当前店铺。');}}catch(cause){setError(cause instanceof Error?cause.message:String(cause));}finally{setInitializing(false);}};
+  const selectStore=async(storeId:string)=>{if(!workbench||inFlight.current||storeId===workbench.context?.storeId)return;const target=appId;inFlight.current=true;setSwitchingStore(true);setPreviewReady(false);setError('');try{const next=await appsWorkbench<Workbench>(appId,'save',{expectedRevision:workbench.revision,instances:workbench.instances,context:{storeId}});if(owner.current===target){setWorkbench(next);onContextChange?.(next);}}catch(cause){if(owner.current===target)setError(cause instanceof Error?cause.message:String(cause));}finally{inFlight.current=false;if(owner.current===target)setSwitchingStore(false);}};
+  const save=async()=>{if(!workbench||!previewReady||!canPreview||inFlight.current)return;inFlight.current=true;savePending.current=true;closeEpoch.current++;setCloseConfirmation(undefined);setSaving(true);onSavingChange?.(true);setError('');const target=appId;
+    try{const original=workbench.instances.find(instance=>instance.instanceId===draft.instanceId),instance={...draft,title:draft.title.trim()||material?.title||'组件',position:{...draft.position,order:original?.position.order??workbench.instances.length}},instances=original?workbench.instances.map(item=>item.instanceId===instance.instanceId?instance:item):[...workbench.instances,instance];
+      const next=await appsWorkbench<Workbench>(appId,'save',{expectedRevision:workbench.revision,instances,...(workbench.context?{context:workbench.context}:{})},undefined,sessionId);if(owner.current===target){setWorkbench(next);const saved=next.instances.find(item=>item.instanceId===instance.instanceId)??instance;setDraft(current=>{if(current.instanceId!==draft.instanceId)return current;baseline.current=saved;const merged=mergeUneditedMaterial(current,draft,saved);return initial?merged:{...merged,instanceId:newInstance(merged.materialId).instanceId};});onComplete(saved,next);setReload(value=>value+1);}
+    }catch(cause){if(owner.current===target)setError(cause instanceof Error?cause.message:String(cause));}finally{inFlight.current=false;savePending.current=false;if(owner.current===target){setSaving(false);onSavingChange?.(false);}}
+  };
+  const openAgentRequest=(text:string)=>{
+    if(currentRequest){setRequestDraft({...currentRequest,open:true});setNotice('已保留原需求草稿，可继续修改后放入聊天。');return;}
+    setRequestDraft({scope:requestScope,text,template:text,open:true});setNotice('');
+  };
+  const requestAgent=async()=>{
+    if(!sessionId||!agentRequest.trim()||requestPending.current||!currentRequest)return;
+    const epoch=++requestEpoch.current,scope=requestScope,text=agentRequest;
+    const connections=[...new Set(Object.values(resolved).filter((source):source is DataSourceDefinition=>!!source).map(source=>source.connectionId))];
+    const current=()=>requestOwner.current===scope&&requestEpoch.current===epoch;
+    requestPending.current=true;setAgentBusy(true);setNotice('');
+    try{
+      if(onPrepareDataSource){
+        await appsWorkbench(appId,'prepare',{connectionIds:connections},undefined,sessionId);
+        if(!current())return;
+        await onPrepareDataSource(sessionId,text);
+        if(!current())return;
+        setRequestDraft(value=>value?.scope===scope?{...value,preparedText:text}:value);
+        setNotice('需求已放入原聊天输入框，尚未发送；请检查后手动发送。');
+      }else{
+        await navigator.clipboard.writeText(text);
+        if(current())setNotice('需求已复制，尚未准备聊天连接。返回原聊天粘贴，启用所需应用后手动发送。');
+      }
+    }catch(cause){if(current())setNotice(`暂未写入聊天。可从下方复制需求：${cause instanceof Error?cause.message:String(cause)}`);}
+    finally{if(current()){requestPending.current=false;setAgentBusy(false);}}
+  };
+  useEffect(()=>{setAgentBusy(false);setRequestDraft(value=>value?.scope===requestScope?value:undefined);setNotice('');},[requestScope]);
+
+  const compositionConnection=sources.find(source=>source.capabilityId.startsWith('hallmark.ozon.')&&(!workbench?.context?.storeId||source.connectionId===stores.find(store=>store.id===workbench.context?.storeId)?.connectionId))?.connectionId??sources.find(source=>source.capabilityId.startsWith('hallmark.ozon.'))?.connectionId;
+  const applyRecipe=(bindingId:string,recipe:OzonCompositionRecipe,automatic=false)=>{
+    const previous=refs[bindingId],connection=resolved[bindingId]?.connectionId??compositionConnection;if(!connection)return;
+    const definition=createOzonCompositionDraft(connection,recipe),source=draftDefinition(definition),revision=previous?.id===definition.id?previous.revision:sources.find(source=>source.id===definition.id)?.revision??1;
+    (automatic?setAutomaticDraft:setDraft)(value=>{const current=value.design as unknown as ViewSpec;return {...value,dataSources:{...workbenchRefs(value),[bindingId]:{id:definition.id,revision,params:{...initialSourceParameters(source),...previous?.params},draft:definition}},design:jsonDesign({...current,widgets:current.widgets.map(widget=>{
+      if(widget.bindingId!==bindingId)return widget;
+      const before=configuredColumns(widget),columns=[...before.filter(column=>recipe.fields.includes(column.field)),...recipe.fields.filter(key=>!before.some(column=>column.field===key)).map(key=>({field:key,label:definition.fields.find(field=>fieldKey(field)===key)?.label,visible:true}))];
+      return withDisplayColumns(widget,columns,source);
+    })})};});
+  };
+  useEffect(()=>{if(!initial&&draft.materialId==='product-operations'&&!refs.main&&compositionConnection)applyRecipe('main',{version:1,grain:'product',fields:[...DEFAULT_PRODUCT_FIELDS]},true);},[draft.instanceId,draft.materialId,compositionConnection,refs.main?.id]);
+  const procurementInitialization=useRef(new Set<string>()),procurementBinding=spec.widgets.find(widget=>widgetMaterialId(widget)==='product-procurement')?.bindingId;
+  const procurementConnection=stores.find(store=>store.id===workbench?.context?.storeId)?.connectionId;
+  useEffect(()=>{
+    if(!active||!procurementBinding||!procurementConnection||loading)return;
+    const source=sources.find(item=>item.connectionId===procurementConnection&&item.capabilityId===PROCUREMENT_CAPABILITY),previous=refs[procurementBinding];
+    if(source){if(previous?.id!==source.id)setAutomaticDraft(value=>({...value,dataSources:{...workbenchRefs(value),[procurementBinding]:{id:source.id,revision:source.revision,params:{...initialSourceParameters(source),...workbenchRefs(value)[procurementBinding]?.params}}}}));return;}
+    const key=JSON.stringify([appId,draft.instanceId,procurementConnection,reload]);if(!sessionId||initializing||procurementInitialization.current.has(key))return;
+    procurementInitialization.current.add(key);let completed=false;const controller=new AbortController();setInitializing(true);setError('');
+    void appsWorkbench<{dataSources:DataSourceDefinition[];issues:{id:string;message:string}[]}>(appId,'initialize',workbench?.context?{storeId:workbench.context.storeId}:{},controller.signal,sessionId).then(result=>{
+      if(controller.signal.aborted)return;completed=true;setSources(current=>[...new Map([...current,...result.dataSources].map(item=>[item.id,item])).values()]);
+      if(!result.dataSources.some(item=>item.connectionId===procurementConnection&&item.capabilityId===PROCUREMENT_CAPABILITY))setNotice('采购对照数据源暂未就绪，可更新平台数据源后重试。');
+    }).catch(cause=>{if(!controller.signal.aborted){completed=true;setError(cause instanceof Error?cause.message:String(cause));}}).finally(()=>{if(!controller.signal.aborted)setInitializing(false);});
+    return()=>{controller.abort();if(!completed)procurementInitialization.current.delete(key);setInitializing(false);};
+  },[appId,active,draft.instanceId,procurementBinding,procurementConnection,loading,sessionId,sources,refs[procurementBinding??'']?.id,reload]);
+  const selectedWidget=spec.widgets.find(widget=>widget.id===selectedWidgetId)??spec.widgets[0],selectedSource=selectedWidget?resolved[selectedWidget.bindingId??'main']:undefined;
+  const recipe=selectedSource?.capabilityId==='hallmark.ozon.compose'?selectedSource.input.recipe as unknown as OzonCompositionRecipe:undefined;
+  const selectedFields=selectedWidget?configuredColumns(selectedWidget).map(column=>column.field):[];
+  // Field choices are one edit. Keep the applied table usable until explicitly applied.
+  const informationIdentity=JSON.stringify([appId,sessionId,workbench?.context?.storeId,draft.instanceId,selectedWidget?.id,selectedSource?.id,selectedSource?.revision,selectedFields]);
+  useEffect(()=>setInformationDraft(undefined),[informationIdentity]);
+  const informationFields=informationDraft?.identity===informationIdentity?informationDraft.fields:selectedFields;
+  const addedInformation=informationFields.filter(key=>!selectedFields.includes(key)).length,removedInformation=selectedFields.filter(key=>!informationFields.includes(key)).length;
+  const leaveInformation=(next:'library'|'display')=>{setInformationDraft(undefined);setScreen(next);};
+  const toggleInformation=(key:string)=>{
+    if(!selectedWidget||!recipe&&!selectedSource?.fields.some(field=>fieldKey(field)===key))return;
+    setInformationDraft(previous=>{
+      const fields=previous?.identity===informationIdentity?previous.fields:selectedFields,exists=fields.includes(key);
+      if(exists&&fields.length===1||!exists&&fields.length>=30)return previous;
+      return {identity:informationIdentity,fields:exists?fields.filter(field=>field!==key):[...fields,key]};
+    });
+  };
+  const applyInformation=()=>{
+    if(selectedWidget&&(addedInformation||removedInformation)){
+      if(recipe)applyRecipe(selectedWidget.bindingId??'main',{...recipe,fields:informationFields});
+      else {
+        const before=configuredColumns(selectedWidget),columns=[...before.filter(column=>informationFields.includes(column.field)),...informationFields.filter(key=>!before.some(column=>column.field===key)).map(key=>({field:key,label:selectedSource?.fields.find(field=>fieldKey(field)===key)?.label,visible:true}))];
+        updateSpec({...spec,widgets:spec.widgets.map(widget=>widget.id===selectedWidget.id?withDisplayColumns(widget,columns,selectedSource):widget)});
+      }
+    }
+    leaveInformation('display');
+  };
+  const [rangeChoices,setRangeChoices]=useState<Record<string,{label:string;value:string}[]>>({}),[rangeIssue,setRangeIssue]=useState(''),[rangeLoading,setRangeLoading]=useState(false),[rangeReload,setRangeReload]=useState(0);
+  const rangeCache=useRef(new Map<string,{label:string;value:string}[]>());
+  useEffect(()=>{rangeCache.current.clear();},[reload]);
+  const conditionKinds=[...new Set(Object.values(resolved).flatMap(source=>source?.capabilityId.startsWith('hallmark.ozon.')?source.parameters.flatMap(parameter=>parameter.name==='warehouseId'?['warehouses']:parameter.name==='actionId'?['promotions']:[]):[]))];
+  useEffect(()=>{
+    const controller=new AbortController();setRangeChoices({});setRangeIssue('');setRangeLoading(false);if(!active||!sessionId||!workbench?.context?.storeId||!conditionKinds.length)return()=>controller.abort();
+    setRangeLoading(true);
+    void Promise.all(conditionKinds.map(async kind=>{
+      const source=sources.find(source=>source.capabilityId===`hallmark.ozon.${kind}`&&source.connectionId===compositionConnection);if(!source)return;
+      const cacheKey=JSON.stringify([appId,source.connectionId,workbench.context?.storeId,kind,source.revision]),cached=rangeCache.current.get(cacheKey);
+      if(cached){if(!controller.signal.aborted)setRangeChoices(current=>({...current,[kind==='warehouses'?'warehouseId':'actionId']:cached}));return;}
+      const instance=newInstance('data-table');instance.dataSources={main:{id:source.id,revision:source.revision,params:{}}};
+      const idRole=kind==='warehouses'?'ozon.warehouseId':'ozon.actionId',nameRole=kind==='warehouses'?'ozon.warehouseName':'ozon.actionName',idPath=source.fields.find(field=>field.role===idRole)?.path,namePath=source.fields.find(field=>field.role===nameRole)?.path,byId=new Map<string,{label:string;value:string}>();
+      let cursor:string|null=null;
+      for(let page=0;page<50;page++){
+        const result:WorkbenchInstanceData=await appsWorkbench<WorkbenchInstanceData>(appId,'preview',{instance,context:workbench.context,scope:`conditions:${draft.instanceId}:${kind}`,...(cursor?{cursor}:{})},controller.signal,sessionId);
+        const binding=result.data.bindings.find(item=>item.bindingId==='main');if(binding?.state==='failed'||binding?.state==='unavailable')throw Error(binding.error?.message??'读取失败');
+        const rows=valueAt(binding?.payload,source.rowsPath);
+        if(Array.isArray(rows)&&idPath)for(const row of rows){const id=valueAt(row,idPath),label=namePath?valueAt(row,namePath):undefined;if(id!==null&&id!==undefined)byId.set(String(id),{value:String(id),label:typeof label==='string'&&label?label:String(id)});}
+        const next=result.pages?.main;if(!next?.hasMore){cursor=null;break;}if(!next.nextCursor||next.nextCursor===cursor)throw Error('查看范围分页暂不可用');cursor=next.nextCursor;
+      }
+      if(cursor)throw Error('查看范围数量较多，暂未读取完整');
+      const choices=[...byId.values()];if(!controller.signal.aborted)rangeCache.current.set(cacheKey,choices);
+      if(!controller.signal.aborted)setRangeChoices(current=>({...current,[kind==='warehouses'?'warehouseId':'actionId']:choices}));
+    })).catch(cause=>{if(!controller.signal.aborted)setRangeIssue(`查看范围暂未更新：${cause instanceof Error?cause.message:String(cause)}`);}).finally(()=>{if(!controller.signal.aborted)setRangeLoading(false);});
+    return()=>controller.abort();
+  },[appId,active,sessionId,workbench?.context?.storeId,compositionConnection,conditionKinds.join(','),reload,rangeReload]);
+  const sourceWithChoices=(source:DataSourceDefinition)=>({...source,parameters:source.parameters.map(parameter=>source.capabilityId.startsWith('hallmark.ozon.')&&['warehouseId','actionId'].includes(parameter.name)?{...parameter,choices:rangeChoices[parameter.name]??[],label:parameter.name==='warehouseId'?'仓库':parameter.name==='actionId'?'活动':parameter.label}:parameter)});
+  const originTags=[...new Map(Object.values(resolved).flatMap(source=>source?source.fields.some(field=>field.origin)?source.fields.filter(field=>field.origin).map(field=>[field.origin!.source,{source:field.origin!.source,label:field.origin!.label}] as const):[[source.id,{source:source.capabilityId.split('.').at(-1)??'',label:source.title}] as const]:[])).values()];
+  const samples:Record<string,string>={};
+  if(snapshot&&selectedWidget){const binding=snapshot.data.bindings.find(binding=>binding.bindingId===selectedWidget.bindingId),source=snapshot.dataSources[selectedWidget.bindingId??'main'],rows=source?valueAt(binding?.payload,source.rowsPath):undefined,derived=(snapshot.view.design as unknown as ViewSpec).widgets.find(widget=>widget.id===selectedWidget.id);if(Array.isArray(rows)&&rows.length&&derived)for(const field of source?.fields??[])samples[fieldKey(field)]=FIELD_ROLE_MAP[field.role]?.format==='image'?'商品图片':materialDisplay(rows[0],fieldKey(field),derived);}
+  const example=useMemo(()=>({...spec,widgets:spec.widgets.map(widget=>({...widget,options:{...widget.options,example:true}}))}),[draft.design]);
+  const preview=<div className="apps-material-preview" aria-label="组件预览"><style>{STYLES}</style>{canPreview?active?<WorkbenchInstanceView appId={appId} instance={draft} context={workbench?.context} preview previewSessionId={sessionId} onReady={setPreviewReady} onSnapshot={setSnapshot} onBindingParametersChange={(bindingId,params)=>setDraft(value=>({...value,dataSources:{...workbenchRefs(value),[bindingId]:{...workbenchRefs(value)[bindingId],params}}}))}/>:null:boundCount?<div className="apps-preview-await"><AppsIcon name="component"/><h3>{switchingStore?'正在切换店铺…':'准备好数据，就能预览'}</h3><p>{!sessionId?'打开已有聊天并启用应用连接。':!compatible?'为模块选择兼容的数据来源。':!workbench?.context?.storeId&&Object.values(resolved).some(source=>source?.storeScoped)?'在顶部选择店铺。':'补充上方的查看范围。'}</p></div>:<><p className="apps-example-note">示例数据 · 接入后显示店铺真实数据</p><RenderBoundary key={draft.materialId}><ViewRenderer spec={example} data={materialExampleData(example)} interactions={{selectedByWidget:exampleSelected,onSelect:event=>setExampleSelected(value=>({...value,[event.widgetId]:event.value})),bindings:Object.fromEntries((example.links??[]).map(link=>[link.to.bindingId,{selectedProductId:exampleSelected[link.from.widgetId]}]))}}/></RenderBoundary></>}</div>;
+  const ranges=<div className="apps-material-ranges">{requirements.map(requirement=>resolved[requirement.bindingId]?<QueryParameters key={requirement.bindingId} source={sourceWithChoices(resolved[requirement.bindingId]!)} params={refs[requirement.bindingId]?.params??{}} linked={requirement.linked} hideLimit onChange={params=>setDraft(value=>({...value,dataSources:{...workbenchRefs(value),[requirement.bindingId]:{...workbenchRefs(value)[requirement.bindingId],params}}}))}/>:null)}{rangeLoading?<p role="status" className="apps-muted">正在读取查看范围…</p>:rangeIssue?<div role="status" className="apps-muted"><p>{rangeIssue}</p><button type="button" onClick={()=>setRangeReload(value=>value+1)}>重新读取查看范围</button></div>:null}</div>;
+  const sourceSettings=<details className="apps-material-data-settings" open={!boundCount} key={boundCount?'bound':'unbound'}><summary>数据设置</summary><div className="apps-source-initialize"><button type="button" disabled={!sessionId||loading||initializing} onClick={()=>void initialize()}>{initializing?'正在载入…':sources.length?'更新平台数据源':'载入平台数据源'}</button><button type="button" disabled={loading||initializing} onClick={()=>setReload(value=>value+1)}><AppsIcon name="refresh"/> 刷新目录</button></div>{requirements.map(requirement=><div className="apps-binding-config" key={requirement.bindingId}><DataSourcePicker label={requirement.label} sources={resolved[requirement.bindingId]?.capabilityId==='hallmark.ozon.compose'?[...sources.filter(source=>source.id!==resolved[requirement.bindingId]!.id),resolved[requirement.bindingId]!]:sources} requiredRoles={requirement.requiredRoles} value={refs[requirement.bindingId]?.id} onChange={id=>setSource(requirement.bindingId,id)} onCreate={()=>openAgentRequest(dataSourceRequest(requirement.label,requirement.requiredRoles,appId))}/>{compositionConnection&&spec.widgets.some(widget=>widget.bindingId===requirement.bindingId&&widgetMaterialId(widget)==='data-table')?<div className="apps-composition-kinds"><span>跨接口组合</span><button type="button" onClick={()=>applyRecipe(requirement.bindingId,{version:1,grain:'product',fields:[...DEFAULT_PRODUCT_FIELDS]})}>按商品</button><button type="button" onClick={()=>applyRecipe(requirement.bindingId,{version:1,grain:'posting',fields:['orders.postingNumber','orders.status','orders.quantity','finance.amount']})}>按包裹</button></div>:null}{requirement.linked?<p className="apps-link-note">跟随商品列表选中项</p>:null}</div>)}</details>;
+  return <section className={`apps-material-library apps-visual-library is-${screen}`} aria-label="素材库">
+    <header className="apps-material-page-heading"><div>{screen!=='library'?<button type="button" className="apps-text-back" onClick={()=>leaveInformation('library')}><AppsIcon name="back"/> 返回素材库</button>:<h2>{initial?'配置组件':'素材库'}</h2>}</div><div className="apps-material-page-tools">{onOpenSaved?<button type="button" className="apps-saved-link" onClick={onOpenSaved}><AppsIcon name="grid"/> 我的组件与模板</button>:null}{appId==='hallmark'?<WorkbenchStoreSelector stores={stores} storeId={workbench?.context?.storeId} disabled={loading||saving||switchingStore||initializing} onChange={storeId=>void selectStore(storeId)}/>:null}</div></header>
+    {saving?<p role="status" className="apps-notice">正在保存，暂时不能关闭素材库；仍可切换其它标签。关闭不会取消已发送的保存。</p>:null}
+
+    {storesError?<p className="apps-notice is-error" role="alert">店铺列表读取失败：{storesError}</p>:null}{error?<div className="apps-notice is-error" role="alert"><p>{error}</p><button type="button" disabled={loading} onClick={()=>setReload(value=>value+1)}>重新读取</button></div>:null}{notice?<p className="apps-notice" role="status">{notice}</p>:null}
+    <div className="apps-material-visual-layout">
+      {screen==='library'?<aside className="apps-material-catalog" aria-label="选择素材"><label className="apps-search"><AppsIcon name="search"/><input aria-label="搜索素材" placeholder="搜索组件" value={query} onChange={event=>setQuery(event.target.value)}/></label><nav className="apps-material-categories" aria-label="素材分类">{[['all','常用'],['product','商品'],['business','经营'],['collected','采集']].map(([value,label])=><button type="button" key={value} aria-pressed={category===value} onClick={()=>setCategory(value)}>{label}</button>)}</nav><div className="apps-material-cards">{visible.map(item=><button className="apps-material-card" type="button" key={item.id} aria-label={`选择${item.title}`} aria-pressed={draft.materialId===item.id} onClick={()=>{const next=newInstance(item.id);if(!initial)baseline.current=next;setDraft(initial?{...next,instanceId:initial.instanceId,position:initial.position}:next);setPreviewReady(false);setSelectedWidgetId(undefined);setSnapshot(undefined);}}><MaterialThumbnail materialId={item.id}/><span className="apps-material-card-name"><strong>{item.title}</strong>{item.id==='product-operations'?<AppsIcon name="link"/>:null}</span>{draft.materialId===item.id?<span className="apps-material-card-selected"><AppsIcon name="check"/></span>:null}</button>)}</div>{!visible.length?<p className="apps-muted">没有匹配的组件</p>:null}</aside>:null}
+      <div className="apps-material-detail"><div className="apps-material-toolbar"><div><h3>{draft.title||material?.title}</h3><span className={`apps-data-badge${canPreview?' is-live':''}`}>{canPreview?'店铺数据':boundCount?'等待查看范围':'示例预览'}</span></div></div>{ranges}{preview}{screen==='library'?<><div className="apps-material-source-tags"><span>数据来自</span><div>{originTags.length?originTags.map(origin=><span className="apps-source-tag" key={`${origin.source}:${origin.label}`}><SourceIcon source={origin.source}/>{origin.label}</span>):<span className="apps-muted">接入自己的数据</span>}</div></div><button type="button" className="apps-adjust-display" onClick={()=>setScreen('display')}><AppsIcon name="settings"/><strong>调整显示</strong><AppsIcon name="chevron"/></button>{sourceSettings}<footer className="apps-material-add"><label className="apps-config-label"><span>组件名称</span><input aria-label="工作台组件名称" value={draft.title} onChange={event=>setDraft(value=>({...value,title:event.target.value}))}/></label><button type="button" className="apps-primary" disabled={!workbench||saving||!canPreview||!previewReady} onClick={()=>void save()}>{saving?'正在保存…':initial?'保存配置':'添加到工作台'}</button></footer></>:<p className="apps-live-preview-note">{screen==='information'?'完成后统一更新预览，当前表格仍可查看。':'调整后即时预览'}</p>}</div>
+      {screen!=='library'?<aside className="apps-material-side-panel" aria-label={screen==='display'?'调整显示面板':'添加信息面板'}><header>{screen==='information'?<button type="button" className="apps-text-back" onClick={()=>leaveInformation('display')}><AppsIcon name="back"/> 调整显示</button>:null}<div><h2>{screen==='display'?'调整显示':'添加信息'}</h2><button type="button" aria-label="关闭调整面板" onClick={()=>leaveInformation('library')}><AppsIcon name="close"/></button></div></header>{screen==='display'?<><ModuleConfig spec={spec} sources={resolved} onChange={updateSpec} selectedWidgetId={selectedWidgetId} onSelectWidget={setSelectedWidgetId} onAddInformation={id=>{setSelectedWidgetId(id);setInformationDraft(undefined);setScreen('information');}} allowedRoles={draft.materialId==='collection-box'?['product.id','product.name','product.image','price.current','price.currency','sku.id','sku.specification']:undefined}/>{sourceSettings}</>:<InformationPicker source={selectedSource} recipe={recipe} selected={informationFields} onToggle={toggleInformation} samples={samples} allowedRoles={draft.materialId==='collection-box'?['product.id','product.name','product.image','price.current','price.currency','sku.id','sku.specification']:undefined} onCreate={()=>openAgentRequest(dataSourceRequest(draft.title,selectedSource?.fields.map(field=>field.role)??[],appId))}/>}<footer className="apps-side-panel-footer" style={screen==='information'?{flexWrap:'wrap'}:undefined}><span aria-live="polite" style={screen==='information'?{flexBasis:'100%'}:undefined}>{screen==='information'?`已选 ${informationFields.length} 项${addedInformation?` · 待添加 ${addedInformation} 项`:''}${removedInformation?` · 待移除 ${removedInformation} 项`:''}`:''}</span>{screen==='information'?<button type="button" onClick={()=>leaveInformation('display')}>取消</button>:null}<button type="button" className="apps-primary" onClick={()=>screen==='information'?applyInformation():setScreen('library')}>{screen==='information'?'应用并预览':'完成'}</button></footer></aside>:null}
+    </div>
+    {currentRequest?.open?<section className="apps-agent-request" aria-label="创建数据源需求"><h3>让 Agent 帮我封装</h3><p>先复用已有数据、组件和模板；需要补充的能力带回原聊天。</p><textarea aria-label="数据源需求" value={agentRequest} onChange={event=>setRequestDraft(value=>value?.scope===requestScope?{...value,text:event.target.value}:value)} rows={6}/><div className="apps-card-actions"><button type="button" className="apps-primary" disabled={!sessionId||agentBusy||!agentRequest.trim()} onClick={()=>void requestAgent()}>{onPrepareDataSource?'放入原聊天输入框':'复制数据源需求'}</button>{sessionId&&onReturn?<button type="button" onClick={()=>onReturn(sessionId)}>返回原聊天</button>:null}<button type="button" onClick={()=>setRequestDraft(value=>value?.scope===requestScope?{...value,open:false}:value)}>收起</button></div></section>:null}
+  </section>;
+}

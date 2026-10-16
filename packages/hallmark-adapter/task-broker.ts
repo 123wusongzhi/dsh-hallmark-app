@@ -22,7 +22,7 @@ function propagateFailure<T>(result: AdapterResult<T>): AdapterResult<BrokerTask
   return { status: result.status, ...(result.error ? { error: result.error } : {}), ...(result.provenance ? { provenance: result.provenance } : {}) };
 }
 function validateScope(task: HallmarkTask, scope: string[]): boolean {
-  const known = task.salesVariants?.map(row => row.salesSkuId) ?? task.listingGroup?.skuCodes
+  const known = task.salesVariants?.flatMap(row => row.components?.map(component => component.sourceSkuId) ?? (row.sourceSkuId ? [row.sourceSkuId] : [])) ?? task.listingGroup?.skuCodes
     ?? task.autonomousSkuCodes ?? task.assignmentSnapshot?.item?.skuCodes;
   return !known || scope.every(sku => known.includes(sku));
 }
@@ -56,12 +56,13 @@ export class TaskBroker {
       const existing = this.store.get<TaskMapping>('internal_tasks', id);
       if (existing) {
         const result = await this.client.getTask(existing.taskId);
-        if (result.status === 'ok' && usable(result.raw, storeId)) return { status: 'ok', raw: { taskId: result.raw.id, task: result.raw, created: false, reused: true } };
+        const task = (result.raw?.task ?? result.raw) as HallmarkTask | undefined;
+        if (result.status === 'ok' && usable(task, storeId) && !task.salesVariants?.length) return { status: 'ok', raw: { taskId: task.id, task, created: false, reused: true } };
         if (result.status !== 'ok' && !['TASK_NOT_FOUND', 'NOT_FOUND', 'HALLMARK_HTTP_404'].includes(result.error?.code ?? '')) return propagateFailure(result);
       }
       const tasks = await this.client.getTasks();
       if (tasks.status !== 'ok') return propagateFailure(tasks);
-      const candidates = Array.isArray(tasks.raw) ? tasks.raw.filter(task => usable(task, storeId)) : [];
+      const candidates = Array.isArray(tasks.raw) ? tasks.raw.filter(task => usable(task, storeId) && !task.salesVariants?.length) : [];
       // Stable identity, prefer active but allow listed task for ordinary price/stock/read operations.
       candidates.sort((a, b) => Number(a.status === 'listed') - Number(b.status === 'listed') || a.id.localeCompare(b.id));
       if (!candidates.length) return adapterFailure('TASK_CONTEXT_REQUIRED', 'Hallmark 无通用店铺任务创建接口，且该店铺无可复用 Listing Task；快照查询仍可用。不会随机选采集商品建任务');

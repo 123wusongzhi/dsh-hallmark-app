@@ -1,0 +1,75 @@
+{
+  "baselineCommit": "00b5691e7801e8ec61c25993f73c0d4ec54330b5",
+  "baselineVersion": "candidate70",
+  "focused": {
+    "tests": 13,
+    "pass": 13,
+    "fail": 0,
+    "log": "focused-backend.log"
+  },
+  "checks": [
+    {
+      "file": "listing-record-comparison.json",
+      "status": "PASS",
+      "sha256": "71759c31962d95f56caef5a9fc0fc3af251fccc062b3489bf623f4754d27ed43"
+    },
+    {
+      "file": "posting-comparison.json",
+      "status": "PASS",
+      "sha256": "6e7de15d42189914e0cd5ca1c68d112b2a1b36dea0cb18fa59e2641f8eff3273"
+    },
+    {
+      "file": "posting-edge-comparison.json",
+      "status": "PASS",
+      "sha256": "ccfe0aad1bf69e41ddc57abc008b8ef5f5c9f744fe40f750526446214d984b9b"
+    },
+    {
+      "file": "posting-metadata.json",
+      "status": "PASS",
+      "sha256": "e40b7dbe27f95407d78987bd8ef058066c46a179c529079e3141edf39ac6970c"
+    },
+    {
+      "file": "pricing-comparison.json",
+      "status": "PASS",
+      "sha256": "2f35a98e9c838d4eb02b49dd9fd5f2d9abc635c2b8fa1c083a03fd72dbd8864a"
+    },
+    {
+      "file": "product-comparison.json",
+      "status": "PASS",
+      "sha256": "b08c2c3902c42ca7fffa38ca3eba39accf6a01d20d1dd1f11ecbc11fc5d1c43f"
+    },
+    {
+      "file": "product-edge-comparison.json",
+      "status": "PASS",
+      "sha256": "02326a8d2cac99b6479691812d4e5555916315fd08bf1e3fccc324a3bf793881"
+    },
+    {
+      "file": "product-metadata.json",
+      "status": "PASS",
+      "sha256": "09c157b8d6e025f00d85001fb889b75f37f3b049a0734af72c4538d221bd528c"
+    },
+    {
+      "file": "small-comparison.json",
+      "status": "PASS",
+      "sha256": "1ccbf599ac0b886bf8028c94b331ec00023131f4a9d3cbffebe46ea0dceaa447"
+    },
+    {
+      "file": "small-metadata.json",
+      "status": "PASS",
+      "sha256": "87afe4cff08b3dada5669975897c0759e8c77b68e5c04e5e81be69800c21a670"
+    }
+  ],
+  "externalIO": 0,
+  "benchmarkExecuted": false,
+  "productionReview": "The six-fix backend hunks remain disjoint from candidate70 listing-history import/recovery and listingRecords preparation wiring. Current query, collectionVersion, partial expression indexes, compose and application-pricing paths retained. No additional production changes needed.",
+  "fixtureCorrections": [
+    "An import failure with existing known records reports partial rather than wholly unavailable.",
+    "Current listing preparation reads the category tree through the independent gateway; the fixture supplies a local empty result."
+  ],
+  "preservedDiagnosticLogs": [
+    "listing-record-baseline.category-fixture.log",
+    "listing-record-baseline.initial-fixture.log",
+    "listing-record-integration.category-fixture.log",
+    "listing-record-integration.initial-fixture.log"
+  ]
+}

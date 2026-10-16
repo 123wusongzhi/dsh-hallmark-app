@@ -25,8 +25,8 @@ async function fixture() {
   const transport=new HttpAppsHostTransport(`http://127.0.0.1:${(server.address() as {port:number}).port}`,'x'.repeat(64));
   const A={id:'A',session:{id:'A'}},B={id:'B',session:{id:'B'}},agents=new Map([['A',A],['B',B]]),events=new Map<string,unknown[]>([['A',[]],['B',[]]]);
   const metrics={prompts:0,flushes:0,inspects:0,modelRequests:0},controls:{durable:boolean;throwAfterAppend:boolean;beforeAppend?:()=>Promise<void>}={durable:true,throwAfterAppend:false};
-  const hooks=new Map<string,unknown>(),tools=new Set<string>();
-  const ctx:AppsPluginContext={tools:{register:tool=>{tools.add(tool.name);return()=>{tools.delete(tool.name);};}},agents:{get:id=>agents.get(id)},systemPrompt:{context:()=>()=>{}},sessions:{get:id=>agents.get(id)?.session,flush:async session=>{assert.equal(session,agents.get(session.id)?.session);metrics.flushes++;return controls.durable;}},on:(event,listener)=>{hooks.set(event,listener);return()=>{hooks.delete(event);};},sessionController:{
+  const hooks=new Map<string,unknown>(),tools=new Set<string>(),prompts=new Map<string,{text(context:NativeAssembleContext):string}>();
+  const ctx:AppsPluginContext={tools:{register:tool=>{tools.add(tool.name);return()=>{tools.delete(tool.name);};}},agents:{get:id=>agents.get(id)},systemPrompt:{context:value=>{prompts.set(value.name,value);return()=>{prompts.delete(value.name);};}},sessions:{get:id=>agents.get(id)?.session,flush:async session=>{assert.equal(session,agents.get(session.id)?.session);metrics.flushes++;return controls.durable;}},on:(event,listener)=>{hooks.set(event,listener);return()=>{hooks.delete(event);};},sessionController:{
     async resolveAgent(id){const agent=agents.get(id);return agent?{agent}:{error:'session/not-found'};},
     async prompt(request,signal){signal.throwIfAborted();metrics.prompts++;await controls.beforeAppend?.();assert.equal(request.mode,'queue');events.get(request.sessionId)!.push({type:'agent/inbox/spliced',seq:events.get(request.sessionId)!.length,time:Date.now(),data:{target:'next-turn',inserted:[{id:`message-${request.requestId}`,source:{kind:'user',rpcId:request.requestId},content:request.content}]}});if(controls.throwAfterAppend)throw new Error('fixture lost admission response');return {accepted:true};},
     async inspect(id,signal){signal?.throwIfAborted();metrics.inspects++;return {events:events.get(id)??[]};},
@@ -37,21 +37,21 @@ async function fixture() {
   async function assemble(agent:typeof A=A,signal=new AbortController().signal) {const hook=hooks.get('system-prompt/assemble') as (assembly:NativePromptAssembly,context:NativeAssembleContext,next:()=>Promise<NativePromptAssembly>)=>Promise<NativePromptAssembly>;const original={contexts:[{name:'other',text:'keep'}],tools:[]};return hook(original,{scope:agent,signal},async()=>original);}
   async function restart(){await host.dispose();host=new AppsHost(ctx,transport,undefined,{nativeSessionAdapter:'dsh-0.2.0-rc.2'});await host.start();}
   async function close(){await host.dispose();server.closeAllConnections();await new Promise<void>(done=>server.close(()=>done()));await runtime.dispose();store.close();const target=resolve(directory);assert.match(target,/apps-native-session-[^\\/]+$/);rmSync(target,{recursive:true,force:true});}
-  return {ctx,A,B,agents,events,metrics,controls,hooks,tools,transport,presentation,store,runtime,view,identity,bridge,assemble,restart,close,get host(){return host;}};
+  return {ctx,A,B,agents,events,metrics,controls,hooks,prompts,tools,transport,presentation,store,runtime,view,identity,bridge,assemble,restart,close,get host(){return host;}};
 }
 
 test('verified native async assembly fetches immutable per-session context on every step and restart, failing closed on stale/unavailable reads',async()=>{
   const f=await fixture();try {
     assert.deepEqual(f.host.hostCapabilities(),{updateContext:true,requestAgent:true,nativeSessionAdapter:'dsh-0.2.0-rc.2',adapterReady:true,hostVersion:'0.2.0-rc.2'});
-    assert.equal((await f.assemble()).contexts.length,1);
+    assert.equal((await f.assemble()).contexts.length,2);
     const data=f.presentation.getData('A',f.view.viewId),selection={bindingId:'notes',datasetRevision:data.bindings[0].revision,resources:data.bindings[0].resources};
     const update=await f.bridge('updateContext',{expectedContextRevision:0,selections:[selection],summary:'explicit one'},'context-one');assert.ok(update.result);assert.equal(f.metrics.prompts,0);
     const assembled=await f.assemble(),text=assembled.contexts.find(item=>item.name==='dsh-apps-component-context')!.text,one=JSON.parse(text);assert.equal(one.snapshot.summary,'explicit one');assert.equal(one.snapshot.contextRevision,1);assert.equal(one.snapshot.bindingEvidence[0].datasetRevision,selection.datasetRevision);assert.ok(Buffer.byteLength(text)<=8192);
     assert.equal((await f.assemble(f.B)).contexts.length,1);
     const fetch=f.transport.componentContexts.bind(f.transport);let reads=0;f.transport.componentContexts=async(...args)=>{reads++;return fetch(...args);};
     const hook=f.hooks.get('system-prompt/assemble') as (assembly:NativePromptAssembly,context:NativeAssembleContext,next:()=>Promise<NativePromptAssembly>)=>Promise<NativePromptAssembly>,original={contexts:[]};assert.deepEqual(await hook(original,{scope:{id:'A'}},async()=>original),original);assert.equal(reads,0);
-    await f.bridge('updateContext',{expectedContextRevision:1,selections:[selection],summary:'explicit two'},'context-two');const two=JSON.parse((await f.assemble()).contexts[1].text);assert.equal(two.snapshot.contextRevision,2);assert.equal(one.snapshot.summary,'explicit one');assert.equal(f.presentation.contexts.history('A',one.snapshot.snapshotId)!.snapshot.summary,'explicit one');
-    await f.restart();assert.equal(JSON.parse((await f.assemble()).contexts[1].text).snapshot.snapshotId,two.snapshot.snapshotId);assert.ok(reads>=2);
+    await f.bridge('updateContext',{expectedContextRevision:1,selections:[selection],summary:'explicit two'},'context-two');const two=JSON.parse((await f.assemble()).contexts.find(row=>row.name==='dsh-apps-component-context')!.text);assert.equal(two.snapshot.contextRevision,2);assert.equal(one.snapshot.summary,'explicit one');assert.equal(f.presentation.contexts.history('A',one.snapshot.snapshotId)!.snapshot.summary,'explicit one');
+    await f.restart();assert.equal(JSON.parse((await f.assemble()).contexts.find(row=>row.name==='dsh-apps-component-context')!.text).snapshot.snapshotId,two.snapshot.snapshotId);assert.ok(reads>=2);
     f.transport.componentContexts=async()=>{throw new Error('fixture read lost');};await assert.rejects(f.assemble(),/fixture read lost/);
     f.transport.componentContexts=async()=>({sessionId:'B',snapshot:null});await assert.rejects(f.assemble(),/CONTEXT_NOT_OWNED/);
     f.transport.componentContexts=async()=>({sessionId:'A',snapshot:{...two.snapshot,summary:'x'.repeat(9000)}});await assert.rejects(f.assemble(),/CONTEXT_BUDGET_EXCEEDED/);assert.equal(f.metrics.modelRequests,0);
@@ -105,7 +105,7 @@ test('request pins its immutable snapshot in actual native content while later e
     let release!:()=>void;f.controls.beforeAppend=()=>new Promise<void>(done=>{release=done;});const request=f.bridge('requestAgent',{text:'Use the published original',expectedContextRevision:1},'pin-request');while(!release)await new Promise(done=>setTimeout(done,1));
     const original=f.presentation.contexts.intent('A','pin-request')!;assert.equal(original.contextSnapshotId,(published.result as {snapshot:ComponentContextSnapshot}).snapshot.snapshotId);
     await f.bridge('updateContext',{expectedContextRevision:1,selections:[selection],summary:'new latest'},'pin-context-two');release();const receipt=(await request).result as ComponentAgentIntent;assert.equal(receipt.status,'accepted');
-    const recorded=f.events.get('A')![0] as {data:{inserted:{content:{type:'text';text:string}[]}[]}};assert.deepEqual(recorded.data.inserted[0].content,original.content);assert.equal(JSON.parse(recorded.data.inserted[0].content[1].text).snapshot.summary,'pinned original');assert.equal(JSON.parse((await f.assemble()).contexts[1].text).snapshot.summary,'new latest');assert.equal((receipt.receipt as {contentHash:string}).contentHash,original.contentHash);assert.equal(f.metrics.prompts,1);
+    const recorded=f.events.get('A')![0] as {data:{inserted:{content:{type:'text';text:string}[]}[]}};assert.deepEqual(recorded.data.inserted[0].content,original.content);assert.equal(JSON.parse(recorded.data.inserted[0].content[1].text).snapshot.summary,'pinned original');assert.equal(JSON.parse((await f.assemble()).contexts.find(row=>row.name==='dsh-apps-component-context')!.text).snapshot.summary,'new latest');assert.equal((receipt.receipt as {contentHash:string}).contentHash,original.contentHash);assert.equal(f.metrics.prompts,1);
   }finally{await f.close();}
 });
 
@@ -131,10 +131,102 @@ test('strict ACTIVE service publication activates the adapter once, invalidation
     const controller=f.ctx.sessionController!,sessions=f.ctx.sessions!;await f.host.dispose();let active=false,assemblyRegistrations=0;
     const cordis=Object.create(f.ctx) as AppsPluginContext;cordis.get=name=>active?(name==='sessions'?sessions:controller):undefined;
     cordis.on=((event:string,listener:unknown)=>{if(event==='system-prompt/assemble')assemblyRegistrations++;f.hooks.set(event,listener);return()=>{f.hooks.delete(event);};}) as AppsPluginContext['on'];
-    host=new AppsHost(cordis,f.transport,undefined,{nativeSessionAdapter:'dsh-0.2.0-rc.2'});await host.start();assert.equal(host.hostCapabilities().adapterReady,false);assert.equal(f.hooks.has('system-prompt/assemble'),false);assert.equal(f.tools.size,4);
+    host=new AppsHost(cordis,f.transport,undefined,{nativeSessionAdapter:'dsh-0.2.0-rc.2'});await host.start();assert.equal(host.hostCapabilities().adapterReady,false);assert.equal(f.hooks.has('system-prompt/assemble'),true);assert.equal(f.tools.size,4);
     active=true;const notify=f.hooks.get('internal/service') as(name:string,value:unknown)=>void;notify('sessions',sessions);assert.equal(host.hostCapabilities().adapterReady,true);assert.equal(assemblyRegistrations,1);notify('sessionController',controller);assert.equal(assemblyRegistrations,1);
-    const hook=f.hooks.get('system-prompt/assemble') as(assembly:NativePromptAssembly,context:NativeAssembleContext,next:()=>Promise<NativePromptAssembly>)=>Promise<NativePromptAssembly>,original={contexts:[]};assert.deepEqual(await hook(original,{scope:f.A},async()=>original),original);
+    const hook=f.hooks.get('system-prompt/assemble') as(assembly:NativePromptAssembly,context:NativeAssembleContext,next:()=>Promise<NativePromptAssembly>)=>Promise<NativePromptAssembly>,original={contexts:[]};assert.deepEqual((await hook(original,{scope:f.A},async()=>original)).contexts.map(row=>row.name),['dsh-apps-summary']);
     active=false;notify('sessions',undefined);assert.equal(host.hostCapabilities().adapterReady,false);await assert.rejects(hook(original,{scope:f.A},async()=>original),/NATIVE_ADAPTER_NOT_READY/);
-    active=true;assert.equal(host.hostCapabilities().adapterReady,true);assert.equal(assemblyRegistrations,1);assert.deepEqual(await hook(original,{scope:f.A},async()=>original),original);assert.equal(f.metrics.prompts,0);await host.dispose();assert.equal(f.hooks.size,0);assert.equal(host.hostCapabilities().adapterReady,false);
+    active=true;assert.equal(host.hostCapabilities().adapterReady,true);assert.equal(assemblyRegistrations,1);assert.deepEqual((await hook(original,{scope:f.A},async()=>original)).contexts.map(row=>row.name),['dsh-apps-summary']);assert.equal(f.metrics.prompts,0);await host.dispose();assert.equal(f.hooks.size,0);assert.equal(host.hostCapabilities().adapterReady,false);
   }finally{await host?.dispose();await f.close();}
+});
+
+
+test('prompt selection is fresh and session-local; ordinary chats never read component contexts',async()=>{
+  const f=await fixture();try {
+    let reads=0;const read=f.transport.componentContexts.bind(f.transport);
+    f.transport.componentContexts=async(...args)=>{reads++;return read(...args);};
+    const render=async(agent:typeof f.A)=>{
+      const hook=f.hooks.get('system-prompt/assemble') as (a:NativePromptAssembly,c:NativeAssembleContext,n:()=>Promise<NativePromptAssembly>)=>Promise<NativePromptAssembly>;
+      const initial={contexts:[...f.prompts].map(([name,prompt])=>({name,text:prompt.text({scope:agent})}))};
+      assert.ok(initial.contexts.every(row=>row.text===''));
+      return hook(initial,{scope:agent},async()=>{await new Promise(resolve=>setImmediate(resolve));return initial;});
+    };
+    const [selected,ordinary]=await Promise.all([render(f.A),render(f.B)]);
+    assert.match(selected.contexts[0].text,/"appId":"notes"/);assert.doesNotMatch(selected.contexts[0].text,/"appId":"apps"/);
+    assert.deepEqual(ordinary.contexts,[]);assert.equal(reads,1);
+    const binding=f.runtime.sessionBindings('A').find(row=>row.appId==='notes')!;
+    f.runtime.bind({...binding,enabled:false});
+    assert.deepEqual((await render(f.A)).contexts,[]);assert.equal(reads,1,'internal presentation binding does not activate app context');
+    await f.restart();assert.deepEqual((await render(f.A)).contexts,[]);assert.equal(reads,1);
+    f.runtime.bind({...binding,enabled:true});assert.match((await render(f.A)).contexts[0].text,/notes/);assert.equal(reads,2);
+    f.transport.sessionBindings=async()=>{throw Error('runtime offline');};
+    assert.deepEqual((await render(f.B)).contexts,[]);assert.equal(reads,2,'offline runtime does not interrupt ordinary chat or read components');
+  }finally{await f.close();}
+});
+
+
+test('deselected source snapshots are omitted and restored only after reselection',async()=>{
+  const f=await fixture();try{
+    const data=f.presentation.getData('A',f.view.viewId),selection={bindingId:'notes',datasetRevision:data.bindings[0].revision,resources:data.bindings[0].resources};
+    await f.bridge('updateContext',{expectedContextRevision:0,selections:[selection],summary:'private old notes'},'selected-context');
+    assert.ok((await f.transport.componentContexts('A')).snapshot);
+    const binding=f.runtime.sessionBindings('A').find(row=>row.appId==='notes')!;
+    f.runtime.bind({...binding,enabled:false});
+    assert.equal((await f.transport.componentContexts('A')).snapshot,null);
+    f.runtime.bind({...binding,enabled:true});assert.ok((await f.transport.componentContexts('A')).snapshot);
+  }finally{await f.close();}
+});
+
+
+test('real assembly preserves nonempty scoped overrides instead of replacing them with global app guidance',async()=>{
+  const f=await fixture();try{
+    const hook=f.hooks.get('system-prompt/assemble') as (a:NativePromptAssembly,c:NativeAssembleContext,n:()=>Promise<NativePromptAssembly>)=>Promise<NativePromptAssembly>;
+    const scoped={contexts:[{name:'dsh-apps-summary',text:'Agent-scoped instruction override'},{name:'other-plugin',text:'Keep other plugin'}]};
+    for(const agent of [f.A,f.B]){
+      const result=await hook(scoped,{scope:agent},async()=>scoped);
+      assert.deepEqual(result,scoped);
+    }
+  }finally{await f.close();}
+});
+
+
+test('stalled selection lookup has a short budget without reading components; caller cancellation still propagates',async()=>{
+  const f=await fixture();try{
+    let componentReads=0;
+    f.transport.componentContexts=async()=>{componentReads++;throw Error('must not read');};
+    f.transport.sessionBindings=async(_id,signal)=>new Promise((_resolve,reject)=>{
+      signal!.throwIfAborted();signal!.addEventListener('abort',()=>reject(signal!.reason),{once:true});
+    });
+    const start=performance.now();assert.deepEqual((await f.assemble(f.B)).contexts,[{name:'other',text:'keep'}]);
+    assert.ok(performance.now()-start<4000);assert.equal(componentReads,0);
+    const abort=new AbortController();const result=f.assemble(f.B,abort.signal);abort.abort(new Error('step cancelled'));
+    await assert.rejects(result,/step cancelled/);assert.equal(componentReads,0);
+  }finally{await f.close();}
+});
+
+
+test('real DSH empty placeholders preserve context order around unrelated contributions',async()=>{
+  const f=await fixture();try{
+    const hook=f.hooks.get('system-prompt/assemble') as (a:NativePromptAssembly,c:NativeAssembleContext,n:()=>Promise<NativePromptAssembly>)=>Promise<NativePromptAssembly>;
+    const initial={contexts:[{name:'before',text:'before 510'},{name:'dsh-apps-summary',text:f.prompts.get('dsh-apps-summary')!.text({scope:f.A})},{name:'after',text:'after 516'}]};
+    assert.equal(initial.contexts[1].text,'');
+    assert.deepEqual((await hook(initial,{scope:f.A},async()=>initial)).contexts.map(row=>row.name),['before','dsh-apps-summary','after']);
+    assert.deepEqual((await hook(initial,{scope:f.B},async()=>initial)).contexts.map(row=>row.name),['before','after']);
+  }finally{await f.close();}
+});
+
+
+test('context authorization uses immutable snapshot sources even after the view changes to another connection or no bindings',async()=>{
+  const f=await fixture();try{
+    const data=f.presentation.getData('A',f.view.viewId),selection={bindingId:'notes',datasetRevision:data.bindings[0].revision,resources:data.bindings[0].resources};
+    await f.bridge('updateContext',{expectedContextRevision:0,selections:[selection],summary:'original connection data'},'original-source-context');
+    f.runtime.addConnection({appId:'notes',connectionId:'other',displayName:'Other',enabled:true,config:{},configRevision:1});
+    f.runtime.bind({sessionId:'A',appId:'notes',connectionId:'other',enabled:true,boundAt:new Date().toISOString()});
+    const original=f.runtime.sessionBindings('A').find(row=>row.appId==='notes'&&row.connectionId==='n')!;
+    f.runtime.bind({...original,enabled:false});
+    for(const bindings of [[{...f.view.bindings[0],connectionId:'other'}],[]]){
+      f.store.put('views',f.view.viewId,{...f.view,bindings});
+      assert.equal((await f.transport.componentContexts('A')).snapshot,null);
+    }
+    f.runtime.bind({...original,enabled:true});assert.ok((await f.transport.componentContexts('A')).snapshot);
+  }finally{await f.close();}
 });

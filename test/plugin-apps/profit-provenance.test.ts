@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiFixturePrelude,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdirSync,mkdtempSync,rmSync} from 'node:fs';
@@ -13,6 +14,7 @@ async function runProfitFixture(kind:'compute'|'filter') {
   try {
     await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
       import React from 'react';
+${uiFixturePrelude()}
       import {create,act} from 'react-test-renderer';
       import assert from 'node:assert/strict';
       import {AppsRuntime,RuntimeStore} from './packages/app-runtime/src/index.ts';
@@ -28,13 +30,13 @@ async function runProfitFixture(kind:'compute'|'filter') {
       const listeners=new Map();globalThis.window={addEventListener(type,listener){const rows=listeners.get(type)??new Set();rows.add(listener);listeners.set(type,rows);},removeEventListener(type,listener){listeners.get(type)?.delete(listener);},dispatchEvent(){return true;}};
       const kind=${JSON.stringify(kind)},sourceFetchedAt='2026-09-13T04:05:06Z',requests=[],sourceCalls=[];
       const sourceProducts=[
-        {storeId:'fixture-shop',offerId:'known-cost',productId:101,title:'有效成本商品 · 合成证据',price:100,currency:'CNY',profit:{costMinor:5000,profitMinor:2480,actualMargin:0.248}},
-        {storeId:'fixture-shop',offerId:'missing-cost',productId:102,title:'缺成本商品 · 合成证据',price:100,currency:'CNY',profit:{costMinor:null,profitMinor:99999,actualMargin:0.93}},
-        {storeId:'fixture-shop',offerId:'below-threshold',productId:103,title:'低于条件商品 · 合成证据',price:100,currency:'CNY',profit:{costMinor:8000,profitMinor:500,actualMargin:0.05}},
+        {...uiProduct({storeId:'fixture-shop',offerId:'known-cost',productId:101,price:100,currency:'CNY'},4),profit:{costMinor:5000,profitMinor:2480,actualMargin:0.248}},
+        {...uiProduct({storeId:'fixture-shop',offerId:'missing-cost',productId:102,price:100,currency:'CNY'},20),profit:{costMinor:null,profitMinor:99999,actualMargin:0.93}},
+        {...uiProduct({storeId:'fixture-shop',offerId:'below-threshold',productId:103,price:100,currency:'CNY'},40),profit:{costMinor:8000,profitMinor:500,actualMargin:0.05}},
       ];
       const response=raw=>({status:'ok',raw,provenance:{source:'hallmark_snapshot',endpoint:'/fixture/store-products',fetchedAt:sourceFetchedAt}});
       const forbidden=async()=>{throw Error('This read/compute fixture must not call write, task, sync or unrelated source capabilities.');};
-      const client={getStores:async()=>{sourceCalls.push('stores');return response([{id:'fixture-shop',shopName:'合成店铺'}]);},getStoreProducts:async()=>{sourceCalls.push('products');return response({stores:[{id:'fixture-shop'}],products:sourceProducts});},syncStoreProducts:forbidden,getTargetMargin:forbidden,searchCollectedItems:forbidden,getCollectedItem:forbidden,platformCall:forbidden,platformRead:forbidden};
+      const client={getStores:async()=>{sourceCalls.push('stores');return response([uiStore({id:'fixture-shop'})]);},getStoreProducts:async()=>{sourceCalls.push('products');return response({stores:[{id:'fixture-shop'}],products:sourceProducts});},syncStoreProducts:forbidden,getTargetMargin:forbidden,searchCollectedItems:forbidden,getCollectedItem:forbidden,platformCall:forbidden,platformRead:forbidden};
       const broker={getStoreTask:forbidden,getListingTask:forbidden,requestId:()=>{throw Error('No Source write request may be prepared.');}};
       const store=new RuntimeStore(':memory:'),runtime=new AppsRuntime(store),port=new HallmarkStorePort(store,'fixture-connection'),provider=new HallmarkProvider({store:port,client,broker});runtime.register(provider);
       runtime.addConnection({appId:'hallmark',connectionId:'fixture-connection',displayName:'Fixture connection',enabled:true,config:{backend:'synthetic-source'},configRevision:1});runtime.bind({sessionId:'fixture-session',appId:'hallmark',connectionId:'fixture-connection',enabled:true,boundAt:new Date().toISOString()});
@@ -67,13 +69,13 @@ async function runProfitFixture(kind:'compute'|'filter') {
         if(kind==='filter'){
           assert.deepEqual(rows.map(row=>row.offerId),['known-cost','missing-cost'],'generic renderer must unwrap the payload result and retain unable rows');
           assert.equal(bodyRows.length,2,'matched and missing-cost rows must both remain visible');
-          assert.ok(!bodyRows.some(row=>text(row).includes('低于条件商品')),'filtered-out products must not reappear');
+          assert.ok(!bodyRows.some(row=>text(row).includes(sourceProducts[2].title)),'filtered-out products must not reappear');
         } else assert.equal(bodyRows.length,3);
         assert.equal(uiBinding.metricBasis,providerResult.provenance[0].metricBasis,'Apps view mapping must carry the Provider metric basis to the shared renderer');
-        const cells=bodyRows.map(row=>row.findAllByType('td').map(text)),known=cells.find(row=>row[0].includes('有效成本商品')),unknown=cells.find(row=>row[0].includes('缺成本商品'));
+        const cells=bodyRows.map(row=>row.findAllByType('td').map(text)),known=cells.find(row=>row[0].includes(sourceProducts[0].title)),unknown=cells.find(row=>row[0].includes(sourceProducts[1].title));
         assert.equal(known?.[1],'24.80%','reference profit displays the actual ratio only with its preserved basis');
         assert.equal(unknown?.[1],'—','missing cost must not render zero or the source unqualified actualMargin');
-        const missingRow=bodyRows.find(row=>text(row).includes('缺成本商品'));
+        const missingRow=bodyRows.find(row=>text(row).includes(sourceProducts[1].title));
         assert.ok(missingRow?.findAll(node=>node.props['aria-label']==='无法判断（缺成本）').length,'missing-cost row remains explicitly labelled for accessible/tooltip display');
         const metricEvidence=tree.root.findAll(node=>node.props.className==='hm-data-evidence').map(text).join('');assert.match(metricEvidence,/参考利润模型/);assert.match(metricEvidence,/非实际结算净利润率/);assert.ok(!metricEvidence.includes('数据时间：'+sourceFetchedAt),'source fetch time must not be relabeled as business data time');
         assert.ok(requests.every(row=>row.method==='GET'));assert.equal(store.list('operations').length,0);assert.deepEqual(sourceCalls,['stores','products']);

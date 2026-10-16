@@ -29,7 +29,7 @@ test('literal loopback URL only, no alternate host, credentials, path or redirec
   for (const url of ['http://example.com', 'http://localhost', 'http://127.1', 'http://2130706433', 'http://0x7f000001', 'http://127.0.0.1.example.com', 'http://192.168.0.1', 'file:///tmp/x', 'http://user:pass@127.0.0.1', 'http://127.0.0.1/api', 'http://127.0.0.1/?token=secret']) assert.throws(() => new HallmarkClient({ baseUrl: url }));
 });
 
-test('all verified adapter routes keep synthetic raw fixtures untouched', async () => {
+test('all verified adapter routes keep recorded business fixtures and explicit transport scenarios untouched', async () => {
   const routes: Record<string, unknown> = {
     '/api/stores': stores, '/api/store-products': products, '/api/store-products/sync': products, '/api/store-products/analytics': products,
     '/api/target-margin': { settings: { revision: 1 } }, '/api/items': summary, '/api/items/item-A/raw?full=1': rawItem,

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "description": "Follow-up only; original five-cycle timing evidence is preserved",
+  "business": {
+    "rows": 10,
+    "attributes": 20,
+    "warmupCycles": 30,
+    "measuredCycles": 200
+  },
+  "collected": {
+    "size": 500,
+    "warmupCycles": 30,
+    "measuredCycles": 100
+  },
+  "abbaCycles": 5
+}

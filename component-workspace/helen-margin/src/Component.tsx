@@ -15,9 +15,9 @@ function StockBadge({product}:{product:StoreProduct}){
   const tone=product.stock===0?'out':product.stock<100?'low':'ok';
   return <span className="stock-badge" data-tone={tone}>{product.stock.toLocaleString('zh-CN')}</span>;
 }
-function ProductImage({product}:{product:StoreProduct}){
+function ProductImage({product,priority=false}:{product:StoreProduct;priority?:boolean}){
   const [failed,setFailed]=useState(false);useEffect(()=>setFailed(false),[product.image]);
-  return <div className="product-image">{product.image&&!failed?<img src={product.image} alt="" loading="lazy" onError={()=>setFailed(true)}/>:<span title="源未提供图片"><ImageOff size={19}/><span>暂无图片</span></span>}</div>;
+  return <div className="product-image">{product.image&&!failed?<img alt="" {...{fetchpriority:priority?'high':'auto'}} loading={priority?'eager':'lazy'} decoding="async" onError={()=>setFailed(true)} src={product.image}/>:<span title="源未提供图片"><ImageOff size={19}/><span>暂无图片</span></span>}</div>;
 }
 function SelectionBox({checked,onChange,label,indeterminate=false,disabled=false}:{checked:boolean;onChange:()=>void;label:string;indeterminate?:boolean;disabled?:boolean}){
   const ref=useRef<HTMLInputElement>(null);useEffect(()=>{if(ref.current)ref.current.indeterminate=indeterminate;},[indeterminate]);
@@ -71,7 +71,7 @@ export default function Component(){
   const togglePage=(rows:StoreProduct[])=>setSelected((previous)=>{const next=new Set(previous);const all=rows.length>0&&rows.every((item)=>next.has(item.key));rows.forEach((item)=>all?next.delete(item.key):next.add(item.key));return next;});
 
   const columns:ColumnDef<StoreProduct>[]=[
-    {id:'product',header:'商品',enableSorting:false,cell:({row})=><div className="product-cell"><ProductImage product={row.original}/><div className="product-description"><div className="product-name" title={row.original.title}>{row.original.title}</div><div className="product-meta">{row.original.sku&&<span className="id-tag">SKU {row.original.sku}</span>}{row.original.offerId&&<span className="id-tag" title={row.original.offerId}>报价号 {row.original.offerId}</span>}</div></div></div>},
+    {id:'product',header:'商品',enableSorting:false,cell:({row})=><div className="product-cell"><ProductImage product={row.original} priority={priorityKeys.has(row.id)}/><div className="product-description"><div className="product-name" title={row.original.title}>{row.original.title}</div><div className="product-meta">{row.original.sku&&<span className="id-tag">SKU {row.original.sku}</span>}{row.original.offerId&&<span className="id-tag" title={row.original.offerId}>报价号 {row.original.offerId}</span>}</div></div></div>},
     {id:'price',header:'售价',accessorFn:(row)=>row.price,sortingFn:'basic',cell:({row})=><span className="money-strong">{money(row.original.price,row.original.currency??'CNY')}</span>},
     {id:'purchase',header:'采购价',accessorFn:(row)=>row.purchase,sortingFn:'basic',cell:({row})=>row.original.purchase===undefined?<span className="missing-note">未提供采购价</span>:<span className="money">{money(row.original.purchase,row.original.currency??'CNY')}</span>},
     {id:'margin',header:'参考利润率',accessorFn:(row)=>row.margin,sortingFn:'basic',cell:({row})=><MarginCell product={row.original}/>},
@@ -86,6 +86,7 @@ export default function Component(){
   const currentPage=Math.min(page,pageCount-1);
   const visibleRows=sortedRows.slice(currentPage*PAGE_SIZE,(currentPage+1)*PAGE_SIZE);
   const visible=visibleRows.map((row)=>row.original);
+  const priorityKeys=new Set(visibleRows.slice(0,6).map(row=>row.id));
   const selectedVisible=visible.filter((item)=>selected.has(item.key)).length;
 
   useEffect(()=>setPage(0),[search,sorting]);
@@ -157,7 +158,7 @@ export default function Component(){
           <div className="mobile-select-all"><SelectionBox checked={visible.length>0&&selectedVisible===visible.length} indeterminate={selectedVisible>0&&selectedVisible<visible.length} onChange={()=>togglePage(visible)} label="选择本页商品" disabled={!canSelect}/><span>选择本页</span></div>
           {visible.map((product)=><article key={product.key} className="mobile-product" data-selected={selected.has(product.key)}>
             <SelectionBox checked={selected.has(product.key)} onChange={()=>toggle(product.key)} label={`选择${product.title}`} disabled={!canSelect}/>
-            <ProductImage product={product}/>
+            <ProductImage product={product} priority={priorityKeys.has(product.key)}/>
             <div className="mobile-product-content">
               <div className="product-name" title={product.title}>{product.title}</div>
               <div className="mobile-margin-row"><span className="mobile-margin-label">参考利润率</span><MarginCell product={product}/></div>

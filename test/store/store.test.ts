@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { spawnSync, spawn } from 'node:child_process';
 import { AppStore, COLLECTIONS, SCHEMA_VERSION } from '../../packages/store/src/index.ts';
+import {realSourceProducts} from '../real-data/corpus.ts';
 
 function disk(t: any): string { const dir = mkdtempSync(join(tmpdir(),'hallmark-store-')); t.after(() => rmSync(dir,{recursive:true,force:true})); return join(dir,'app.db'); }
 test('generic CRUD is parameterized, credentials rejected, export is JSON', () => {
@@ -31,12 +32,13 @@ test('operations client keys are unique across connections and terminal state ne
 });
 test('snapshot failure retains exactly last successful payload; success overwrites single row', t => {
   const path = disk(t), store = new AppStore(path);
-  store.updateSnapshotSuccess('store_products:1',[{id:1}],'2026-10-01',{provenance:{source:'hallmark_snapshot'}});
+  const samples=realSourceProducts();
+  store.updateSnapshotSuccess('store_products:1',[samples[0]],'2026-10-01',{provenance:{source:'hallmark_snapshot'}});
   const first = store.get<any>('snapshots','store_products:1');
   store.updateSnapshotState('store_products:1','refreshing'); store.updateSnapshotState('store_products:1','failed',{message:'offline'});
   const failed = store.get<any>('snapshots','store_products:1'); assert.deepEqual(failed.payload,first.payload); assert.equal(failed.lastSuccessAt,first.lastSuccessAt); assert.equal(failed.version,1); assert.equal(failed.state,'failed'); store.close();
   const again = new AppStore(path);
-  try {assert.deepEqual(again.get<any>('snapshots','store_products:1')?.payload,[{id:1}]); again.updateSnapshotSuccess('store_products:1',[{id:2}],'2026-10-02'); assert.equal(again.list('snapshots').length,1); assert.equal(again.get<any>('snapshots','store_products:1')?.version,2);} finally {again.close();}
+  try {assert.deepEqual(again.get<any>('snapshots','store_products:1')?.payload,[samples[0]]); again.updateSnapshotSuccess('store_products:1',[samples[1]],'2026-10-02'); assert.equal(again.list('snapshots').length,1); assert.equal(again.get<any>('snapshots','store_products:1')?.version,2);} finally {again.close();}
 });
 test('unknown source data time stays null independently of successful cache refresh time',()=>{
   const store=new AppStore(':memory:');try{const snapshot=store.updateSnapshotSuccess('store_products:unknown',{products:[]},null);assert.equal(snapshot.dataTime,null);assert.ok(Number.isFinite(Date.parse(snapshot.lastSuccessAt)));assert.equal((store.db.prepare('SELECT data_time FROM snapshots').get() as any).data_time,null);store.updateSnapshotState('store_products:unknown','failed');assert.equal(store.get<any>('snapshots','store_products:unknown')?.dataTime,null);}finally{store.close();}

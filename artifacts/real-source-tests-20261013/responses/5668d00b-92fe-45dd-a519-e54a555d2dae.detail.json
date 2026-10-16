@@ -1,0 +1,168 @@
+{
+  "id": "5668d00b-92fe-45dd-a519-e54a555d2dae",
+  "title": "32pcs 五种尺寸PCB双面原型Diy通用印刷电路板空白电路板锡膏印刷",
+  "source": "taobao_tmall",
+  "sourceLabel": "淘宝 / 天猫",
+  "currency": "CNY",
+  "mainImage": "https://img.alicdn.com/imgextra/i1/2200538669587/O1CN01AGWbrd2Kgu8AyISH8_!!2200538669587.jpg_q50.jpg",
+  "skuCount": 1,
+  "minPrice": 19.8,
+  "maxPrice": 19.8,
+  "goodsMinPrice": 19.8,
+  "goodsMaxPrice": 19.8,
+  "delivery": {
+    "freightVerified": false
+  },
+  "originalTitle": "32pcs 五种尺寸PCB双面原型Diy通用印刷电路板空白电路板锡膏印刷",
+  "attributes": {},
+  "skus": [
+    {
+      "properties": {
+        "规格": "默认规格"
+      },
+      "spec": "规格:默认规格",
+      "price": 19.8,
+      "goodsPrice": 19.8
+    }
+  ],
+  "images": [
+    "https://img.alicdn.com/imgextra/i1/2200538669587/O1CN01AGWbrd2Kgu8AyISH8_!!2200538669587.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i1/2200538669587/O1CN01SCR38f2Kgu8HCUMVf_!!2200538669587.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i1/2200538669587/O1CN01TReSEf2Kgu8AyJnPO_!!2200538669587.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i4/2200538669587/O1CN01fqomII2Kgu8HXM2zI_!!2200538669587.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i4/2200538669587/O1CN01mcKTVZ2Kgu8AyIrCx_!!2200538669587.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i1/2200538669587/O1CN01AGWbrd2Kgu8AyISH8_!!2200538669587.jpg"
+  ],
+  "descriptionImages": [
+    "https://img.alicdn.com/imgextra/i4/2200538669587/O1CN01fqomII2Kgu8HXM2zI_!!2200538669587.jpg",
+    "https://img.alicdn.com/imgextra/i1/2200538669587/O1CN01TReSEf2Kgu8AyJnPO_!!2200538669587.jpg",
+    "https://img.alicdn.com/imgextra/i1/2200538669587/O1CN01SCR38f2Kgu8HCUMVf_!!2200538669587.jpg",
+    "https://img.alicdn.com/imgextra/i4/2200538669587/O1CN01mcKTVZ2Kgu8AyIrCx_!!2200538669587.jpg",
+    "https://img.alicdn.com/imgextra/i3/2200538669587/O1CN01i7MoJa2Kgu8Ais02x_!!2200538669587.png",
+    "https://img.alicdn.com/imgextra/i3/O1CN01XU1Y2d1Sk7fIMOkeU_!!6000000002284-2-tps-1125-1446.png"
+  ],
+  "sourceUrl": "https://item.taobao.com/item.htm?abbucket=11&id=915086500416&mi_id=0000emMFIcW4aEwywBazUDt8pK8cD8kJKNOvbBmCsy_6uYc&ns=1&spm=a21n57.1.hoverItem.2&utparam=%7B%22aplus_abtest%22%3A%226ffa1eace8ee13276f7260081ec3fa9f%22%7D&xxc=taobaoSearch",
+  "ozonPreprocess": {
+    "status": "completed",
+    "sourceImageUrl": "https://img.alicdn.com/imgextra/i1/2200538669587/O1CN01AGWbrd2Kgu8AyISH8_!!2200538669587.jpg_q50.jpg",
+    "candidates": [
+      {
+        "yandexRank": 16,
+        "productUrl": "https://www.ozon.ru/product/12-sht-dvuhstoronnih-pechatnyh-plat-4-razmerov-dlya-proektov-payki-2036145318/",
+        "query": {
+          "status": "succeeded",
+          "product": {
+            "sku": "2036145318",
+            "name": "12 шт двухсторонних печатных плат 4 размеров для проектов пайки",
+            "brand": null,
+            "priceRub": 630,
+            "weightKg": 0.086,
+            "weightG": 86,
+            "dimensionsCm": {
+              "length": 10,
+              "width": 6,
+              "height": 4
+            },
+            "volumeCm3": 240,
+            "volumeL": 0.24,
+            "descriptiveCategoryId": 95617422,
+            "descriptiveTypeId": 970985280,
+            "thumbnailUrl": null,
+            "fetchedAt": "2026-09-22T06:43:21.494Z",
+            "source": "cache",
+            "stale": false
+          }
+        },
+        "image": {
+          "status": "downloaded",
+          "originalUrl": "https://cdn1.ozone.ru/s3/multimedia-6/6261367566.jpg",
+          "assetId": "image-v1-d1766baa107e401c562c3bc136e8b921e62c1fd393d9a882c6c6e1bae2cfecf6"
+        }
+      },
+      {
+        "yandexRank": 22,
+        "productUrl": "https://www.ozon.ru/product/32-sht-dvuhstoronniy-nabor-prototipov-pechatnyh-plat-dlya-samostoyatelnoy-payki-s-5-505910895/",
+        "query": {
+          "status": "succeeded",
+          "product": {
+            "sku": "505910895",
+            "name": "32 шт. двухсторонний набор прототипов печатных плат для самостоятельной пайки с 5 размерами универсальной печатной платы",
+            "brand": null,
+            "priceRub": 1099,
+            "weightKg": 0.259,
+            "weightG": 259,
+            "dimensionsCm": {
+              "length": 10,
+              "width": 10,
+              "height": 10
+            },
+            "volumeCm3": 1000,
+            "volumeL": 1,
+            "descriptiveCategoryId": 17028653,
+            "descriptiveTypeId": 92101,
+            "thumbnailUrl": null,
+            "fetchedAt": "2026-09-22T06:43:29.004Z",
+            "source": "cache",
+            "stale": false
+          }
+        },
+        "image": {
+          "status": "downloaded",
+          "originalUrl": "https://ir.ozone.ru/s3/multimedia-3/c600/6261367491.jpg",
+          "assetId": "image-v1-4c152e9c7eddfb23d8e159686bfcfe7164b97e58c8874176733a43af6ad48f62"
+        }
+      },
+      {
+        "yandexRank": 28,
+        "productUrl": "https://www.ozon.ru/product/dvustoronnyaya-pechatnaya-plata-iz-steklotekstolita-zelenogo-tsveta-dlya-samostoyatelnoy-sborki-2955931435/",
+        "query": {
+          "status": "succeeded",
+          "product": {
+            "sku": "2955931435",
+            "name": "Двусторонняя печатная плата из стеклотекстолита зелёного цвета для самостоятельной сборки, 10 шт",
+            "brand": null,
+            "priceRub": 729,
+            "weightKg": 0.146,
+            "weightG": 146,
+            "dimensionsCm": {
+              "length": 10,
+              "width": 9,
+              "height": 3
+            },
+            "volumeCm3": 270,
+            "volumeL": 0.27,
+            "descriptiveCategoryId": 19173618,
+            "descriptiveTypeId": 971883192,
+            "thumbnailUrl": null,
+            "fetchedAt": "2026-09-22T06:43:37.806Z",
+            "source": "cache",
+            "stale": false
+          }
+        },
+        "image": {
+          "status": "downloaded",
+          "originalUrl": "https://ir.ozone.ru/s3/multimedia-1-5/7778181713.jpg",
+          "assetId": "image-v1-cbef66e364ec0ee6c606edcd1e04a812beeebec075a14dd8b252debb6d14e017"
+        }
+      }
+    ],
+    "completedAt": "2026-09-22T06:44:23.683Z"
+  },
+  "ozonCategorySuggestion": {
+    "status": "suggested",
+    "categoryKey": "95617422:970985280",
+    "descriptionCategoryId": "95617422",
+    "typeId": "970985280",
+    "votes": 1,
+    "candidateCount": 3,
+    "categoryCount": 3,
+    "evidence": [
+      {
+        "yandexRank": 16,
+        "categoryKey": "95617422:970985280",
+        "sku": "2036145318",
+        "productUrl": "https://www.ozon.ru/product/12-sht-dvuhstoronnih-pechatnyh-plat-4-razmerov-dlya-proektov-payki-2036145318/"
+      }
+    ]
+  }
+}

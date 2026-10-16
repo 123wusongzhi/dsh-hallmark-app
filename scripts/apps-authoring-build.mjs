@@ -1,14 +1,47 @@
+import {checkpoint,buildFingerprint,inspectAttempt,newAttemptRequired} from './authoring-resume.mjs';
 import {SourceComponentStore} from '../packages/source-components/src/index.ts';
-import {AuthoringEvidenceRunner} from '../packages/source-components/src/authoring-evidence.ts';
-import {readFileSync} from 'node:fs';
-const args=process.argv.slice(2);
-if(args.length!==1)throw new Error('Provide one build request JSON path with attemptId, epoch, sourceRevision, workspacePath, command[], evidenceRoot, archiveRoot.');
-const input=JSON.parse(readFileSync(args[0],'utf8')),runner=new AuthoringEvidenceRunner(input.evidenceRoot),sources=new SourceComponentStore(input.archiveRoot);
+import {AuthoringEvidenceRunner,sourceInputDigest,buildReuseSignature} from '../packages/source-components/src/authoring-evidence.ts';
+import {readFileSync,writeFileSync} from 'node:fs';
+import {recordEvidence,writeSummary} from './authoring-output.mjs';
+import {resolve,join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+export async function runAuthoringBuild(input){
+let stage='build',summary;
+try{
+if(input.retryStage!==undefined)throw Object.assign(new Error('Use the check runner with retryStage and retryId to obtain a new runtime attempt.'),{code:'RETRY_REQUIRES_CHECK_RUNNER'});
+const runner=new AuthoringEvidenceRunner(input.evidenceRoot),sources=new SourceComponentStore(input.archiveRoot);
 const onStart=input.runtime?async()=>{
  const url=new URL(input.runtime.url);if(url.protocol!=='http:'||url.hostname!=='127.0.0.1')throw new Error('BUILD_RUNTIME_LOCAL_ONLY');
  const response=await fetch(new URL('/v1/authoring/markBuilding',url),{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+readFileSync(input.runtime.keyFile,'utf8').trim()},body:JSON.stringify({sessionId:input.sessionId,params:{attemptId:input.attemptId,epoch:input.epoch}})});
  if(!response.ok)throw new Error('BUILD_STAGE_REJECTED:'+response.status);const result=await response.json();if(result.state!=='building')throw new Error('BUILD_STAGE_REJECTED');
 }:undefined;
 const buildStarted=performance.now();
-const result=await runner.build({...input,sources,onStart});console.log(JSON.stringify({reportRef:result.reportRef,verdict:result.report.verdict,archiveBuildId:result.report.archiveBuildId,buildMs:Math.round(performance.now()-buildStarted)}));
-if(result.report.verdict!=='PASS')process.exitCode=1;
+const key=buildFingerprint(input),previous=checkpoint(input,'build');
+let result,reused=false,verified;
+if(previous?.result){
+ if(previous.key!==key)throw newAttemptRequired();
+ try{const report=runner.verifyBuild(previous.result.reportRef,sources,{allowFailure:true});if(report.verdict==='FAIL'&&sourceInputDigest(input.workspacePath)!==report.sourceInputDigestAfter)throw newAttemptRequired();if(report.attemptId!==input.attemptId||report.epoch!==input.epoch||report.sourceRevision!==input.sourceRevision||report.reuseInput?.key!==buildReuseSignature(input).key)throw newAttemptRequired();verified=report;}catch(error){if(error.message==='BUILD_INPUT_CHANGED')throw newAttemptRequired();throw error;}
+ await inspectAttempt(input);result={report:verified,reportRef:previous.result.reportRef};reused=true;
+}else{
+ if(input.reuseBuildReportRef){await onStart?.();result=runner.reuseBuild(input.reuseBuildReportRef,{...input,sources});reused=true;}
+ else result=await runner.build({...input,sources,onStart});
+ checkpoint(input,'build',{version:2,key,result});
+}
+
+summary={attemptId:input.attemptId,epoch:input.epoch,reusedBuild:reused,executionKind:result.report.executionKind??'executed',executionId:result.report.executionId,reusedFrom:result.report.reusedFrom??null,reuseVerifiedAt:result.report.reuseVerifiedAt??null,environmentPolicy:result.report.reuseInput?.environment.policy??'legacy',environmentKeys:result.report.reuseInput?.environment.keys??[],reportRef:result.reportRef,verdict:result.report.verdict,archiveBuildId:result.report.archiveBuildId,buildMs:Math.round(performance.now()-buildStarted)};
+if(input.autoRecord){
+ stage='record_build';const receipt=await recordEvidence(input,'build',result.reportRef);summary.buildReceiptId=receipt.receiptId;
+ if(summary.verdict==='PASS'){
+ summary.previewRequest={sessionId:input.sessionId,viewId:input.viewId,attemptId:input.attemptId,epoch:input.epoch,buildReceiptId:receipt.receiptId,buildReportRef:result.reportRef,archiveRoot:input.archiveRoot,evidenceRoot:input.evidenceRoot,runtime:input.runtime,mode:'live_readonly',autoRecord:true,requiredMethods:['getData']};
+ summary.previewRequestPath=join(input.evidenceRoot,`${input.attemptId}-${input.epoch}-preview-request.json`);
+ writeFileSync(summary.previewRequestPath,JSON.stringify(summary.previewRequest,null,2)+'\n');
+}
+}
+summary.stage=summary.verdict==='PASS'?'complete':'build';summary.nextAction=summary.verdict==='PASS'?'run_preview':'inspect_build_log';
+summary.summaryPath=writeSummary(input,'build',summary);return summary;
+}catch(error){error.summaryPath=writeSummary(input,'build',{...summary,verdict:'ERROR',stage,nextAction:stage==='record_build'?'retry_same_request':error.code==='NEW_ATTEMPT_REQUIRED'?'begin_new_attempt':'inspect_evidence',error:{code:error.code??null,message:error.message}});throw error;}
+}
+if(process.argv[1]&&/apps-authoring-build\.(mjs|js)$/.test(process.argv[1])&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+ if(process.argv.length!==3)throw new Error('Provide one build request JSON path.');
+ const input=JSON.parse(readFileSync(process.argv[2],'utf8'));const result=await runAuthoringBuild(input);console.log(JSON.stringify(result));if(result.verdict!=='PASS')process.exitCode=1;
+}

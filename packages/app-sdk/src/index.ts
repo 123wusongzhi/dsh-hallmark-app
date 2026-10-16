@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { canonicalJson, validateResult } from '../../app-contracts/src/index.ts';
 import type { AppRef, CapabilityDescriptor, CapabilityResult, InvocationRequest, InvocationSource, JsonSchema, JsonValue } from '../../app-contracts/src/index.ts';
+import {appsInvocationTimeout,isBusinessSubmission} from './deadlines.ts';
+import {loopbackHttpFetch} from './loopback-http.ts';
+export * from './deadlines.ts';
+
 export interface RuntimeTransport {
   identity(signal?:AbortSignal): Promise<{transportMajor:number;catalogSchemaVersion:number;catalogDigest:string}>;
   describe(id:string,version?:string): Promise<CapabilityDescriptor|undefined>;
@@ -62,13 +66,15 @@ export class HttpRuntimeTransport implements RuntimeTransport {
   readonly url:string;
   readonly token:string;
   readonly fetcher:typeof fetch;
-  constructor(url:string,token:string,fetcher:typeof fetch=fetch) {
-    this.url=url;this.token=token;this.fetcher=fetcher;
+  protected readonly nativeHttp:boolean;
+  constructor(url:string,token:string,fetcher?:typeof fetch) {
+    this.url=url;this.token=token;this.fetcher=fetcher??fetch;this.nativeHttp=fetcher===undefined;
     const parsed=new URL(url);if(parsed.protocol!=='http:'||!['127.0.0.1','[::1]'].includes(parsed.hostname)||parsed.username||parsed.password||parsed.pathname!=='/')throw new Error('LOOPBACK_RUNTIME_REQUIRED');
   }
-  private async read(path:string,body?:unknown,signal?:AbortSignal):Promise<unknown> {
-    const bounded=AbortSignal.any([AbortSignal.timeout(90000),...(signal?[signal]:[])]);
-    const response=await this.fetcher(new URL(path,this.url),{method:body===undefined?'GET':'POST',headers:{Authorization:`Bearer ${this.token}`,...(body===undefined?{}:{'Content-Type':'application/json'})},...(body===undefined?{}:{body:JSON.stringify(body)}),redirect:'error',signal:bounded});
+  private async read(path:string,body?:unknown,signal?:AbortSignal,timeoutMs=90000):Promise<unknown> {
+    const bounded=AbortSignal.any([AbortSignal.timeout(timeoutMs),...(signal?[signal]:[])]);
+    const send=this.nativeHttp&&timeoutMs>300000?loopbackHttpFetch:this.fetcher;
+    const response=await send(new URL(path,this.url),{method:body===undefined?'GET':'POST',headers:{Authorization:`Bearer ${this.token}`,...(body===undefined?{}:{'Content-Type':'application/json'})},...(body===undefined?{}:{body:JSON.stringify(body)}),redirect:'error',signal:bounded});
     const value:unknown=await response.json();if(!response.ok)throw Object.assign(new Error('RUNTIME_TRANSPORT_ERROR'),{statusCode:response.status,details:value});return value;
   }
   async identity(signal?:AbortSignal) {return await this.read('/v1/runtime',undefined,signal) as {transportMajor:number;catalogSchemaVersion:number;catalogDigest:string};}
@@ -77,30 +83,39 @@ export class HttpRuntimeTransport implements RuntimeTransport {
     const remaining=Date.parse(request.deadlineAt)-Date.now(),deadline=Number.isFinite(remaining)?AbortSignal.timeout(Math.max(0,Math.min(remaining,2147483647))):AbortSignal.abort();
     const bounded=AbortSignal.any([deadline,...(signal?[signal]:[])]);
     if(bounded.aborted||remaining<=0)return {invocationId:request.invocationId,traceId:request.traceId,status:'cancelled',error:{code:'CANCELLED_BEFORE_DISPATCH',message:'Capability invocation was not submitted.',retryPolicy:'never'}};
-    try{return await this.read('/v1/invocations',request,bounded) as CapabilityResult;}
+    try{return await this.read('/v1/invocations',request,bounded,appsInvocationTimeout(request)) as CapabilityResult;}
     catch(error){
       const rejected=runtimeHttpError(error,request);if(rejected)return rejected;
+      const mutation=!!request.idempotencyKey||isBusinessSubmission(request.appId,request.capabilityId);
       // Read the same attempt record. Never submit another mutation after a lost response.
-      if(request.idempotencyKey){
+      if(mutation){
         try{const recovered=await recoverInvocationResult(this,request,bounded);if(recovered)return recovered;}catch{/* Runtime may still be unavailable. */}
       }
-      return {invocationId:request.invocationId,traceId:request.traceId,status:'unavailable',error:{code:'RUNTIME_RESPONSE_UNAVAILABLE',message:request.idempotencyKey?'Resolve the original invocation ID when Runtime returns; mutation resubmission is disabled.':'Runtime response unavailable.',retryPolicy:request.idempotencyKey?'inspect_only':'read_retry',details:{invocationId:request.invocationId,doNotResubmitMutation:!!request.idempotencyKey}}};
+      return {invocationId:request.invocationId,traceId:request.traceId,status:'unavailable',error:{code:'RUNTIME_RESPONSE_UNAVAILABLE',message:mutation?'Resolve the original invocation ID when Runtime returns; mutation resubmission is disabled.':'Runtime response unavailable.',retryPolicy:mutation?'inspect_only':'read_retry',details:{invocationId:request.invocationId,doNotResubmitMutation:mutation}}};
     }
   }
   async inspect(operationId:string,signal?:AbortSignal) {return await this.read(`/v1/operations/${encodeURIComponent(operationId)}/inspect`,{},signal) as CapabilityResult;}
   async getInvocation(invocationId:string,signal?:AbortSignal) {return await this.read(`/v1/invocations/${encodeURIComponent(invocationId)}`,undefined,signal) as InvocationRecoveryRecord;}
 }
-function schemaType(schema:JsonSchema):string {
+function schemaType(schema:JsonSchema,inheritedProperties:Record<string,JsonSchema>={},inheritedAdditionalProperties?:unknown):string {
+  const declared=(schema.properties??{}) as Record<string,JsonSchema>,required=(schema.required??[]) as string[];
+  const alternatives=['anyOf','oneOf','allOf'].filter(key=>Array.isArray(schema[key]));
+  if(alternatives.length){
+    const {anyOf:_anyOf,oneOf:_oneOf,allOf:_allOf,...base}=schema;
+    const scope={...inheritedProperties,...declared},parts:string[]=[];
+    if(['type','properties','required','enum','const'].some(key=>key in base))parts.push(base.type==='object'&&!base.properties&&!base.required&&base.additionalProperties===undefined?'object':schemaType(base,inheritedProperties,inheritedAdditionalProperties));
+    for(const key of alternatives)parts.push((schema[key] as JsonSchema[]).map(branch=>`(${schemaType(branch,scope,base.additionalProperties??inheritedAdditionalProperties)})`).join(key==='allOf'?' & ':' | '));
+    return parts.map(part=>`(${part})`).join(' & ');
+  }
   if(Array.isArray(schema.enum))return schema.enum.map(item=>JSON.stringify(item)).join(' | ');
   if('const' in schema)return JSON.stringify(schema.const);
-  if(Array.isArray(schema.anyOf)||Array.isArray(schema.oneOf))return ((schema.anyOf??schema.oneOf) as JsonSchema[]).map(schemaType).join(' | ');
-  if(Array.isArray(schema.allOf))return (schema.allOf as JsonSchema[]).map(schemaType).join(' & ');
-  if(Array.isArray(schema.type))return schema.type.map(type=>schemaType({...schema,type})).join(' | ');
+  if(Array.isArray(schema.type))return schema.type.map(type=>schemaType({...schema,type},inheritedProperties,inheritedAdditionalProperties)).join(' | ');
   if(schema.type==='array')return `Array<${schemaType((schema.items??{}) as JsonSchema)}>`;
-  if(schema.type==='object'){
-    const properties=(schema.properties??{}) as Record<string,JsonSchema>, required=(schema.required??[]) as string[];
+  if(schema.type==='object'||schema.properties!==undefined||schema.required!==undefined){
+    // A required-only alternative names properties declared by its surrounding object.
+    const properties={...Object.fromEntries(required.map(key=>[key,declared[key]??inheritedProperties[key]??{}])),...declared};
     const fields=Object.entries(properties).map(([name,item])=>`${JSON.stringify(name)}${required.includes(name)?'':'?'}: ${schemaType(item)}`);
-    return schema.additionalProperties===false?`{ ${fields.join('; ')} }`:`({ ${fields.join('; ')} } & { [key: string]: JsonValue })`;
+    return (schema.additionalProperties??inheritedAdditionalProperties)===false?`{ ${fields.join('; ')} }`:`({ ${fields.join('; ')} } & { [key: string]: JsonValue })`;
   }
   return schema.type==='integer'?'number':schema.type==='null'?'null':['string','number','boolean'].includes(String(schema.type))?String(schema.type):'JsonValue';
 }

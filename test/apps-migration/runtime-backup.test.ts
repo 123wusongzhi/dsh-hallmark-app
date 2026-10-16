@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash,createHmac} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
-import {existsSync,lstatSync,mkdtempSync,mkdirSync,readFileSync,readlinkSync,readdirSync,renameSync,rmdirSync,rmSync,symlinkSync,writeFileSync} from 'node:fs';
+import {existsSync,lstatSync,mkdtempSync,mkdirSync,readFileSync,readlinkSync,readdirSync,renameSync,rmdirSync,rmSync,symlinkSync,unlinkSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname,join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -207,8 +207,8 @@ test('missing screenshots, external workspaces, archives and unknown references 
 test('symlinks in Runtime, external workspaces and backup input are rejected instead of followed',async()=>{
   const f=await fixture();try{
     const outside=join(f.root,'outside');mkdirSync(outside);writeFileSync(join(outside,'secret'),'must not traverse');
-    symlinkSync(outside,join(f.source,'unsafe-link'),'junction');assert.throws(()=>runtimeBackupDryRun(f.options),/SYMLINK_FORBIDDEN/);rmdirSync(join(f.source,'unsafe-link'));
-    symlinkSync(outside,join(f.workspace,'unsafe-link'),'junction');assert.throws(()=>runtimeBackupDryRun(f.options),/SYMLINK_FORBIDDEN/);rmdirSync(join(f.workspace,'unsafe-link'));
+    symlinkSync(outside,join(f.source,'unsafe-link'),'junction');assert.throws(()=>runtimeBackupDryRun(f.options),/SYMLINK_FORBIDDEN/);unlinkSync(join(f.source,'unsafe-link'));
+    symlinkSync(outside,join(f.workspace,'unsafe-link'),'junction');assert.throws(()=>runtimeBackupDryRun(f.options),/SYMLINK_FORBIDDEN/);unlinkSync(join(f.workspace,'unsafe-link'));
     await backupRuntime(f.options);symlinkSync(outside,join(f.backup,'unsafe-link'),'junction');assert.throws(()=>verifyRuntimeBackup(f.backup),/SYMLINK_FORBIDDEN/);
   }finally{f.cleanup();}
 });
@@ -279,7 +279,7 @@ test('immutable archives, evidence and undeclared controlled-root directories ne
       const store=new RuntimeStore(join(f.source,'apps.db'));try{store.put('views','cannot-promote-immutable',{source:{directory:protectedRoot}});if(protectedRoot===f.runner.root)store.put('authoring_drafts','cannot-promote-evidence',{workspacePath:protectedRoot});}finally{store.close();}
       // The undeclared workspace is deliberately not owned by a source view/draft.
       if(protectedRoot.endsWith('unregistered')){const db=new DatabaseSync(join(f.source,'apps.db'));db.prepare("DELETE FROM views WHERE id='cannot-promote-immutable'").run();db.close();}
-      assert.throws(()=>runtimeBackupDryRun(f.options),/BACKUP_SYMLINK_FORBIDDEN/);assert.equal(existsSync(f.backup),false);rmdirSync(link);
+      assert.throws(()=>runtimeBackupDryRun(f.options),/BACKUP_SYMLINK_FORBIDDEN/);assert.equal(existsSync(f.backup),false);unlinkSync(link);
       const db=new DatabaseSync(join(f.source,'apps.db'));db.prepare("DELETE FROM views WHERE id='cannot-promote-immutable'").run();db.prepare("DELETE FROM authoring_drafts WHERE id='cannot-promote-evidence'").run();db.close();
     }
   }finally{f.cleanup();}
@@ -392,7 +392,7 @@ test('resolver reuses relocation rows within an evidence batch and releases them
   const f=await fixture();let store:RuntimeStore|undefined;try{
     await backupRuntime(f.options);restoreRuntimeBackup({backupDirectory:f.backup,targetDirectory:f.target});
     store=new RuntimeStore(join(f.target,'apps.db'));let reads=0;
-    const resolver=new EvidencePathResolver({root:f.target,store:{list:<T>(table:string)=>{reads++;return store!.list<T>(table);}}});
+    const resolver=new EvidencePathResolver({root:f.target,store:{list:()=>{throw new Error('Unrelated business records must not be loaded');},query:<T>(table:string,filters:Record<string,string>)=>{reads++;return store!.query<T>(table,filters);}}});
     resolver.withScope(()=>{
       for(let i=0;i<46;i++)resolver.resolve(f.screenshot.path);
       resolver.withScope(()=>resolver.resolve(f.current.reportRef.path));
@@ -414,7 +414,7 @@ test('resolver rejects anchor tamper, mapped file tamper, symlink, traversal, un
     store.put('provider_records','unmanifested-mapping',{...row,relocatedPath:join(f.target,'not-the-manifest-file')});assert.throws(()=>resolver.resolve(f.screenshot.path),/TARGET_INVALID/);store.delete('provider_records','unmanifested-mapping');
     const altered=JSON.parse(anchorBytes.toString()),fact=altered.files.find((file:{originalPath:string})=>file.originalPath===f.screenshot.path);fact.sha256='0'.repeat(64);const conflictAnchor=join(f.target,'.restore','conflict-anchor.json'),conflictBytes=Buffer.from(JSON.stringify(altered));writeFileSync(conflictAnchor,conflictBytes);
     store.put('provider_records','conflicting-mapping',{...row,sha256:fact.sha256,manifestPath:conflictAnchor,manifestSha256:sha(conflictBytes)});assert.throws(()=>resolver.resolve(f.screenshot.path),/CONFLICT/);store.delete('provider_records','conflicting-mapping');
-    const evidence=join(f.target,'authoring-evidence'),saved=join(f.target,'authoring-evidence-saved'),outside=join(f.root,'outside-evidence');mkdirSync(outside);renameSync(evidence,saved);symlinkSync(outside,evidence,'junction');assert.throws(()=>resolver.resolve(f.current.reportRef.path),/SYMLINK/);rmdirSync(evidence);renameSync(saved,evidence);
+    const evidence=join(f.target,'authoring-evidence'),saved=join(f.target,'authoring-evidence-saved'),outside=join(f.root,'outside-evidence');mkdirSync(outside);renameSync(evidence,saved);symlinkSync(outside,evidence,'junction');assert.throws(()=>resolver.resolve(f.current.reportRef.path),/SYMLINK/);unlinkSync(evidence);renameSync(saved,evidence);
     assert.equal(resolver.resolve(f.current.reportRef.path),join(f.target,'authoring-evidence',f.current.reportRef.path.split(/[\\/]/).at(-1)!));
   }finally{store?.close();f.cleanup();}
 });

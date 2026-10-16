@@ -1,5 +1,5 @@
 import type { ToolResult, Provenance, InvocationContext, OperationState } from '../../contracts/src/index.ts';
-import type { PlatformCallInput, SubmitOrdinaryCnyPriceInput, OrdinaryCnyOperationResult, CategoryDataInput } from '../../hallmark-adapter/types.ts';
+import type { PlatformCallInput, SubmitOrdinaryCnyPriceInput, OrdinaryCnyOperationResult, CategoryDataInput, RegisterTaskSalesVariantsInput } from '../../hallmark-adapter/types.ts';
 import type { ViewSpec } from '../../presentation/src/types.ts';
 export type RecordData = Record<string, any>;
 export interface CoreStore {
@@ -13,10 +13,13 @@ export interface CoreStore {
 }
 export interface AdapterResponse {status:'ok'|'failed'|'unknown'|'unavailable';raw?:any;provenance?:Provenance;error?:{code:string;message:string;retryable:boolean;retryAfterMs?:number};spill?:unknown;matches?:any[]}
 export interface CoreClient {
+ storeDataRead?(storeId:string,input:PlatformCallInput):Promise<AdapterResponse>;
  getStores():Promise<AdapterResponse>;getStoreProducts():Promise<AdapterResponse>;syncStoreProducts():Promise<AdapterResponse>;
  getTargetMargin():Promise<AdapterResponse>;searchCollectedItems(query?:string):Promise<AdapterResponse>;getCollectedItem(id:string):Promise<AdapterResponse>;getCollectedItemDetail?(id:string):Promise<AdapterResponse>;
+ getPricingSettings?():Promise<AdapterResponse>;
  platformCall(taskId:string,input:PlatformCallInput):Promise<AdapterResponse>;platformRead(taskId:string,input:PlatformCallInput):Promise<AdapterResponse>;
  getTask?(taskId:string):Promise<AdapterResponse>;verifyTask?(taskId:string):Promise<AdapterResponse>;
+ registerTaskSalesVariants?(taskId:string,input:RegisterTaskSalesVariantsInput):Promise<AdapterResponse>;
  submitOrdinaryCnyPrice?(input:SubmitOrdinaryCnyPriceInput):Promise<OrdinaryCnyOperationResult>;
  getOrdinaryCnyOperation?(storeId:string,operationId:string):Promise<OrdinaryCnyOperationResult>;
  inspectOrdinaryCnyOperation?(storeId:string,operationId:string):Promise<OrdinaryCnyOperationResult>;

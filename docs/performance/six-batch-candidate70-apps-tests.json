@@ -1,0 +1,46 @@
+{
+  "baseline": {
+    "path": "baseline-checks/apps-tests.log",
+    "counts": {
+      "tests": 565,
+      "pass": 557,
+      "fail": 7,
+      "cancelled": 1,
+      "skipped": 0,
+      "todo": 0
+    },
+    "failures": [
+      "native Russian statuses preserve moderation, stock and archive distinctions",
+      "business component submission survives 150 seconds and retains explicit shorter deadlines",
+      "new procurement sources declare full loading and local operations without a user-editable technical switch",
+      "ten Ozon catalog definitions are reusable without shops or frozen dates",
+      "symlinks in Runtime, external workspaces and backup input are rejected instead of followed",
+      "immutable archives, evidence and undeclared controlled-root directories never receive dependency-cache exclusions",
+      "resolver rejects anchor tamper, mapped file tamper, symlink, traversal, unmanifested mappings and conflicting proven facts",
+      "initialize migrates mixed-case shop sources into shared definitions without losing history, layout or same-ID renamed sources; repeated initialization is idempotent"
+    ]
+  },
+  "candidate": {
+    "path": "candidate-checks/apps-tests.log",
+    "counts": {
+      "tests": 569,
+      "pass": 561,
+      "fail": 7,
+      "cancelled": 1,
+      "skipped": 0,
+      "todo": 0
+    },
+    "failures": [
+      "native Russian statuses preserve moderation, stock and archive distinctions",
+      "business component submission survives 150 seconds and retains explicit shorter deadlines",
+      "new procurement sources declare full loading and local operations without a user-editable technical switch",
+      "ten Ozon catalog definitions are reusable without shops or frozen dates",
+      "symlinks in Runtime, external workspaces and backup input are rejected instead of followed",
+      "immutable archives, evidence and undeclared controlled-root directories never receive dependency-cache exclusions",
+      "resolver rejects anchor tamper, mapped file tamper, symlink, traversal, unmanifested mappings and conflicting proven facts",
+      "initialize migrates mixed-case shop sources into shared definitions without losing history, layout or same-ID renamed sources; repeated initialization is idempotent"
+    ]
+  },
+  "newFailures": [],
+  "baselineOnlyFailures": []
+}

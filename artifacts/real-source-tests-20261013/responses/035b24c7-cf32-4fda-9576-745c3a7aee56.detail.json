@@ -1,0 +1,337 @@
+{
+  "id": "035b24c7-cf32-4fda-9576-745c3a7aee56",
+  "title": "卷发筒发根烫发短发美发带齿子母筒家用刘海火箭卷发杠子工具魔法",
+  "source": "taobao_tmall",
+  "sourceLabel": "淘宝 / 天猫",
+  "currency": "CNY",
+  "mainImage": "https://img.alicdn.com/imgextra/i4/3961471310/O1CN01KfQe0s1LY1xWRNXRY_!!3961471310.jpg_q50.jpg",
+  "skuCount": 12,
+  "minPrice": 3.95,
+  "maxPrice": 9.5,
+  "goodsMinPrice": 3.95,
+  "goodsMaxPrice": 9.5,
+  "delivery": {
+    "freightVerified": false
+  },
+  "originalTitle": "卷发筒发根烫发短发美发带齿子母筒家用刘海火箭卷发杠子工具魔法",
+  "attributes": {
+    "品名": "子母卷"
+  },
+  "skus": [
+    {
+      "properties": {
+        "颜色分类": "小号（直径2.5cm）12个一包"
+      },
+      "spec": "颜色分类:小号（直径2.5cm）12个一包",
+      "code": "5930193119778",
+      "sourceSkuId": "5930193119778",
+      "price": 3.95,
+      "goodsPrice": 3.95,
+      "originalPrice": 3.95,
+      "stock": 200,
+      "stockStatus": "有货"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号（直径3cm）12个一包"
+      },
+      "spec": "颜色分类:中号（直径3cm）12个一包",
+      "code": "5930193119779",
+      "sourceSkuId": "5930193119779",
+      "price": 3.95,
+      "goodsPrice": 3.95,
+      "originalPrice": 3.95,
+      "stock": 200,
+      "stockStatus": "有货"
+    },
+    {
+      "properties": {
+        "颜色分类": "大号（直径3.5cm）12个一包"
+      },
+      "spec": "颜色分类:大号（直径3.5cm）12个一包",
+      "code": "5930193119780",
+      "sourceSkuId": "5930193119780",
+      "price": 3.95,
+      "goodsPrice": 3.95,
+      "originalPrice": 3.95,
+      "stock": 200,
+      "stockStatus": "有货"
+    },
+    {
+      "properties": {
+        "颜色分类": "小号 二包"
+      },
+      "spec": "颜色分类:小号 二包",
+      "code": "5930193119781",
+      "sourceSkuId": "5930193119781",
+      "price": 5.97,
+      "goodsPrice": 5.97,
+      "originalPrice": 5.97,
+      "stock": 200,
+      "stockStatus": "有货"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号 二包"
+      },
+      "spec": "颜色分类:中号 二包",
+      "code": "5930193119782",
+      "sourceSkuId": "5930193119782",
+      "price": 5.97,
+      "goodsPrice": 5.97,
+      "originalPrice": 5.97,
+      "stock": 200,
+      "stockStatus": "有货"
+    },
+    {
+      "properties": {
+        "颜色分类": "大号 二包"
+      },
+      "spec": "颜色分类:大号 二包",
+      "code": "5930193119783",
+      "sourceSkuId": "5930193119783",
+      "price": 5.97,
+      "goodsPrice": 5.97,
+      "originalPrice": 5.97,
+      "stock": 200,
+      "stockStatus": "有货"
+    },
+    {
+      "properties": {
+        "颜色分类": "小号+中号各一包"
+      },
+      "spec": "颜色分类:小号+中号各一包",
+      "code": "5930193119784",
+      "sourceSkuId": "5930193119784",
+      "price": 5.97,
+      "goodsPrice": 5.97,
+      "originalPrice": 5.97,
+      "stock": 200,
+      "stockStatus": "有货"
+    },
+    {
+      "properties": {
+        "颜色分类": "小号+大号各一包"
+      },
+      "spec": "颜色分类:小号+大号各一包",
+      "code": "5930193119785",
+      "sourceSkuId": "5930193119785",
+      "price": 5.97,
+      "goodsPrice": 5.97,
+      "originalPrice": 5.97,
+      "stock": 200,
+      "stockStatus": "有货"
+    },
+    {
+      "properties": {
+        "颜色分类": "大号+中号各一包"
+      },
+      "spec": "颜色分类:大号+中号各一包",
+      "code": "5930193119786",
+      "sourceSkuId": "5930193119786",
+      "price": 5.97,
+      "goodsPrice": 5.97,
+      "originalPrice": 5.97,
+      "stock": 200,
+      "stockStatus": "有货"
+    },
+    {
+      "properties": {
+        "颜色分类": "小号 三包 共36个"
+      },
+      "spec": "颜色分类:小号 三包 共36个",
+      "code": "5930193119787",
+      "sourceSkuId": "5930193119787",
+      "price": 9.5,
+      "goodsPrice": 9.5,
+      "originalPrice": 9.5,
+      "stock": 200,
+      "stockStatus": "有货"
+    },
+    {
+      "properties": {
+        "颜色分类": "中号 三包 共36个"
+      },
+      "spec": "颜色分类:中号 三包 共36个",
+      "code": "5930193119788",
+      "sourceSkuId": "5930193119788",
+      "price": 9.5,
+      "goodsPrice": 9.5,
+      "originalPrice": 9.5,
+      "stock": 200,
+      "stockStatus": "有货"
+    },
+    {
+      "properties": {
+        "颜色分类": "大号 三包 共36个"
+      },
+      "spec": "颜色分类:大号 三包 共36个",
+      "code": "5930193119789",
+      "sourceSkuId": "5930193119789",
+      "price": 9.5,
+      "goodsPrice": 9.5,
+      "originalPrice": 9.5,
+      "stock": 200,
+      "stockStatus": "有货"
+    }
+  ],
+  "images": [
+    "https://img.alicdn.com/imgextra/i4/3961471310/O1CN01KfQe0s1LY1xWRNXRY_!!3961471310.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i1/3961471310/O1CN01cIR7I51LY1xcJdKgH_!!3961471310.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i1/3961471310/O1CN01OQEuRK1LY1xbs3BB9_!!3961471310.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i3/3961471310/O1CN01Jcm08d1LY1xbf9TnZ_!!3961471310.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i1/3961471310/O1CN01mP58Vp1LY1xcD56KL_!!3961471310.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i4/3961471310/O1CN01KfQe0s1LY1xWRNXRY_!!3961471310.jpg"
+  ],
+  "descriptionImages": [
+    "https://img.alicdn.com/imgextra/i2/3961471310/O1CN01HJa89T1LY1tGxk8bg_!!3961471310.jpg",
+    "https://img.alicdn.com/imgextra/i1/3961471310/O1CN01OQEuRK1LY1xbs3BB9_!!3961471310.jpg",
+    "https://img.alicdn.com/imgextra/i1/3961471310/O1CN01cIR7I51LY1xcJdKgH_!!3961471310.jpg",
+    "https://img.alicdn.com/imgextra/i1/3961471310/O1CN01mP58Vp1LY1xcD56KL_!!3961471310.jpg",
+    "https://img.alicdn.com/imgextra/i3/3961471310/O1CN01Jcm08d1LY1xbf9TnZ_!!3961471310.jpg",
+    "https://img.alicdn.com/imgextra/i1/3961471310/O1CN01DdZgJK1LY1xbfVmog_!!3961471310.jpg",
+    "https://img.alicdn.com/imgextra/i2/3961471310/O1CN01ibca9V1LY1xWRPsxk_!!3961471310.jpg",
+    "https://img.alicdn.com/imgextra/i1/3961471310/O1CN01THvskz1LY1xbf5zZb_!!3961471310.jpg",
+    "https://img.alicdn.com/imgextra/i1/3961471310/O1CN01i461O61LY1xWRN4LR_!!3961471310.jpg",
+    "https://img.alicdn.com/imgextra/i2/3961471310/O1CN01Tk5T5P1LY1xajsFe3_!!3961471310.jpg",
+    "https://img.alicdn.com/imgextra/i3/3961471310/O1CN01DawQg21LY1xcJbzVs_!!3961471310.jpg",
+    "https://img.alicdn.com/imgextra/i2/3961471310/O1CN01UqnSGN1LY1xbsFYwF_!!3961471310.jpg",
+    "https://img.alicdn.com/imgextra/i3/O1CN01XU1Y2d1Sk7fIMOkeU_!!6000000002284-2-tps-1125-1446.png"
+  ],
+  "sourceUrl": "https://item.taobao.com/item.htm?abbucket=11&id=903527614166&mi_id=00003d091mPXE4SuKFcOCJkhulKSBSLLUtGMaCgD9UwplDw&ns=1&priceTId=2150409617893075555001396e1271&skuId=5930193119785&spm=a21n57.1.hoverItem.12&utparam=%7B%22aplus_abtest%22%3A%22c75385757a1a84081b2d73a1b0c40614%22%7D&xxc=taobaoSearch",
+  "ozonPreprocess": {
+    "status": "completed",
+    "sourceImageUrl": "https://img.alicdn.com/imgextra/i4/3961471310/O1CN01KfQe0s1LY1xWRNXRY_!!3961471310.jpg_q50.jpg",
+    "candidates": [
+      {
+        "yandexRank": 13,
+        "productUrl": "https://www.ozon.ru/product/bigudi-dlya-volos-beriotti-rozovyy-10-sht-6-2-h2-5-sm-222637353/",
+        "query": {
+          "status": "succeeded",
+          "product": {
+            "sku": "222637353",
+            "name": "BERIOTTI Бигуди для волос , розовый,10 ШТ, 6, 2 Х2, 5 СМ",
+            "brand": "Beriotti",
+            "priceRub": 261,
+            "weightKg": 0.067,
+            "weightG": 67,
+            "dimensionsCm": {
+              "length": 14,
+              "width": 14,
+              "height": 3
+            },
+            "volumeCm3": 588,
+            "volumeL": 0.588,
+            "descriptiveCategoryId": 77868479,
+            "descriptiveTypeId": 93955,
+            "thumbnailUrl": null,
+            "fetchedAt": "2026-09-13T13:54:03.946Z",
+            "source": "bridge",
+            "stale": false
+          }
+        },
+        "image": {
+          "status": "downloaded",
+          "originalUrl": "https://ir.ozone.ru/s3/multimedia-3/6035998203.jpg",
+          "assetId": "image-v1-c45853d9dc6fb7c92e2771edd8eb275d9ac73cc6073ff2fcf3b3c7a7ed86ef89"
+        }
+      },
+      {
+        "yandexRank": 30,
+        "productUrl": "https://www.ozon.ru/product/bigudi-12-sht-5249306260/",
+        "query": {
+          "status": "succeeded",
+          "product": {
+            "sku": "5249306260",
+            "name": "Пластиковые бигуди, легкие в использовании, для создания причесок в домашних условиях",
+            "brand": null,
+            "priceRub": 164,
+            "weightKg": 0.076,
+            "weightG": 76,
+            "dimensionsCm": {
+              "length": 14,
+              "width": 14,
+              "height": 3
+            },
+            "volumeCm3": 588,
+            "volumeL": 0.588,
+            "descriptiveCategoryId": 77868479,
+            "descriptiveTypeId": 93955,
+            "thumbnailUrl": null,
+            "fetchedAt": "2026-09-13T13:54:14.037Z",
+            "source": "bridge",
+            "stale": false
+          }
+        },
+        "image": {
+          "status": "downloaded",
+          "originalUrl": "https://ir.ozone.ru/s3/multimedia-1-1/13126761469.jpg",
+          "assetId": "image-v1-32726b6bb8e2a0b242556483cbdeb1999c6857cdaf9ab30b3849e1573086085e"
+        }
+      },
+      {
+        "yandexRank": 36,
+        "productUrl": "https://www.ozon.ru/product/bigudi-12-sht-4842752923/",
+        "query": {
+          "status": "succeeded",
+          "product": {
+            "sku": "4842752923",
+            "name": "Пластиковые бигуди для волос, удобные и безопасные, для укладки волос в домашних условиях",
+            "brand": null,
+            "priceRub": 164,
+            "weightKg": 0.076,
+            "weightG": 76,
+            "dimensionsCm": {
+              "length": 14,
+              "width": 14,
+              "height": 3
+            },
+            "volumeCm3": 588,
+            "volumeL": 0.588,
+            "descriptiveCategoryId": 77868479,
+            "descriptiveTypeId": 93955,
+            "thumbnailUrl": null,
+            "fetchedAt": "2026-09-13T13:54:21.755Z",
+            "source": "bridge",
+            "stale": false
+          }
+        },
+        "image": {
+          "status": "downloaded",
+          "originalUrl": "https://ir.ozone.ru/s3/multimedia-7/w1200/6841088503.jpg",
+          "assetId": "image-v1-cc226631afa251f77c1e66b82fba2bc39d7ad1eb80338a8f34c1c2b864e37c49"
+        }
+      }
+    ],
+    "completedAt": "2026-09-13T13:54:27.003Z"
+  },
+  "ozonCategorySuggestion": {
+    "status": "suggested",
+    "categoryKey": "77868479:93955",
+    "descriptionCategoryId": "77868479",
+    "typeId": "93955",
+    "votes": 3,
+    "candidateCount": 3,
+    "categoryCount": 1,
+    "evidence": [
+      {
+        "yandexRank": 13,
+        "categoryKey": "77868479:93955",
+        "sku": "222637353",
+        "productUrl": "https://www.ozon.ru/product/bigudi-dlya-volos-beriotti-rozovyy-10-sht-6-2-h2-5-sm-222637353/"
+      },
+      {
+        "yandexRank": 30,
+        "categoryKey": "77868479:93955",
+        "sku": "5249306260",
+        "productUrl": "https://www.ozon.ru/product/bigudi-12-sht-5249306260/"
+      },
+      {
+        "yandexRank": 36,
+        "categoryKey": "77868479:93955",
+        "sku": "4842752923",
+        "productUrl": "https://www.ozon.ru/product/bigudi-12-sht-4842752923/"
+      }
+    ]
+  }
+}

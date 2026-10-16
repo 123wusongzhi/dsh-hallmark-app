@@ -1,4 +1,4 @@
-/** Synthetic Core/SQLite tests; no Hallmark or platform server is contacted. */
+/** Recorded category data with explicit quality and scope scenarios; isolated Core/SQLite replay. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -9,6 +9,7 @@ import { AppCore } from '../../packages/core/src/index.ts';
 import type { CoreClient, AdapterResponse } from '../../packages/core/src/types.ts';
 import { PresentationManager, bindingDatasetKey } from '../../packages/presentation/src/index.ts';
 import { prepareCategory } from '../../packages/core/src/category.ts';
+import { realAncillary, realStores } from '../real-data/corpus.ts';
 
 const context={sessionId:'session'},pair={descriptionCategoryId:'123',typeId:'456'};
 const inputs=[{mode:'search',q:'鞋子'}, {mode:'show',...pair}, {mode:'template',...pair},
@@ -18,10 +19,10 @@ function setup(path=':memory:'){
  const store=new AppStore(path),presentation=new PresentationManager(store);
  store.put('session_apps',context.sessionId,{appId:'hallmark',active:true});
  const calls={stores:0,categories:[] as any[],other:0};
- const raw={storeId:'A',results:[{id:'candidate',verified:false}],capabilityStatus:'partial',stale:true,complete:false,treeFetchedAt:'2026-10-01T01:00:00Z',future:{keep:'raw'}};
+ const raw={...realAncillary('ozonCategories'),storeId:'A',capabilityStatus:'partial',stale:true,complete:false,treeFetchedAt:'2026-10-01T01:00:00Z',future:{keep:'raw'}};
  let response:AdapterResponse={status:'ok',raw,provenance:{source:'hallmark_snapshot',fetchedAt:'2026-10-06T00:00:00Z'}};
  const forbidden=async()=>{calls.other++;throw Error('Only category read expected');};
- const client:CoreClient={getStores:async()=>{calls.stores++;return {status:'ok',raw:[{id:'A',shopName:'Alpha'},{id:'B',shopName:'Alpine'}]};},
+ const client:CoreClient={getStores:async()=>{calls.stores++;return {status:'ok',raw:[{...realStores()[0],id:'A',shopName:'Alpha'},{...realStores()[1],id:'B',shopName:'Alpine'}]};},
   getCategoryData:async input=>{calls.categories.push(structuredClone(input));return response;},
   getStoreProducts:forbidden,syncStoreProducts:forbidden,getTargetMargin:forbidden,searchCollectedItems:forbidden,getCollectedItem:forbidden,platformRead:forbidden,platformCall:forbidden};
  const options={store,presentation,client,broker:{getStoreTask:forbidden,getListingTask:forbidden,requestId:()=>{calls.other++;throw Error('No task');}}};

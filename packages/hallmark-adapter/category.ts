@@ -11,13 +11,13 @@ function invalid(): AdapterResult<CategoryDataRaw> {
 }
 export interface CategoryRequest { endpoint: string; method: 'GET' | 'POST'; storeId: string; body?: { storeId: string } }
 /** Exactly six already-existing Source routes, never a generic platform passthrough. */
-export function categoryRequest(input: CategoryDataInput): CategoryRequest | AdapterResult<CategoryDataRaw> {
+export function categoryRequest(input: CategoryDataInput, options: {directPagination?: boolean} = {}): CategoryRequest | AdapterResult<CategoryDataRaw> {
   if (!plain(input) || !explicitStoreId(input.storeId)) return invalid();
   const allowed: Record<string, string[]> = {
     search: ['mode', 'storeId', 'q', 'aspects', 'requireAspects', 'limit'],
     show: ['mode', 'storeId', 'descriptionCategoryId', 'typeId'],
     template: ['mode', 'storeId', 'descriptionCategoryId', 'typeId'],
-    values: ['mode', 'storeId', 'descriptionCategoryId', 'typeId', 'attributeId', 'q', 'limit'],
+    values: ['mode', 'storeId', 'descriptionCategoryId', 'typeId', 'attributeId', 'q', 'limit', 'lastValueId'],
     validate_value: ['mode', 'storeId', 'descriptionCategoryId', 'typeId', 'attributeId', 'valueId', 'dictionaryId'],
     sync: ['mode', 'storeId'],
   };
@@ -49,6 +49,12 @@ export function categoryRequest(input: CategoryDataInput): CategoryRequest | Ada
     if (!id(input.valueId) || !id(input.dictionaryId)) return invalid();
     query.set('dictionaryId', input.dictionaryId);
     return { endpoint: `${base}/attributes/${encodeURIComponent(input.attributeId)}/values/${encodeURIComponent(input.valueId)}/validation?${query}`, method: 'GET', storeId: input.storeId };
+  }
+  if (input.lastValueId !== undefined) {
+    if (!id(input.lastValueId) || input.q !== undefined) return invalid();
+    // The legacy Source route has no verified cursor contract. Core may validate
+    // direct requests here, but the HTTP adapter must never silently drop it.
+    if (!options.directPagination) return {status:'failed',error:{code:'CATALOG_PAGINATION_UNSUPPORTED',message:'旧 Source 类目接口不支持字典续页；需要直接店铺连接。',retryable:false}};
   }
   if (input.q !== undefined && (typeof input.q !== 'string' || [...input.q.trim()].length < 2 || [...input.q.trim()].length > 200 || input.q.trim() === '*')
     || input.limit !== undefined && !bounded(input.limit, 100)) return invalid();

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createAppsClient,COMPONENT_CHANNEL} from '../../packages/component-runtime/src/apps-client.ts';
 import {ComponentHost} from '../../packages/component-runtime/src/host.ts';
+import {APPS_BUSINESS_REQUEST_TIMEOUT_MS} from '../../packages/app-sdk/src/deadlines.ts';
 import type {BridgeIdentity,JsonValue} from '../../packages/app-contracts/src/index.ts';
 
 const identity:BridgeIdentity={protocolVersion:'2.0',sessionId:'session-a',viewId:'view-a',buildId:'build-a',frameInstanceId:'frame-a'};
@@ -61,4 +62,34 @@ test('hello reads the current persisted context revision and refuses an invalid 
 test('clients issuing their first call in the same millisecond have independent request identities',async()=>{
   const originalNow=Date.now;Date.now=()=>1234567890;const host=new ComponentHost(identity,{getData:()=>({}),getContext:()=>({})}),first=browser(host),second=browser(host),a=createAppsClient({window:first.win}),b=createAppsClient({window:second.win});
   try{await Promise.all([a.hello(),b.hello()]);await Promise.all([a.getData(),b.getData()]);const one=first.posts.at(-1) as {requestId:string},two=second.posts.at(-1) as {requestId:string};assert.notEqual(one.requestId,two.requestId);assert.match(one.requestId,/^[-a-zA-Z0-9_.:]{1,160}$/);assert.match(two.requestId,/^[-a-zA-Z0-9_.:]{1,160}$/);}finally{a.dispose();b.dispose();host.dispose();Date.now=originalNow;}
+});
+
+test('refresh forwards manual and automatic policy, rejects malformed refresh params and allows long data reads',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  const pending:{method:string;params:JsonValue;resolve:(value:JsonValue)=>void}[]=[];
+  const delay=(method:string,params:JsonValue)=>new Promise<JsonValue>(resolve=>pending.push({method,params,resolve}));
+  const host=new ComponentHost(identity,{getData:()=>({}),getContext:()=>({}),refresh:request=>delay('refresh',request.params),invokeCapability:request=>delay('invoke',request.params)},{extensionHandlers:{bindingPagesV1:request=>delay('page',request.params)}});
+  const f=browser(host),client=createAppsClient({window:f.win,clientFeatures:['bindingPagesV1']});await client.hello();
+  const manual=client.refresh(['products']),automatic=client.refresh(['products'],{forceRefresh:false}),page=client.readBindingPage('products','next'),invoke=client.invokeCapability({capabilityId:'read'});
+  let settled=0;for(const result of [manual,automatic,page,invoke])void result.then(()=>settled++,()=>settled++);
+  await Promise.resolve();assert.deepEqual(pending[0].params,{bindingIds:['products'],forceRefresh:true});assert.deepEqual(pending[1].params,{bindingIds:['products'],forceRefresh:false});
+  t.mock.timers.tick(35001);await Promise.resolve();assert.equal(settled,0,'data reads must outlive the old 30 second timeout');
+  for(const item of pending)item.resolve({ready:true});await Promise.all([manual,automatic,page,invoke]);
+  for(const params of [{forceRefresh:'yes'},{bindingIds:'products'},{other:true}]){
+    const result=await host.handle({...identity,channel:COMPONENT_CHANNEL,requestId:'invalid',method:'refresh',params});assert.equal((result as {error:{code:string}}).error.code,'INVALID_BRIDGE_MESSAGE');
+  }
+  const timeout=client.refresh();const rejected=assert.rejects(timeout,{code:'BRIDGE_TIMEOUT'});await Promise.resolve();t.mock.timers.tick(150001);await rejected;
+  client.dispose();host.dispose();
+});
+
+test('business component submission survives 150 seconds and retains explicit shorter deadlines',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  const host=new ComponentHost(identity,{getData:()=>({}),getContext:()=>({}),invokeCapability:()=>new Promise(()=>{})}),f=browser(host),client=createAppsClient({window:f.win});await client.hello();
+  const request={appId:'hallmark',capabilityId:'hallmark.plan.submit',input:{}};
+  let settled=false;const pending=client.invokeCapability(request);void pending.then(()=>{settled=true;},()=>{settled=true;});const rejected=assert.rejects(pending,error=>{assert.equal((error as any).failure.retryPolicy,'inspect_only');return true;});
+  await Promise.resolve();t.mock.timers.tick(150001);await Promise.resolve();assert.equal(settled,false);
+  t.mock.timers.tick(APPS_BUSINESS_REQUEST_TIMEOUT_MS-150002);await Promise.resolve();assert.equal(settled,false,'the request stays pending immediately before its configured business deadline');
+  t.mock.timers.tick(1);await rejected;
+  const shorter=client.invokeCapability({...request,deadlineAt:new Date(Date.now()+1000).toISOString()}),shortRejected=assert.rejects(shorter,{code:'BRIDGE_TIMEOUT'});await Promise.resolve();t.mock.timers.tick(1001);await shortRejected;
+  client.dispose();host.dispose();
 });

@@ -7,16 +7,28 @@ import { prepareCollected, readCollected } from '../../core/src/collected.ts';
 import { projectOperationReceipt } from '../../core/src/receipt.ts';
 import { WriteOperations } from '../../core/src/write.ts';
 import { wrapped, storeId, productStoreId, productId, offerId, profitRows, METRIC_BASIS, APP_BOUNDARIES, clean, now, sourceTime } from '../../core/src/types.ts';
-import type { CoreOptions, CoreStore, CoreClient, CoreBroker, RecordData, Operation } from '../../core/src/types.ts';
+import type { AdapterResponse, CoreOptions, CoreStore, CoreClient, CoreBroker, RecordData, Operation } from '../../core/src/types.ts';
 import { PLATFORM_READ_ENDPOINTS } from '../../hallmark-adapter/client.ts';
+import type {HallmarkClient} from '../../hallmark-adapter/client.ts';
+import {OZON_STORE_READ_ENDPOINTS} from '../../hallmark-adapter/ozon-read-routes.ts';
+import {applicationProfit,DYNAMIC_PROFIT_BASIS,type PricingReader} from './dynamic-profit.ts';
 
-export interface HallmarkDomainOptions { store:CoreStore; client:CoreClient; broker:CoreBroker }
+export interface HallmarkDomainOptions { store:CoreStore; client:CoreClient; broker:CoreBroker; pricing?:PricingReader }
 /** Compatibility domain implementation. Session routing and presentation belong to Runtime. */
 export class HallmarkDomain {
  readonly options:HallmarkDomainOptions;
  readonly refresher:DatasetRefresher;
  readonly writes:WriteOperations;
  constructor(options:HallmarkDomainOptions){this.options=options;this.refresher=new DatasetRefresher(options.store,options.client);this.writes=new WriteOperations({...options,presentation:{} as CoreOptions['presentation']});}
+ /** One platform product row is one SKU; do not invent sibling variants. */
+ async readProductSku(store:string,id:string):Promise<ToolResult>{
+  const source=await this.products(store);if(source.result)return source.result;
+  const row=(source.payload?.products as RecordData[]??[]).find(item=>String(item.productId??item.product_id??item.offerId??item.offer_id)===id);
+  if(!row)return {status:'ok',data:{items:[],total:0},provenance:source.provenance};
+  const matched=Array.isArray(row.sources)?row.sources.find((item:RecordData)=>item.sourceSkuMatched===true):undefined;
+  const minor=row.pricing?.sellerMinor;
+  return {status:'ok',data:{items:[{productId:id,title:row.title??null,sku:row.sku??null,spec:matched?.sourceSpec??null,image:row.imageUrl??null,price:typeof minor==='number'?minor/100:null,currency:row.pricing?.currency??row.currency??null}],total:1},provenance:source.provenance};
+ }
  async invoke(name:string,args:RecordData,context:InvocationContext):Promise<ToolResult>{
   const definition=TOOL_DEFINITIONS.find(tool=>tool.name===name);if(!definition)return failed('TOOL_NOT_FOUND','未知工具。');
   const missing=(definition.parameters.required??[]).filter(key=>!Object.hasOwn(args,key));if(missing.length)return clarify(missing,'请补充必要信息。');
@@ -46,25 +58,37 @@ export class HallmarkDomain {
    if(kind==='get_platform_data'){
     if(!Object.hasOwn(PLATFORM_READ_ENDPOINTS,args.path))return failed('ENDPOINT_NOT_ALLOWED','仅允许已核实只读白名单。');
     const method=args.method??PLATFORM_READ_ENDPOINTS[args.path];if(method!==PLATFORM_READ_ENDPOINTS[args.path])return failed('ENDPOINT_NOT_ALLOWED','接口方法与已登记只读契约不一致。');
-    const task=await this.options.broker.getStoreTask(id);if(task.status!=='ok')return wrapped(task);
     const operationId=context.operationId??randomUUID(),timestamp=now(),requestId=this.options.broker.requestId('read',operationId,0);
-    const op:Operation={operationId,kind:'platform_read',sessionId:context.sessionId,storeId:id,targets:[],input:args,state:'running',hallmarkRefs:[{taskId:task.raw.taskId,requestId}],items:[],createdAt:timestamp,updatedAt:timestamp};this.options.store.put('operations',operationId,op);projectOperationReceipt(this.options.store,operationId);
-    const response=await this.options.client.platformRead(task.raw.taskId,{requestId,agentId:'dsh-hallmark-app',path:args.path,method,body:args.body??{}});const result=wrapped(response),state=response.status==='ok'?'succeeded':response.status==='unknown'?'unknown':'failed';this.options.store.put('operations',operationId,clean({...op,state,result,updatedAt:now()}));projectOperationReceipt(this.options.store,operationId);return {...result,operation:{operationId,state}};
+    const op:Operation={operationId,kind:'platform_read',sessionId:context.sessionId,storeId:id,targets:[],input:args,state:'running',hallmarkRefs:[],items:[],createdAt:timestamp,updatedAt:timestamp};
+    const persist=()=>{this.options.store.put('operations',operationId,clean(op));projectOperationReceipt(this.options.store,operationId);};
+    const finish=(response:AdapterResponse):ToolResult=>{const result=wrapped(response),state=response.status==='ok'?'succeeded':response.status==='unknown'?'unknown':'failed';this.options.store.put('operations',operationId,clean({...op,state,result,updatedAt:now()}));projectOperationReceipt(this.options.store,operationId);return {...result,operation:{operationId,state}};};
+    const client=this.options.client as CoreClient&Partial<Pick<HallmarkClient,'storeDataRead'>>,input={requestId,agentId:'dsh-hallmark-app',path:args.path,method,body:args.body??{}};
+    if(client.storeDataRead&&OZON_STORE_READ_ENDPOINTS[args.path]===method){
+     op.hallmarkRefs.push({storeId:id,requestId,route:'store_data_read'});persist();
+     const response=await client.storeDataRead(id,input);
+     // Only a missing local gateway can use the existing read path. An upstream
+     // 404, denied authorization, malformed response or timeout must stay visible.
+     if(response.error?.code!=='HALLMARK_HTTP_404')return finish(response);
+    }
+    const task=await this.options.broker.getStoreTask(id);if(task.status!=='ok')return op.hallmarkRefs.length?finish(task):wrapped(task);
+    op.hallmarkRefs.push({taskId:task.raw.taskId,requestId});persist();
+    return finish(await this.options.client.platformRead(task.raw.taskId,input));
    }
    if(['list_store_products','compute_profit','filter_products'].includes(kind)){
     const source=await this.products(id);if(source.result)return source.result;
     const payload=source.payload!,rawProducts:RecordData[]=payload.products;
     if(kind==='list_store_products'){
-     const queried=args.query?rawProducts.filter(row=>JSON.stringify(row).toLowerCase().includes(args.query.toLowerCase())):rawProducts,offset=args.cursor?Number(args.cursor):0;
+     const queried=rawProducts.filter(row=>(args.status===undefined||row.status===args.status)&&(!args.query||JSON.stringify(row).toLowerCase().includes(args.query.toLowerCase()))),offset=args.cursor?Number(args.cursor):0;
      if(!Number.isSafeInteger(offset)||offset<0)return failed('INVALID_CURSOR','分页 cursor 须为非负偏移。');
-     const limit=args.limit??100;if(source.spill)return {status:'ok',data:{spill:source.spill,storeId:id,total:queried.length,cursor:String(offset),limit},provenance:source.provenance};
+     // An unfiltered spill is source evidence in the snapshot, never a status-filtered page.
+     const limit=args.limit??100;if(source.spill&&args.status===undefined)return {status:'ok',data:{spill:source.spill,storeId:id,total:queried.length,cursor:String(offset),limit},provenance:source.provenance};
      return {status:'ok',data:{...payload,products:queried.slice(offset,offset+limit),total:queried.length,...(offset+limit<queried.length?{cursor:String(offset+limit)}:{})},provenance:source.provenance};
     }
-    const selected=rawProducts.filter(row=>(!args.offerIds&&!args.productIds)||args.offerIds?.includes(offerId(row))||args.productIds?.includes(productId(row))),computed=profitRows(selected);
-    if(kind==='compute_profit')return {status:'ok',data:source.spill?{spill:source.spill,storeId:id,total:computed.length}:{...payload,products:computed.slice(0,200),total:computed.length},provenance:{...source.provenance,source:'hallmark_compute'},metricBasis:METRIC_BASIS};
+    const selected=rawProducts.filter(row=>(!args.offerIds&&!args.productIds)||args.offerIds?.includes(offerId(row))||args.productIds?.includes(productId(row))),computed:RecordData[]=profitRows(selected).map(row=>({...row,referenceProfit:{...row.referenceProfit,metricBasis:row.profit?.metricBasis??METRIC_BASIS,...(row.profit?.pricingQuote?{configRevision:row.profit.configRevision,planId:row.profit.pricingQuote.planId,planName:row.profit.pricingQuote.planName,selectionReason:row.profit.pricingQuote.selectionReason}:{}),...(row.profit?.reason?{reason:row.profit.reason}:{})}}));
+    if(kind==='compute_profit')return {status:'ok',data:source.spill?{spill:source.spill,storeId:id,total:computed.length}:{...payload,products:computed.slice(0,200),total:computed.length},provenance:{...source.provenance,source:'hallmark_compute'},metricBasis:this.options.pricing?DYNAMIC_PROFIT_BASIS:METRIC_BASIS};
     const products:RecordData[]=[],unable:RecordData[]=[];
     for(const row of computed){const margin=row.referenceProfit.margin;if((args.minMargin!=null||args.maxMargin!=null)&&margin==null){unable.push(row);continue;}if(args.minMargin!=null&&margin<args.minMargin||args.maxMargin!=null&&margin>args.maxMargin)continue;const price=typeof row.price==='object'?Number(row.price.price):Number(row.price??row.priceMinor/100),stock=Number(row.stock??row.stockTotal??row.stocks?.reduce((sum:number,item:RecordData)=>sum+Number(item.present??item.stock??0),0));if(args.minPrice!=null&&(!Number.isFinite(price)||price<args.minPrice)||args.maxPrice!=null&&(!Number.isFinite(price)||price>args.maxPrice)||args.minStock!=null&&(!Number.isFinite(stock)||stock<args.minStock)||args.maxStock!=null&&(!Number.isFinite(stock)||stock>args.maxStock)||args.status&&row.status!==args.status)continue;products.push(row);}
-    const resultSetId=randomUUID(),dataTime=sourceTime(source.provenance?.dataTime),value=clean({resultSetId,storeId:id,sourceSpill:source.spill,payload:{products,unable,total:computed.length},dataTime,expiresAt:new Date(Date.now()+86400000).toISOString(),provenance:{...source.provenance,source:'hallmark_compute'},metricBasis:METRIC_BASIS});this.options.store.put('result_sets',resultSetId,value);return {status:'ok',data:this.resultSetOutput(value),provenance:value.provenance,metricBasis:METRIC_BASIS};
+    const resultSetId=randomUUID(),dataTime=sourceTime(source.provenance?.dataTime),value=clean({resultSetId,storeId:id,pricingRevision:this.options.pricing?.read(id)?.revision??null,sourceSpill:source.spill,payload:{products,unable,total:computed.length},dataTime,expiresAt:new Date(Date.now()+86400000).toISOString(),provenance:{...source.provenance,source:'hallmark_compute'},metricBasis:this.options.pricing?DYNAMIC_PROFIT_BASIS:METRIC_BASIS});this.options.store.put('result_sets',resultSetId,value);return {status:'ok',data:this.resultSetOutput(value),provenance:value.provenance,metricBasis:value.metricBasis};
    }
    return {status:'unavailable',error:{code:'CAPABILITY_UNAVAILABLE',message:'领域能力未开放。',retryable:false}};
   }catch(error){return failed((error as {code?:string})?.code??'CORE_ERROR',error instanceof Error?error.message:'领域工具执行失败');}
@@ -77,12 +101,13 @@ export class HallmarkDomain {
   if(args.storeId&&args.store&&!matches.some((row:RecordData)=>String(row.shopName??row.name??'').toLocaleLowerCase().includes(String(args.store).toLocaleLowerCase())))return {result:clarify(['store'],'店铺 ID 与名称不一致。',matches)};return {store:matches[0]};
  }
  private async products(id:string):Promise<{payload?:RecordData;provenance?:any;spill?:unknown;result?:ToolResult}>{
-  const cached=this.options.store.get('snapshots',`store_products:${id}`);if(cached?.payload){const {dataTime:previousSourceTime,...provenance}=cached.provenance??{},dataTime=sourceTime(cached.dataTime,previousSourceTime);return {payload:cached.payload,spill:cached.sourceSpill,provenance:{...provenance,source:'app_snapshot',storeId:id,...(dataTime?{dataTime}:{})}};}
+  const reprice=(payload:RecordData)=>this.options.pricing?{...payload,pricingRevision:this.options.pricing.read(id)?.revision??null,products:payload.products.map((row:RecordData)=>applicationProfit(row,id,this.options.pricing))}:payload;
+  const cached=this.options.store.get('snapshots',`store_products:${id}`);if(cached?.payload&&(!this.options.pricing||cached.payload.products.every((row:RecordData)=>row.businessFactsVersion===2))){const {dataTime:previousSourceTime,...provenance}=cached.provenance??{},dataTime=sourceTime(cached.dataTime,previousSourceTime);return {payload:reprice(cached.payload),spill:this.options.pricing?undefined:cached.sourceSpill,provenance:{...provenance,source:'app_snapshot',storeId:id,...(dataTime?{dataTime}:{})}};}
   const response=await this.options.client.getStoreProducts();if(response.status!=='ok')return {result:wrapped(response)};if(!Array.isArray(response.raw?.products))return {result:failed('INVALID_SOURCE_RESPONSE','商品响应缺少 products 数组。')};
-  const payload={...response.raw,products:response.raw.products.filter((row:RecordData)=>productStoreId(row)===id)},row=response.raw.stores?.find((item:RecordData)=>storeId(item)===id),dataTime=sourceTime(row?.lastSuccessAt,response.raw.dataTime,response.provenance?.dataTime),{dataTime:ignored,...original}=response.provenance??{},provenance=clean({...original,source:response.provenance?.source??'hallmark_snapshot',storeId:id,...(dataTime?{dataTime}:{})});this.options.store.updateSnapshotSuccess(`store_products:${id}`,payload,dataTime,clean({provenance,sourceSpill:response.spill}));return {payload,provenance,spill:response.spill};
+  const payload=reprice({...response.raw,products:response.raw.products.filter((row:RecordData)=>productStoreId(row)===id)}),row=response.raw.stores?.find((item:RecordData)=>storeId(item)===id),dataTime=sourceTime(row?.lastSuccessAt,response.raw.dataTime,response.provenance?.dataTime),{dataTime:ignored,...original}=response.provenance??{},provenance=clean({...original,source:response.provenance?.source??'hallmark_snapshot',storeId:id,...(dataTime?{dataTime}:{})});this.options.store.updateSnapshotSuccess(`store_products:${id}`,payload,dataTime,clean({provenance,sourceSpill:response.spill}));return {payload,provenance,spill:this.options.pricing?undefined:response.spill};
  }
  private dataStatus(key:string):ToolResult{const snapshot=this.options.store.get('snapshots',key);if(!snapshot)return {status:'ok',data:{datasetKey:key,state:'empty',lastSuccessAt:null,lastError:null}};const {payload,...status}=snapshot;return {status:'ok',data:status};}
  private resultSetOutput(value:RecordData):RecordData{const rows=value.payload.products,unable=value.payload.unable;return {...value,payload:value.sourceSpill?{total:value.payload.total,matchedCount:rows.length,unableCount:unable.length}:{...value.payload,products:rows.slice(0,200),unable:unable.slice(0,200),...(rows.length>200||unable.length>200?{truncated:true,matchedCount:rows.length,unableCount:unable.length}:{})}};}
- private resultSet(id:string):{value?:RecordData;result?:ToolResult}{const value=this.options.store.get('result_sets',id);if(!value)return {result:failed('RESULT_SET_NOT_FOUND','结果集不存在。')};if(Date.parse(value.expiresAt)<=Date.now())return {result:failed('RESULT_SET_EXPIRED','结果集已超过 24 小时，请重新查询。')};return {value};}
+ private resultSet(id:string):{value?:RecordData;result?:ToolResult}{const value=this.options.store.get('result_sets',id);if(!value)return {result:failed('RESULT_SET_NOT_FOUND','结果集不存在。')};if(this.options.pricing&&value.pricingRevision!==(this.options.pricing.read(value.storeId)?.revision??null))return {result:failed('RESULT_SET_PRICING_CHANGED','经营规则已更新，请重新筛选商品。')};if(Date.parse(value.expiresAt)<=Date.now())return {result:failed('RESULT_SET_EXPIRED','结果集已超过 24 小时，请重新查询。')};return {value};}
  async dispose():Promise<void>{await Promise.all([this.writes.idle(),this.refresher.idle()]);}
 }

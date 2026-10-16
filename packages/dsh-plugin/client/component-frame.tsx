@@ -2,24 +2,28 @@ import React,{useEffect,useRef,useState} from 'react';
 import type {BridgeIdentity,JsonValue} from '../../app-contracts/src/index.ts';
 import {COMPONENT_CHANNEL} from '../../component-runtime/src/apps-client.ts';
 import {ComponentHost} from '../../component-runtime/src/host.ts';
+import {createVisibleDeadline,dataProgressKey,chunkProgressKey,DISPLAY_NO_PROGRESS_MS,remainingDisplayBudget} from '../../component-runtime/src/visible-deadline.ts';
 import type {ComponentHostHandlers,ComponentExtensionHandlers} from '../../component-runtime/src/host.ts';
 export interface ExtendedComponentHandlers extends ComponentHostHandlers {extensions?:ComponentExtensionHandlers;authorizeFrame?:(identity:BridgeIdentity,documentNonce:string,clientFeatures:string[])=>Promise<string[]>;retireFrame?:(identity:BridgeIdentity,documentNonce:string)=>Promise<void>|void}
-export interface ComponentFrameError {phase:string;code:string;message:string}
+/** Optional evidence travels with the report so the Runtime can tell a transient read failure from a terminal one. */
+export interface ComponentFrameError {phase:string;code:string;message:string;requestId?:string;attempts?:number;retryPolicy?:string;cause?:string}
 
 function frameId():string {return globalThis.crypto?.randomUUID?.()??`${Date.now()}-${Math.random().toString(36).slice(2)}`;}
 export type {ComponentHandlerFactory} from './component-handlers.ts';
 export {configureComponentHandlers,configuredComponentHandlers} from './component-handlers.ts';
 /** The initial hello binds a single iframe document; reloaded documents dispose all old work. */
-export function useComponentBridge(frame:React.RefObject<HTMLIFrameElement>,identity:Omit<BridgeIdentity,'protocolVersion'|'frameInstanceId'>,handlers:ExtendedComponentHandlers,data:JsonValue|undefined,context:JsonValue|undefined,enabled=true,onFrameError?:(problem:ComponentFrameError)=>void):void {
+export function useComponentBridge(frame:React.RefObject<HTMLIFrameElement>,identity:Omit<BridgeIdentity,'protocolVersion'|'frameInstanceId'>,handlers:ExtendedComponentHandlers,data:JsonValue|undefined,context:JsonValue|undefined,enabled=true,onFrameError?:(problem:ComponentFrameError)=>void,visible=true,readinessStartedAt?:string):void {
   const state=useRef<{host:ComponentHost;documentNonce:string;window:Window;retireFrame?:ExtendedComponentHandlers['retireFrame']}>();
-  const live=useRef({handlers,data,context,onFrameError});live.current={handlers,data,context,onFrameError};
+  const deadline=useRef<ReturnType<typeof createVisibleDeadline>>();
+  const live=useRef({handlers,data,context,onFrameError,visible});live.current={handlers,data,context,onFrameError,visible};
   const owner=JSON.stringify([identity.sessionId,identity.viewId,identity.buildId]);
   useEffect(()=>{
     if(!enabled)return;
     const currentFrame=frame.current;let active=true;let requestedNonce:string|undefined;
     const report=(problem:ComponentFrameError)=>{if(active)live.current.onFrameError?.({...problem,message:problem.message.slice(0,512)});};
     // This bounds actual loading after a click, never the time a prepared card waits.
-    const startupTimer=onFrameError?setTimeout(()=>report({phase:state.current?'readiness':'handshake',code:state.current?'DISPLAY_READY_TIMEOUT':'DISPLAY_BRIDGE_TIMEOUT',message:state.current?'组件未完成实际加载确认，请重新打开或让 Agent 检查。':'组件未建立连接，请重新打开或让 Agent 检查加载错误。'}),30000):undefined;
+    const startup=onFrameError?createVisibleDeadline(reason=>report({phase:state.current?'readiness':'handshake',code:state.current?'DISPLAY_READY_TIMEOUT':'DISPLAY_BRIDGE_TIMEOUT',message:reason==='absolute'?'组件加载已达到最长等待时间，请重新打开或让 Agent 检查。':state.current?'组件数据或加载阶段长时间没有进展，请重新打开或让 Agent 检查。':'组件未建立连接，请重新打开或让 Agent 检查加载错误。'}),DISPLAY_NO_PROGRESS_MS,undefined,remainingDisplayBudget(readinessStartedAt)):undefined;
+    deadline.current=startup;startup?.visible(live.current.visible);
     const handshakes=new Map<string,{promise:Promise<void>;host:ComponentHost}>(),retiredNonces=new Set<string>();
     const receive=async(event:MessageEvent)=>{
       if(event.source!==currentFrame?.contentWindow||event.origin!==window.location.origin||event.data?.channel!==COMPONENT_CHANNEL)return;
@@ -29,7 +33,8 @@ export function useComponentBridge(frame:React.RefObject<HTMLIFrameElement>,iden
         if(typeof message.documentNonce!=='string'||!message.documentNonce||(current?message.documentNonce!==current.documentNonce:requestedNonce!==message.documentNonce))return;
         if(current&&['protocolVersion','sessionId','viewId','buildId','frameInstanceId'].some(key=>message[key]!==current.host.identity[key as keyof BridgeIdentity]))return;
         const problem=message.error;if(!problem||typeof problem.phase!=='string'||typeof problem.code!=='string'||typeof problem.message!=='string')return;
-        report({phase:problem.phase.slice(0,64),code:problem.code.slice(0,128),message:problem.message});return;
+        const text=(value:unknown,max:number)=>typeof value==='string'&&value?value.slice(0,max):undefined,requestId=text(problem.requestId,128),retryPolicy=text(problem.retryPolicy,32),cause=text(problem.cause,500),attempts=Number.isSafeInteger(problem.attempts)?Math.min(10,Math.max(1,problem.attempts)):undefined;
+        report({phase:problem.phase.slice(0,64),code:problem.code.slice(0,128),message:problem.message,...(requestId?{requestId}:{}),...(retryPolicy?{retryPolicy}:{}),...(cause?{cause}:{}),...(attempts!==undefined?{attempts}:{})});return;
       }
       if(message.type==='hello'&&typeof message.documentNonce==='string'&&message.documentNonce){
         if(retiredNonces.has(message.documentNonce))return;
@@ -55,25 +60,33 @@ export function useComponentBridge(frame:React.RefObject<HTMLIFrameElement>,iden
           if(existing&&existing.documentNonce===message.documentNonce){void Promise.resolve(frameHandlers.retireFrame?.(candidate.identity,message.documentNonce)).catch(()=>{});candidate.dispose();existing.window.postMessage(existing.host.hello(message.requestId),window.location.origin);return;}
           if(state.current){retiredNonces.add(state.current.documentNonce);void Promise.resolve(state.current.retireFrame?.(state.current.host.identity,state.current.documentNonce)).catch(()=>{});state.current.host.dispose();}
           state.current={host:candidate,documentNonce:message.documentNonce,window:currentFrame.contentWindow!,retireFrame:frameHandlers.retireFrame};
+          startup?.progress('bridge:authorized');
           state.current.window.postMessage(response,window.location.origin);
+          state.current.window.postMessage({...candidate.identity,channel:COMPONENT_CHANNEL,type:'visibility',documentNonce:nonce,visible:live.current.visible},window.location.origin);
           })();handshakes.set(nonce,{promise:handshake,host:candidate});
           try{await handshake;}finally{if(handshakes.get(nonce)?.promise===handshake)handshakes.delete(nonce);}return;
         }
         if(requestedNonce!==undefined&&requestedNonce!==message.documentNonce)return;
       }
       const entry=state.current;if(!entry)return;
+      if(!live.current.visible&&((message.method&&message.method!=='resize')||message.type==='extension'&&['bindingPagesV1','dataTransferV1'].includes(message.feature))){
+        if(['protocolVersion','sessionId','viewId','buildId','frameInstanceId'].every(key=>message[key]===entry.host.identity[key as keyof BridgeIdentity]))entry.window.postMessage({...entry.host.identity,channel:COMPONENT_CHANNEL,requestId:message.requestId,error:{code:'BRIDGE_PAUSED',message:'Component is hidden.',retryPolicy:'read_retry'}},window.location.origin);
+        return;
+      }
       const response=await entry.host.handle(message);
-      if(message.type==='extension'&&message.feature==='renderReadyV1'&&response&&'result' in response&&startupTimer!==undefined)clearTimeout(startupTimer);
+      if(response&&state.current===entry&&'result' in response){startup?.progress(dataProgressKey(response.result));if(message.type==='extension'&&message.feature==='dataTransferV1'&&message.action==='read')startup?.progress(chunkProgressKey(response.result,message.params));}
+      if(message.type==='extension'&&message.feature==='renderReadyV1'&&response&&'result' in response)startup?.stop();
       if(response&&state.current===entry&&currentFrame.contentWindow===entry.window)entry.window.postMessage(response,window.location.origin);
     };
     window.addEventListener('message',receive);
-    return()=>{active=false;if(startupTimer!==undefined)clearTimeout(startupTimer);window.removeEventListener('message',receive);const previous=state.current;if(previous){void Promise.resolve(previous.retireFrame?.(previous.host.identity,previous.documentNonce)).catch(()=>{});previous.host.dispose();}state.current=undefined;retiredNonces.clear();};
+    return()=>{active=false;startup?.stop();if(deadline.current===startup)deadline.current=undefined;window.removeEventListener('message',receive);const previous=state.current;if(previous){void Promise.resolve(previous.retireFrame?.(previous.host.identity,previous.documentNonce)).catch(()=>{});previous.host.dispose();}state.current=undefined;retiredNonces.clear();};
   },[owner,enabled]);
+  useEffect(()=>{deadline.current?.visible(visible);const entry=state.current;if(entry)entry.window.postMessage({...entry.host.identity,channel:COMPONENT_CHANNEL,type:'visibility',documentNonce:entry.documentNonce,visible},window.location.origin);},[visible]);
   useEffect(()=>{const entry=state.current;if(entry&&data!==undefined)entry.window.postMessage(entry.host.event('data',data),window.location.origin);},[data]);
   useEffect(()=>{const entry=state.current;if(entry&&context!==undefined)entry.window.postMessage(entry.host.event('context',context),window.location.origin);},[context]);
 }
 /** A generic source frame. Handlers use the Apps proxy/Runtime, and never import an application provider. */
-export function AppsSourceFrame({sessionId,viewId,buildId,title,url,data,context,handlers,onLoadError,onFrameError,frameKey}:{sessionId:string;viewId:string;buildId:string;title:string;url:string;data:JsonValue;context?:JsonValue;handlers:Omit<ExtendedComponentHandlers,'resize'>;onLoadError?:()=>void;onFrameError?:(problem:ComponentFrameError)=>void;frameKey?:string}) {
+export function AppsSourceFrame({sessionId,viewId,buildId,title,url,data,context,handlers,onLoadError,onFrameError,frameKey,active=true,readinessStartedAt}:{sessionId:string;viewId:string;buildId:string;title:string;url:string;data:JsonValue;context?:JsonValue;handlers:Omit<ExtendedComponentHandlers,'resize'>;onLoadError?:()=>void;onFrameError?:(problem:ComponentFrameError)=>void;frameKey?:string;active?:boolean;readinessStartedAt?:string}) {
   const frame=useRef<HTMLIFrameElement>(null),[height,setHeight]=useState(680),[error,setError]=useState('');
   const detachErrors=useRef<()=>void>(),liveError=useRef(onFrameError);liveError.current=onFrameError;
   const observeDocumentErrors=()=>{
@@ -84,6 +97,6 @@ export function AppsSourceFrame({sessionId,viewId,buildId,title,url,data,context
     }catch{/* Cross-origin or unavailable documents remain covered by authorization/loading errors. */}
   };
   useEffect(()=>{observeDocumentErrors();return()=>detachErrors.current?.();},[frameKey]);
-  useComponentBridge(frame,{sessionId,viewId,buildId},{...handlers,resize:request=>{const height=(request.params as {height?:number}|null)?.height;if(typeof height!=='number'||!Number.isFinite(height)||height<=0||height>20000)throw new Error('Invalid component height.');setHeight(height);return null;}},data,context,true,onFrameError);
+  useComponentBridge(frame,{sessionId,viewId,buildId},{...handlers,resize:request=>{const height=(request.params as {height?:number}|null)?.height;if(typeof height!=='number'||!Number.isFinite(height)||height<=0||height>20000)throw new Error('Invalid component height.');setHeight(height);return null;}},data,context,true,onFrameError,active,readinessStartedAt);
   return <div className="hm-source-container">{error?<p role="alert" className="hm-error">{error}</p>:null}<iframe ref={frame} key={frameKey??JSON.stringify([sessionId,viewId,buildId])} src={url} title={title} className="hm-source-frame" style={{display:'block',width:'100%',height,border:0}} onLoad={()=>{setError('');observeDocumentErrors();}} onError={()=>{setError('Component build could not be loaded.');onFrameError?.({phase:'iframe',code:'DISPLAY_DOCUMENT_LOAD_FAILED',message:'Component build could not be loaded.'});onLoadError?.();}}/></div>;
 }

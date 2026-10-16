@@ -1,0 +1,56 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {attachListingImageJobs,type ListingImageContext} from '../../packages/plugin-apps/src/listing-image-jobs.ts';
+test('registered prompt is used verbatim and success is checkpointed before model resumes',async t=>{
+  const root=mkdtempSync(join(tmpdir(),'listing-image-host-'));t.after(()=>rmSync(root,{recursive:true,force:true}));
+  const path=join(root,'progress.json'),source=join(root,'original');writeFileSync(source,'generated file fixture');
+  writeFileSync(path,JSON.stringify({assets:[{assetKey:'cover',sessionId:'images',factsRevision:1,preparationRevision:'prep',slots:[{saleId:'sale',group:'images',index:0}],references:['real-source'],prompt:'制作首图，文案：2P。清新风格，保持主体一致。',stage:'generating'}]}));
+  const agent={id:'images'},hooks=new Map<string,Function>();let tool:any;
+  const context={agents:{get:(id:string)=>id==='images'?agent:undefined},tools:{register:(value:any)=>{tool=value;return ()=>{};}},on:(name:string,handler:Function)=>{hooks.set(name,handler);return ()=>hooks.delete(name);}};
+  const dispose=attachListingImageJobs(context as unknown as ListingImageContext);t.after(dispose);
+  const prepared=await tool.execute({progressPath:path,assetKey:'cover'},{agent});
+  const execution={agent,name:'codex_image_generate',callId:'call-1',arguments:{prompt:prepared.prompt,referenceImages:[{attachmentId:'actual-source'}]}};
+  const pre=hooks.get('tools/pre-execute')!;
+  assert.equal((await pre({...execution,arguments:{...execution.arguments,prompt:prepared.prompt+' 主体居中，影棚灯光。'}},async()=>({kind:'allow'}))).kind,'deny');
+  assert.equal((await pre(execution,async()=>({kind:'deny',reason:'existing permission denial'}))).reason,'existing permission denial');
+  assert.equal((await pre(execution,async()=>({kind:'allow'}))).kind,'allow');
+  const result={isError:false,value:'image',content:[{type:'text',text:`Generated image.\nOriginal PNG saved on the DSH host at: "${source.replaceAll('\\','\\\\')}".`}]};
+  assert.equal(await hooks.get('tools/execute')!(execution,async()=>result),result);
+  const asset=JSON.parse(readFileSync(path,'utf8')).assets[0];
+  assert.equal(asset.stage,'generated');assert.equal(asset.sourcePath,source);assert.equal(asset.actualPrompt,prepared.prompt);assert.equal(asset.toolCallId,'call-1');
+  assert.equal(JSON.parse(readFileSync(asset.receiptPath,'utf8')).sourcePath,source);
+  assert.equal((await pre({...execution,callId:'duplicate'},async()=>({kind:'allow'}))).kind,'deny');
+  assert.equal((await pre({...execution,agent:{id:'unrelated'}},async()=>({kind:'allow'}))).kind,'allow');
+});
+test('failed generation remains retryable; unrecognized success stays successful and prohibits regeneration',async t=>{
+  const root=mkdtempSync(join(tmpdir(),'listing-image-receipt-'));t.after(()=>rmSync(root,{recursive:true,force:true}));
+  const path=join(root,'progress.json');writeFileSync(path,JSON.stringify({assets:[{assetKey:'image',sessionId:'child',prompt:'短提示词',stage:'generating'}]}));
+  const agent={id:'child'},hooks=new Map<string,Function>();let tool:any;
+  attachListingImageJobs({agents:{get:()=>agent},tools:{register:(value:any)=>{tool=value;return ()=>{};}},on:(name:string,fn:Function)=>{hooks.set(name,fn);return ()=>{};}} as unknown as ListingImageContext);
+  await tool.execute({progressPath:path,assetKey:'image'},{agent});
+  const execution={agent,name:'codex_image_generate',callId:'call',arguments:{prompt:'短提示词',referenceImages:[{}]}};
+  const failed={isError:true,content:[{type:'text',text:'Unsupported size'}]};
+  assert.equal(await hooks.get('tools/execute')!(execution,async()=>failed),failed);
+  assert.equal((await hooks.get('tools/pre-execute')!(execution,async()=>({kind:'allow'}))).kind,'allow');
+  const result=await hooks.get('tools/execute')!(execution,async()=>({isError:false,content:[{type:'text',text:'Success with a future receipt format'}]}));
+  assert.equal(result.isError,false);assert.match(result.content.at(-1).text,/图片已生成/);
+  assert.equal((await hooks.get('tools/pre-execute')!(execution,async()=>({kind:'allow'}))).kind,'deny');
+});
+test('prepare stamps the image session, adopts an abandoned generation and points to an existing success receipt',async t=>{
+  const root=mkdtempSync(join(tmpdir(),'listing-image-adopt-'));t.after(()=>rmSync(root,{recursive:true,force:true}));
+  const path=join(root,'progress.json'),base={factsRevision:1,preparationRevision:'prep',slots:[{saleId:'sale',group:'images',index:0}],references:['real-source'],prompt:'短提示词',stage:'generating'};
+  // The agent registers without a session; the Host supplies it.
+  writeFileSync(path,JSON.stringify({assets:[{...base,assetKey:'fresh'},{...base,assetKey:'abandoned',sessionId:'old'},{...base,assetKey:'done',sessionId:'old'}]}));
+  const source=join(root,'cache.png');writeFileSync(source,'png');
+  writeFileSync(`${path}.abc.receipt.json`,JSON.stringify({assetKey:'done',sessionId:'old',sourcePath:source}));
+  const agent={id:'new'},hooks=new Map<string,Function>();let tool:any;
+  attachListingImageJobs({agents:{get:()=>agent},tools:{register:(value:any)=>{tool=value;return ()=>{};}},on:(name:string,fn:Function)=>{hooks.set(name,fn);return ()=>{};}} as unknown as ListingImageContext);
+  await tool.execute({progressPath:path,assetKey:'fresh'},{agent});
+  await tool.execute({progressPath:path,assetKey:'abandoned'},{agent});
+  const assets=JSON.parse(readFileSync(path,'utf8')).assets;
+  assert.equal(assets[0].sessionId,'new');assert.equal(assets[1].sessionId,'new');assert.equal(assets[1].originSessionId,'old');
+  await assert.rejects(tool.execute({progressPath:path,assetKey:'done'},{agent}),/回执中的 sourcePath/);
+});

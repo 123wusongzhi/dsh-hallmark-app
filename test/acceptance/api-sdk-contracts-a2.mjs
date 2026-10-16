@@ -1,3 +1,5 @@
+import {realScenarioProduct} from '../real-data/corpus.ts';
+// Real commodity baselines; local identity/state/failure overrides are explicit derived contract conditions.
 /** A.2 TST-013/014/015, actual public API + generator/compiler FIXTURE.
  * Run: node test/acceptance/api-sdk-contracts-a2.mjs
  * Creates a new immutable UUID evidence directory. Never contacts original DSH or Bill.
@@ -104,7 +106,7 @@ try {
       if (url.pathname === '/api/stores') return send([{id: storeId, shopName: `Synthetic ${connectionId}`, fixture: true}]);
       if (url.pathname === '/api/tasks') return send([{id: taskId, kind: 'listing', storeId, status: 'active', productId: 'fixture-item', salesVariants: [{salesSkuId: 'fixture-sku'}]}]);
       if (url.pathname === `/api/tasks/${taskId}`) return send({id: taskId, kind: 'listing', storeId, status: 'active', productId: 'fixture-item', salesVariants: [{salesSkuId: 'fixture-sku'}]});
-      if (url.pathname === '/api/store-products') return send({stores: [{id: storeId, lastSuccessAt: '2026-10-07T00:00:00Z'}], products: [{storeId, offerId, productId: 1, price: state.price, stock: 2}]});
+      if (url.pathname === '/api/store-products') return send({stores: [{id: storeId, lastSuccessAt: '2026-10-07T00:00:00Z'}], products: [realScenarioProduct({storeId, offerId, productId: 1, price: state.price, stock: 2,sources:[]})]});
       if (url.pathname === `/api/tasks/${taskId}/platform`) {
         let response;
         if (input.path === '/v2/warehouse/list') response = {result: [{warehouse_id: 1, name: `${connectionId} synthetic warehouse`}]};

@@ -1,0 +1,135 @@
+{
+  "status": "PASS",
+  "startedAt": "2026-10-10T14:29:38.782Z",
+  "finishedAt": "2026-10-10T14:29:50.687Z",
+  "node": "v24.19.0",
+  "processCount": 20,
+  "schedule": "5 ABBA cycles; fresh process, extraction, database, HOME and cwd for every observation",
+  "warmup": "3 rounds per process excluded from HTTP latency; startup has no process warmup. OS filesystem cache not flushed.",
+  "scope": "Actual unmodified CLI startup and loopback HTTP. Synthetic Notes reads and separately labeled pricing quote / strict Zod validation. CPU covers whole child lifecycle; no production workload claims.",
+  "auditMode": "timing-no-resolver-hook: clean environment/cwd/HOME, verified archive, no ancestor node_modules, outbound fetch rejection and child resource capture remain active; module-resolution hooks used only in separate strict functional acceptance",
+  "baselineLimitation": "Old archive cannot start standalone; its frozen zod 4.3.6 package was copied only inside its temporary extraction. This is diagnostic, not an accepted release baseline.",
+  "armMedians": {
+    "old-diagnostic": {
+      "startupMs": 214.09872049999967,
+      "cpuMs": 454.3325,
+      "maxRSSKiB": 83384,
+      "archiveBytes": 1944586,
+      "runtimeBytes": 1344059,
+      "http-health-first-medianMs": 7.516817500000116,
+      "http-health-medianMs": 0.2799215000004551,
+      "http-identity-medianMs": 0.24515350000046965,
+      "http-notes-get-medianMs": 1.4552440000002207,
+      "http-pricing-quote-medianMs": 0.6724972500001059,
+      "http-pricing-strict-invalid-medianMs": 0.6542434999998932
+    },
+    "new-self-contained": {
+      "startupMs": 210.9442969999996,
+      "cpuMs": 459.6415,
+      "maxRSSKiB": 87164,
+      "archiveBytes": 2143675,
+      "runtimeBytes": 1865659,
+      "http-health-first-medianMs": 7.513051999999789,
+      "http-health-medianMs": 0.2861475000000837,
+      "http-identity-medianMs": 0.24265324999953464,
+      "http-notes-get-medianMs": 1.5164927500001113,
+      "http-pricing-quote-medianMs": 0.7010592499998438,
+      "http-pricing-strict-invalid-medianMs": 0.6972960000002786
+    }
+  },
+  "cycles": [
+    {
+      "cycle": 1,
+      "changesPct": {
+        "startupMs": -23.29732160513174,
+        "cpuMs": -12.280517720660267,
+        "maxRSSKiB": 5.37216674214076,
+        "archiveBytes": 10.23811752218724,
+        "runtimeBytes": 38.807820192417154,
+        "http-health-first-medianMs": -27.206902478555385,
+        "http-health-medianMs": 2.6432125785596394,
+        "http-identity-medianMs": 4.968622590893124,
+        "http-notes-get-medianMs": 2.3641155034386685,
+        "http-pricing-quote-medianMs": 2.7832845806688544,
+        "http-pricing-strict-invalid-medianMs": 1.0715038501040164
+      }
+    },
+    {
+      "cycle": 2,
+      "changesPct": {
+        "startupMs": -3.5510820848228764,
+        "cpuMs": -2.3501452084097263,
+        "maxRSSKiB": 4.269010060265543,
+        "archiveBytes": 10.23811752218724,
+        "runtimeBytes": 38.807820192417154,
+        "http-health-first-medianMs": 23.94183049127672,
+        "http-health-medianMs": -4.842776441568153,
+        "http-identity-medianMs": 2.786524407890134,
+        "http-notes-get-medianMs": 4.518657535451909,
+        "http-pricing-quote-medianMs": -5.0246643252802485,
+        "http-pricing-strict-invalid-medianMs": 4.607563529470049
+      }
+    },
+    {
+      "cycle": 3,
+      "changesPct": {
+        "startupMs": 2.403947036610221,
+        "cpuMs": 3.77516004545404,
+        "maxRSSKiB": 5.921131487474529,
+        "archiveBytes": 10.23811752218724,
+        "runtimeBytes": 38.807820192417154,
+        "http-health-first-medianMs": -2.4964248633244535,
+        "http-health-medianMs": -2.4389347298053754,
+        "http-identity-medianMs": 0.0883802118494037,
+        "http-notes-get-medianMs": -7.328511125808401,
+        "http-pricing-quote-medianMs": 0.45998552544423976,
+        "http-pricing-strict-invalid-medianMs": -0.23850249341992313
+      }
+    },
+    {
+      "cycle": 4,
+      "changesPct": {
+        "startupMs": 1.3065359582701053,
+        "cpuMs": 2.7318688981868844,
+        "maxRSSKiB": 1.3394315583142857,
+        "archiveBytes": 10.23811752218724,
+        "runtimeBytes": 38.807820192417154,
+        "http-health-first-medianMs": 6.605175541023267,
+        "http-health-medianMs": 8.74796898393415,
+        "http-identity-medianMs": 7.845050999190972,
+        "http-notes-get-medianMs": 7.181336222398826,
+        "http-pricing-quote-medianMs": 5.29357260105876,
+        "http-pricing-strict-invalid-medianMs": 7.38488075965531
+      }
+    },
+    {
+      "cycle": 5,
+      "changesPct": {
+        "startupMs": -8.60560798177239,
+        "cpuMs": -3.2449802732580246,
+        "maxRSSKiB": 5.602186691178246,
+        "archiveBytes": 10.23811752218724,
+        "runtimeBytes": 38.807820192417154,
+        "http-health-first-medianMs": 19.70004953623219,
+        "http-health-medianMs": 1.6531420414320763,
+        "http-identity-medianMs": 2.4890393267436917,
+        "http-notes-get-medianMs": 9.336402639802376,
+        "http-pricing-quote-medianMs": 5.637914798095878,
+        "http-pricing-strict-invalid-medianMs": 8.18919210755562
+      }
+    }
+  ],
+  "medianPairedChangesPct": {
+    "startupMs": -3.5510820848228764,
+    "cpuMs": -2.3501452084097263,
+    "maxRSSKiB": 5.37216674214076,
+    "archiveBytes": 10.23811752218724,
+    "runtimeBytes": 38.807820192417154,
+    "http-health-first-medianMs": 6.605175541023267,
+    "http-health-medianMs": 1.6531420414320763,
+    "http-identity-medianMs": 2.786524407890134,
+    "http-notes-get-medianMs": 4.518657535451909,
+    "http-pricing-quote-medianMs": 2.7832845806688544,
+    "http-pricing-strict-invalid-medianMs": 4.607563529470049
+  }
+}

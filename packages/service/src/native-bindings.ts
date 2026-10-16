@@ -11,7 +11,7 @@ export class NativeAppBindings {
   private available(appId:string):boolean {return this.runtime.listApps().some(app=>app.appId===appId&&['ready','degraded'].includes(app.providerState));}
   get(sessionId:string,bindRequestId:string,referenceId?:string) {
     if(!sessionId||!bindRequestId)throw new Error('EXPLICIT_NATIVE_REFERENCE_REQUIRED');
-    const record=this.runtime.store.list<{namespace:string;value:NativeBindingRecord}>('provider_records').filter(row=>row.namespace==='native_references').map(row=>row.value).find(row=>row.sessionId===sessionId&&row.bindRequestId===bindRequestId&&(!referenceId||row.referenceId===referenceId));
+    const record=this.runtime.store.query<{namespace:string;value:NativeBindingRecord}>('provider_records',{namespace:'native_references'}).map(row=>row.value).find(row=>row.sessionId===sessionId&&row.bindRequestId===bindRequestId&&(!referenceId||row.referenceId===referenceId));
     if(!record)return null;const {requestHash:_hash,updatedAt:_time,...response}=record;
     if(record.enabled&&!this.available(record.appId))return {...response,status:'failed' as const,error:{code:'APP_UNAVAILABLE',message:'应用服务当前不可用。'}};
     return {...response,...(record.status==='needs_connection'?{connections:this.runtime.listConnections(record.appId).filter(item=>item.enabled).map(item=>({connectionId:item.connectionId,displayName:item.displayName}))}:{})};
@@ -30,7 +30,7 @@ export class NativeAppBindings {
         this.runtime.bind({sessionId:input.sessionId,appId:input.appId,connectionId:connection!.connectionId,enabled:true,boundAt:new Date().toISOString()});
         if(this.runtime.getConnection('apps','presentation'))this.runtime.bind({sessionId:input.sessionId,appId:'apps',connectionId:'presentation',enabled:true,boundAt:new Date().toISOString()});
       }else if(!input.enabled&&next.connectionId){
-        const others=this.runtime.store.list<{namespace:string;value:NativeBindingRecord}>('provider_records').some(row=>row.namespace==='native_references'&&row.value.referenceId!==input.referenceId&&row.value.sessionId===input.sessionId&&row.value.appId===input.appId&&row.value.connectionId===next.connectionId&&row.value.status==='bound'&&row.value.enabled);
+        const others=this.runtime.store.query<{namespace:string;value:NativeBindingRecord}>('provider_records',{namespace:'native_references'}).some(row=>row.value.referenceId!==input.referenceId&&row.value.sessionId===input.sessionId&&row.value.appId===input.appId&&row.value.connectionId===next.connectionId&&row.value.status==='bound'&&row.value.enabled);
         if(!others)this.runtime.bind({sessionId:input.sessionId,appId:input.appId,connectionId:next.connectionId,enabled:false,boundAt:new Date().toISOString()});
       }
     });

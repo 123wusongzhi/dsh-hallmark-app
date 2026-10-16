@@ -5,6 +5,7 @@ import {PresentationManager} from '../../packages/presentation/src/index.ts';
 import type {ViewSpec} from '../../packages/presentation/src/types.ts';
 import {AppCore} from '../../packages/core/src/index.ts';
 import type {CoreOptions} from '../../packages/core/src/types.ts';
+import {realSourceSummaries,realStoreProducts} from '../real-data/corpus.ts';
 
 function setup(){
  const store=new AppStore(':memory:');
@@ -22,7 +23,7 @@ const render=(core:AppCore,sessionId:string,view=spec('view'))=>core.invoke('hal
 test('session rename is temporary and removal revokes reads/updates/saves without deleting saved designs or source data',async()=>{
  const f=setup();try{
   await render(f.core,'A',spec('managed','Original'));await render(f.core,'B',spec('other','Other'));
-  f.presentation.saveComponent('managed','显式保存');f.presentation.saveTemplate('managed','Reusable','显式保存模板');f.store.updateSnapshotSuccess('fixture',{items:[{id:'source-1'}]},null);
+  f.presentation.saveComponent('managed','显式保存');f.presentation.saveTemplate('managed','Reusable','显式保存模板');f.store.updateSnapshotSuccess('fixture',{items:realSourceSummaries()},null);
   const components=f.store.list('components'),entries=f.store.list('entries'),templates=f.store.list('templates'),snapshot=f.store.get('snapshots','fixture'),other=f.core.listSessionViews('B');
   f.store.put('session_apps','A',{active:false}); // Local list management does not activate chat or dispatch a business tool.
   const renamed=f.core.manageSessionView('A','managed',{action:'rename',title:'  Session name  '});assert.deepEqual(renamed,{sessionId:'A',viewId:'managed',action:'rename',title:'Session name'});
@@ -80,10 +81,10 @@ test('same-owner successful updates and rerenders preserve creation metadata; fa
 });
 
 test('history getters remain readable with the app closed and use only local snapshot data, never fabricated source time',async()=>{
- const f=setup();f.store.updateSnapshotSuccess('store_products:shop',{products:[{offerId:'A'}]},null);
+ const f=setup(),payload=realStoreProducts();f.store.updateSnapshotSuccess('store_products:shop',payload,null);
  const view:ViewSpec={id:'table',title:'Store table',layout:{type:'column',children:['table']},widgets:[{id:'table',type:'table',bindingId:'data',columns:[{field:'offerId',label:'Offer'}]}],bindings:[{id:'data',datasetKey:'store_products:shop',fieldMap:{}}]};await render(f.core,'A',view);
  f.store.put('session_apps','A',{appId:'hallmark',active:false});assert.equal(f.core.listSessionViews('A').views[0].state,'ready');assert.equal(f.core.getSessionView('A','table')?.title,'Store table');
- const data=f.core.getSessionViewData('A','table');assert.equal(data?.status,'ok');const bindings=(data!.data as any).bindings;assert.deepEqual(bindings[0].payload,{products:[{offerId:'A'}]});assert.equal(bindings[0].dataTime,undefined);assert.equal(bindings[0].provenance.dataTime,undefined);
+ const data=f.core.getSessionViewData('A','table');assert.equal(data?.status,'ok');const bindings=(data!.data as any).bindings;assert.deepEqual(bindings[0].payload,payload);assert.equal(bindings[0].dataTime,undefined);assert.equal(bindings[0].provenance.dataTime,undefined);
  assert.equal((await f.core.invoke('hallmark_update_view',{viewId:'table',patch:[{op:'replace',path:'/title',value:'No'}]},{sessionId:'A'})).error?.code,'APP_NOT_ACTIVE');assert.equal(f.remoteCalls.length,0);f.store.close();
 });
 

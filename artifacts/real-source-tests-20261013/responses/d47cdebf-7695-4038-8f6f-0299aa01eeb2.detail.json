@@ -1,0 +1,381 @@
+{
+  "id": "d47cdebf-7695-4038-8f6f-0299aa01eeb2",
+  "title": "【现货当日发】腾达千兆交换机5口8/16/24口百兆2.5G路由器分流器网线分线器网络扩展端口集线器宿舍家用监控",
+  "source": "taobao_tmall",
+  "sourceLabel": "淘宝 / 天猫",
+  "currency": "CNY",
+  "mainImage": "https://img.alicdn.com/imgextra/i4/2176048624/O1CN01pfQiqxfYyPD1WPjS_!!4611686018427387376-0-item_pic.jpg_q50.jpg",
+  "skuCount": 23,
+  "minPrice": 17,
+  "maxPrice": 349,
+  "goodsMinPrice": 17,
+  "goodsMaxPrice": 349,
+  "delivery": {
+    "freightVerified": false
+  },
+  "originalTitle": "【现货当日发】腾达千兆交换机5口8/16/24口百兆2.5G路由器分流器网线分线器网络扩展端口集线器宿舍家用监控",
+  "attributes": {
+    "交换机类型": "千兆交换机",
+    "传输速度": "10000Mbps,100Mbps,2000Mbps,1000Mbps,10Mbps",
+    "品牌": "Tenda/腾达",
+    "是否可堆叠": "不可堆叠",
+    "是否支持VLAN": "不支持"
+  },
+  "skus": [
+    {
+      "properties": {
+        "颜色分类": "【5口百兆】标准版★即插即用 【赠网线】"
+      },
+      "spec": "颜色分类:【5口百兆】标准版★即插即用 【赠网线】",
+      "code": "6116040746855",
+      "sourceSkuId": "6116040746855",
+      "price": 17,
+      "goodsPrice": 17,
+      "originalPrice": 40,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2176048624/O1CN01VR98JL2DZqnzlc0gq_!!2176048624.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "【8口百兆】标准版★即插即用 【赠网线】"
+      },
+      "spec": "颜色分类:【8口百兆】标准版★即插即用 【赠网线】",
+      "code": "5951340045835",
+      "sourceSkuId": "5951340045835",
+      "price": 26,
+      "goodsPrice": 26,
+      "originalPrice": 58,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i2/2176048624/O1CN01yq7PYC2DZqnzuZQ3t_!!2176048624.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "【5口千兆】全千兆网络★高速稳定 【赠网线】"
+      },
+      "spec": "颜色分类:【5口千兆】全千兆网络★高速稳定 【赠网线】",
+      "code": "5951340045849",
+      "sourceSkuId": "5951340045849",
+      "price": 26.9,
+      "goodsPrice": 26.9,
+      "originalPrice": 59.8,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i2/2176048624/O1CN019kxLgZ2DZqnzohpFs_!!2176048624.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "【5口千兆】高速版★SG105 【顺丰发货，赠网线】"
+      },
+      "spec": "颜色分类:【5口千兆】高速版★SG105 【顺丰发货，赠网线】",
+      "code": "5951340045844",
+      "sourceSkuId": "5951340045844",
+      "price": 32,
+      "goodsPrice": 32,
+      "originalPrice": 70,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i1/2176048624/O1CN01274iw82DZqo07X60L_!!2176048624.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "【8口千兆】高速版★全千兆网络 【赠网线】"
+      },
+      "spec": "颜色分类:【8口千兆】高速版★全千兆网络 【赠网线】",
+      "code": "5951340045837",
+      "sourceSkuId": "5951340045837",
+      "price": 62.9,
+      "goodsPrice": 62.9,
+      "originalPrice": 131.8,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2176048624/O1CN01KHmcOH2DZqo1BKI1U_!!2176048624.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "【8口千兆】高速版★全千兆网络★ 【顺丰发货，赠网线】"
+      },
+      "spec": "颜色分类:【8口千兆】高速版★全千兆网络★ 【顺丰发货，赠网线】",
+      "code": "6286588071527",
+      "sourceSkuId": "6286588071527",
+      "price": 66.9,
+      "goodsPrice": 66.9,
+      "originalPrice": 139.8,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2176048624/O1CN01Qo8BQ12DZqpRJS8AH_!!2176048624.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "【3口千兆】品质铝壳★网线一分二 【赠网线】"
+      },
+      "spec": "颜色分类:【3口千兆】品质铝壳★网线一分二 【赠网线】",
+      "code": "5951340045845",
+      "sourceSkuId": "5951340045845",
+      "price": 54.8,
+      "goodsPrice": 54.8,
+      "originalPrice": 99.8,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i1/2176048624/O1CN018BirrO2DZqjMpn8DZ_!!2176048624.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "【5口百兆】品质钢壳/更强散热★稳定传输 【赠网线】"
+      },
+      "spec": "颜色分类:【5口百兆】品质钢壳/更强散热★稳定传输 【赠网线】",
+      "code": "5951340045840",
+      "sourceSkuId": "5951340045840",
+      "price": 39,
+      "goodsPrice": 39,
+      "originalPrice": 84,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2176048624/O1CN01ozC7GK2DZqo06CWUY_!!2176048624.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "【5口千兆】品质钢壳/更强散热★稳定传输 【赠网线】"
+      },
+      "spec": "颜色分类:【5口千兆】品质钢壳/更强散热★稳定传输 【赠网线】",
+      "code": "5951340045842",
+      "sourceSkuId": "5951340045842",
+      "price": 56,
+      "goodsPrice": 56,
+      "originalPrice": 118,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2176048624/O1CN01R3JONJ2DZqnzteHo7_!!2176048624.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "【全新升级-5口千兆】品质钢壳/更强散热★稳定传输★抗干扰 【赠网线】"
+      },
+      "spec": "颜色分类:【全新升级-5口千兆】品质钢壳/更强散热★稳定传输★抗干扰 【赠网线】",
+      "code": "6210746734753",
+      "sourceSkuId": "6210746734753",
+      "price": 66,
+      "goodsPrice": 66,
+      "originalPrice": 138,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i1/2176048624/O1CN01xJPc162DZqnzfJ2fS_!!2176048624.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "【5口千兆云管理】远程运维★组网可视化★APP管理 【赠网线】"
+      },
+      "spec": "颜色分类:【5口千兆云管理】远程运维★组网可视化★APP管理 【赠网线】",
+      "code": "6292697814334",
+      "sourceSkuId": "6292697814334",
+      "price": 86,
+      "goodsPrice": 86,
+      "originalPrice": 169,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2176048624/O1CN01o19FdZ2p3kC1chua_!!2176048624.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "【8口千兆】品质钢壳/更强散热★稳定传输 【赠网线】"
+      },
+      "spec": "颜色分类:【8口千兆】品质钢壳/更强散热★稳定传输 【赠网线】",
+      "code": "5951340045843",
+      "sourceSkuId": "5951340045843",
+      "price": 86,
+      "goodsPrice": 86,
+      "originalPrice": 169,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2176048624/O1CN01RPTa1f2DZqnzPYbkO_!!2176048624.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "【全新升级-8口千兆】品质钢壳/更强散热★稳定传输★抗干扰 【赠网线】"
+      },
+      "spec": "颜色分类:【全新升级-8口千兆】品质钢壳/更强散热★稳定传输★抗干扰 【赠网线】",
+      "code": "6194394246956",
+      "sourceSkuId": "6194394246956",
+      "price": 86,
+      "goodsPrice": 86,
+      "originalPrice": 169,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2176048624/O1CN01NKgmKK2DZqnzkm7Ct_!!2176048624.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "【8口千兆云管理】远程运维★组网可视化★APP管理 【赠网线】"
+      },
+      "spec": "颜色分类:【8口千兆云管理】远程运维★组网可视化★APP管理 【赠网线】",
+      "code": "6292697814335",
+      "sourceSkuId": "6292697814335",
+      "price": 106,
+      "goodsPrice": 106,
+      "originalPrice": 189,
+      "stock": 199,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2176048624/O1CN01qHx23EMwn4E1chua_!!2176048624.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "【9口百兆】品质钢壳/更强散热★稳定传输 【赠网线】"
+      },
+      "spec": "颜色分类:【9口百兆】品质钢壳/更强散热★稳定传输 【赠网线】",
+      "code": "5951340045841",
+      "sourceSkuId": "5951340045841",
+      "price": 62,
+      "goodsPrice": 62,
+      "originalPrice": 130,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2176048624/O1CN01q0yWIT2DZqo06Cn9F_!!2176048624.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "【16口千兆】品质钢壳/迷你机身★即插即用 【赠网线】"
+      },
+      "spec": "颜色分类:【16口千兆】品质钢壳/迷你机身★即插即用 【赠网线】",
+      "code": "5951340045846",
+      "sourceSkuId": "5951340045846",
+      "price": 176,
+      "goodsPrice": 176,
+      "originalPrice": 259,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2176048624/O1CN01KuIcm92DZqnuv9oMx_!!2176048624.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "【16口千兆】品质钢壳★13英寸机身/可上机架 【赠网线】【一键VLAN】"
+      },
+      "spec": "颜色分类:【16口千兆】品质钢壳★13英寸机身/可上机架 【赠网线】【一键VLAN】",
+      "code": "5951340045847",
+      "sourceSkuId": "5951340045847",
+      "price": 196,
+      "goodsPrice": 196,
+      "originalPrice": 279,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i2/2176048624/O1CN01QjwpTp2DZqnuv9Cvc_!!2176048624.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "【24口千兆】品质钢壳★13英寸机身/可上机架 【赠网线】"
+      },
+      "spec": "颜色分类:【24口千兆】品质钢壳★13英寸机身/可上机架 【赠网线】",
+      "code": "5951340045848",
+      "sourceSkuId": "5951340045848",
+      "price": 256,
+      "goodsPrice": 256,
+      "originalPrice": 339,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2176048624/O1CN01iL77FZ2DZqnzbO2xu_!!2176048624.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "5口全2.5G★即插即用★飞速传输 【赠网线】【适用NAS】"
+      },
+      "spec": "颜色分类:5口全2.5G★即插即用★飞速传输 【赠网线】【适用NAS】",
+      "code": "6282274698502",
+      "sourceSkuId": "6282274698502",
+      "price": 176,
+      "goodsPrice": 176,
+      "originalPrice": 259,
+      "stock": 91,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i1/2176048624/O1CN01MPyy5x2DZqp7vAzaw_!!2176048624.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "8口全2.5G★即插即用★飞速传输 【赠网线】【适用NAS】"
+      },
+      "spec": "颜色分类:8口全2.5G★即插即用★飞速传输 【赠网线】【适用NAS】",
+      "code": "6282274698503",
+      "sourceSkuId": "6282274698503",
+      "price": 266,
+      "goodsPrice": 266,
+      "originalPrice": 349,
+      "stock": 98,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i2/2176048624/O1CN01ZqbHx12DZqp66Xl4b_!!2176048624.png"
+    },
+    {
+      "properties": {
+        "颜色分类": "5口2.5G电口+10G光口★万兆网络★高效散热★稳定传输 【赠网线】【适用NAS】"
+      },
+      "spec": "颜色分类:5口2.5G电口+10G光口★万兆网络★高效散热★稳定传输 【赠网线】【适用NAS】",
+      "code": "5951340045838",
+      "sourceSkuId": "5951340045838",
+      "price": 196,
+      "goodsPrice": 196,
+      "originalPrice": 279,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i2/2176048624/O1CN01gfMLVm2DZqhp9PiD7_!!2176048624.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "8口2.5G电口+10G光口★万兆网络★高效散热★稳定传输 【赠网线】【适用NAS】"
+      },
+      "spec": "颜色分类:8口2.5G电口+10G光口★万兆网络★高效散热★稳定传输 【赠网线】【适用NAS】",
+      "code": "5951340045839",
+      "sourceSkuId": "5951340045839",
+      "price": 296,
+      "goodsPrice": 296,
+      "originalPrice": 379,
+      "stock": 200,
+      "stockStatus": "有货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2176048624/O1CN01PzZHaL2DZqhp9QFSp_!!2176048624.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "【监控专用】POE交换机请下滑至商详"
+      },
+      "spec": "颜色分类:【监控专用】POE交换机请下滑至商详",
+      "code": "6282274698504",
+      "sourceSkuId": "6282274698504",
+      "price": 349,
+      "goodsPrice": 349,
+      "originalPrice": 349,
+      "stock": 0,
+      "stockStatus": "无货(限购10000件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2176048624/O1CN01P6deRl2DZqpJnW2b9_!!2176048624.jpg"
+    }
+  ],
+  "images": [
+    "https://img.alicdn.com/imgextra/i4/2176048624/O1CN01pfQiqxfYyPD1WPjS_!!4611686018427387376-0-item_pic.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i3/2176048624/O1CN01nvRzKX2DZqiWM2xr8_!!2176048624.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i2/2176048624/O1CN01145WAj2DZqiSptki0_!!2176048624.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i2/2176048624/O1CN018pa6d82DZqiNvoKkp_!!2176048624.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i4/2176048624/O1CN01qTRw3x2DZqiUkRE9g_!!2176048624.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i3/2176048624/O1CN01nvRzKX2DZqiWM2xr8_!!2176048624.jpg"
+  ],
+  "descriptionImages": [
+    "https://img.alicdn.com/imgextra/i3/2176048624/O1CN01m0hIPe2DZqpdnuFJc_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i1/2176048624/O1CN01o98rTF2DZqpMoy12C_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i1/2176048624/O1CN01cKQGSZ2DZqncTzpU0_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i2/2176048624/O1CN01OwrVd92DZqi7pwCqt_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i3/2176048624/O1CN01EcMO8C2DZqi9Ka7Sf_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i3/2176048624/O1CN011NQ5jx2DZqiAFJZK7_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i1/2176048624/O1CN01ywsmv12DZqi8hxpeX_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i3/2176048624/O1CN01YzMTLs2DZqi9J6c1a_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i3/2176048624/O1CN015jaLEH2DZqi80qnEq_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i2/2176048624/O1CN01aYECS52DZqi8hyZOu_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i2/2176048624/O1CN01XwDE9i2DZqi8hwtRF_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i2/2176048624/O1CN01VsifcI2DZqiAFMr5Y_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i2/2176048624/O1CN01WYR94M2DZqi7pvXDu_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i4/2176048624/O1CN01ckCFoZ2DZqi8TIwC7_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i1/2176048624/O1CN01oPApvQ2DZqi9KZaFy_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i2/2176048624/O1CN01OSChd22DZqi8TK0g6_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i4/2176048624/O1CN01YJWBMk2DZqi6fdhaF_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i4/2176048624/O1CN01mNkrTD2DZqiAFMedC_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i4/2176048624/O1CN01tS3TrR2DZqi9pzYgu_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i1/2176048624/O1CN01uioNs72DZqi9pyU8q_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i1/2176048624/O1CN01AkkX9U2DZqi80sbZC_!!2176048624.jpg",
+    "https://img.alicdn.com/imgextra/i3/O1CN01XU1Y2d1Sk7fIMOkeU_!!6000000002284-2-tps-1125-1446.png"
+  ],
+  "sourceUrl": "https://detail.tmall.com/item.htm?abbucket=11&fpChannel=101&fpChannelSig=7e3efc5bb62b34b1ae3b89ecb9a0f2295250097b&id=532659068038&mi_id=0000r1uOCPB7RBDAufJDpmQGMubNw_t9TtOXgPa4XEzr9dM&ns=1&priceTId=2147874617874913628518375e1cca&skuId=5951340045835&spm=a21n57.1.hoverItem.2&utparam=%7B%22aplus_abtest%22%3A%2290ddad7c3da230ea9b870450ba573337%22%7D&xxc=taobaoSearch"
+}

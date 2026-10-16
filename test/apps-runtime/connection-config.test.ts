@@ -1,3 +1,4 @@
+import {uiProduct,uiProducts,uiOzonProduct,uiStore,uiListingPayload,uiFixturePrelude,uiText} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
@@ -21,7 +22,7 @@ const immediate=()=>new Promise<void>(resolve=>setImmediate(resolve));
 const deferred=()=>{let resolve:()=>void=()=>{};const promise=new Promise<void>(done=>{resolve=done;});return {promise,resolve};};
 async function backend(name:string){
   const calls:string[]=[],started=deferred(),release=deferred();let hold=false;
-  const server=createServer(async(req,res)=>{calls.push(req.url!);res.setHeader('Content-Type','application/json');if(req.url==='/api/health')return res.end('{"service":"hallmark-control"}');if(req.url==='/api/stores'){if(hold){started.resolve();await release.promise;}return res.end(JSON.stringify([{id:'store',shopName:name}]));}if(req.url==='/api/store-products')return res.end(JSON.stringify({stores:[{id:'store',lastSuccessAt:'2026-10-01T00:00:00Z'}],products:[{storeId:'store',offerId:'same',origin:name}]}));res.statusCode=404;res.end('{}');});
+  const server=createServer(async(req,res)=>{calls.push(req.url!);res.setHeader('Content-Type','application/json');if(req.url==='/api/health')return res.end('{"service":"hallmark-control"}');if(req.url==='/api/stores'){if(hold){started.resolve();await release.promise;}return res.end(JSON.stringify([{id:'store',shopName:name}]));}if(req.url==='/api/store-products')return res.end(JSON.stringify({stores:[{id:'store',lastSuccessAt:'2026-10-01T00:00:00Z'}],products:[uiProduct({storeId:'store',offerId:'same',origin:name},18)]}));res.statusCode=404;res.end('{}');});
   await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));const address=server.address();if(!address||typeof address==='string')throw new Error('PORT_REQUIRED');
   return {url:`http://127.0.0.1:${address.port}`,calls,started:started.promise,release:release.resolve,hold(){hold=true;},async close(){release.resolve();server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));}};
 }

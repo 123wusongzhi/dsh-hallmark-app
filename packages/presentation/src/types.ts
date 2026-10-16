@@ -1,4 +1,4 @@
-export type WidgetType = 'stat_card' | 'table' | 'bar_chart' | 'line_chart' | 'product_card' | 'status_badge' | 'text';
+export type WidgetType = 'stat_card' | 'table' | 'bar_chart' | 'line_chart' | 'product_card' | 'product_list' | 'sku_detail' | 'status_badge' | 'text';
 export interface ThemeTokens {
   background: string; surface: string; text: string; mutedText: string; primary: string; profit: string; loss: string; warning: string;
   fontSize: { small: number; body: number; title: number }; spacing: number; radius: number; shadow: string;
@@ -12,7 +12,8 @@ export interface WidgetSpec {
 export interface DataBinding { id: string; datasetKey?: string; query?: { tool: string; params: Record<string, unknown> }; fieldMap: Record<string, string> }
 export interface SourcePreview { screenshotPath:string; reportPath:string; width?:number; height?:number; capturedAt?:string }
 export interface SourceArtifact { buildId: string; directory: string; entry: string; files: string[]; thumbnail?:string; preview?:SourcePreview }
-export interface ViewSpec { id: string; title: string; templateId?: string; theme?: Partial<ThemeTokens>; layout: LayoutNode; widgets: WidgetSpec[]; bindings: DataBinding[]; kind?: 'source'; source?: SourceArtifact }
+export interface ViewLink { from: {widgetId:string;event:'select';field:'product.id'}; to: {bindingId:string;param:string} }
+export interface ViewSpec { id: string; title: string; templateId?: string; theme?: Partial<ThemeTokens>; layout: LayoutNode; widgets: WidgetSpec[]; bindings: DataBinding[]; links?:ViewLink[]; kind?: 'source'; source?: SourceArtifact }
 export interface SourceView extends ViewSpec { kind: 'source'; source: SourceArtifact }
 export interface Template {
   id: string; name: string; description: string; theme: Partial<ThemeTokens>; layout: LayoutNode;

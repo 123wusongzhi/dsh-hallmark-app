@@ -1,0 +1,192 @@
+{
+  "id": "621a8205-b171-469c-9912-259cfc844a3f",
+  "title": "【台纪】手机支架桌面直播懒人支架平板支架手机支撑架床上随身通用小巧手机架升降伸缩折叠便携pad调节",
+  "source": "taobao_tmall",
+  "sourceLabel": "淘宝 / 天猫",
+  "currency": "CNY",
+  "mainImage": "https://img.alicdn.com/imgextra/i3/2207344888580/O1CN01f8V2V52DFhEHm538e_!!0-item_pic.jpg_q50.jpg",
+  "skuCount": 8,
+  "minPrice": 2.81,
+  "maxPrice": 7.01,
+  "goodsMinPrice": 2.81,
+  "goodsMaxPrice": 7.01,
+  "delivery": {
+    "freightVerified": false
+  },
+  "originalTitle": "【台纪】手机支架桌面直播懒人支架平板支架手机支撑架床上随身通用小巧手机架升降伸缩折叠便携pad调节",
+  "attributes": {
+    "品牌": "台纪",
+    "固定方式": "落地式,放置式,折叠式",
+    "是否支持磁吸充电": "否",
+    "材质": "塑料",
+    "适用场景": "户外,办公,通用,床头,居家",
+    "重量": "50g",
+    "长度": "5cm",
+    "风格": "简约"
+  },
+  "skus": [
+    {
+      "properties": {
+        "颜色分类": "标准款【珍珠白】可升降折叠★手机专用"
+      },
+      "spec": "颜色分类:标准款【珍珠白】可升降折叠★手机专用",
+      "code": "5561092992109",
+      "sourceSkuId": "5561092992109",
+      "price": 2.81,
+      "goodsPrice": 2.81,
+      "originalPrice": 3.01,
+      "stock": 200,
+      "stockStatus": "有货(限购99999件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2207344888580/O1CN01BwCns12DFhEJkiAYn_!!2207344888580.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "标准款【曜石黑】可升降折叠★手机专用"
+      },
+      "spec": "颜色分类:标准款【曜石黑】可升降折叠★手机专用",
+      "code": "5561092992110",
+      "sourceSkuId": "5561092992110",
+      "price": 2.81,
+      "goodsPrice": 2.81,
+      "originalPrice": 3.01,
+      "stock": 200,
+      "stockStatus": "有货(限购99999件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i3/2207344888580/O1CN01v6RJVB2DFhEJhFc2F_!!2207344888580.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "升级款【珍珠白】可升降折叠★手机专用"
+      },
+      "spec": "颜色分类:升级款【珍珠白】可升降折叠★手机专用",
+      "code": "5561092992111",
+      "sourceSkuId": "5561092992111",
+      "price": 2.98,
+      "goodsPrice": 2.98,
+      "originalPrice": 3.28,
+      "stock": 200,
+      "stockStatus": "有货(限购99999件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i1/2207344888580/O1CN01wzFR6Y2DFhEMxkAoT_!!2207344888580.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "升级款【曜石黑】可升降折叠★手机专用"
+      },
+      "spec": "颜色分类:升级款【曜石黑】可升降折叠★手机专用",
+      "code": "5561092992112",
+      "sourceSkuId": "5561092992112",
+      "price": 2.98,
+      "goodsPrice": 2.98,
+      "originalPrice": 3.28,
+      "stock": 200,
+      "stockStatus": "有货(限购99999件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i2/2207344888580/O1CN01rH9F5K2DFhEKP0Jdl_!!2207344888580.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "升级款【樱花粉】可升降折叠★手机专用"
+      },
+      "spec": "颜色分类:升级款【樱花粉】可升降折叠★手机专用",
+      "code": "5561092992113",
+      "sourceSkuId": "5561092992113",
+      "price": 3.3,
+      "goodsPrice": 3.3,
+      "originalPrice": 3.6,
+      "stock": 200,
+      "stockStatus": "有货(限购99999件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i2/2207344888580/O1CN015fBxcf2DFhGFTYLST_!!2207344888580.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "升级款【薄荷绿】可升降折叠★手机专用"
+      },
+      "spec": "颜色分类:升级款【薄荷绿】可升降折叠★手机专用",
+      "code": "5561092992114",
+      "sourceSkuId": "5561092992114",
+      "price": 3.3,
+      "goodsPrice": 3.3,
+      "originalPrice": 3.6,
+      "stock": 200,
+      "stockStatus": "有货(限购99999件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i1/2207344888580/O1CN01FFaCIw2DFhEMQnfke_!!2207344888580.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "珍珠白【双管支撑】可升降折叠/更稳固"
+      },
+      "spec": "颜色分类:珍珠白【双管支撑】可升降折叠/更稳固",
+      "code": "6134652759810",
+      "sourceSkuId": "6134652759810",
+      "price": 7.01,
+      "goodsPrice": 7.01,
+      "originalPrice": 8.01,
+      "stock": 200,
+      "stockStatus": "有货(限购99999件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i1/2207344888580/O1CN01Ra7aHA2DFhLezoYIR_!!2207344888580.jpg"
+    },
+    {
+      "properties": {
+        "颜色分类": "炫酷黑【双管支撑】可升降折叠/更稳固"
+      },
+      "spec": "颜色分类:炫酷黑【双管支撑】可升降折叠/更稳固",
+      "code": "6134652759811",
+      "sourceSkuId": "6134652759811",
+      "price": 7.01,
+      "goodsPrice": 7.01,
+      "originalPrice": 8.01,
+      "stock": 200,
+      "stockStatus": "有货(限购99999件)",
+      "image": "https://gw.alicdn.com/bao/uploaded/i4/2207344888580/O1CN013ZMqsM2DFhLdsKR8r_!!2207344888580.jpg"
+    }
+  ],
+  "images": [
+    "https://img.alicdn.com/imgextra/i3/2207344888580/O1CN01f8V2V52DFhEHm538e_!!0-item_pic.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i2/2207344888580/O1CN01avPqWX2DFhEJ8VORC_!!2207344888580.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i4/2207344888580/O1CN01kqEmTR2DFhEGff5dB_!!2207344888580.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i2/2207344888580/O1CN01mvmHTs2DFhEJhmyn0_!!2207344888580.jpg_q50.jpg",
+    "https://img.alicdn.com/imgextra/i4/2207344888580/O1CN01wyXj0u2DFhEGfeDaC_!!2207344888580.jpg_q50.jpg",
+    "https://gw.alicdn.com/bao/uploaded/i1/2207344888580/O1CN01FFaCIw2DFhEMQnfke_!!2207344888580.jpg"
+  ],
+  "descriptionImages": [
+    "https://gw.alicdn.com/imgextra/i2/O1CN010DB1Un24kXOjdGhG3_!!6000000007429-0-tps-84-82.jpg",
+    "https://img.alicdn.com/imgextra/i3/2207344888580/O1CN01XG19sU2DFhLeMi6eU_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i3/2207344888580/O1CN01D2OsPn2DFhLZCSYJL_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i2/2207344888580/O1CN01ulnfVB2DFhLedlYoL_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i4/2207344888580/O1CN01UZzeyM2DFhLfXjq3N_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i3/2207344888580/O1CN01sobrn52DFhLfPJqml_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i2/2207344888580/O1CN01bssTGN2DFhLf0WNq7_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i2/2207344888580/O1CN01FpM0602DFhLdrAnfK_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i4/2207344888580/O1CN0115PTRV2DFhLdUmJy1_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i2/2207344888580/O1CN01BnsRMo2DFhLdsCJRl_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i2/2207344888580/O1CN01bkpcLi2DFhLfPMnjP_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i1/2207344888580/O1CN01LwLuzS2DFhLeMkaVk_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i3/2207344888580/O1CN01ye9b5i2DFhLeXDNVh_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i3/2207344888580/O1CN01RV91sB2DFhLeFe87H_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i1/2207344888580/O1CN01YlP5AZ2DFhLecGMsA_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i2/2207344888580/O1CN01YWtcrN2DFhLeFfbbT_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i2/2207344888580/O1CN01sAfdZS2DFhLecFMUI_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i1/2207344888580/O1CN01t8uVW02DFhLeFhHZI_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i1/2207344888580/O1CN013Aqvr02DFhLdsD7KW_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i3/2207344888580/O1CN013PyRmR2DFhLeXCyYg_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i4/2207344888580/O1CN01uzFZGX2DFhLezePrd_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i1/2207344888580/O1CN01xRzPWs2DFhLecGdWs_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i2/2207344888580/O1CN01BIEtV12DFhLdUmvQ3_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i1/2207344888580/O1CN011kz3Jo2DFhLednN24_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i4/2207344888580/O1CN0194fUvG2DFhLdUjZSy_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i3/2207344888580/O1CN01SPAjcY2DFhLevg6TM_!!2207344888580.jpg",
+    "https://img.alicdn.com/imgextra/i3/O1CN01XU1Y2d1Sk7fIMOkeU_!!6000000002284-2-tps-1125-1446.png"
+  ],
+  "description": "公益宝贝 每笔成交将为 一亿棵梭梭 捐赠 0.02元 ，已累计捐赠 37312 笔。",
+  "sourceUrl": "https://detail.tmall.com/item.htm?abbucket=11&id=829175739325&mi_id=0000txntySqfgEiWbNDEg0QnNl42-Z7YixeYfs6_9lIJFFs&ns=1&priceTId=215043f917883225176826613e1999&skuId=5561092992114&spm=a21n57.1.hoverItem.11&utparam=%7B%22aplus_abtest%22%3A%222140f904736f9cef58ffd37d67d3729b%22%7D&xxc=taobaoSearch",
+  "ozonPreprocess": {
+    "status": "completed",
+    "sourceImageUrl": "https://img.alicdn.com/imgextra/i3/2207344888580/O1CN01f8V2V52DFhEHm538e_!!0-item_pic.jpg_q50.jpg",
+    "candidates": [],
+    "completedAt": "2026-09-02T04:15:44.391Z"
+  },
+  "ozonCategorySuggestion": {
+    "status": "unavailable",
+    "reason": "no_candidates",
+    "message": "Yandex 没有找到可用的 Ozon 同类商品，无法计算类目",
+    "candidateCount": 0
+  }
+}

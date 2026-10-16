@@ -1,3 +1,4 @@
+import { recordedPlatformProduct } from '../adapter/real-scenarios.ts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {AppStore} from '../../packages/store/index.ts';
@@ -14,7 +15,7 @@ const ok=(raw:any):AdapterResponse=>({status:'ok',raw});
 function setup(stockResponse:any){
  const store=new AppStore(':memory:');store.put('session_apps','session',{appId:'hallmark',active:true});
  const calls:Array<{write:boolean;taskId:string;input:any}>=[];
- const fixture={stockResponse,infoRows:[{id:1,offer_id:'A',sku:33,stocks:{stock:201}}]};
+ const fixture={stockResponse,infoRows:[recordedPlatformProduct({id:1,offer_id:'A',sku:33,stocks:{stock:201}})]};
  const client:CoreOptions['client']={
   getStores:async()=>ok([{id:'shop',shopName:'Shop'}]),getStoreProducts:async()=>ok({stores:[],products:[]}),syncStoreProducts:async()=>ok({}),getTargetMargin:async()=>ok({}),searchCollectedItems:async()=>ok([]),getCollectedItem:async()=>ok({}),
   platformCall:async(taskId,input)=>{calls.push({write:true,taskId,input});return ok({outcome:'response_received',httpStatus:200,response:{result:[{offer_id:'A',updated:true,errors:[]}]}});},
@@ -48,8 +49,8 @@ for(const [name,row] of [
  ['SKU-only identity',{sku:33,warehouse_id:12,present:201}],
  ['nested warehouses',{offer_id:'A',sku:33,warehouses:[{warehouse_id:11,present:0},{warehouse_id:12,present:201}]}],
  ['nested stocks legacy names',{offerId:'A',sku:33,stocks:[{warehouseId:'12',stock:201}]}],
- ['nested warehouse carries consistent product identity',{offer_id:'A',sku:33,stocks:[{warehouse_id:12,offer_id:'A',sku:33,present:201}]}],
- ['only the selected warehouse supplies product evidence',{offer_id:'A',sku:33,stocks:[{warehouse_id:11,offer_id:'B',sku:34,present:201},{warehouse_id:12,offer_id:'A',sku:33,present:201}]}]
+ ['nested warehouse carries consistent product identity',recordedPlatformProduct({offer_id:'A',sku:33,stocks:[{warehouse_id:12,offer_id:'A',sku:33,present:201}]})],
+ ['only the selected warehouse supplies product evidence',recordedPlatformProduct({offer_id:'A',sku:33,stocks:[{warehouse_id:11,offer_id:'B',sku:34,present:201},{warehouse_id:12,offer_id:'A',sku:33,present:201}]})]
 ] as const)test(`stock readback retains ${name} compatibility without weakening exact warehouse matching`,async()=>{
  const f=setup({products:[row]});try{const result=await f.core.invoke('hallmark_update_stock',args,context);assert.equal(result.status,'ok');assert.equal((result.data as any).items[0].observed,201);assert.equal(f.calls.filter(call=>call.write).length,1);}finally{f.store.close();}
 });
@@ -66,15 +67,15 @@ const invalidResponses:Array<[string,any]>=[
  ['free_stock alone equals target',{products:[{offer_id:'A',sku:33,warehouse_id:12,free_stock:201}]}],
  ['present differs while free_stock equals target',{products:[{...exactRow,present:200}]}],
  ['duplicate exact product rows',{products:[exactRow,{...exactRow}]}],
- ['duplicate exact nested warehouses',{products:[{offer_id:'A',sku:33,stocks:[{warehouse_id:12,present:201},{warehouse_id:12,present:201}]}]}],
- ['selected nested warehouse has conflicting SKU',{products:[{offer_id:'A',sku:33,stocks:[{warehouse_id:12,sku:34,present:201}]}]}],
- ['selected nested warehouse has conflicting offer',{products:[{offer_id:'A',sku:33,stocks:[{warehouse_id:12,offer_id:'B',present:201}]}]}],
- ['selected nested warehouse has conflicting offer aliases',{products:[{offer_id:'A',sku:33,stocks:[{warehouse_id:12,offer_id:'A',offerId:'B',present:201}]}]}],
- ['selected nested warehouse has conflicting warehouse aliases',{products:[{offer_id:'A',sku:33,stocks:[{warehouse_id:12,warehouseId:11,present:201}]}]}],
- ['duplicate nested warehouse with one conflicting SKU',{products:[{offer_id:'A',sku:33,stocks:[{warehouse_id:12,sku:34,present:201},{warehouse_id:12,sku:33,present:201}]}]}],
- ['duplicate nested warehouse with one conflicting offer',{products:[{offer_id:'A',sku:33,stocks:[{warehouse_id:12,offer_id:'B',present:201},{warehouse_id:12,offer_id:'A',present:201}]}]}],
- ['duplicate nested warehouse with one conflicting warehouse alias',{products:[{offer_id:'A',sku:33,stocks:[{warehouse_id:12,warehouseId:11,present:201},{warehouse_id:12,present:201}]}]}],
- ['nested warehouse does not match',{products:[{offer_id:'A',sku:33,stocks:[{warehouse_id:11,present:201}]}]}],
+ ['duplicate exact nested warehouses',{products:[recordedPlatformProduct({offer_id:'A',sku:33,stocks:[{warehouse_id:12,present:201},{warehouse_id:12,present:201}]})]}],
+ ['selected nested warehouse has conflicting SKU',{products:[recordedPlatformProduct({offer_id:'A',sku:33,stocks:[{warehouse_id:12,sku:34,present:201}]})]}],
+ ['selected nested warehouse has conflicting offer',{products:[recordedPlatformProduct({offer_id:'A',sku:33,stocks:[{warehouse_id:12,offer_id:'B',present:201}]})]}],
+ ['selected nested warehouse has conflicting offer aliases',{products:[recordedPlatformProduct({offer_id:'A',sku:33,stocks:[{warehouse_id:12,offer_id:'A',offerId:'B',present:201}]})]}],
+ ['selected nested warehouse has conflicting warehouse aliases',{products:[recordedPlatformProduct({offer_id:'A',sku:33,stocks:[{warehouse_id:12,warehouseId:11,present:201}]})]}],
+ ['duplicate nested warehouse with one conflicting SKU',{products:[recordedPlatformProduct({offer_id:'A',sku:33,stocks:[{warehouse_id:12,sku:34,present:201},{warehouse_id:12,sku:33,present:201}]})]}],
+ ['duplicate nested warehouse with one conflicting offer',{products:[recordedPlatformProduct({offer_id:'A',sku:33,stocks:[{warehouse_id:12,offer_id:'B',present:201},{warehouse_id:12,offer_id:'A',present:201}]})]}],
+ ['duplicate nested warehouse with one conflicting warehouse alias',{products:[recordedPlatformProduct({offer_id:'A',sku:33,stocks:[{warehouse_id:12,warehouseId:11,present:201},{warehouse_id:12,present:201}]})]}],
+ ['nested warehouse does not match',{products:[recordedPlatformProduct({offer_id:'A',sku:33,stocks:[{warehouse_id:11,present:201}]})]}],
  ['unrecognized rows envelope',{rows:[exactRow]}],
  ['empty product list despite matching info aggregate',{products:[]}]
 ];

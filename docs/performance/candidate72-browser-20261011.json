@@ -1,0 +1,4687 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-11",
+  "baselineCommit": "d5a41f3b216532768180a533975e4a87f4bdc169",
+  "decision": "accept-render-local-formatter-reuse-with-disclosed-natural-image-timing-difference",
+  "environment": {
+    "platform": "win32",
+    "node": "v24.12.0",
+    "browser": "154.0.8037.95",
+    "headless": true,
+    "timezone": "Asia/Shanghai",
+    "locale": "zh-CN"
+  },
+  "production": [
+    {
+      "path": "component-workspace/collected-products/src/Component.tsx",
+      "mergedSha256": "f07308aaf0c41876415353745c262708b6891b6026097781eb1a974dadafc0f7",
+      "measuredSha256": "f07308aaf0c41876415353745c262708b6891b6026097781eb1a974dadafc0f7"
+    },
+    {
+      "path": "component-workspace/collected-products/src/lib/products.ts",
+      "mergedSha256": "5fadaa3e1ae5efdbb660c618c75a0116cba1eadc9d63fab406ed6b847ad7da29",
+      "measuredSha256": "5fadaa3e1ae5efdbb660c618c75a0116cba1eadc9d63fab406ed6b847ad7da29"
+    }
+  ],
+  "protectedFiles": [
+    {
+      "path": "skills/ozon-listing/SKILL.md",
+      "initialSha256": "75637916fdabb4b46de8cd620c3b40fcdeeaf5d4d34dc18e1258e6140bbcd02a",
+      "observedSha256": "b327b679352097d42670e7eee0c817988b48debea64bc751d88a5a24a7ce8235",
+      "observedAt": "2026-10-11T10:41:32.422Z",
+      "changedOutsideThisTask": true,
+      "handling": "This task did not write or stage this file. Later changes were left in place; the old snapshot was not restored."
+    },
+    {
+      "path": "skills/ozon-listing/references/content.md",
+      "initialSha256": "b629d05a8838aad234c800631c99ed14bbc1ab736a014f9c8db63fdcb0074e7c",
+      "observedSha256": "8e221e6d7a0d5adf8aadb0decf70b30c6497020d777eb05df29fdea12f871857",
+      "observedAt": "2026-10-11T10:41:32.423Z",
+      "changedOutsideThisTask": true,
+      "handling": "This task did not write or stage this file. Later changes were left in place; the old snapshot was not restored."
+    }
+  ],
+  "formal": [
+    {
+      "shape": "48-desktop",
+      "processes": [
+        4,
+        4
+      ],
+      "contract": "equal-for-captured-fields",
+      "cycleMs": [
+        47.92499998211861,
+        30.94999998807907
+      ],
+      "cycleChangePct": -35.41992697000128,
+      "taskMs": [
+        5772.996,
+        3749.3095000000003
+      ],
+      "taskChangePct": -35.054354792554854,
+      "clear": [
+        {
+          "count": 400,
+          "medianMs": 5.100000023841858,
+          "p95Ms": 7,
+          "maxMs": 15,
+          "over50ms": 0,
+          "over100ms": 0
+        },
+        {
+          "count": 400,
+          "medianMs": 3.100000023841858,
+          "p95Ms": 4.399999976158142,
+          "maxMs": 7.399999976158142,
+          "over50ms": 0,
+          "over100ms": 0
+        }
+      ],
+      "actions": [
+        {
+          "count": 4400,
+          "medianMs": 4.899999976158142,
+          "p95Ms": 6.600000023841858,
+          "maxMs": 15,
+          "over50ms": 0,
+          "over100ms": 0
+        },
+        {
+          "count": 4400,
+          "medianMs": 3.100000023841858,
+          "p95Ms": 4.199999928474426,
+          "maxMs": 7.899999976158142,
+          "over50ms": 0,
+          "over100ms": 0
+        }
+      ],
+      "paired": [
+        {
+          "round": 0,
+          "cycle": 0.6684182869147384,
+          "task": 0.6621996941598344
+        },
+        {
+          "round": 1,
+          "cycle": 0.6399999996284386,
+          "task": 0.6298881203396982
+        }
+      ],
+      "longTasks": [
+        {
+          "count": 190,
+          "maxMs": 98
+        },
+        {
+          "count": 1,
+          "maxMs": 51
+        }
+      ],
+      "perAction": [
+        {
+          "names": [
+            "search \"Lamp\""
+          ],
+          "processMedianMs": [
+            3.300000011920929,
+            2.6749999821186066
+          ],
+          "processP95MedianMs": [
+            3.949999988079071,
+            3.150000035762787
+          ]
+        },
+        {
+          "names": [
+            "search \"  lAmP  \""
+          ],
+          "processMedianMs": [
+            2.349999964237213,
+            1.600000023841858
+          ],
+          "processP95MedianMs": [
+            2.899999976158142,
+            2.050000011920929
+          ]
+        },
+        {
+          "names": [
+            "source 1688"
+          ],
+          "processMedianMs": [
+            1.550000011920929,
+            1.1999999284744263
+          ],
+          "processP95MedianMs": [
+            1.9500000476837158,
+            1.5
+          ]
+        },
+        {
+          "names": [
+            "search \"\""
+          ],
+          "processMedianMs": [
+            3.149999976158142,
+            2.050000011920929
+          ],
+          "processP95MedianMs": [
+            4.150000035762787,
+            2.699999988079071
+          ]
+        },
+        {
+          "names": [
+            "source all"
+          ],
+          "processMedianMs": [
+            5.200000047683716,
+            3.299999952316284
+          ],
+          "processP95MedianMs": [
+            6.449999988079071,
+            4.5
+          ]
+        },
+        {
+          "names": [
+            "下一页"
+          ],
+          "processMedianMs": [
+            5.499999940395355,
+            3.5499999821186066
+          ],
+          "processP95MedianMs": [
+            6.849999964237213,
+            4.650000035762787
+          ]
+        },
+        {
+          "names": [
+            "toggle snapshot-key-30"
+          ],
+          "processMedianMs": [
+            5.150000035762787,
+            3.149999976158142
+          ],
+          "processP95MedianMs": [
+            6.299999952316284,
+            4.400000035762787
+          ]
+        },
+        {
+          "names": [
+            "上一页"
+          ],
+          "processMedianMs": [
+            5.625,
+            3.599999964237213
+          ],
+          "processP95MedianMs": [
+            7.099999964237213,
+            4.899999976158142
+          ]
+        },
+        {
+          "names": [
+            "toggle page"
+          ],
+          "processMedianMs": [
+            5.100000023841858,
+            3.199999988079071
+          ],
+          "processP95MedianMs": [
+            6.649999976158142,
+            4.449999988079071
+          ]
+        },
+        {
+          "names": [
+            "toggle page"
+          ],
+          "processMedianMs": [
+            5.0999999940395355,
+            3
+          ],
+          "processP95MedianMs": [
+            7.350000023841858,
+            4.200000047683716
+          ]
+        },
+        {
+          "names": [
+            "clear selection"
+          ],
+          "processMedianMs": [
+            5.125,
+            3.099999964237213
+          ],
+          "processP95MedianMs": [
+            6.600000023841858,
+            4.449999988079071
+          ]
+        }
+      ]
+    },
+    {
+      "shape": "48-mobile",
+      "processes": [
+        4,
+        4
+      ],
+      "contract": "equal-for-captured-fields",
+      "cycleMs": [
+        37.99999997019768,
+        21.100000023841858
+      ],
+      "cycleChangePct": -44.47368410423687,
+      "taskMs": [
+        4744.886999999999,
+        2628.0789999999997
+      ],
+      "taskChangePct": -44.61240067466306,
+      "clear": [
+        {
+          "count": 400,
+          "medianMs": 3.399999976158142,
+          "p95Ms": 5.700000047683716,
+          "maxMs": 9.400000095367432,
+          "over50ms": 0,
+          "over100ms": 0
+        },
+        {
+          "count": 400,
+          "medianMs": 1.5,
+          "p95Ms": 2,
+          "maxMs": 2.8000000715255737,
+          "over50ms": 0,
+          "over100ms": 0
+        }
+      ],
+      "actions": [
+        {
+          "count": 4400,
+          "medianMs": 3.5,
+          "p95Ms": 5.800000071525574,
+          "maxMs": 15,
+          "over50ms": 0,
+          "over100ms": 0
+        },
+        {
+          "count": 4400,
+          "medianMs": 1.7000000476837158,
+          "p95Ms": 3.299999952316284,
+          "maxMs": 7.299999952316284,
+          "over50ms": 0,
+          "over100ms": 0
+        }
+      ],
+      "paired": [
+        {
+          "round": 0,
+          "cycle": 0.5552631589576313,
+          "task": 0.5538759932533694
+        },
+        {
+          "round": 1,
+          "cycle": 0.5552665808518933,
+          "task": 0.5527842465294751
+        }
+      ],
+      "longTasks": [
+        {
+          "count": 32,
+          "maxMs": 101
+        },
+        {
+          "count": 0,
+          "maxMs": 0
+        }
+      ],
+      "perAction": [
+        {
+          "names": [
+            "search \"Lamp\""
+          ],
+          "processMedianMs": [
+            2.8750000596046448,
+            2.25
+          ],
+          "processP95MedianMs": [
+            4.199999988079071,
+            2.650000035762787
+          ]
+        },
+        {
+          "names": [
+            "search \"  lAmP  \""
+          ],
+          "processMedianMs": [
+            1.600000023841858,
+            0.9500000178813934
+          ],
+          "processP95MedianMs": [
+            2.300000011920929,
+            1.25
+          ]
+        },
+        {
+          "names": [
+            "source 1688"
+          ],
+          "processMedianMs": [
+            1.100000023841858,
+            0.8000000417232513
+          ],
+          "processP95MedianMs": [
+            1.6500000357627869,
+            1
+          ]
+        },
+        {
+          "names": [
+            "search \"\""
+          ],
+          "processMedianMs": [
+            2.649999976158142,
+            1.600000023841858
+          ],
+          "processP95MedianMs": [
+            4.099999964237213,
+            1.850000023841858
+          ]
+        },
+        {
+          "names": [
+            "source all"
+          ],
+          "processMedianMs": [
+            4.600000023841858,
+            2.5
+          ],
+          "processP95MedianMs": [
+            7.100000023841858,
+            3.050000011920929
+          ]
+        },
+        {
+          "names": [
+            "下一页"
+          ],
+          "processMedianMs": [
+            5,
+            3.050000011920929
+          ],
+          "processP95MedianMs": [
+            7.650000035762787,
+            3.899999976158142
+          ]
+        },
+        {
+          "names": [
+            "toggle snapshot-key-30"
+          ],
+          "processMedianMs": [
+            3.699999988079071,
+            1.7000000476837158
+          ],
+          "processP95MedianMs": [
+            5.800000071525574,
+            2.199999988079071
+          ]
+        },
+        {
+          "names": [
+            "上一页"
+          ],
+          "processMedianMs": [
+            5.074999988079071,
+            3.0499999821186066
+          ],
+          "processP95MedianMs": [
+            7.25,
+            3.599999964237213
+          ]
+        },
+        {
+          "names": [
+            "toggle page"
+          ],
+          "processMedianMs": [
+            3.6500000059604645,
+            1.649999976158142
+          ],
+          "processP95MedianMs": [
+            5.199999988079071,
+            2.25
+          ]
+        },
+        {
+          "names": [
+            "toggle page"
+          ],
+          "processMedianMs": [
+            3.5,
+            1.5
+          ],
+          "processP95MedianMs": [
+            5.550000011920929,
+            2.100000023841858
+          ]
+        },
+        {
+          "names": [
+            "clear selection"
+          ],
+          "processMedianMs": [
+            3.350000023841858,
+            1.5
+          ],
+          "processP95MedianMs": [
+            5.600000023841858,
+            1.9000000357627869
+          ]
+        }
+      ]
+    },
+    {
+      "shape": "500-desktop",
+      "processes": [
+        10,
+        10
+      ],
+      "contract": "equal-for-captured-fields",
+      "cycleMs": [
+        58.82499995827675,
+        39.64999997615814
+      ],
+      "cycleChangePct": -32.59668507559541,
+      "taskMs": [
+        6943.129,
+        4731.2125
+      ],
+      "taskChangePct": -31.857632200121877,
+      "clear": [
+        {
+          "count": 1000,
+          "medianMs": 5,
+          "p95Ms": 6.600000023841858,
+          "maxMs": 32.299999952316284,
+          "over50ms": 0,
+          "over100ms": 0
+        },
+        {
+          "count": 1000,
+          "medianMs": 3.200000047683716,
+          "p95Ms": 4.700000047683716,
+          "maxMs": 8.099999904632568,
+          "over50ms": 0,
+          "over100ms": 0
+        }
+      ],
+      "actions": [
+        {
+          "count": 11000,
+          "medianMs": 5.299999952316284,
+          "p95Ms": 7,
+          "maxMs": 53.60000002384186,
+          "over50ms": 1,
+          "over100ms": 0
+        },
+        {
+          "count": 11000,
+          "medianMs": 3.5,
+          "p95Ms": 5,
+          "maxMs": 13,
+          "over50ms": 0,
+          "over100ms": 0
+        }
+      ],
+      "paired": [
+        {
+          "round": 0,
+          "cycle": 0.6585574046317225,
+          "task": 0.6662008753530039
+        },
+        {
+          "round": 1,
+          "cycle": 0.689125799867518,
+          "task": 0.6937707650001106
+        },
+        {
+          "round": 2,
+          "cycle": 0.6806478405673337,
+          "task": 0.6954501138846179
+        },
+        {
+          "round": 3,
+          "cycle": 0.6882207573829249,
+          "task": 0.6962606878413697
+        },
+        {
+          "round": 4,
+          "cycle": 0.6242702252003021,
+          "task": 0.6325607083744915
+        }
+      ],
+      "longTasks": [
+        {
+          "count": 1000,
+          "maxMs": 149
+        },
+        {
+          "count": 108,
+          "maxMs": 97
+        }
+      ],
+      "perAction": [
+        {
+          "names": [
+            "search \"Lamp\""
+          ],
+          "processMedianMs": [
+            5.700000047683716,
+            4.200000047683716
+          ],
+          "processP95MedianMs": [
+            7.899999976158142,
+            5.050000011920929
+          ]
+        },
+        {
+          "names": [
+            "search \"  lAmP  \""
+          ],
+          "processMedianMs": [
+            4.700000047683716,
+            3.149999976158142
+          ],
+          "processP95MedianMs": [
+            5.950000047683716,
+            3.949999988079071
+          ]
+        },
+        {
+          "names": [
+            "source 1688"
+          ],
+          "processMedianMs": [
+            5,
+            3.399999976158142
+          ],
+          "processP95MedianMs": [
+            6.25,
+            4.249999940395355
+          ]
+        },
+        {
+          "names": [
+            "search \"\""
+          ],
+          "processMedianMs": [
+            5.299999952316284,
+            3.549999952316284
+          ],
+          "processP95MedianMs": [
+            6.949999988079071,
+            4.350000023841858
+          ]
+        },
+        {
+          "names": [
+            "source all"
+          ],
+          "processMedianMs": [
+            5.4000000059604645,
+            3.650000035762787
+          ],
+          "processP95MedianMs": [
+            7.050000011920929,
+            5
+          ]
+        },
+        {
+          "names": [
+            "下一页"
+          ],
+          "processMedianMs": [
+            5.450000047683716,
+            3.7499999403953552
+          ],
+          "processP95MedianMs": [
+            6.949999988079071,
+            5.100000023841858
+          ]
+        },
+        {
+          "names": [
+            "toggle snapshot-key-283"
+          ],
+          "processMedianMs": [
+            5.125,
+            3.399999976158142
+          ],
+          "processP95MedianMs": [
+            6.649999976158142,
+            4.5
+          ]
+        },
+        {
+          "names": [
+            "上一页"
+          ],
+          "processMedianMs": [
+            5.5999999940395355,
+            3.699999988079071
+          ],
+          "processP95MedianMs": [
+            7.450000047683716,
+            5.299999952316284
+          ]
+        },
+        {
+          "names": [
+            "toggle page"
+          ],
+          "processMedianMs": [
+            5.100000023841858,
+            3.350000023841858
+          ],
+          "processP95MedianMs": [
+            6.699999988079071,
+            4.699999988079071
+          ]
+        },
+        {
+          "names": [
+            "toggle page"
+          ],
+          "processMedianMs": [
+            5,
+            3.2000000178813934
+          ],
+          "processP95MedianMs": [
+            5.949999988079071,
+            4.5
+          ]
+        },
+        {
+          "names": [
+            "clear selection"
+          ],
+          "processMedianMs": [
+            5,
+            3.150000035762787
+          ],
+          "processP95MedianMs": [
+            6.449999988079071,
+            4.450000047683716
+          ]
+        }
+      ]
+    },
+    {
+      "shape": "500-mobile",
+      "processes": [
+        6,
+        6
+      ],
+      "contract": "equal-for-captured-fields",
+      "cycleMs": [
+        45.75,
+        25.575000017881393
+      ],
+      "cycleChangePct": -44.098360616652684,
+      "taskMs": [
+        5536.6525,
+        3154.81
+      ],
+      "taskChangePct": -43.019541139704906,
+      "clear": [
+        {
+          "count": 600,
+          "medianMs": 3.299999952316284,
+          "p95Ms": 4.400000095367432,
+          "maxMs": 14.299999952316284,
+          "over50ms": 0,
+          "over100ms": 0
+        },
+        {
+          "count": 600,
+          "medianMs": 1.5,
+          "p95Ms": 2.100000023841858,
+          "maxMs": 3,
+          "over50ms": 0,
+          "over100ms": 0
+        }
+      ],
+      "actions": [
+        {
+          "count": 6600,
+          "medianMs": 4.100000023841858,
+          "p95Ms": 5.699999928474426,
+          "maxMs": 47.300000071525574,
+          "over50ms": 0,
+          "over100ms": 0
+        },
+        {
+          "count": 6600,
+          "medianMs": 2.299999952316284,
+          "p95Ms": 3.5,
+          "maxMs": 8.299999952316284,
+          "over50ms": 0,
+          "over100ms": 0
+        }
+      ],
+      "paired": [
+        {
+          "round": 0,
+          "cycle": 0.5606394707509205,
+          "task": 0.5699393424673502
+        },
+        {
+          "round": 1,
+          "cycle": 0.554353704776727,
+          "task": 0.5728690092777646
+        },
+        {
+          "round": 2,
+          "cycle": 0.5646929831835121,
+          "task": 0.556556535337912
+        }
+      ],
+      "longTasks": [
+        {
+          "count": 186,
+          "maxMs": 100
+        },
+        {
+          "count": 0,
+          "maxMs": 0
+        }
+      ],
+      "perAction": [
+        {
+          "names": [
+            "search \"Lamp\""
+          ],
+          "processMedianMs": [
+            4.925000071525574,
+            3.325000047683716
+          ],
+          "processP95MedianMs": [
+            5.899999976158142,
+            3.949999988079071
+          ]
+        },
+        {
+          "names": [
+            "search \"  lAmP  \""
+          ],
+          "processMedianMs": [
+            3.1999999284744263,
+            1.5499999821186066
+          ],
+          "processP95MedianMs": [
+            3.899999976158142,
+            1.850000023841858
+          ]
+        },
+        {
+          "names": [
+            "source 1688"
+          ],
+          "processMedianMs": [
+            3.9000000059604645,
+            2.200000047683716
+          ],
+          "processP95MedianMs": [
+            4.950000047683716,
+            2.550000011920929
+          ]
+        },
+        {
+          "names": [
+            "search \"\""
+          ],
+          "processMedianMs": [
+            4.375,
+            2.5
+          ],
+          "processP95MedianMs": [
+            5.200000047683716,
+            3.199999988079071
+          ]
+        },
+        {
+          "names": [
+            "source all"
+          ],
+          "processMedianMs": [
+            4.699999988079071,
+            2.899999976158142
+          ],
+          "processP95MedianMs": [
+            6.199999988079071,
+            3.5
+          ]
+        },
+        {
+          "names": [
+            "下一页"
+          ],
+          "processMedianMs": [
+            4.800000071525574,
+            3
+          ],
+          "processP95MedianMs": [
+            6.199999928474426,
+            3.550000011920929
+          ]
+        },
+        {
+          "names": [
+            "toggle snapshot-key-283"
+          ],
+          "processMedianMs": [
+            3.4000000655651093,
+            1.600000023841858
+          ],
+          "processP95MedianMs": [
+            4.399999976158142,
+            2.149999976158142
+          ]
+        },
+        {
+          "names": [
+            "上一页"
+          ],
+          "processMedianMs": [
+            4.899999976158142,
+            3.024999976158142
+          ],
+          "processP95MedianMs": [
+            6.149999976158142,
+            3.900000035762787
+          ]
+        },
+        {
+          "names": [
+            "toggle page"
+          ],
+          "processMedianMs": [
+            3.4000000655651093,
+            1.7000000476837158
+          ],
+          "processP95MedianMs": [
+            4.5,
+            2.349999964237213
+          ]
+        },
+        {
+          "names": [
+            "toggle page"
+          ],
+          "processMedianMs": [
+            3.350000023841858,
+            1.5
+          ],
+          "processP95MedianMs": [
+            4.199999988079071,
+            2.149999976158142
+          ]
+        },
+        {
+          "names": [
+            "clear selection"
+          ],
+          "processMedianMs": [
+            3.25,
+            1.5
+          ],
+          "processP95MedianMs": [
+            4.150000035762787,
+            1.9000000357627869
+          ]
+        }
+      ]
+    }
+  ],
+  "pairedImprovementAllRounds": true,
+  "functional": [
+    {
+      "shape": "48-desktop",
+      "contract": "equal-for-captured-fields",
+      "natural": "different",
+      "fields": [
+        {
+          "field": "initial",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "final",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "value.initialFrame",
+          "status": "not-captured",
+          "differences": []
+        },
+        {
+          "field": "value.warmFrame",
+          "status": "not-captured",
+          "differences": []
+        },
+        {
+          "field": "value.finalFrame",
+          "status": "not-captured",
+          "differences": []
+        },
+        {
+          "field": "full-frames",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "full-queries",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "controlled-image",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "natural-image",
+          "status": "different",
+          "differences": [
+            {
+              "path": "$.branches.desktop.complete",
+              "baseline": true,
+              "candidate": null
+            }
+          ]
+        },
+        {
+          "field": "functional-parity",
+          "status": "different",
+          "differences": [
+            {
+              "path": "$.imageFailure.naturalDecode.branches.desktop.complete",
+              "baseline": true,
+              "candidate": null
+            }
+          ]
+        }
+      ],
+      "observations": [
+        {
+          "label": "functional-48-desktop-0-0-baseline",
+          "arm": "baseline",
+          "naturalDecode": {
+            "branches": {
+              "desktop": {
+                "hasImage": true,
+                "complete": true,
+                "naturalWidth": 0,
+                "src": "data:image/png;base64,bm90LWFuLWltYWdl",
+                "loading": "eager"
+              },
+              "mobile": {
+                "hasImage": false,
+                "complete": null,
+                "naturalWidth": null,
+                "src": null,
+                "loading": null
+              }
+            },
+            "errorEvents": [
+              {
+                "branch": "mobile",
+                "isTrusted": true
+              },
+              {
+                "branch": "desktop",
+                "isTrusted": true
+              }
+            ]
+          }
+        },
+        {
+          "label": "functional-48-desktop-0-1-candidate",
+          "arm": "candidate",
+          "naturalDecode": {
+            "branches": {
+              "desktop": {
+                "hasImage": false,
+                "complete": null,
+                "naturalWidth": null,
+                "src": null,
+                "loading": null
+              },
+              "mobile": {
+                "hasImage": false,
+                "complete": null,
+                "naturalWidth": null,
+                "src": null,
+                "loading": null
+              }
+            },
+            "errorEvents": [
+              {
+                "branch": "mobile",
+                "isTrusted": true
+              },
+              {
+                "branch": "desktop",
+                "isTrusted": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "shape": "48-mobile",
+      "contract": "equal-for-captured-fields",
+      "natural": "different",
+      "fields": [
+        {
+          "field": "initial",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "final",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "value.initialFrame",
+          "status": "not-captured",
+          "differences": []
+        },
+        {
+          "field": "value.warmFrame",
+          "status": "not-captured",
+          "differences": []
+        },
+        {
+          "field": "value.finalFrame",
+          "status": "not-captured",
+          "differences": []
+        },
+        {
+          "field": "full-frames",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "full-queries",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "controlled-image",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "natural-image",
+          "status": "different",
+          "differences": [
+            {
+              "path": "$.branches.desktop.complete",
+              "baseline": true,
+              "candidate": null
+            }
+          ]
+        },
+        {
+          "field": "functional-parity",
+          "status": "different",
+          "differences": [
+            {
+              "path": "$.imageFailure.naturalDecode.branches.desktop.complete",
+              "baseline": true,
+              "candidate": null
+            }
+          ]
+        }
+      ],
+      "observations": [
+        {
+          "label": "functional-48-mobile-0-0-baseline",
+          "arm": "baseline",
+          "naturalDecode": {
+            "branches": {
+              "desktop": {
+                "hasImage": true,
+                "complete": true,
+                "naturalWidth": 0,
+                "src": "data:image/png;base64,bm90LWFuLWltYWdl",
+                "loading": "eager"
+              },
+              "mobile": {
+                "hasImage": false,
+                "complete": null,
+                "naturalWidth": null,
+                "src": null,
+                "loading": null
+              }
+            },
+            "errorEvents": [
+              {
+                "branch": "mobile",
+                "isTrusted": true
+              },
+              {
+                "branch": "desktop",
+                "isTrusted": true
+              }
+            ]
+          }
+        },
+        {
+          "label": "functional-48-mobile-0-1-candidate",
+          "arm": "candidate",
+          "naturalDecode": {
+            "branches": {
+              "desktop": {
+                "hasImage": false,
+                "complete": null,
+                "naturalWidth": null,
+                "src": null,
+                "loading": null
+              },
+              "mobile": {
+                "hasImage": false,
+                "complete": null,
+                "naturalWidth": null,
+                "src": null,
+                "loading": null
+              }
+            },
+            "errorEvents": [
+              {
+                "branch": "mobile",
+                "isTrusted": true
+              },
+              {
+                "branch": "desktop",
+                "isTrusted": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "shape": "500-desktop",
+      "contract": "equal-for-captured-fields",
+      "natural": "different",
+      "fields": [
+        {
+          "field": "initial",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "final",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "value.initialFrame",
+          "status": "not-captured",
+          "differences": []
+        },
+        {
+          "field": "value.warmFrame",
+          "status": "not-captured",
+          "differences": []
+        },
+        {
+          "field": "value.finalFrame",
+          "status": "not-captured",
+          "differences": []
+        },
+        {
+          "field": "full-frames",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "full-queries",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "controlled-image",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "natural-image",
+          "status": "different",
+          "differences": [
+            {
+              "path": "$.branches.mobile.complete",
+              "baseline": true,
+              "candidate": null
+            }
+          ]
+        },
+        {
+          "field": "functional-parity",
+          "status": "different",
+          "differences": [
+            {
+              "path": "$.imageFailure.naturalDecode.branches.mobile.complete",
+              "baseline": true,
+              "candidate": null
+            }
+          ]
+        }
+      ],
+      "observations": [
+        {
+          "label": "functional-500-desktop-0-0-baseline",
+          "arm": "baseline",
+          "naturalDecode": {
+            "branches": {
+              "desktop": {
+                "hasImage": false,
+                "complete": null,
+                "naturalWidth": null,
+                "src": null,
+                "loading": null
+              },
+              "mobile": {
+                "hasImage": true,
+                "complete": true,
+                "naturalWidth": 0,
+                "src": "data:image/png;base64,bm90LWFuLWltYWdl",
+                "loading": "eager"
+              }
+            },
+            "errorEvents": [
+              {
+                "branch": "mobile",
+                "isTrusted": true
+              },
+              {
+                "branch": "desktop",
+                "isTrusted": true
+              },
+              {
+                "branch": "desktop",
+                "isTrusted": true
+              }
+            ]
+          }
+        },
+        {
+          "label": "functional-500-desktop-0-1-candidate",
+          "arm": "candidate",
+          "naturalDecode": {
+            "branches": {
+              "desktop": {
+                "hasImage": false,
+                "complete": null,
+                "naturalWidth": null,
+                "src": null,
+                "loading": null
+              },
+              "mobile": {
+                "hasImage": false,
+                "complete": null,
+                "naturalWidth": null,
+                "src": null,
+                "loading": null
+              }
+            },
+            "errorEvents": [
+              {
+                "branch": "mobile",
+                "isTrusted": true
+              },
+              {
+                "branch": "desktop",
+                "isTrusted": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "shape": "500-mobile",
+      "contract": "equal-for-captured-fields",
+      "natural": "different",
+      "fields": [
+        {
+          "field": "initial",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "final",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "value.initialFrame",
+          "status": "not-captured",
+          "differences": []
+        },
+        {
+          "field": "value.warmFrame",
+          "status": "not-captured",
+          "differences": []
+        },
+        {
+          "field": "value.finalFrame",
+          "status": "not-captured",
+          "differences": []
+        },
+        {
+          "field": "full-frames",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "full-queries",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "controlled-image",
+          "status": "equal",
+          "differences": []
+        },
+        {
+          "field": "natural-image",
+          "status": "different",
+          "differences": [
+            {
+              "path": "$.branches.desktop.complete",
+              "baseline": true,
+              "candidate": null
+            }
+          ]
+        },
+        {
+          "field": "functional-parity",
+          "status": "different",
+          "differences": [
+            {
+              "path": "$.imageFailure.naturalDecode.branches.desktop.complete",
+              "baseline": true,
+              "candidate": null
+            }
+          ]
+        }
+      ],
+      "observations": [
+        {
+          "label": "functional-500-mobile-0-0-baseline",
+          "arm": "baseline",
+          "naturalDecode": {
+            "branches": {
+              "desktop": {
+                "hasImage": true,
+                "complete": true,
+                "naturalWidth": 0,
+                "src": "data:image/png;base64,bm90LWFuLWltYWdl",
+                "loading": "eager"
+              },
+              "mobile": {
+                "hasImage": false,
+                "complete": null,
+                "naturalWidth": null,
+                "src": null,
+                "loading": null
+              }
+            },
+            "errorEvents": [
+              {
+                "branch": "mobile",
+                "isTrusted": true
+              },
+              {
+                "branch": "desktop",
+                "isTrusted": true
+              }
+            ]
+          }
+        },
+        {
+          "label": "functional-500-mobile-0-1-candidate",
+          "arm": "candidate",
+          "naturalDecode": {
+            "branches": {
+              "desktop": {
+                "hasImage": false,
+                "complete": null,
+                "naturalWidth": null,
+                "src": null,
+                "loading": null
+              },
+              "mobile": {
+                "hasImage": false,
+                "complete": null,
+                "naturalWidth": null,
+                "src": null,
+                "loading": null
+              }
+            },
+            "errorEvents": [
+              {
+                "branch": "mobile",
+                "isTrusted": true
+              },
+              {
+                "branch": "desktop",
+                "isTrusted": true
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "paced": [
+    {
+      "shape": "500-desktop",
+      "status": "complete",
+      "snapshots": [
+        {
+          "stage": "initial",
+          "reference": "paced-500-desktop-0-0-baseline",
+          "status": "equal",
+          "comparisons": [
+            {
+              "label": "paced-500-desktop-0-0-baseline",
+              "arm": "baseline",
+              "present": true,
+              "equal": true,
+              "sha256": "5f8c5c03084d95991bf9680634e576db647440febaee22b62243dbafeef44334"
+            },
+            {
+              "label": "paced-500-desktop-0-1-candidate",
+              "arm": "candidate",
+              "present": true,
+              "equal": true,
+              "sha256": "5f8c5c03084d95991bf9680634e576db647440febaee22b62243dbafeef44334"
+            },
+            {
+              "label": "paced-500-desktop-0-2-candidate",
+              "arm": "candidate",
+              "present": true,
+              "equal": true,
+              "sha256": "5f8c5c03084d95991bf9680634e576db647440febaee22b62243dbafeef44334"
+            },
+            {
+              "label": "paced-500-desktop-0-3-baseline",
+              "arm": "baseline",
+              "present": true,
+              "equal": true,
+              "sha256": "5f8c5c03084d95991bf9680634e576db647440febaee22b62243dbafeef44334"
+            }
+          ]
+        },
+        {
+          "stage": "warm",
+          "reference": "paced-500-desktop-0-0-baseline",
+          "status": "equal",
+          "comparisons": [
+            {
+              "label": "paced-500-desktop-0-0-baseline",
+              "arm": "baseline",
+              "present": true,
+              "equal": true,
+              "sha256": "5f8c5c03084d95991bf9680634e576db647440febaee22b62243dbafeef44334"
+            },
+            {
+              "label": "paced-500-desktop-0-1-candidate",
+              "arm": "candidate",
+              "present": true,
+              "equal": true,
+              "sha256": "5f8c5c03084d95991bf9680634e576db647440febaee22b62243dbafeef44334"
+            },
+            {
+              "label": "paced-500-desktop-0-2-candidate",
+              "arm": "candidate",
+              "present": true,
+              "equal": true,
+              "sha256": "5f8c5c03084d95991bf9680634e576db647440febaee22b62243dbafeef44334"
+            },
+            {
+              "label": "paced-500-desktop-0-3-baseline",
+              "arm": "baseline",
+              "present": true,
+              "equal": true,
+              "sha256": "5f8c5c03084d95991bf9680634e576db647440febaee22b62243dbafeef44334"
+            }
+          ]
+        },
+        {
+          "stage": "final",
+          "reference": "paced-500-desktop-0-0-baseline",
+          "status": "equal",
+          "comparisons": [
+            {
+              "label": "paced-500-desktop-0-0-baseline",
+              "arm": "baseline",
+              "present": true,
+              "equal": true,
+              "sha256": "5f8c5c03084d95991bf9680634e576db647440febaee22b62243dbafeef44334"
+            },
+            {
+              "label": "paced-500-desktop-0-1-candidate",
+              "arm": "candidate",
+              "present": true,
+              "equal": true,
+              "sha256": "5f8c5c03084d95991bf9680634e576db647440febaee22b62243dbafeef44334"
+            },
+            {
+              "label": "paced-500-desktop-0-2-candidate",
+              "arm": "candidate",
+              "present": true,
+              "equal": true,
+              "sha256": "5f8c5c03084d95991bf9680634e576db647440febaee22b62243dbafeef44334"
+            },
+            {
+              "label": "paced-500-desktop-0-3-baseline",
+              "arm": "baseline",
+              "present": true,
+              "equal": true,
+              "sha256": "5f8c5c03084d95991bf9680634e576db647440febaee22b62243dbafeef44334"
+            }
+          ]
+        }
+      ],
+      "arms": {
+        "baseline": {
+          "processes": 2,
+          "taskMs": [
+            3324.6790000000005,
+            3014.408
+          ],
+          "medianTaskMs": 3169.5435,
+          "actions": {
+            "select": {
+              "pooledEventToSecondRafMs": {
+                "count": 200,
+                "median": 15.299999952316284,
+                "p95": 16.100000023841858,
+                "max": 20,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "pooledCaptureToSecondRafMs": {
+                "count": 200,
+                "median": 14.800000071525574,
+                "p95": 15.600000023841858,
+                "max": 19.5,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "processMedianEventToSecondRafMs": {
+                "count": 2,
+                "median": 15.299999952316284,
+                "p95": 15.299999952316284,
+                "max": 15.299999952316284,
+                "over50ms": 0,
+                "over100ms": 0
+              }
+            },
+            "clear": {
+              "pooledEventToSecondRafMs": {
+                "count": 200,
+                "median": 15.299999952316284,
+                "p95": 15.899999976158142,
+                "max": 20.800000071525574,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "pooledCaptureToSecondRafMs": {
+                "count": 200,
+                "median": 14.799999952316284,
+                "p95": 15.5,
+                "max": 20,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "processMedianEventToSecondRafMs": {
+                "count": 2,
+                "median": 15.200000047683716,
+                "p95": 15.299999952316284,
+                "max": 15.299999952316284,
+                "over50ms": 0,
+                "over100ms": 0
+              }
+            }
+          }
+        },
+        "candidate": {
+          "processes": 2,
+          "taskMs": [
+            2550.271,
+            2605.218
+          ],
+          "medianTaskMs": 2577.7445,
+          "actions": {
+            "select": {
+              "pooledEventToSecondRafMs": {
+                "count": 200,
+                "median": 15.300000071525574,
+                "p95": 16,
+                "max": 16.59999990463257,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "pooledCaptureToSecondRafMs": {
+                "count": 200,
+                "median": 14.800000071525574,
+                "p95": 15.5,
+                "max": 16.199999928474426,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "processMedianEventToSecondRafMs": {
+                "count": 2,
+                "median": 15.200000047683716,
+                "p95": 15.399999976158142,
+                "max": 15.399999976158142,
+                "over50ms": 0,
+                "over100ms": 0
+              }
+            },
+            "clear": {
+              "pooledEventToSecondRafMs": {
+                "count": 200,
+                "median": 15.299999952316284,
+                "p95": 15.799999952316284,
+                "max": 19.100000023841858,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "pooledCaptureToSecondRafMs": {
+                "count": 200,
+                "median": 14.899999976158142,
+                "p95": 15.399999976158142,
+                "max": 17.799999952316284,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "processMedianEventToSecondRafMs": {
+                "count": 2,
+                "median": 15.299999952316284,
+                "p95": 15.399999976158142,
+                "max": 15.399999976158142,
+                "over50ms": 0,
+                "over100ms": 0
+              }
+            }
+          }
+        }
+      },
+      "taskChangePct": -18.671426973632023,
+      "meaning": {
+        "interaction": "Each operation is a real Playwright locator.click with trusted browser input. Capture listeners start timing at click delivery, then wait for two requestAnimationFrame callbacks in the component iframe. Each following click starts only after the previous sample and state check return.",
+        "timing": "eventToSecondRafMs and captureToSecondRafMs end at the second rAF callback, before state inspection. This is a paint opportunity, not proof of physical paint and not INP. Event timestamps do not include all pointerdown-to-click input latency.",
+        "transport": "nodeOperationMs and phase wall times include Playwright actionability/scroll/transport waits and state checks. CDP TaskDuration is renderer main-thread task duration, not elapsed transport waiting or a direct OS CPU-utilization measurement; it includes the audit work executed on that renderer during its measurement boundary.",
+        "workload": "One mounted component per fresh Chrome, 30 warmup cycles then 100 measured cycles by default, alternating select page and clear selection without reset. Auto-scroll and normal CSS transitions are left enabled. Counts can be overridden and are recorded.",
+        "snapshots": "Complete component DOM HTML and live control properties are retained at initial, warmup end and measurement end. Every stage is compared across processes without stripping component fields. Full document asset tags are excluded because bundles intentionally differ.",
+        "acceptance": "All samples, failures, page errors and blocked requests are retained. No timing threshold is an acceptance criterion. This supplemental two-action workload does not replace the broader functional oracle or the 11-action benchmark."
+      }
+    },
+    {
+      "shape": "500-mobile",
+      "status": "complete",
+      "snapshots": [
+        {
+          "stage": "initial",
+          "reference": "paced-500-mobile-0-0-baseline",
+          "status": "equal",
+          "comparisons": [
+            {
+              "label": "paced-500-mobile-0-0-baseline",
+              "arm": "baseline",
+              "present": true,
+              "equal": true,
+              "sha256": "55b7e7ac201e353546faad8801ec41dd1c4da4d109c19b80f37286533fbdc394"
+            },
+            {
+              "label": "paced-500-mobile-0-1-candidate",
+              "arm": "candidate",
+              "present": true,
+              "equal": true,
+              "sha256": "55b7e7ac201e353546faad8801ec41dd1c4da4d109c19b80f37286533fbdc394"
+            },
+            {
+              "label": "paced-500-mobile-0-2-candidate",
+              "arm": "candidate",
+              "present": true,
+              "equal": true,
+              "sha256": "55b7e7ac201e353546faad8801ec41dd1c4da4d109c19b80f37286533fbdc394"
+            },
+            {
+              "label": "paced-500-mobile-0-3-baseline",
+              "arm": "baseline",
+              "present": true,
+              "equal": true,
+              "sha256": "55b7e7ac201e353546faad8801ec41dd1c4da4d109c19b80f37286533fbdc394"
+            }
+          ]
+        },
+        {
+          "stage": "warm",
+          "reference": "paced-500-mobile-0-0-baseline",
+          "status": "equal",
+          "comparisons": [
+            {
+              "label": "paced-500-mobile-0-0-baseline",
+              "arm": "baseline",
+              "present": true,
+              "equal": true,
+              "sha256": "55b7e7ac201e353546faad8801ec41dd1c4da4d109c19b80f37286533fbdc394"
+            },
+            {
+              "label": "paced-500-mobile-0-1-candidate",
+              "arm": "candidate",
+              "present": true,
+              "equal": true,
+              "sha256": "55b7e7ac201e353546faad8801ec41dd1c4da4d109c19b80f37286533fbdc394"
+            },
+            {
+              "label": "paced-500-mobile-0-2-candidate",
+              "arm": "candidate",
+              "present": true,
+              "equal": true,
+              "sha256": "55b7e7ac201e353546faad8801ec41dd1c4da4d109c19b80f37286533fbdc394"
+            },
+            {
+              "label": "paced-500-mobile-0-3-baseline",
+              "arm": "baseline",
+              "present": true,
+              "equal": true,
+              "sha256": "55b7e7ac201e353546faad8801ec41dd1c4da4d109c19b80f37286533fbdc394"
+            }
+          ]
+        },
+        {
+          "stage": "final",
+          "reference": "paced-500-mobile-0-0-baseline",
+          "status": "equal",
+          "comparisons": [
+            {
+              "label": "paced-500-mobile-0-0-baseline",
+              "arm": "baseline",
+              "present": true,
+              "equal": true,
+              "sha256": "55b7e7ac201e353546faad8801ec41dd1c4da4d109c19b80f37286533fbdc394"
+            },
+            {
+              "label": "paced-500-mobile-0-1-candidate",
+              "arm": "candidate",
+              "present": true,
+              "equal": true,
+              "sha256": "55b7e7ac201e353546faad8801ec41dd1c4da4d109c19b80f37286533fbdc394"
+            },
+            {
+              "label": "paced-500-mobile-0-2-candidate",
+              "arm": "candidate",
+              "present": true,
+              "equal": true,
+              "sha256": "55b7e7ac201e353546faad8801ec41dd1c4da4d109c19b80f37286533fbdc394"
+            },
+            {
+              "label": "paced-500-mobile-0-3-baseline",
+              "arm": "baseline",
+              "present": true,
+              "equal": true,
+              "sha256": "55b7e7ac201e353546faad8801ec41dd1c4da4d109c19b80f37286533fbdc394"
+            }
+          ]
+        }
+      ],
+      "arms": {
+        "baseline": {
+          "processes": 2,
+          "taskMs": [
+            2456.672,
+            2505.32
+          ],
+          "medianTaskMs": 2480.996,
+          "actions": {
+            "select": {
+              "pooledEventToSecondRafMs": {
+                "count": 200,
+                "median": 15.5,
+                "p95": 16.199999928474426,
+                "max": 18.90000009536743,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "pooledCaptureToSecondRafMs": {
+                "count": 200,
+                "median": 15.099999904632568,
+                "p95": 15.799999952316284,
+                "max": 17.700000047683716,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "processMedianEventToSecondRafMs": {
+                "count": 2,
+                "median": 15.300000071525574,
+                "p95": 15.699999928474426,
+                "max": 15.699999928474426,
+                "over50ms": 0,
+                "over100ms": 0
+              }
+            },
+            "clear": {
+              "pooledEventToSecondRafMs": {
+                "count": 200,
+                "median": 15.399999976158142,
+                "p95": 16,
+                "max": 19.09999990463257,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "pooledCaptureToSecondRafMs": {
+                "count": 200,
+                "median": 14.899999976158142,
+                "p95": 15.600000023841858,
+                "max": 18.299999952316284,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "processMedianEventToSecondRafMs": {
+                "count": 2,
+                "median": 15.200000047683716,
+                "p95": 15.600000023841858,
+                "max": 15.600000023841858,
+                "over50ms": 0,
+                "over100ms": 0
+              }
+            }
+          }
+        },
+        "candidate": {
+          "processes": 2,
+          "taskMs": [
+            1991.8719999999998,
+            2042.0369999999996
+          ],
+          "medianTaskMs": 2016.9544999999998,
+          "actions": {
+            "select": {
+              "pooledEventToSecondRafMs": {
+                "count": 200,
+                "median": 15.699999928474426,
+                "p95": 16.299999952316284,
+                "max": 17.40000009536743,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "pooledCaptureToSecondRafMs": {
+                "count": 200,
+                "median": 15.299999952316284,
+                "p95": 15.899999976158142,
+                "max": 17,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "processMedianEventToSecondRafMs": {
+                "count": 2,
+                "median": 15.699999928474426,
+                "p95": 15.699999928474426,
+                "max": 15.699999928474426,
+                "over50ms": 0,
+                "over100ms": 0
+              }
+            },
+            "clear": {
+              "pooledEventToSecondRafMs": {
+                "count": 200,
+                "median": 15.600000023841858,
+                "p95": 16.100000023841858,
+                "max": 16.699999928474426,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "pooledCaptureToSecondRafMs": {
+                "count": 200,
+                "median": 15.100000023841858,
+                "p95": 15.699999928474426,
+                "max": 16,
+                "over50ms": 0,
+                "over100ms": 0
+              },
+              "processMedianEventToSecondRafMs": {
+                "count": 2,
+                "median": 15.5,
+                "p95": 15.600000023841858,
+                "max": 15.600000023841858,
+                "over50ms": 0,
+                "over100ms": 0
+              }
+            }
+          }
+        }
+      },
+      "taskChangePct": -18.70383910332787,
+      "meaning": {
+        "interaction": "Each operation is a real Playwright locator.click with trusted browser input. Capture listeners start timing at click delivery, then wait for two requestAnimationFrame callbacks in the component iframe. Each following click starts only after the previous sample and state check return.",
+        "timing": "eventToSecondRafMs and captureToSecondRafMs end at the second rAF callback, before state inspection. This is a paint opportunity, not proof of physical paint and not INP. Event timestamps do not include all pointerdown-to-click input latency.",
+        "transport": "nodeOperationMs and phase wall times include Playwright actionability/scroll/transport waits and state checks. CDP TaskDuration is renderer main-thread task duration, not elapsed transport waiting or a direct OS CPU-utilization measurement; it includes the audit work executed on that renderer during its measurement boundary.",
+        "workload": "One mounted component per fresh Chrome, 30 warmup cycles then 100 measured cycles by default, alternating select page and clear selection without reset. Auto-scroll and normal CSS transitions are left enabled. Counts can be overridden and are recorded.",
+        "snapshots": "Complete component DOM HTML and live control properties are retained at initial, warmup end and measurement end. Every stage is compared across processes without stripping component fields. Full document asset tags are excluded because bundles intentionally differ.",
+        "acceptance": "All samples, failures, page errors and blocked requests are retained. No timing threshold is an acceptance criterion. This supplemental two-action workload does not replace the broader functional oracle or the 11-action benchmark."
+      }
+    }
+  ],
+  "nodeCause": {
+    "process": "micro-trace-r2-s2-candidate",
+    "sourceSha256": "f9fccf20f9f79d2f04634aac1539d9693cba221c1b6633b762b8d6288c58f1df",
+    "traceAlignment": {
+      "offsetMs": 757122552.11995,
+      "uncertaintyMs": 0.0032500028610229492,
+      "anchors": [
+        {
+          "name": "end",
+          "pid": 62132,
+          "tid": 78344,
+          "hrNs": "757125592528200",
+          "lowOffsetMs": 757122552.1167,
+          "highOffsetMs": 757122552.1232
+        }
+      ],
+      "thread": {
+        "pid": 62132,
+        "tid": 78344
+      },
+      "method": "Main-thread metadata + saved process.hrtime/performance brackets; validated against post-measurement synchronous GC. User Timing anchors absent in this Node trace.",
+      "calibrationSpans": [
+        {
+          "name": "V8.GCCompactor",
+          "category": "v8",
+          "startMs": 3040.5790499448776,
+          "endMs": 3101.9100499153137,
+          "durationMs": 61.331,
+          "isGc": true,
+          "isCompiler": false
+        },
+        {
+          "name": "MajorGC",
+          "category": "devtools.timeline,v8",
+          "startMs": 3040.576049923897,
+          "endMs": 3102.021049976349,
+          "durationMs": 61.445,
+          "isGc": true,
+          "isCompiler": false
+        },
+        {
+          "name": "V8.GCPhantomHandleProcessingCallback",
+          "category": "v8",
+          "startMs": 3102.0250499248505,
+          "endMs": 3106.293049931526,
+          "durationMs": 4.268,
+          "isGc": true,
+          "isCompiler": false
+        }
+      ]
+    },
+    "action": {
+      "id": 780,
+      "name": "clear selection",
+      "phase": "measured",
+      "round": 70,
+      "startPerfMs": 2271.2272,
+      "endPerfMs": 2456.361,
+      "startEpochMs": 1791714281421.9333,
+      "endEpochMs": 1791714281607.0671,
+      "wallMs": 185.13380000000006,
+      "cpuUs": 188000,
+      "markerBeforeMs": 0,
+      "markerAfterMs": 0,
+      "focusRound70": true,
+      "trace": {
+        "gcNominalOverlapMs": 183.65799975395203,
+        "gcOverlapFraction": 0.9920284667302889,
+        "gcConservativeLowerMs": 183.55099964141846,
+        "gcConservativeUpperMs": 183.7649998664856,
+        "compilerNominalOverlapMs": 0,
+        "otherOrUnobservedMs": 1.4758002460480384,
+        "events": [
+          {
+            "name": "MajorGC",
+            "category": "devtools.timeline,v8",
+            "startMs": 2272.824049949646,
+            "endMs": 2446.1780499219894,
+            "durationMs": 173.354,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCFinalizeMC",
+            "category": "v8",
+            "startMs": 2272.8300499916077,
+            "endMs": 2446.11804997921,
+            "durationMs": 173.288,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCPhantomHandleProcessingCallback",
+            "category": "v8",
+            "startMs": 2446.296049952507,
+            "endMs": 2456.3200500011444,
+            "durationMs": 10.024,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2271.4730499982834,
+            "endMs": 2271.5090498924255,
+            "durationMs": 0.036,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2271.61704993248,
+            "endMs": 2271.6470499038696,
+            "durationMs": 0.03,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2271.5510499477386,
+            "endMs": 2271.5780498981476,
+            "durationMs": 0.027,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2272.3140499591827,
+            "endMs": 2272.33604991436,
+            "durationMs": 0.022,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2271.33604991436,
+            "endMs": 2271.3570499420166,
+            "durationMs": 0.021,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2272.174049973488,
+            "endMs": 2272.1950500011444,
+            "durationMs": 0.021,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2272.047049999237,
+            "endMs": 2272.0660499334335,
+            "durationMs": 0.019,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2272.2380499839783,
+            "endMs": 2272.255049943924,
+            "durationMs": 0.017,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2272.378049969673,
+            "endMs": 2272.393049955368,
+            "durationMs": 0.015,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2272.433049917221,
+            "endMs": 2272.448049902916,
+            "durationMs": 0.015,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2272.5520499944687,
+            "endMs": 2272.5670499801636,
+            "durationMs": 0.015,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2272.486049890518,
+            "endMs": 2272.4990499019623,
+            "durationMs": 0.013,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2272.645049929619,
+            "endMs": 2272.658049941063,
+            "durationMs": 0.013,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2272.7630499601364,
+            "endMs": 2272.7760499715805,
+            "durationMs": 0.013,
+            "isGc": true,
+            "isCompiler": false
+          },
+          {
+            "name": "V8.GCIncrementalMarking",
+            "category": "v8",
+            "startMs": 2272.8180499076843,
+            "endMs": 2272.821049928665,
+            "durationMs": 0.003,
+            "isGc": true,
+            "isCompiler": false
+          }
+        ],
+        "caveat": "Union of observed main-thread spans only; overlapping subphases are not added twice. Unobserved time is not automatically application work."
+      },
+      "gcLogEvidence": [
+        {
+          "channel": "stdout",
+          "line": 57,
+          "text": "[62132:0000022987A94000:0]     2264 ms: pause=7.7 mutator=43.1 gc=s reduce_memory=0 interleaved=0 time_to_safepoint=0.00 heap.prologue=0.00 heap.epilogue=0.00 heap.external.prologue=0.00 heap.external.epilogue=0.00 heap.external_weak_global_handles=0.00 complete.sweep_array_buffers=0.00 scavenge=7.63 scavenge.free_remembered_set=0.02 scavenge.roots=0.28 scavenge.weak=0.00 scavenge.weak_global_handles.identify=0.00 scavenge.weak_global_handles.process=0.01 scavenge.parallel=2.90 scavenge.update_refs=0.00 scavenge.sweep_array_buffers=0.00 scavenge.resize_new_space=0.00 background.scavenge.parallel=13.80 incremental.steps_count=0 incremental.steps_took=0.0 scavenge_throughput=2206034 start_object_size=346342224 end_object_size=310851520 start_memory_size=427958272 end_memory_size=437133312 start_holes_size=1126840 end_holes_size=1669464 allocated=45056096 promoted=8631856 quarantined_size=0 quarantined_pages=0 new_space_survived=9581304 nodes_died_in_new=0 nodes_copied_in_new=185 nodes_promoted=200 promotion_ratio=16.1% average_survival_ratio=33.4% promotion_rate=87.9% new_space_survive_rate_=17.8% new_space_allocation_throughput=1065946.1 new_space_capacity=67108864 old_gen_allocation_limit=368216512 global_allocation_limit=368216768 allocation_throughput=1301738.5 pool_local_chunks=0 pool_shared_chunks=0 pool_total_chunks=0",
+          "kind": "gc",
+          "pid": 62132,
+          "nativeTimestampMs": 2264,
+          "pauseMs": 7.7,
+          "fields": {
+            "pause": 7.7,
+            "mutator": 43.1,
+            "gc": "s",
+            "reduce_memory": 0,
+            "interleaved": 0,
+            "time_to_safepoint": 0,
+            "heap.prologue": 0,
+            "heap.epilogue": 0,
+            "heap.external.prologue": 0,
+            "heap.external.epilogue": 0,
+            "heap.external_weak_global_handles": 0,
+            "complete.sweep_array_buffers": 0,
+            "scavenge": 7.63,
+            "scavenge.free_remembered_set": 0.02,
+            "scavenge.roots": 0.28,
+            "scavenge.weak": 0,
+            "scavenge.weak_global_handles.identify": 0,
+            "scavenge.weak_global_handles.process": 0.01,
+            "scavenge.parallel": 2.9,
+            "scavenge.update_refs": 0,
+            "scavenge.sweep_array_buffers": 0,
+            "scavenge.resize_new_space": 0,
+            "background.scavenge.parallel": 13.8,
+            "incremental.steps_count": 0,
+            "incremental.steps_took": 0,
+            "scavenge_throughput": 2206034,
+            "start_object_size": 346342224,
+            "end_object_size": 310851520,
+            "start_memory_size": 427958272,
+            "end_memory_size": 437133312,
+            "start_holes_size": 1126840,
+            "end_holes_size": 1669464,
+            "allocated": 45056096,
+            "promoted": 8631856,
+            "quarantined_size": 0,
+            "quarantined_pages": 0,
+            "new_space_survived": 9581304,
+            "nodes_died_in_new": 0,
+            "nodes_copied_in_new": 185,
+            "nodes_promoted": 200,
+            "promotion_ratio": "16.1%",
+            "average_survival_ratio": "33.4%",
+            "promotion_rate": "87.9%",
+            "new_space_survive_rate_": "17.8%",
+            "new_space_allocation_throughput": 1065946.1,
+            "new_space_capacity": 67108864,
+            "old_gen_allocation_limit": 368216512,
+            "global_allocation_limit": 368216768,
+            "allocation_throughput": 1301738.5,
+            "pool_local_chunks": 0,
+            "pool_shared_chunks": 0,
+            "pool_total_chunks": 0
+          },
+          "bracketActionId": null,
+          "calibrating": false,
+          "orderingCaveat": "Native stdout may be buffered and interleaved with JS markers. Marker ordering alone is not an action attribution.",
+          "perfTimestampBounds": {
+            "lowMs": 2205.5714,
+            "highMs": 2273.3024
+          },
+          "possiblePauseStartMs": 2197.8714,
+          "possiblePauseEndMs": 2281.0024
+        },
+        {
+          "channel": "stdout",
+          "line": 58,
+          "text": "[62132:0000022987A94000:0]     2442 ms: pause=173.3 mutator=5.3 gc=mc reduce_memory=0 time_to_safepoint=0.00 heap.prologue=0.00 heap.embedder_tracing_epilogue=0.01 heap.epilogue=0.00 heap.external.prologue=0.0 heap.external.epilogue=0.0 heap.external.weak_global_handles=0.2 clear=6 clear.external_string_table=0.0 clear.string_forwarding_table=0.0 clear.weak_global_handles=0.3 clear.dependent_code=0.0 clear.maps=0.0 clear.slots_buffer=0.0 clear.weak_collections=5.5 clear.weak_lists=0.0 clear.weak_references_trivial=0.1 clear.weak_references_non_trivial=0.0 clear.weak_references_filter_non_trivial=0.0 clear.js_weak_references=0.0 clear.join_filter_job=0.0clear.join_job=0.0 weakness_handling=5.5 complete.sweep_array_buffers=0.0 complete.sweeping=0.0 epilogue=0.0 evacuate=1.7 evacuate.pin_pages=0.0 evacuate.candidates=0.0 evacuate.clean_up=0.0 evacuate.copy=0.4 evacuate.prologue=0.1 evacuate.epilogue=0.0 evacuate.rebalance=0.0 evacuate.update_pointers=1.3 evacuate.update_pointers.to_new_roots=0.3 evacuate.update_pointers.slots.main=0.9 evacuate.update_pointers.weak=0.0 finish=4.4 finish.sweep_array_buffers=0.0 mark=160.2 mark.finish_incremental=0.0 mark.roots=0.2 mark.full_closure_parallel=51.8 mark.full_closure=0.0 mark.ephemeron.marking=111.6 mark.ephemeron.linear=43.3 mark.embedder_prologue=0.0 mark.embedder_tracing=0.1 prologue=0.0 sweep=0.6 sweep.code=0.0 sweep.map=0.0 sweep.new=0.0 sweep.new_lo=0.0 sweep.old=0.6 sweep.start_jobs=0.0 incremental=0.5 incremental.finalize.external.prologue=0.0 incremental.finalize.external.epilogue=0.0 incremental.layout_change=0.0 incremental.sweep_array_buffers=0.4 incremental.sweeping=0.0 incremental.embedder_tracing=0.0 incremental_wrapper_tracing_longest_step=0.0 incremental_longest_step=0.1 incremental_steps_count=49 incremental_marking_throughput=2375165 incremental_walltime_duration=178 background.mark=27.6 background.sweep=0.0 background.evacuate.copy=1.2 background.evacuate.update_pointers=0.7 conservative_stack_scanning=0.00 start_object_size=313590328 end_object_size=37169856 start_memory_size=437133312 end_memory_size=240779264 start_holes_size=923576 end_holes_size=1009504 allocated=2738808 promoted=3241264 new_space_survived=0 nodes_died_in_new=195 nodes_copied_in_new=0 nodes_promoted=0 promotion_ratio=26.2% average_survival_ratio=32.7% promotion_rate=33.8% new_space_survive_rate=0.0% new_space_allocation_throughput=1045971.3 new_space_capacity=67108864 old_gen_allocation_limit=368216512 global_allocation_limit=368216768 allocation_throughput=1332286.4 pool_local_chunks=701 pool_shared_chunks=0 pool_total_chunks=701 compaction_speed=2566529.0",
+          "kind": "gc",
+          "pid": 62132,
+          "nativeTimestampMs": 2442,
+          "pauseMs": 173.3,
+          "fields": {
+            "pause": 173.3,
+            "mutator": 5.3,
+            "gc": "mc",
+            "reduce_memory": 0,
+            "time_to_safepoint": 0,
+            "heap.prologue": 0,
+            "heap.embedder_tracing_epilogue": 0.01,
+            "heap.epilogue": 0,
+            "heap.external.prologue": 0,
+            "heap.external.epilogue": 0,
+            "heap.external.weak_global_handles": 0.2,
+            "clear": 6,
+            "clear.external_string_table": 0,
+            "clear.string_forwarding_table": 0,
+            "clear.weak_global_handles": 0.3,
+            "clear.dependent_code": 0,
+            "clear.maps": 0,
+            "clear.slots_buffer": 0,
+            "clear.weak_collections": 5.5,
+            "clear.weak_lists": 0,
+            "clear.weak_references_trivial": 0.1,
+            "clear.weak_references_non_trivial": 0,
+            "clear.weak_references_filter_non_trivial": 0,
+            "clear.js_weak_references": 0,
+            "clear.join_filter_job": "0.0clear.join_job=0.0",
+            "weakness_handling": 5.5,
+            "complete.sweep_array_buffers": 0,
+            "complete.sweeping": 0,
+            "epilogue": 0,
+            "evacuate": 1.7,
+            "evacuate.pin_pages": 0,
+            "evacuate.candidates": 0,
+            "evacuate.clean_up": 0,
+            "evacuate.copy": 0.4,
+            "evacuate.prologue": 0.1,
+            "evacuate.epilogue": 0,
+            "evacuate.rebalance": 0,
+            "evacuate.update_pointers": 1.3,
+            "evacuate.update_pointers.to_new_roots": 0.3,
+            "evacuate.update_pointers.slots.main": 0.9,
+            "evacuate.update_pointers.weak": 0,
+            "finish": 4.4,
+            "finish.sweep_array_buffers": 0,
+            "mark": 160.2,
+            "mark.finish_incremental": 0,
+            "mark.roots": 0.2,
+            "mark.full_closure_parallel": 51.8,
+            "mark.full_closure": 0,
+            "mark.ephemeron.marking": 111.6,
+            "mark.ephemeron.linear": 43.3,
+            "mark.embedder_prologue": 0,
+            "mark.embedder_tracing": 0.1,
+            "prologue": 0,
+            "sweep": 0.6,
+            "sweep.code": 0,
+            "sweep.map": 0,
+            "sweep.new": 0,
+            "sweep.new_lo": 0,
+            "sweep.old": 0.6,
+            "sweep.start_jobs": 0,
+            "incremental": 0.5,
+            "incremental.finalize.external.prologue": 0,
+            "incremental.finalize.external.epilogue": 0,
+            "incremental.layout_change": 0,
+            "incremental.sweep_array_buffers": 0.4,
+            "incremental.sweeping": 0,
+            "incremental.embedder_tracing": 0,
+            "incremental_wrapper_tracing_longest_step": 0,
+            "incremental_longest_step": 0.1,
+            "incremental_steps_count": 49,
+            "incremental_marking_throughput": 2375165,
+            "incremental_walltime_duration": 178,
+            "background.mark": 27.6,
+            "background.sweep": 0,
+            "background.evacuate.copy": 1.2,
+            "background.evacuate.update_pointers": 0.7,
+            "conservative_stack_scanning": 0,
+            "start_object_size": 313590328,
+            "end_object_size": 37169856,
+            "start_memory_size": 437133312,
+            "end_memory_size": 240779264,
+            "start_holes_size": 923576,
+            "end_holes_size": 1009504,
+            "allocated": 2738808,
+            "promoted": 3241264,
+            "new_space_survived": 0,
+            "nodes_died_in_new": 195,
+            "nodes_copied_in_new": 0,
+            "nodes_promoted": 0,
+            "promotion_ratio": "26.2%",
+            "average_survival_ratio": "32.7%",
+            "promotion_rate": "33.8%",
+            "new_space_survive_rate": "0.0%",
+            "new_space_allocation_throughput": 1045971.3,
+            "new_space_capacity": 67108864,
+            "old_gen_allocation_limit": 368216512,
+            "global_allocation_limit": 368216768,
+            "allocation_throughput": 1332286.4,
+            "pool_local_chunks": 701,
+            "pool_shared_chunks": 0,
+            "pool_total_chunks": 701,
+            "compaction_speed": 2566529
+          },
+          "bracketActionId": null,
+          "calibrating": false,
+          "orderingCaveat": "Native stdout may be buffered and interleaved with JS markers. Marker ordering alone is not an action attribution.",
+          "perfTimestampBounds": {
+            "lowMs": 2383.5714,
+            "highMs": 2451.3024
+          },
+          "possiblePauseStartMs": 2210.2713999999996,
+          "possiblePauseEndMs": 2624.6024
+        },
+        {
+          "channel": "stdout",
+          "line": 59,
+          "text": "[62132:0000022987A94000:0]     2512 ms: pause=4.4 mutator=65.8 gc=s reduce_memory=0 interleaved=0 time_to_safepoint=0.00 heap.prologue=0.00 heap.epilogue=0.00 heap.external.prologue=0.00 heap.external.epilogue=0.00 heap.external_weak_global_handles=0.00 complete.sweep_array_buffers=0.00 scavenge=4.42 scavenge.free_remembered_set=0.01 scavenge.roots=0.07 scavenge.weak=0.00 scavenge.weak_global_handles.identify=0.00 scavenge.weak_global_handles.process=0.01 scavenge.parallel=3.23 scavenge.update_refs=0.00 scavenge.sweep_array_buffers=0.00 scavenge.resize_new_space=0.00 background.scavenge.parallel=6.04 incremental.steps_count=0 incremental.steps_took=0.0 scavenge_throughput=2243297 start_object_size=93138272 end_object_size=50506984 start_memory_size=240779264 end_memory_size=240779264 start_holes_size=67797152 end_holes_size=67797152 allocated=55968416 promoted=0 quarantined_size=0 quarantined_pages=0 new_space_survived=11671064 nodes_died_in_new=0 nodes_copied_in_new=235 nodes_promoted=0 promotion_ratio=0.0% average_survival_ratio=31.5% promotion_rate=0.0% new_space_survive_rate_=21.5% new_space_allocation_throughput=965735.9 new_space_capacity=67108864 old_gen_allocation_limit=215788320 global_allocation_limit=215788576 allocation_throughput=1173989.7 pool_local_chunks=701 pool_shared_chunks=0 pool_total_chunks=701",
+          "kind": "gc",
+          "pid": 62132,
+          "nativeTimestampMs": 2512,
+          "pauseMs": 4.4,
+          "fields": {
+            "pause": 4.4,
+            "mutator": 65.8,
+            "gc": "s",
+            "reduce_memory": 0,
+            "interleaved": 0,
+            "time_to_safepoint": 0,
+            "heap.prologue": 0,
+            "heap.epilogue": 0,
+            "heap.external.prologue": 0,
+            "heap.external.epilogue": 0,
+            "heap.external_weak_global_handles": 0,
+            "complete.sweep_array_buffers": 0,
+            "scavenge": 4.42,
+            "scavenge.free_remembered_set": 0.01,
+            "scavenge.roots": 0.07,
+            "scavenge.weak": 0,
+            "scavenge.weak_global_handles.identify": 0,
+            "scavenge.weak_global_handles.process": 0.01,
+            "scavenge.parallel": 3.23,
+            "scavenge.update_refs": 0,
+            "scavenge.sweep_array_buffers": 0,
+            "scavenge.resize_new_space": 0,
+            "background.scavenge.parallel": 6.04,
+            "incremental.steps_count": 0,
+            "incremental.steps_took": 0,
+            "scavenge_throughput": 2243297,
+            "start_object_size": 93138272,
+            "end_object_size": 50506984,
+            "start_memory_size": 240779264,
+            "end_memory_size": 240779264,
+            "start_holes_size": 67797152,
+            "end_holes_size": 67797152,
+            "allocated": 55968416,
+            "promoted": 0,
+            "quarantined_size": 0,
+            "quarantined_pages": 0,
+            "new_space_survived": 11671064,
+            "nodes_died_in_new": 0,
+            "nodes_copied_in_new": 235,
+            "nodes_promoted": 0,
+            "promotion_ratio": "0.0%",
+            "average_survival_ratio": "31.5%",
+            "promotion_rate": "0.0%",
+            "new_space_survive_rate_": "21.5%",
+            "new_space_allocation_throughput": 965735.9,
+            "new_space_capacity": 67108864,
+            "old_gen_allocation_limit": 215788320,
+            "global_allocation_limit": 215788576,
+            "allocation_throughput": 1173989.7,
+            "pool_local_chunks": 701,
+            "pool_shared_chunks": 0,
+            "pool_total_chunks": 701
+          },
+          "bracketActionId": null,
+          "calibrating": false,
+          "orderingCaveat": "Native stdout may be buffered and interleaved with JS markers. Marker ordering alone is not an action attribution.",
+          "perfTimestampBounds": {
+            "lowMs": 2453.5714,
+            "highMs": 2521.3024
+          },
+          "possiblePauseStartMs": 2449.1713999999997,
+          "possiblePauseEndMs": 2525.7024
+        }
+      ],
+      "compilerLogEvidence": [],
+      "cpuProfile": {
+        "available": false,
+        "reason": "No CPU profile"
+      }
+    },
+    "groups": [
+      {
+        "mode": "micro-trace",
+        "variant": "baseline",
+        "processes": 6,
+        "allActions": {
+          "count": 6600,
+          "medianMs": 3.858850000000075,
+          "meanMs": 4.51070268181819,
+          "p95Ms": 5.900499999999738,
+          "maxMs": 89.94569999999976,
+          "over16_67": 39,
+          "over100": 0
+        },
+        "clearSelection": {
+          "count": 600,
+          "medianMs": 2.87194999999997,
+          "meanMs": 4.319828000000005,
+          "p95Ms": 4.000500000000102,
+          "maxMs": 85.30430000000024,
+          "over16_67": 10,
+          "over100": 0
+        }
+      },
+      {
+        "mode": "micro-trace",
+        "variant": "candidate",
+        "processes": 6,
+        "allActions": {
+          "count": 6600,
+          "medianMs": 1.4567999999999302,
+          "meanMs": 1.8219594848484884,
+          "p95Ms": 2.659400000000005,
+          "maxMs": 185.13380000000006,
+          "over16_67": 32,
+          "over100": 1
+        },
+        "clearSelection": {
+          "count": 600,
+          "medianMs": 0.7973000000001775,
+          "meanMs": 1.5340918333333233,
+          "p95Ms": 2.0693999999998596,
+          "maxMs": 185.13380000000006,
+          "over16_67": 3,
+          "over100": 1
+        }
+      }
+    ],
+    "wrapperFree": {
+      "schemaVersion": 1,
+      "directory": "E:\\project\\deepseek_h\\output\\candidate72-browser-20261011\\node-diagnostics\\wrapper-free-01",
+      "reports": [
+        {
+          "label": "wrapper-free-trace-r0-s0-baseline",
+          "mode": "wrapper-free-trace",
+          "variant": "baseline",
+          "outputParity": "PASS",
+          "allActions": {
+            "count": 1100,
+            "medianMs": 3.294750000000022,
+            "meanMs": 3.8522610909090953,
+            "p95Ms": 4.664200000000164,
+            "maxMs": 102.43229999999949,
+            "over16_67": 4,
+            "over100": 1
+          },
+          "clearSelection": {
+            "count": 100,
+            "medianMs": 2.852049999999963,
+            "meanMs": 2.9355849999999872,
+            "p95Ms": 3.3092999999998938,
+            "maxMs": 6.554000000000087,
+            "over16_67": 0,
+            "over100": 0
+          },
+          "measuredMajorCount": 4,
+          "nativeMatchedMajorCount": 4,
+          "majorPauseTotalMs": 19.544,
+          "majorPauseMaxMs": 5.481,
+          "heapBeforeMaxBytes": 104039552,
+          "heapAfterMaxBytes": 19725288,
+          "markMaxMs": 0.3,
+          "ephemeronMarkingMaxMs": 0,
+          "ephemeronLinearMaxMs": 0,
+          "majors": [
+            {
+              "startPerfMs": 1777.4295001029968,
+              "endPerfMs": 1782.078500032425,
+              "durationMs": 4.649,
+              "type": "finalize incremental marking via task",
+              "beforeBytes": 83059104,
+              "afterBytes": 19122744,
+              "reclaimedBytes": 63936360,
+              "overlapsMeasuredWindow": true,
+              "native": {
+                "line": 29,
+                "nativeTimestampMs": 1778,
+                "fields": {
+                  "pause": 4.6,
+                  "mutator": 4.5,
+                  "gc": "mc",
+                  "reduce_memory": 0,
+                  "time_to_safepoint": 0,
+                  "heap.prologue": 0,
+                  "heap.embedder_tracing_epilogue": 0.01,
+                  "heap.epilogue": 0,
+                  "heap.external.prologue": 0,
+                  "heap.external.epilogue": 0,
+                  "heap.external.weak_global_handles": 1.5,
+                  "clear": 2,
+                  "clear.external_string_table": 0,
+                  "clear.string_forwarding_table": 0,
+                  "clear.weak_global_handles": 1.6,
+                  "clear.dependent_code": 0,
+                  "clear.maps": 0,
+                  "clear.slots_buffer": 0,
+                  "clear.weak_collections": 0,
+                  "clear.weak_lists": 0,
+                  "clear.weak_references_trivial": 0.1,
+                  "clear.weak_references_non_trivial": 0,
+                  "clear.weak_references_filter_non_trivial": 0,
+                  "clear.js_weak_references": 0,
+                  "clear.join_filter_job": "0.0clear.join_job=0.0",
+                  "weakness_handling": 0,
+                  "complete.sweep_array_buffers": 0,
+                  "complete.sweeping": 0,
+                  "epilogue": 0,
+                  "evacuate": 0.8,
+                  "evacuate.pin_pages": 0,
+                  "evacuate.candidates": 0,
+                  "evacuate.clean_up": 0,
+                  "evacuate.copy": 0.3,
+                  "evacuate.prologue": 0.1,
+                  "evacuate.epilogue": 0,
+                  "evacuate.rebalance": 0,
+                  "evacuate.update_pointers": 0.5,
+                  "evacuate.update_pointers.to_new_roots": 0.4,
+                  "evacuate.update_pointers.slots.main": 0.1,
+                  "evacuate.update_pointers.weak": 0,
+                  "finish": 0,
+                  "finish.sweep_array_buffers": 0,
+                  "mark": 0.2,
+                  "mark.finish_incremental": 0,
+                  "mark.roots": 0.4,
+                  "mark.full_closure_parallel": 0,
+                  "mark.full_closure": 0,
+                  "mark.ephemeron.marking": 0,
+                  "mark.ephemeron.linear": 0,
+                  "mark.embedder_prologue": 0,
+                  "mark.embedder_tracing": 0,
+                  "prologue": 0,
+                  "sweep": 0.1,
+                  "sweep.code": 0,
+                  "sweep.map": 0,
+                  "sweep.new": 0,
+                  "sweep.new_lo": 0,
+                  "sweep.old": 0.1,
+                  "sweep.start_jobs": 0,
+                  "incremental": 0.2,
+                  "incremental.finalize.external.prologue": 0,
+                  "incremental.finalize.external.epilogue": 0,
+                  "incremental.layout_change": 0,
+                  "incremental.sweep_array_buffers": 0.4,
+                  "incremental.sweeping": 0,
+                  "incremental.embedder_tracing": 0,
+                  "incremental_wrapper_tracing_longest_step": 0,
+                  "incremental_longest_step": 0.1,
+                  "incremental_steps_count": 21,
+                  "incremental_marking_throughput": 2891555,
+                  "incremental_walltime_duration": 9,
+                  "background.mark": 9.4,
+                  "background.sweep": 2.7,
+                  "background.evacuate.copy": 0.8,
+                  "background.evacuate.update_pointers": 0.3,
+                  "conservative_stack_scanning": 0,
+                  "start_object_size": 82953512,
+                  "end_object_size": 19122744,
+                  "start_memory_size": 210628608,
+                  "end_memory_size": 183365632,
+                  "start_holes_size": 972760,
+                  "end_holes_size": 638472,
+                  "allocated": 1171712,
+                  "promoted": 2191192,
+                  "new_space_survived": 0,
+                  "nodes_died_in_new": 6968,
+                  "nodes_copied_in_new": 0,
+                  "nodes_promoted": 0,
+                  "promotion_ratio": "26.7%",
+                  "average_survival_ratio": "24.4%",
+                  "promotion_rate": "31.2%",
+                  "new_space_survive_rate": "0.0%",
+                  "new_space_allocation_throughput": 363318.2,
+                  "new_space_capacity": 67108864,
+                  "old_gen_allocation_limit": 140769408,
+                  "global_allocation_limit": 140769664,
+                  "allocation_throughput": 459611.9,
+                  "pool_local_chunks": 104,
+                  "pool_shared_chunks": 0,
+                  "pool_total_chunks": 104,
+                  "compaction_speed": 2254923.5
+                }
+              },
+              "nativeMatchCount": 1
+            },
+            {
+              "startPerfMs": 2966.856500029564,
+              "endPerfMs": 2971.2515000104904,
+              "durationMs": 4.395,
+              "type": "finalize incremental marking via task",
+              "beforeBytes": 104039552,
+              "afterBytes": 19578400,
+              "reclaimedBytes": 84461152,
+              "overlapsMeasuredWindow": true,
+              "native": {
+                "line": 38,
+                "nativeTimestampMs": 2968,
+                "fields": {
+                  "pause": 4.4,
+                  "mutator": 56.7,
+                  "gc": "mc",
+                  "reduce_memory": 0,
+                  "time_to_safepoint": 0,
+                  "heap.prologue": 0,
+                  "heap.embedder_tracing_epilogue": 0.01,
+                  "heap.epilogue": 0,
+                  "heap.external.prologue": 0,
+                  "heap.external.epilogue": 0,
+                  "heap.external.weak_global_handles": 1,
+                  "clear": 2,
+                  "clear.external_string_table": 0,
+                  "clear.string_forwarding_table": 0,
+                  "clear.weak_global_handles": 1.8,
+                  "clear.dependent_code": 0,
+                  "clear.maps": 0,
+                  "clear.slots_buffer": 0,
+                  "clear.weak_collections": 0,
+                  "clear.weak_lists": 0,
+                  "clear.weak_references_trivial": 0,
+                  "clear.weak_references_non_trivial": 0,
+                  "clear.weak_references_filter_non_trivial": 0,
+                  "clear.js_weak_references": 0,
+                  "clear.join_filter_job": "0.0clear.join_job=0.0",
+                  "weakness_handling": 0,
+                  "complete.sweep_array_buffers": 0,
+                  "complete.sweeping": 0,
+                  "epilogue": 0,
+                  "evacuate": 0.8,
+                  "evacuate.pin_pages": 0,
+                  "evacuate.candidates": 0,
+                  "evacuate.clean_up": 0,
+                  "evacuate.copy": 0.3,
+                  "evacuate.prologue": 0.1,
+                  "evacuate.epilogue": 0,
+                  "evacuate.rebalance": 0,
+                  "evacuate.update_pointers": 0.5,
+                  "evacuate.update_pointers.to_new_roots": 0.3,
+                  "evacuate.update_pointers.slots.main": 0.1,
+                  "evacuate.update_pointers.weak": 0,
+                  "finish": 0,
+                  "finish.sweep_array_buffers": 0,
+                  "mark": 0.2,
+                  "mark.finish_incremental": 0,
+                  "mark.roots": 0.4,
+                  "mark.full_closure_parallel": 0,
+                  "mark.full_closure": 0,
+                  "mark.ephemeron.marking": 0,
+                  "mark.ephemeron.linear": 0,
+                  "mark.embedder_prologue": 0,
+                  "mark.embedder_tracing": 0,
+                  "prologue": 0,
+                  "sweep": 0.2,
+                  "sweep.code": 0,
+                  "sweep.map": 0,
+                  "sweep.new": 0,
+                  "sweep.new_lo": 0,
+                  "sweep.old": 0.1,
+                  "sweep.start_jobs": 0,
+                  "incremental": 0.2,
+                  "incremental.finalize.external.prologue": 0,
+                  "incremental.finalize.external.epilogue": 0,
+                  "incremental.layout_change": 0,
+                  "incremental.sweep_array_buffers": 0.4,
+                  "incremental.sweeping": 0,
+                  "incremental.embedder_tracing": 0,
+                  "incremental_wrapper_tracing_longest_step": 0,
+                  "incremental_longest_step": 0,
+                  "incremental_steps_count": 22,
+                  "incremental_marking_throughput": 2901374,
+                  "incremental_walltime_duration": 9,
+                  "background.mark": 9.7,
+                  "background.sweep": 3.3,
+                  "background.evacuate.copy": 0.8,
+                  "background.evacuate.update_pointers": 0.2,
+                  "conservative_stack_scanning": 0,
+                  "start_object_size": 103794368,
+                  "end_object_size": 19578400,
+                  "start_memory_size": 211939328,
+                  "end_memory_size": 189132800,
+                  "start_holes_size": 1199208,
+                  "end_holes_size": 578824,
+                  "allocated": 21275960,
+                  "promoted": 2482576,
+                  "new_space_survived": 0,
+                  "nodes_died_in_new": 9909,
+                  "nodes_copied_in_new": 0,
+                  "nodes_promoted": 0,
+                  "promotion_ratio": "9.1%",
+                  "average_survival_ratio": "20.4%",
+                  "promotion_rate": "35.7%",
+                  "new_space_survive_rate": "0.0%",
+                  "new_space_allocation_throughput": 365503.6,
+                  "new_space_capacity": 67108864,
+                  "old_gen_allocation_limit": 143599968,
+                  "global_allocation_limit": 143600224,
+                  "allocation_throughput": 440755.2,
+                  "pool_local_chunks": 87,
+                  "pool_shared_chunks": 0,
+                  "pool_total_chunks": 87,
+                  "compaction_speed": 2544908.3
+                }
+              },
+              "nativeMatchCount": 1
+            },
+            {
+              "startPerfMs": 4222.233500003815,
+              "endPerfMs": 4227.2525000572205,
+              "durationMs": 5.019,
+              "type": "finalize incremental marking via task",
+              "beforeBytes": 92436088,
+              "afterBytes": 19725288,
+              "reclaimedBytes": 72710800,
+              "overlapsMeasuredWindow": true,
+              "native": {
+                "line": 48,
+                "nativeTimestampMs": 4224,
+                "fields": {
+                  "pause": 5,
+                  "mutator": 5.6,
+                  "gc": "mc",
+                  "reduce_memory": 0,
+                  "time_to_safepoint": 0,
+                  "heap.prologue": 0,
+                  "heap.embedder_tracing_epilogue": 0.01,
+                  "heap.epilogue": 0,
+                  "heap.external.prologue": 0,
+                  "heap.external.epilogue": 0,
+                  "heap.external.weak_global_handles": 1.3,
+                  "clear": 2,
+                  "clear.external_string_table": 0,
+                  "clear.string_forwarding_table": 0,
+                  "clear.weak_global_handles": 2.1,
+                  "clear.dependent_code": 0,
+                  "clear.maps": 0,
+                  "clear.slots_buffer": 0,
+                  "clear.weak_collections": 0,
+                  "clear.weak_lists": 0,
+                  "clear.weak_references_trivial": 0.1,
+                  "clear.weak_references_non_trivial": 0,
+                  "clear.weak_references_filter_non_trivial": 0,
+                  "clear.js_weak_references": 0,
+                  "clear.join_filter_job": "0.0clear.join_job=0.1",
+                  "weakness_handling": 0,
+                  "complete.sweep_array_buffers": 0,
+                  "complete.sweeping": 0,
+                  "epilogue": 0,
+                  "evacuate": 0.9,
+                  "evacuate.pin_pages": 0,
+                  "evacuate.candidates": 0,
+                  "evacuate.clean_up": 0,
+                  "evacuate.copy": 0.3,
+                  "evacuate.prologue": 0,
+                  "evacuate.epilogue": 0,
+                  "evacuate.rebalance": 0,
+                  "evacuate.update_pointers": 0.5,
+                  "evacuate.update_pointers.to_new_roots": 0.4,
+                  "evacuate.update_pointers.slots.main": 0.1,
+                  "evacuate.update_pointers.weak": 0,
+                  "finish": 0,
+                  "finish.sweep_array_buffers": 0,
+                  "mark": 0.2,
+                  "mark.finish_incremental": 0,
+                  "mark.roots": 0.4,
+                  "mark.full_closure_parallel": 0,
+                  "mark.full_closure": 0,
+                  "mark.ephemeron.marking": 0,
+                  "mark.ephemeron.linear": 0,
+                  "mark.embedder_prologue": 0,
+                  "mark.embedder_tracing": 0,
+                  "prologue": 0,
+                  "sweep": 0.1,
+                  "sweep.code": 0,
+                  "sweep.map": 0,
+                  "sweep.new": 0,
+                  "sweep.new_lo": 0,
+                  "sweep.old": 0.1,
+                  "sweep.start_jobs": 0,
+                  "incremental": 0.2,
+                  "incremental.finalize.external.prologue": 0,
+                  "incremental.finalize.external.epilogue": 0,
+                  "incremental.layout_change": 0,
+                  "incremental.sweep_array_buffers": 0.3,
+                  "incremental.sweeping": 0,
+                  "incremental.embedder_tracing": 0,
+                  "incremental_wrapper_tracing_longest_step": 0,
+                  "incremental_longest_step": 0,
+                  "incremental_steps_count": 23,
+                  "incremental_marking_throughput": 2946223,
+                  "incremental_walltime_duration": 9,
+                  "background.mark": 10.1,
+                  "background.sweep": 3,
+                  "background.evacuate.copy": 0.9,
+                  "background.evacuate.update_pointers": 0.2,
+                  "conservative_stack_scanning": 0,
+                  "start_object_size": 92225576,
+                  "end_object_size": 19725288,
+                  "start_memory_size": 219541504,
+                  "end_memory_size": 194375680,
+                  "start_holes_size": 1142584,
+                  "end_holes_size": 609800,
+                  "allocated": 1715136,
+                  "promoted": 2529088,
+                  "new_space_survived": 0,
+                  "nodes_died_in_new": 7272,
+                  "nodes_copied_in_new": 0,
+                  "nodes_promoted": 0,
+                  "promotion_ratio": "27.8%",
+                  "average_survival_ratio": "22.3%",
+                  "promotion_rate": "34.2%",
+                  "new_space_survive_rate": "0.0%",
+                  "new_space_allocation_throughput": 377062.8,
+                  "new_space_capacity": 67108864,
+                  "old_gen_allocation_limit": 145422560,
+                  "global_allocation_limit": 145422816,
+                  "allocation_throughput": 472344.7,
+                  "pool_local_chunks": 96,
+                  "pool_shared_chunks": 0,
+                  "pool_total_chunks": 96,
+                  "compaction_speed": 2308975.8
+                }
+              },
+              "nativeMatchCount": 1
+            },
+            {
+              "startPerfMs": 5486.381500005722,
+              "endPerfMs": 5491.862500071526,
+              "durationMs": 5.481,
+              "type": "finalize incremental marking via task",
+              "beforeBytes": 92834584,
+              "afterBytes": 17284856,
+              "reclaimedBytes": 75549728,
+              "overlapsMeasuredWindow": true,
+              "native": {
+                "line": 58,
+                "nativeTimestampMs": 5488,
+                "fields": {
+                  "pause": 5.4,
+                  "mutator": 5.9,
+                  "gc": "mc",
+                  "reduce_memory": 0,
+                  "time_to_safepoint": 0,
+                  "heap.prologue": 0,
+                  "heap.embedder_tracing_epilogue": 0.01,
+                  "heap.epilogue": 0,
+                  "heap.external.prologue": 0,
+                  "heap.external.epilogue": 0,
+                  "heap.external.weak_global_handles": 1.1,
+                  "clear": 3,
+                  "clear.external_string_table": 0,
+                  "clear.string_forwarding_table": 0,
+                  "clear.weak_global_handles": 2.3,
+                  "clear.dependent_code": 0,
+                  "clear.maps": 0,
+                  "clear.slots_buffer": 0,
+                  "clear.weak_collections": 0,
+                  "clear.weak_lists": 0,
+                  "clear.weak_references_trivial": 0.1,
+                  "clear.weak_references_non_trivial": 0,
+                  "clear.weak_references_filter_non_trivial": 0,
+                  "clear.js_weak_references": 0,
+                  "clear.join_filter_job": "0.0clear.join_job=0.0",
+                  "weakness_handling": 0,
+                  "complete.sweep_array_buffers": 0,
+                  "complete.sweeping": 0,
+                  "epilogue": 0,
+                  "evacuate": 1,
+                  "evacuate.pin_pages": 0,
+                  "evacuate.candidates": 0,
+                  "evacuate.clean_up": 0,
+                  "evacuate.copy": 0.3,
+                  "evacuate.prologue": 0.1,
+                  "evacuate.epilogue": 0,
+                  "evacuate.rebalance": 0,
+                  "evacuate.update_pointers": 0.6,
+                  "evacuate.update_pointers.to_new_roots": 0.4,
+                  "evacuate.update_pointers.slots.main": 0.1,
+                  "evacuate.update_pointers.weak": 0,
+                  "finish": 0.1,
+                  "finish.sweep_array_buffers": 0,
+                  "mark": 0.3,
+                  "mark.finish_incremental": 0,
+                  "mark.roots": 0.4,
+                  "mark.full_closure_parallel": 0,
+                  "mark.full_closure": 0,
+                  "mark.ephemeron.marking": 0,
+                  "mark.ephemeron.linear": 0,
+                  "mark.embedder_prologue": 0,
+                  "mark.embedder_tracing": 0,
+                  "prologue": 0,
+                  "sweep": 0.1,
+                  "sweep.code": 0,
+                  "sweep.map": 0,
+                  "sweep.new": 0,
+                  "sweep.new_lo": 0,
+                  "sweep.old": 0.1,
+                  "sweep.start_jobs": 0,
+                  "incremental": 0.3,
+                  "incremental.finalize.external.prologue": 0,
+                  "incremental.finalize.external.epilogue": 0,
+                  "incremental.layout_change": 0,
+                  "incremental.sweep_array_buffers": 0.4,
+                  "incremental.sweeping": 0,
+                  "incremental.embedder_tracing": 0,
+                  "incremental_wrapper_tracing_longest_step": 0,
+                  "incremental_longest_step": 0,
+                  "incremental_steps_count": 23,
+                  "incremental_marking_throughput": 2928819,
+                  "incremental_walltime_duration": 10,
+                  "background.mark": 8.7,
+                  "background.sweep": 3.1,
+                  "background.evacuate.copy": 1,
+                  "background.evacuate.update_pointers": 0.4,
+                  "conservative_stack_scanning": 0,
+                  "start_object_size": 92777424,
+                  "end_object_size": 17284856,
+                  "start_memory_size": 219541504,
+                  "end_memory_size": 199618560,
+                  "start_holes_size": 1091624,
+                  "end_holes_size": 649560,
+                  "allocated": 1713576,
+                  "promoted": 2531096,
+                  "new_space_survived": 0,
+                  "nodes_died_in_new": 7272,
+                  "nodes_copied_in_new": 0,
+                  "nodes_promoted": 0,
+                  "promotion_ratio": "27.8%",
+                  "average_survival_ratio": "22.8%",
+                  "promotion_rate": "34.2%",
+                  "new_space_survive_rate": "0.0%",
+                  "new_space_allocation_throughput": 373184.8,
+                  "new_space_capacity": 67108864,
+                  "old_gen_allocation_limit": 146010048,
+                  "global_allocation_limit": 146010304,
+                  "allocation_throughput": 468406.3,
+                  "pool_local_chunks": 76,
+                  "pool_shared_chunks": 0,
+                  "pool_total_chunks": 76,
+                  "compaction_speed": 2197650.5
+                }
+              },
+              "nativeMatchCount": 1
+            }
+          ]
+        },
+        {
+          "label": "wrapper-free-trace-r0-s1-candidate",
+          "mode": "wrapper-free-trace",
+          "variant": "candidate",
+          "outputParity": "PASS",
+          "allActions": {
+            "count": 1100,
+            "medianMs": 0.9484999999999673,
+            "meanMs": 1.0984561818181795,
+            "p95Ms": 1.532699999999977,
+            "maxMs": 7.297700000000077,
+            "over16_67": 0,
+            "over100": 0
+          },
+          "clearSelection": {
+            "count": 100,
+            "medianMs": 0.7677999999999656,
+            "meanMs": 0.8282609999999931,
+            "p95Ms": 1.029800000000023,
+            "maxMs": 3.111099999999851,
+            "over16_67": 0,
+            "over100": 0
+          },
+          "measuredMajorCount": 5,
+          "nativeMatchedMajorCount": 5,
+          "majorPauseTotalMs": 7.796,
+          "majorPauseMaxMs": 1.713,
+          "heapBeforeMaxBytes": 113573640,
+          "heapAfterMaxBytes": 20681288,
+          "markMaxMs": 0.1,
+          "ephemeronMarkingMaxMs": 0,
+          "ephemeronLinearMaxMs": 0,
+          "majors": [
+            {
+              "startPerfMs": 625.3346499204636,
+              "endPerfMs": 626.9716498851776,
+              "durationMs": 1.637,
+              "type": "finalize incremental marking via task",
+              "beforeBytes": 89091992,
+              "afterBytes": 20169368,
+              "reclaimedBytes": 68922624,
+              "overlapsMeasuredWindow": true,
+              "native": {
+                "line": 27,
+                "nativeTimestampMs": 623,
+                "fields": {
+                  "pause": 1.6,
+                  "mutator": 3.5,
+                  "gc": "mc",
+                  "reduce_memory": 0,
+                  "time_to_safepoint": 0,
+                  "heap.prologue": 0,
+                  "heap.embedder_tracing_epilogue": 0.01,
+                  "heap.epilogue": 0,
+                  "heap.external.prologue": 0,
+                  "heap.external.epilogue": 0,
+                  "heap.external.weak_global_handles": 0,
+                  "clear": 0,
+                  "clear.external_string_table": 0,
+                  "clear.string_forwarding_table": 0,
+                  "clear.weak_global_handles": 0.1,
+                  "clear.dependent_code": 0,
+                  "clear.maps": 0,
+                  "clear.slots_buffer": 0,
+                  "clear.weak_collections": 0,
+                  "clear.weak_lists": 0,
+                  "clear.weak_references_trivial": 0,
+                  "clear.weak_references_non_trivial": 0,
+                  "clear.weak_references_filter_non_trivial": 0,
+                  "clear.js_weak_references": 0,
+                  "clear.join_filter_job": "0.0clear.join_job=0.1",
+                  "weakness_handling": 0,
+                  "complete.sweep_array_buffers": 0,
+                  "complete.sweeping": 0,
+                  "epilogue": 0,
+                  "evacuate": 1,
+                  "evacuate.pin_pages": 0,
+                  "evacuate.candidates": 0,
+                  "evacuate.clean_up": 0,
+                  "evacuate.copy": 0.4,
+                  "evacuate.prologue": 0,
+                  "evacuate.epilogue": 0,
+                  "evacuate.rebalance": 0,
+                  "evacuate.update_pointers": 0.5,
+                  "evacuate.update_pointers.to_new_roots": 0.2,
+                  "evacuate.update_pointers.slots.main": 0.2,
+                  "evacuate.update_pointers.weak": 0,
+                  "finish": 0,
+                  "finish.sweep_array_buffers": 0,
+                  "mark": 0.1,
+                  "mark.finish_incremental": 0,
+                  "mark.roots": 0.1,
+                  "mark.full_closure_parallel": 0,
+                  "mark.full_closure": 0,
+                  "mark.ephemeron.marking": 0,
+                  "mark.ephemeron.linear": 0,
+                  "mark.embedder_prologue": 0,
+                  "mark.embedder_tracing": 0,
+                  "prologue": 0,
+                  "sweep": 0.1,
+                  "sweep.code": 0,
+                  "sweep.map": 0,
+                  "sweep.new": 0,
+                  "sweep.new_lo": 0,
+                  "sweep.old": 0.1,
+                  "sweep.start_jobs": 0,
+                  "incremental": 0.2,
+                  "incremental.finalize.external.prologue": 0,
+                  "incremental.finalize.external.epilogue": 0,
+                  "incremental.layout_change": 0,
+                  "incremental.sweep_array_buffers": 0.2,
+                  "incremental.sweeping": 0,
+                  "incremental.embedder_tracing": 0,
+                  "incremental_wrapper_tracing_longest_step": 0,
+                  "incremental_longest_step": 0,
+                  "incremental_steps_count": 41,
+                  "incremental_marking_throughput": 2546379,
+                  "incremental_walltime_duration": 5,
+                  "background.mark": 10.1,
+                  "background.sweep": 0,
+                  "background.evacuate.copy": 0.8,
+                  "background.evacuate.update_pointers": 0.2,
+                  "conservative_stack_scanning": 0,
+                  "start_object_size": 88997400,
+                  "end_object_size": 20169368,
+                  "start_memory_size": 215613440,
+                  "end_memory_size": 186515456,
+                  "start_holes_size": 890960,
+                  "end_holes_size": 448120,
+                  "allocated": 2403088,
+                  "promoted": 2952960,
+                  "new_space_survived": 0,
+                  "nodes_died_in_new": 315,
+                  "nodes_copied_in_new": 0,
+                  "nodes_promoted": 0,
+                  "promotion_ratio": "32.3%",
+                  "average_survival_ratio": "26.7%",
+                  "promotion_rate": "42.8%",
+                  "new_space_survive_rate": "0.0%",
+                  "new_space_allocation_throughput": 979526.3,
+                  "new_space_capacity": 67108864,
+                  "old_gen_allocation_limit": 144264128,
+                  "global_allocation_limit": 144264384,
+                  "allocation_throughput": 1229326.3,
+                  "pool_local_chunks": 111,
+                  "pool_shared_chunks": 0,
+                  "pool_total_chunks": 111,
+                  "compaction_speed": 2735659.9
+                }
+              },
+              "nativeMatchCount": 1
+            },
+            {
+              "startPerfMs": 911.3176499605179,
+              "endPerfMs": 912.7676498889923,
+              "durationMs": 1.45,
+              "type": "finalize incremental marking via task",
+              "beforeBytes": 90443944,
+              "afterBytes": 20681288,
+              "reclaimedBytes": 69762656,
+              "overlapsMeasuredWindow": true,
+              "native": {
+                "line": 34,
+                "nativeTimestampMs": 909,
+                "fields": {
+                  "pause": 1.4,
+                  "mutator": 5.4,
+                  "gc": "mc",
+                  "reduce_memory": 0,
+                  "time_to_safepoint": 0,
+                  "heap.prologue": 0,
+                  "heap.embedder_tracing_epilogue": 0.01,
+                  "heap.epilogue": 0,
+                  "heap.external.prologue": 0,
+                  "heap.external.epilogue": 0,
+                  "heap.external.weak_global_handles": 0,
+                  "clear": 0,
+                  "clear.external_string_table": 0,
+                  "clear.string_forwarding_table": 0,
+                  "clear.weak_global_handles": 0.1,
+                  "clear.dependent_code": 0,
+                  "clear.maps": 0,
+                  "clear.slots_buffer": 0,
+                  "clear.weak_collections": 0,
+                  "clear.weak_lists": 0,
+                  "clear.weak_references_trivial": 0.1,
+                  "clear.weak_references_non_trivial": 0,
+                  "clear.weak_references_filter_non_trivial": 0,
+                  "clear.js_weak_references": 0,
+                  "clear.join_filter_job": "0.0clear.join_job=0.1",
+                  "weakness_handling": 0,
+                  "complete.sweep_array_buffers": 0,
+                  "complete.sweeping": 0,
+                  "epilogue": 0,
+                  "evacuate": 0.8,
+                  "evacuate.pin_pages": 0,
+                  "evacuate.candidates": 0,
+                  "evacuate.clean_up": 0,
+                  "evacuate.copy": 0.3,
+                  "evacuate.prologue": 0.1,
+                  "evacuate.epilogue": 0,
+                  "evacuate.rebalance": 0,
+                  "evacuate.update_pointers": 0.4,
+                  "evacuate.update_pointers.to_new_roots": 0.3,
+                  "evacuate.update_pointers.slots.main": 0.1,
+                  "evacuate.update_pointers.weak": 0,
+                  "finish": 0,
+                  "finish.sweep_array_buffers": 0,
+                  "mark": 0.1,
+                  "mark.finish_incremental": 0,
+                  "mark.roots": 0.2,
+                  "mark.full_closure_parallel": 0,
+                  "mark.full_closure": 0,
+                  "mark.ephemeron.marking": 0,
+                  "mark.ephemeron.linear": 0,
+                  "mark.embedder_prologue": 0,
+                  "mark.embedder_tracing": 0,
+                  "prologue": 0,
+                  "sweep": 0.1,
+                  "sweep.code": 0,
+                  "sweep.map": 0,
+                  "sweep.new": 0,
+                  "sweep.new_lo": 0,
+                  "sweep.old": 0.1,
+                  "sweep.start_jobs": 0,
+                  "incremental": 0.5,
+                  "incremental.finalize.external.prologue": 0,
+                  "incremental.finalize.external.epilogue": 0,
+                  "incremental.layout_change": 0,
+                  "incremental.sweep_array_buffers": 0.2,
+                  "incremental.sweeping": 0,
+                  "incremental.embedder_tracing": 0,
+                  "incremental_wrapper_tracing_longest_step": 0,
+                  "incremental_longest_step": 0.1,
+                  "incremental_steps_count": 46,
+                  "incremental_marking_throughput": 2559136,
+                  "incremental_walltime_duration": 6,
+                  "background.mark": 10.7,
+                  "background.sweep": 0,
+                  "background.evacuate.copy": 0.9,
+                  "background.evacuate.update_pointers": 0.4,
+                  "conservative_stack_scanning": 0,
+                  "start_object_size": 90374528,
+                  "end_object_size": 20681288,
+                  "start_memory_size": 216924160,
+                  "end_memory_size": 192282624,
+                  "start_holes_size": 838912,
+                  "end_holes_size": 467960,
+                  "allocated": 3130160,
+                  "promoted": 3029296,
+                  "new_space_survived": 0,
+                  "nodes_died_in_new": 310,
+                  "nodes_copied_in_new": 0,
+                  "nodes_promoted": 0,
+                  "promotion_ratio": "32.9%",
+                  "average_survival_ratio": "23.0%",
+                  "promotion_rate": "47.6%",
+                  "new_space_survive_rate": "0.0%",
+                  "new_space_allocation_throughput": 1062645.9,
+                  "new_space_capacity": 67108864,
+                  "old_gen_allocation_limit": 147786400,
+                  "global_allocation_limit": 147786656,
+                  "allocation_throughput": 1329268,
+                  "pool_local_chunks": 94,
+                  "pool_shared_chunks": 0,
+                  "pool_total_chunks": 94,
+                  "compaction_speed": 2584354.7
+                }
+              },
+              "nativeMatchCount": 1
+            },
+            {
+              "startPerfMs": 1205.1566499471664,
+              "endPerfMs": 1206.508649945259,
+              "durationMs": 1.352,
+              "type": "finalize incremental marking via task",
+              "beforeBytes": 104667640,
+              "afterBytes": 20677752,
+              "reclaimedBytes": 83989888,
+              "overlapsMeasuredWindow": true,
+              "native": {
+                "line": 41,
+                "nativeTimestampMs": 1203,
+                "fields": {
+                  "pause": 1.3,
+                  "mutator": 15.7,
+                  "gc": "mc",
+                  "reduce_memory": 0,
+                  "time_to_safepoint": 0,
+                  "heap.prologue": 0,
+                  "heap.embedder_tracing_epilogue": 0.01,
+                  "heap.epilogue": 0,
+                  "heap.external.prologue": 0,
+                  "heap.external.epilogue": 0,
+                  "heap.external.weak_global_handles": 0,
+                  "clear": 0,
+                  "clear.external_string_table": 0,
+                  "clear.string_forwarding_table": 0,
+                  "clear.weak_global_handles": 0.1,
+                  "clear.dependent_code": 0,
+                  "clear.maps": 0,
+                  "clear.slots_buffer": 0,
+                  "clear.weak_collections": 0,
+                  "clear.weak_lists": 0,
+                  "clear.weak_references_trivial": 0.1,
+                  "clear.weak_references_non_trivial": 0,
+                  "clear.weak_references_filter_non_trivial": 0,
+                  "clear.js_weak_references": 0,
+                  "clear.join_filter_job": "0.0clear.join_job=0.1",
+                  "weakness_handling": 0,
+                  "complete.sweep_array_buffers": 0,
+                  "complete.sweeping": 0,
+                  "epilogue": 0,
+                  "evacuate": 0.8,
+                  "evacuate.pin_pages": 0,
+                  "evacuate.candidates": 0,
+                  "evacuate.clean_up": 0,
+                  "evacuate.copy": 0.3,
+                  "evacuate.prologue": 0,
+                  "evacuate.epilogue": 0,
+                  "evacuate.rebalance": 0,
+                  "evacuate.update_pointers": 0.4,
+                  "evacuate.update_pointers.to_new_roots": 0.3,
+                  "evacuate.update_pointers.slots.main": 0.1,
+                  "evacuate.update_pointers.weak": 0,
+                  "finish": 0,
+                  "finish.sweep_array_buffers": 0,
+                  "mark": 0.1,
+                  "mark.finish_incremental": 0,
+                  "mark.roots": 0.1,
+                  "mark.full_closure_parallel": 0,
+                  "mark.full_closure": 0,
+                  "mark.ephemeron.marking": 0,
+                  "mark.ephemeron.linear": 0,
+                  "mark.embedder_prologue": 0,
+                  "mark.embedder_tracing": 0,
+                  "prologue": 0,
+                  "sweep": 0.1,
+                  "sweep.code": 0,
+                  "sweep.map": 0,
+                  "sweep.new": 0,
+                  "sweep.new_lo": 0,
+                  "sweep.old": 0.1,
+                  "sweep.start_jobs": 0,
+                  "incremental": 0.4,
+                  "incremental.finalize.external.prologue": 0,
+                  "incremental.finalize.external.epilogue": 0,
+                  "incremental.layout_change": 0,
+                  "incremental.sweep_array_buffers": 0.2,
+                  "incremental.sweeping": 0,
+                  "incremental.embedder_tracing": 0,
+                  "incremental_wrapper_tracing_longest_step": 0,
+                  "incremental_longest_step": 0.1,
+                  "incremental_steps_count": 40,
+                  "incremental_marking_throughput": 2270770,
+                  "incremental_walltime_duration": 5,
+                  "background.mark": 10.3,
+                  "background.sweep": 0,
+                  "background.evacuate.copy": 0.9,
+                  "background.evacuate.update_pointers": 0.3,
+                  "conservative_stack_scanning": 0,
+                  "start_object_size": 104651224,
+                  "end_object_size": 20677752,
+                  "start_memory_size": 217972736,
+                  "end_memory_size": 194904064,
+                  "start_holes_size": 725864,
+                  "end_holes_size": 742592,
+                  "allocated": 17097624,
+                  "promoted": 2978840,
+                  "new_space_survived": 0,
+                  "nodes_died_in_new": 390,
+                  "nodes_copied_in_new": 0,
+                  "nodes_promoted": 0,
+                  "promotion_ratio": "13.8%",
+                  "average_survival_ratio": "21.1%",
+                  "promotion_rate": "47.0%",
+                  "new_space_survive_rate": "0.0%",
+                  "new_space_allocation_throughput": 1095166.8,
+                  "new_space_capacity": 67108864,
+                  "old_gen_allocation_limit": 149834048,
+                  "global_allocation_limit": 149834304,
+                  "allocation_throughput": 1357701.8,
+                  "pool_local_chunks": 88,
+                  "pool_shared_chunks": 0,
+                  "pool_total_chunks": 88,
+                  "compaction_speed": 2501495.5
+                }
+              },
+              "nativeMatchCount": 1
+            },
+            {
+              "startPerfMs": 1506.0546499490738,
+              "endPerfMs": 1507.7676498889923,
+              "durationMs": 1.713,
+              "type": "finalize incremental marking via task",
+              "beforeBytes": 105206720,
+              "afterBytes": 17996520,
+              "reclaimedBytes": 87210200,
+              "overlapsMeasuredWindow": true,
+              "native": {
+                "line": 48,
+                "nativeTimestampMs": 1504,
+                "fields": {
+                  "pause": 1.7,
+                  "mutator": 15.8,
+                  "gc": "mc",
+                  "reduce_memory": 0,
+                  "time_to_safepoint": 0,
+                  "heap.prologue": 0,
+                  "heap.embedder_tracing_epilogue": 0.01,
+                  "heap.epilogue": 0,
+                  "heap.external.prologue": 0,
+                  "heap.external.epilogue": 0,
+                  "heap.external.weak_global_handles": 0,
+                  "clear": 0,
+                  "clear.external_string_table": 0,
+                  "clear.string_forwarding_table": 0,
+                  "clear.weak_global_handles": 0.1,
+                  "clear.dependent_code": 0,
+                  "clear.maps": 0,
+                  "clear.slots_buffer": 0,
+                  "clear.weak_collections": 0,
+                  "clear.weak_lists": 0,
+                  "clear.weak_references_trivial": 0,
+                  "clear.weak_references_non_trivial": 0,
+                  "clear.weak_references_filter_non_trivial": 0,
+                  "clear.js_weak_references": 0,
+                  "clear.join_filter_job": "0.0clear.join_job=0.0",
+                  "weakness_handling": 0,
+                  "complete.sweep_array_buffers": 0,
+                  "complete.sweeping": 0,
+                  "epilogue": 0,
+                  "evacuate": 0.8,
+                  "evacuate.pin_pages": 0,
+                  "evacuate.candidates": 0,
+                  "evacuate.clean_up": 0,
+                  "evacuate.copy": 0.3,
+                  "evacuate.prologue": 0.1,
+                  "evacuate.epilogue": 0,
+                  "evacuate.rebalance": 0,
+                  "evacuate.update_pointers": 0.4,
+                  "evacuate.update_pointers.to_new_roots": 0.3,
+                  "evacuate.update_pointers.slots.main": 0.1,
+                  "evacuate.update_pointers.weak": 0,
+                  "finish": 0,
+                  "finish.sweep_array_buffers": 0,
+                  "mark": 0.1,
+                  "mark.finish_incremental": 0,
+                  "mark.roots": 0.2,
+                  "mark.full_closure_parallel": 0,
+                  "mark.full_closure": 0,
+                  "mark.ephemeron.marking": 0,
+                  "mark.ephemeron.linear": 0,
+                  "mark.embedder_prologue": 0,
+                  "mark.embedder_tracing": 0,
+                  "prologue": 0,
+                  "sweep": 0.2,
+                  "sweep.code": 0,
+                  "sweep.map": 0,
+                  "sweep.new": 0,
+                  "sweep.new_lo": 0,
+                  "sweep.old": 0.1,
+                  "sweep.start_jobs": 0,
+                  "incremental": 0.4,
+                  "incremental.finalize.external.prologue": 0,
+                  "incremental.finalize.external.epilogue": 0,
+                  "incremental.layout_change": 0,
+                  "incremental.sweep_array_buffers": 0.2,
+                  "incremental.sweeping": 0,
+                  "incremental.embedder_tracing": 0,
+                  "incremental_wrapper_tracing_longest_step": 0,
+                  "incremental_longest_step": 0.1,
+                  "incremental_steps_count": 43,
+                  "incremental_marking_throughput": 2302174,
+                  "incremental_walltime_duration": 5,
+                  "background.mark": 9.2,
+                  "background.sweep": 0,
+                  "background.evacuate.copy": 0.9,
+                  "background.evacuate.update_pointers": 0.3,
+                  "conservative_stack_scanning": 0,
+                  "start_object_size": 105001000,
+                  "end_object_size": 17996520,
+                  "start_memory_size": 218497024,
+                  "end_memory_size": 197787648,
+                  "start_holes_size": 1216936,
+                  "end_holes_size": 933280,
+                  "allocated": 17046016,
+                  "promoted": 2811368,
+                  "new_space_survived": 0,
+                  "nodes_died_in_new": 390,
+                  "nodes_copied_in_new": 0,
+                  "nodes_promoted": 0,
+                  "promotion_ratio": "12.8%",
+                  "average_survival_ratio": "19.2%",
+                  "promotion_rate": "41.7%",
+                  "new_space_survive_rate": "0.0%",
+                  "new_space_allocation_throughput": 1064092,
+                  "new_space_capacity": 67108864,
+                  "old_gen_allocation_limit": 149820032,
+                  "global_allocation_limit": 149820288,
+                  "allocation_throughput": 1320189.8,
+                  "pool_local_chunks": 79,
+                  "pool_shared_chunks": 0,
+                  "pool_total_chunks": 79,
+                  "compaction_speed": 2486893
+                }
+              },
+              "nativeMatchCount": 1
+            },
+            {
+              "startPerfMs": 1769.5206499099731,
+              "endPerfMs": 1771.164649963379,
+              "durationMs": 1.644,
+              "type": "finalize incremental marking via task",
+              "beforeBytes": 113573640,
+              "afterBytes": 17349512,
+              "reclaimedBytes": 96224128,
+              "overlapsMeasuredWindow": true,
+              "native": {
+                "line": 57,
+                "nativeTimestampMs": 1767,
+                "fields": {
+                  "pause": 1.6,
+                  "mutator": 31.8,
+                  "gc": "mc",
+                  "reduce_memory": 0,
+                  "time_to_safepoint": 0,
+                  "heap.prologue": 0,
+                  "heap.embedder_tracing_epilogue": 0.01,
+                  "heap.epilogue": 0,
+                  "heap.external.prologue": 0,
+                  "heap.external.epilogue": 0,
+                  "heap.external.weak_global_handles": 0,
+                  "clear": 0,
+                  "clear.external_string_table": 0,
+                  "clear.string_forwarding_table": 0,
+                  "clear.weak_global_handles": 0.1,
+                  "clear.dependent_code": 0,
+                  "clear.maps": 0,
+                  "clear.slots_buffer": 0,
+                  "clear.weak_collections": 0,
+                  "clear.weak_lists": 0,
+                  "clear.weak_references_trivial": 0.1,
+                  "clear.weak_references_non_trivial": 0,
+                  "clear.weak_references_filter_non_trivial": 0,
+                  "clear.js_weak_references": 0,
+                  "clear.join_filter_job": "0.0clear.join_job=0.0",
+                  "weakness_handling": 0,
+                  "complete.sweep_array_buffers": 0,
+                  "complete.sweeping": 0,
+                  "epilogue": 0,
+                  "evacuate": 1.1,
+                  "evacuate.pin_pages": 0,
+                  "evacuate.candidates": 0,
+                  "evacuate.clean_up": 0,
+                  "evacuate.copy": 0.4,
+                  "evacuate.prologue": 0,
+                  "evacuate.epilogue": 0.1,
+                  "evacuate.rebalance": 0,
+                  "evacuate.update_pointers": 0.6,
+                  "evacuate.update_pointers.to_new_roots": 0.3,
+                  "evacuate.update_pointers.slots.main": 0.3,
+                  "evacuate.update_pointers.weak": 0,
+                  "finish": 0,
+                  "finish.sweep_array_buffers": 0,
+                  "mark": 0.1,
+                  "mark.finish_incremental": 0,
+                  "mark.roots": 0.2,
+                  "mark.full_closure_parallel": 0,
+                  "mark.full_closure": 0,
+                  "mark.ephemeron.marking": 0,
+                  "mark.ephemeron.linear": 0,
+                  "mark.embedder_prologue": 0,
+                  "mark.embedder_tracing": 0,
+                  "prologue": 0,
+                  "sweep": 0.1,
+                  "sweep.code": 0,
+                  "sweep.map": 0,
+                  "sweep.new": 0,
+                  "sweep.new_lo": 0,
+                  "sweep.old": 0.1,
+                  "sweep.start_jobs": 0,
+                  "incremental": 0.1,
+                  "incremental.finalize.external.prologue": 0,
+                  "incremental.finalize.external.epilogue": 0,
+                  "incremental.layout_change": 0,
+                  "incremental.sweep_array_buffers": 0.2,
+                  "incremental.sweeping": 0,
+                  "incremental.embedder_tracing": 0,
+                  "incremental_wrapper_tracing_longest_step": 0,
+                  "incremental_longest_step": 0,
+                  "incremental_steps_count": 27,
+                  "incremental_marking_throughput": 2105992,
+                  "incremental_walltime_duration": 4,
+                  "background.mark": 9.1,
+                  "background.sweep": 0.2,
+                  "background.evacuate.copy": 1.2,
+                  "background.evacuate.update_pointers": 0.8,
+                  "conservative_stack_scanning": 0,
+                  "start_object_size": 113531448,
+                  "end_object_size": 17349512,
+                  "start_memory_size": 208797696,
+                  "end_memory_size": 198049792,
+                  "start_holes_size": 1588968,
+                  "end_holes_size": 1624224,
+                  "allocated": 38804952,
+                  "promoted": 2472904,
+                  "new_space_survived": 0,
+                  "nodes_died_in_new": 510,
+                  "nodes_copied_in_new": 0,
+                  "nodes_promoted": 0,
+                  "promotion_ratio": "6.0%",
+                  "average_survival_ratio": "18.7%",
+                  "promotion_rate": "38.6%",
+                  "new_space_survive_rate": "0.0%",
+                  "new_space_allocation_throughput": 1110581.6,
+                  "new_space_capacity": 67108864,
+                  "old_gen_allocation_limit": 139094976,
+                  "global_allocation_limit": 139095232,
+                  "allocation_throughput": 1361155.7,
+                  "pool_local_chunks": 76,
+                  "pool_shared_chunks": 0,
+                  "pool_total_chunks": 76,
+                  "compaction_speed": 2132447
+                }
+              },
+              "nativeMatchCount": 1
+            }
+          ]
+        },
+        {
+          "label": "wrapper-free-trace-r0-s2-candidate",
+          "mode": "wrapper-free-trace",
+          "variant": "candidate",
+          "outputParity": "PASS",
+          "allActions": {
+            "count": 1100,
+            "medianMs": 1.042250000000081,
+            "meanMs": 1.1149809999999976,
+            "p95Ms": 1.5751000000000204,
+            "maxMs": 7.642899999999827,
+            "over16_67": 0,
+            "over100": 0
+          },
+          "clearSelection": {
+            "count": 100,
+            "medianMs": 0.782950000000028,
+            "meanMs": 0.8347629999999799,
+            "p95Ms": 1.0760999999999967,
+            "maxMs": 3.2350000000001273,
+            "over16_67": 0,
+            "over100": 0
+          },
+          "measuredMajorCount": 5,
+          "nativeMatchedMajorCount": 5,
+          "majorPauseTotalMs": 7.865,
+          "majorPauseMaxMs": 1.661,
+          "heapBeforeMaxBytes": 104661912,
+          "heapAfterMaxBytes": 20675496,
+          "markMaxMs": 0.2,
+          "ephemeronMarkingMaxMs": 0,
+          "ephemeronLinearMaxMs": 0,
+          "majors": [
+            {
+              "startPerfMs": 640.8539500236511,
+              "endPerfMs": 642.4519500732422,
+              "durationMs": 1.598,
+              "type": "finalize incremental marking via task",
+              "beforeBytes": 89146184,
+              "afterBytes": 20160048,
+              "reclaimedBytes": 68986136,
+              "overlapsMeasuredWindow": true,
+              "native": {
+                "line": 27,
+                "nativeTimestampMs": 639,
+                "fields": {
+                  "pause": 1.6,
+                  "mutator": 3.7,
+                  "gc": "mc",
+                  "reduce_memory": 0,
+                  "time_to_safepoint": 0,
+                  "heap.prologue": 0,
+                  "heap.embedder_tracing_epilogue": 0.01,
+                  "heap.epilogue": 0,
+                  "heap.external.prologue": 0,
+                  "heap.external.epilogue": 0,
+                  "heap.external.weak_global_handles": 0,
+                  "clear": 0,
+                  "clear.external_string_table": 0,
+                  "clear.string_forwarding_table": 0,
+                  "clear.weak_global_handles": 0.1,
+                  "clear.dependent_code": 0,
+                  "clear.maps": 0,
+                  "clear.slots_buffer": 0,
+                  "clear.weak_collections": 0,
+                  "clear.weak_lists": 0,
+                  "clear.weak_references_trivial": 0,
+                  "clear.weak_references_non_trivial": 0,
+                  "clear.weak_references_filter_non_trivial": 0,
+                  "clear.js_weak_references": 0,
+                  "clear.join_filter_job": "0.0clear.join_job=0.1",
+                  "weakness_handling": 0,
+                  "complete.sweep_array_buffers": 0,
+                  "complete.sweeping": 0,
+                  "epilogue": 0,
+                  "evacuate": 1,
+                  "evacuate.pin_pages": 0,
+                  "evacuate.candidates": 0,
+                  "evacuate.clean_up": 0,
+                  "evacuate.copy": 0.4,
+                  "evacuate.prologue": 0,
+                  "evacuate.epilogue": 0,
+                  "evacuate.rebalance": 0,
+                  "evacuate.update_pointers": 0.5,
+                  "evacuate.update_pointers.to_new_roots": 0.3,
+                  "evacuate.update_pointers.slots.main": 0.2,
+                  "evacuate.update_pointers.weak": 0,
+                  "finish": 0,
+                  "finish.sweep_array_buffers": 0,
+                  "mark": 0.1,
+                  "mark.finish_incremental": 0,
+                  "mark.roots": 0.2,
+                  "mark.full_closure_parallel": 0,
+                  "mark.full_closure": 0,
+                  "mark.ephemeron.marking": 0,
+                  "mark.ephemeron.linear": 0,
+                  "mark.embedder_prologue": 0,
+                  "mark.embedder_tracing": 0,
+                  "prologue": 0,
+                  "sweep": 0.1,
+                  "sweep.code": 0,
+                  "sweep.map": 0,
+                  "sweep.new": 0,
+                  "sweep.new_lo": 0,
+                  "sweep.old": 0.1,
+                  "sweep.start_jobs": 0,
+                  "incremental": 0.3,
+                  "incremental.finalize.external.prologue": 0,
+                  "incremental.finalize.external.epilogue": 0,
+                  "incremental.layout_change": 0,
+                  "incremental.sweep_array_buffers": 0.2,
+                  "incremental.sweeping": 0,
+                  "incremental.embedder_tracing": 0,
+                  "incremental_wrapper_tracing_longest_step": 0,
+                  "incremental_longest_step": 0.1,
+                  "incremental_steps_count": 41,
+                  "incremental_marking_throughput": 2662025,
+                  "incremental_walltime_duration": 5,
+                  "background.mark": 10.6,
+                  "background.sweep": 0,
+                  "background.evacuate.copy": 0.7,
+                  "background.evacuate.update_pointers": 0.3,
+                  "conservative_stack_scanning": 0,
+                  "start_object_size": 89051592,
+                  "end_object_size": 20160048,
+                  "start_memory_size": 215613440,
+                  "end_memory_size": 187301888,
+                  "start_holes_size": 927280,
+                  "end_holes_size": 651744,
+                  "allocated": 2403136,
+                  "promoted": 2943536,
+                  "new_space_survived": 0,
+                  "nodes_died_in_new": 315,
+                  "nodes_copied_in_new": 0,
+                  "nodes_promoted": 0,
+                  "promotion_ratio": "32.0%",
+                  "average_survival_ratio": "26.7%",
+                  "promotion_rate": "42.7%",
+                  "new_space_survive_rate": "0.0%",
+                  "new_space_allocation_throughput": 959894,
+                  "new_space_capacity": 67108864,
+                  "old_gen_allocation_limit": 144277120,
+                  "global_allocation_limit": 144277376,
+                  "allocation_throughput": 1205383.8,
+                  "pool_local_chunks": 108,
+                  "pool_shared_chunks": 0,
+                  "pool_total_chunks": 108,
+                  "compaction_speed": 2720395.1
+                }
+              },
+              "nativeMatchCount": 1
+            },
+            {
+              "startPerfMs": 931.4359500408173,
+              "endPerfMs": 933.0969500541687,
+              "durationMs": 1.661,
+              "type": "finalize incremental marking via task",
+              "beforeBytes": 90539312,
+              "afterBytes": 20675496,
+              "reclaimedBytes": 69863816,
+              "overlapsMeasuredWindow": true,
+              "native": {
+                "line": 34,
+                "nativeTimestampMs": 929,
+                "fields": {
+                  "pause": 1.6,
+                  "mutator": 4.9,
+                  "gc": "mc",
+                  "reduce_memory": 0,
+                  "time_to_safepoint": 0,
+                  "heap.prologue": 0,
+                  "heap.embedder_tracing_epilogue": 0.01,
+                  "heap.epilogue": 0,
+                  "heap.external.prologue": 0,
+                  "heap.external.epilogue": 0,
+                  "heap.external.weak_global_handles": 0,
+                  "clear": 0,
+                  "clear.external_string_table": 0,
+                  "clear.string_forwarding_table": 0,
+                  "clear.weak_global_handles": 0.1,
+                  "clear.dependent_code": 0,
+                  "clear.maps": 0,
+                  "clear.slots_buffer": 0,
+                  "clear.weak_collections": 0,
+                  "clear.weak_lists": 0,
+                  "clear.weak_references_trivial": 0.1,
+                  "clear.weak_references_non_trivial": 0,
+                  "clear.weak_references_filter_non_trivial": 0,
+                  "clear.js_weak_references": 0,
+                  "clear.join_filter_job": "0.0clear.join_job=0.1",
+                  "weakness_handling": 0,
+                  "complete.sweep_array_buffers": 0,
+                  "complete.sweeping": 0,
+                  "epilogue": 0,
+                  "evacuate": 1,
+                  "evacuate.pin_pages": 0,
+                  "evacuate.candidates": 0,
+                  "evacuate.clean_up": 0,
+                  "evacuate.copy": 0.4,
+                  "evacuate.prologue": 0.1,
+                  "evacuate.epilogue": 0,
+                  "evacuate.rebalance": 0,
+                  "evacuate.update_pointers": 0.5,
+                  "evacuate.update_pointers.to_new_roots": 0.3,
+                  "evacuate.update_pointers.slots.main": 0.2,
+                  "evacuate.update_pointers.weak": 0,
+                  "finish": 0,
+                  "finish.sweep_array_buffers": 0,
+                  "mark": 0.1,
+                  "mark.finish_incremental": 0,
+                  "mark.roots": 0.2,
+                  "mark.full_closure_parallel": 0,
+                  "mark.full_closure": 0,
+                  "mark.ephemeron.marking": 0,
+                  "mark.ephemeron.linear": 0,
+                  "mark.embedder_prologue": 0,
+                  "mark.embedder_tracing": 0,
+                  "prologue": 0,
+                  "sweep": 0.2,
+                  "sweep.code": 0,
+                  "sweep.map": 0,
+                  "sweep.new": 0,
+                  "sweep.new_lo": 0,
+                  "sweep.old": 0.1,
+                  "sweep.start_jobs": 0,
+                  "incremental": 0.3,
+                  "incremental.finalize.external.prologue": 0,
+                  "incremental.finalize.external.epilogue": 0,
+                  "incremental.layout_change": 0,
+                  "incremental.sweep_array_buffers": 0.2,
+                  "incremental.sweeping": 0,
+                  "incremental.embedder_tracing": 0,
+                  "incremental_wrapper_tracing_longest_step": 0,
+                  "incremental_longest_step": 0.1,
+                  "incremental_steps_count": 46,
+                  "incremental_marking_throughput": 2562250,
+                  "incremental_walltime_duration": 6,
+                  "background.mark": 13.2,
+                  "background.sweep": 0,
+                  "background.evacuate.copy": 1.3,
+                  "background.evacuate.update_pointers": 0.5,
+                  "conservative_stack_scanning": 0,
+                  "start_object_size": 90331832,
+                  "end_object_size": 20675496,
+                  "start_memory_size": 217186304,
+                  "end_memory_size": 192282624,
+                  "start_holes_size": 1000992,
+                  "end_holes_size": 581616,
+                  "allocated": 3130096,
+                  "promoted": 3023400,
+                  "new_space_survived": 0,
+                  "nodes_died_in_new": 310,
+                  "nodes_copied_in_new": 0,
+                  "nodes_promoted": 0,
+                  "promotion_ratio": "33.0%",
+                  "average_survival_ratio": "23.0%",
+                  "promotion_rate": "47.5%",
+                  "new_space_survive_rate": "0.0%",
+                  "new_space_allocation_throughput": 1051525.2,
+                  "new_space_capacity": 67108864,
+                  "old_gen_allocation_limit": 147749088,
+                  "global_allocation_limit": 147749344,
+                  "allocation_throughput": 1315773.7,
+                  "pool_local_chunks": 95,
+                  "pool_shared_chunks": 0,
+                  "pool_total_chunks": 95,
+                  "compaction_speed": 2122469.3
+                }
+              },
+              "nativeMatchCount": 1
+            },
+            {
+              "startPerfMs": 1235.3599500656128,
+              "endPerfMs": 1236.7709500789642,
+              "durationMs": 1.411,
+              "type": "finalize incremental marking via task",
+              "beforeBytes": 104661912,
+              "afterBytes": 20659904,
+              "reclaimedBytes": 84002008,
+              "overlapsMeasuredWindow": true,
+              "native": {
+                "line": 41,
+                "nativeTimestampMs": 1233,
+                "fields": {
+                  "pause": 1.4,
+                  "mutator": 15.7,
+                  "gc": "mc",
+                  "reduce_memory": 0,
+                  "time_to_safepoint": 0,
+                  "heap.prologue": 0,
+                  "heap.embedder_tracing_epilogue": 0.01,
+                  "heap.epilogue": 0,
+                  "heap.external.prologue": 0,
+                  "heap.external.epilogue": 0,
+                  "heap.external.weak_global_handles": 0,
+                  "clear": 0,
+                  "clear.external_string_table": 0,
+                  "clear.string_forwarding_table": 0,
+                  "clear.weak_global_handles": 0.1,
+                  "clear.dependent_code": 0,
+                  "clear.maps": 0,
+                  "clear.slots_buffer": 0,
+                  "clear.weak_collections": 0,
+                  "clear.weak_lists": 0,
+                  "clear.weak_references_trivial": 0,
+                  "clear.weak_references_non_trivial": 0,
+                  "clear.weak_references_filter_non_trivial": 0,
+                  "clear.js_weak_references": 0,
+                  "clear.join_filter_job": "0.0clear.join_job=0.1",
+                  "weakness_handling": 0,
+                  "complete.sweep_array_buffers": 0,
+                  "complete.sweeping": 0,
+                  "epilogue": 0,
+                  "evacuate": 0.8,
+                  "evacuate.pin_pages": 0,
+                  "evacuate.candidates": 0,
+                  "evacuate.clean_up": 0,
+                  "evacuate.copy": 0.3,
+                  "evacuate.prologue": 0,
+                  "evacuate.epilogue": 0,
+                  "evacuate.rebalance": 0,
+                  "evacuate.update_pointers": 0.4,
+                  "evacuate.update_pointers.to_new_roots": 0.3,
+                  "evacuate.update_pointers.slots.main": 0.1,
+                  "evacuate.update_pointers.weak": 0,
+                  "finish": 0,
+                  "finish.sweep_array_buffers": 0,
+                  "mark": 0.1,
+                  "mark.finish_incremental": 0,
+                  "mark.roots": 0.1,
+                  "mark.full_closure_parallel": 0,
+                  "mark.full_closure": 0,
+                  "mark.ephemeron.marking": 0,
+                  "mark.ephemeron.linear": 0,
+                  "mark.embedder_prologue": 0,
+                  "mark.embedder_tracing": 0,
+                  "prologue": 0,
+                  "sweep": 0.1,
+                  "sweep.code": 0,
+                  "sweep.map": 0,
+                  "sweep.new": 0,
+                  "sweep.new_lo": 0,
+                  "sweep.old": 0.1,
+                  "sweep.start_jobs": 0,
+                  "incremental": 0.2,
+                  "incremental.finalize.external.prologue": 0,
+                  "incremental.finalize.external.epilogue": 0,
+                  "incremental.layout_change": 0,
+                  "incremental.sweep_array_buffers": 0.2,
+                  "incremental.sweeping": 0,
+                  "incremental.embedder_tracing": 0,
+                  "incremental_wrapper_tracing_longest_step": 0,
+                  "incremental_longest_step": 0,
+                  "incremental_steps_count": 40,
+                  "incremental_marking_throughput": 2511321,
+                  "incremental_walltime_duration": 5,
+                  "background.mark": 10.6,
+                  "background.sweep": 0,
+                  "background.evacuate.copy": 1,
+                  "background.evacuate.update_pointers": 0.3,
+                  "conservative_stack_scanning": 0,
+                  "start_object_size": 104630648,
+                  "end_object_size": 20659904,
+                  "start_memory_size": 218234880,
+                  "end_memory_size": 196476928,
+                  "start_holes_size": 995040,
+                  "end_holes_size": 498384,
+                  "allocated": 17095880,
+                  "promoted": 2963568,
+                  "new_space_survived": 0,
+                  "nodes_died_in_new": 390,
+                  "nodes_copied_in_new": 0,
+                  "nodes_promoted": 0,
+                  "promotion_ratio": "13.7%",
+                  "average_survival_ratio": "21.1%",
+                  "promotion_rate": "46.8%",
+                  "new_space_survive_rate": "0.0%",
+                  "new_space_allocation_throughput": 1077121,
+                  "new_space_capacity": 67108864,
+                  "old_gen_allocation_limit": 149810912,
+                  "global_allocation_limit": 149811168,
+                  "allocation_throughput": 1335450.5,
+                  "pool_local_chunks": 83,
+                  "pool_shared_chunks": 0,
+                  "pool_total_chunks": 83,
+                  "compaction_speed": 2128479.7
+                }
+              },
+              "nativeMatchCount": 1
+            },
+            {
+              "startPerfMs": 1529.8389500379562,
+              "endPerfMs": 1531.4299499988556,
+              "durationMs": 1.591,
+              "type": "finalize incremental marking via task",
+              "beforeBytes": 104106784,
+              "afterBytes": 17187744,
+              "reclaimedBytes": 86919040,
+              "overlapsMeasuredWindow": true,
+              "native": {
+                "line": 48,
+                "nativeTimestampMs": 1528,
+                "fields": {
+                  "pause": 1.5,
+                  "mutator": 15.3,
+                  "gc": "mc",
+                  "reduce_memory": 0,
+                  "time_to_safepoint": 0,
+                  "heap.prologue": 0,
+                  "heap.embedder_tracing_epilogue": 0.01,
+                  "heap.epilogue": 0,
+                  "heap.external.prologue": 0,
+                  "heap.external.epilogue": 0,
+                  "heap.external.weak_global_handles": 0,
+                  "clear": 0,
+                  "clear.external_string_table": 0,
+                  "clear.string_forwarding_table": 0,
+                  "clear.weak_global_handles": 0.1,
+                  "clear.dependent_code": 0,
+                  "clear.maps": 0,
+                  "clear.slots_buffer": 0,
+                  "clear.weak_collections": 0,
+                  "clear.weak_lists": 0,
+                  "clear.weak_references_trivial": 0,
+                  "clear.weak_references_non_trivial": 0,
+                  "clear.weak_references_filter_non_trivial": 0,
+                  "clear.js_weak_references": 0,
+                  "clear.join_filter_job": "0.0clear.join_job=0.0",
+                  "weakness_handling": 0,
+                  "complete.sweep_array_buffers": 0,
+                  "complete.sweeping": 0,
+                  "epilogue": 0,
+                  "evacuate": 0.8,
+                  "evacuate.pin_pages": 0,
+                  "evacuate.candidates": 0,
+                  "evacuate.clean_up": 0,
+                  "evacuate.copy": 0.3,
+                  "evacuate.prologue": 0.1,
+                  "evacuate.epilogue": 0,
+                  "evacuate.rebalance": 0,
+                  "evacuate.update_pointers": 0.4,
+                  "evacuate.update_pointers.to_new_roots": 0.3,
+                  "evacuate.update_pointers.slots.main": 0.1,
+                  "evacuate.update_pointers.weak": 0,
+                  "finish": 0,
+                  "finish.sweep_array_buffers": 0,
+                  "mark": 0.1,
+                  "mark.finish_incremental": 0,
+                  "mark.roots": 0.1,
+                  "mark.full_closure_parallel": 0,
+                  "mark.full_closure": 0,
+                  "mark.ephemeron.marking": 0,
+                  "mark.ephemeron.linear": 0,
+                  "mark.embedder_prologue": 0,
+                  "mark.embedder_tracing": 0,
+                  "prologue": 0,
+                  "sweep": 0.1,
+                  "sweep.code": 0,
+                  "sweep.map": 0,
+                  "sweep.new": 0,
+                  "sweep.new_lo": 0,
+                  "sweep.old": 0.1,
+                  "sweep.start_jobs": 0,
+                  "incremental": 0.2,
+                  "incremental.finalize.external.prologue": 0,
+                  "incremental.finalize.external.epilogue": 0,
+                  "incremental.layout_change": 0,
+                  "incremental.sweep_array_buffers": 0.2,
+                  "incremental.sweeping": 0,
+                  "incremental.embedder_tracing": 0,
+                  "incremental_wrapper_tracing_longest_step": 0,
+                  "incremental_longest_step": 0,
+                  "incremental_steps_count": 25,
+                  "incremental_marking_throughput": 2236170,
+                  "incremental_walltime_duration": 5,
+                  "background.mark": 9.6,
+                  "background.sweep": 0,
+                  "background.evacuate.copy": 0.8,
+                  "background.evacuate.update_pointers": 0.3,
+                  "conservative_stack_scanning": 0,
+                  "start_object_size": 104033792,
+                  "end_object_size": 17187744,
+                  "start_memory_size": 218234880,
+                  "end_memory_size": 198836224,
+                  "start_holes_size": 1090264,
+                  "end_holes_size": 695592,
+                  "allocated": 16043472,
+                  "promoted": 2124608,
+                  "new_space_survived": 0,
+                  "nodes_died_in_new": 385,
+                  "nodes_copied_in_new": 0,
+                  "nodes_promoted": 0,
+                  "promotion_ratio": "10.1%",
+                  "average_survival_ratio": "18.9%",
+                  "promotion_rate": "31.5%",
+                  "new_space_survive_rate": "0.0%",
+                  "new_space_allocation_throughput": 1095090.6,
+                  "new_space_capacity": 67108864,
+                  "old_gen_allocation_limit": 149748608,
+                  "global_allocation_limit": 149748864,
+                  "allocation_throughput": 1358351.8,
+                  "pool_local_chunks": 74,
+                  "pool_shared_chunks": 0,
+                  "pool_total_chunks": 74,
+                  "compaction_speed": 2327084.6
+                }
+              },
+              "nativeMatchCount": 1
+            },
+            {
+              "startPerfMs": 1781.8359500169754,
+              "endPerfMs": 1783.4399499893188,
+              "durationMs": 1.604,
+              "type": "finalize incremental marking via task",
+              "beforeBytes": 90148544,
+              "afterBytes": 17420528,
+              "reclaimedBytes": 72728016,
+              "overlapsMeasuredWindow": true,
+              "native": {
+                "line": 54,
+                "nativeTimestampMs": 1780,
+                "fields": {
+                  "pause": 1.6,
+                  "mutator": 14.4,
+                  "gc": "mc",
+                  "reduce_memory": 0,
+                  "time_to_safepoint": 0,
+                  "heap.prologue": 0,
+                  "heap.embedder_tracing_epilogue": 0.01,
+                  "heap.epilogue": 0,
+                  "heap.external.prologue": 0,
+                  "heap.external.epilogue": 0,
+                  "heap.external.weak_global_handles": 0,
+                  "clear": 0,
+                  "clear.external_string_table": 0,
+                  "clear.string_forwarding_table": 0,
+                  "clear.weak_global_handles": 0.1,
+                  "clear.dependent_code": 0,
+                  "clear.maps": 0,
+                  "clear.slots_buffer": 0,
+                  "clear.weak_collections": 0,
+                  "clear.weak_lists": 0,
+                  "clear.weak_references_trivial": 0,
+                  "clear.weak_references_non_trivial": 0,
+                  "clear.weak_references_filter_non_trivial": 0,
+                  "clear.js_weak_references": 0,
+                  "clear.join_filter_job": "0.0clear.join_job=0.1",
+                  "weakness_handling": 0,
+                  "complete.sweep_array_buffers": 0,
+                  "complete.sweeping": 0,
+                  "epilogue": 0,
+                  "evacuate": 1,
+                  "evacuate.pin_pages": 0,
+                  "evacuate.candidates": 0,
+                  "evacuate.clean_up": 0,
+                  "evacuate.copy": 0.3,
+                  "evacuate.prologue": 0,
+                  "evacuate.epilogue": 0.1,
+                  "evacuate.rebalance": 0,
+                  "evacuate.update_pointers": 0.5,
+                  "evacuate.update_pointers.to_new_roots": 0.2,
+                  "evacuate.update_pointers.slots.main": 0.2,
+                  "evacuate.update_pointers.weak": 0,
+                  "finish": 0,
+                  "finish.sweep_array_buffers": 0,
+                  "mark": 0.2,
+                  "mark.finish_incremental": 0,
+                  "mark.roots": 0.1,
+                  "mark.full_closure_parallel": 0.1,
+                  "mark.full_closure": 0,
+                  "mark.ephemeron.marking": 0,
+                  "mark.ephemeron.linear": 0,
+                  "mark.embedder_prologue": 0,
+                  "mark.embedder_tracing": 0,
+                  "prologue": 0,
+                  "sweep": 0.1,
+                  "sweep.code": 0,
+                  "sweep.map": 0,
+                  "sweep.new": 0,
+                  "sweep.new_lo": 0,
+                  "sweep.old": 0.1,
+                  "sweep.start_jobs": 0,
+                  "incremental": 0.2,
+                  "incremental.finalize.external.prologue": 0,
+                  "incremental.finalize.external.epilogue": 0,
+                  "incremental.layout_change": 0,
+                  "incremental.sweep_array_buffers": 0.2,
+                  "incremental.sweeping": 0,
+                  "incremental.embedder_tracing": 0,
+                  "incremental_wrapper_tracing_longest_step": 0,
+                  "incremental_longest_step": 0.1,
+                  "incremental_steps_count": 29,
+                  "incremental_marking_throughput": 1695522,
+                  "incremental_walltime_duration": 4,
+                  "background.mark": 9.9,
+                  "background.sweep": 0.1,
+                  "background.evacuate.copy": 1.1,
+                  "background.evacuate.update_pointers": 0.8,
+                  "conservative_stack_scanning": 0,
+                  "start_object_size": 89968656,
+                  "end_object_size": 17420528,
+                  "start_memory_size": 205914112,
+                  "end_memory_size": 199360512,
+                  "start_holes_size": 1699296,
+                  "end_holes_size": 1475248,
+                  "allocated": 15944968,
+                  "promoted": 2359016,
+                  "new_space_survived": 0,
+                  "nodes_died_in_new": 385,
+                  "nodes_copied_in_new": 0,
+                  "nodes_promoted": 0,
+                  "promotion_ratio": "11.4%",
+                  "average_survival_ratio": "19.0%",
+                  "promotion_rate": "36.6%",
+                  "new_space_survive_rate": "0.0%",
+                  "new_space_allocation_throughput": 1083413.2,
+                  "new_space_capacity": 67108864,
+                  "old_gen_allocation_limit": 135859840,
+                  "global_allocation_limit": 135860096,
+                  "allocation_throughput": 1342790.5,
+                  "pool_local_chunks": 70,
+                  "pool_shared_chunks": 0,
+                  "pool_total_chunks": 70,
+                  "compaction_speed": 2003791.6
+                }
+              },
+              "nativeMatchCount": 1
+            }
+          ]
+        }
+      ],
+      "boundary": [
+        "Only MajorGC spans overlapping the first-to-last measured action window are included, including gaps between actions; startup, warmup and post-run calibration are excluded.",
+        "NVP stages attach only when pause duration and post-GC heap bytes uniquely match a main-thread trace MajorGC; ambiguous records remain null.",
+        "Before-byte definitions can differ slightly between the trace and NVP; raw fields remain available.",
+        "Stage counters can be nested/parallel and must not be summed as independent elapsed time.",
+        "Removing TestInstance descendant wrapping also changes lookup/allocation cost and GC scheduling. A reduction supports a harness contribution; it does not prove the WeakMap is the sole cause or establish browser behavior."
+      ]
+    }
+  },
+  "browserTrace": [
+    {
+      "arm": "baseline",
+      "input": {
+        "path": "E:\\project\\deepseek_h\\output\\candidate72-browser-20261011\\browser-v3\\trace-500-desktop-0-0-baseline.trace.json",
+        "sha256": "e5617736b36f6d4ca57e9df226f14f0b29758a6912622b51c259b43ab43f507c",
+        "bytes": 45656467
+      },
+      "thresholdMs": 20,
+      "longEventsByName": [
+        {
+          "name": "RunTask",
+          "count": 102,
+          "medianMs": 74.1215,
+          "p95Ms": 99.459,
+          "maxMs": 180.546,
+          "over50ms": 100,
+          "over100ms": 5
+        },
+        {
+          "name": "V8.GCIncrementalMarkingStart",
+          "count": 1,
+          "medianMs": 24.259,
+          "p95Ms": 24.259,
+          "maxMs": 24.259,
+          "over50ms": 0,
+          "over100ms": 0
+        },
+        {
+          "name": "V8.GC_HEAP_ENSURE_SWEEPING_COMPLETED",
+          "count": 1,
+          "medianMs": 23.924,
+          "p95Ms": 23.924,
+          "maxMs": 23.924,
+          "over50ms": 0,
+          "over100ms": 0
+        },
+        {
+          "name": "EventDispatch",
+          "count": 1,
+          "medianMs": 20.854,
+          "p95Ms": 20.854,
+          "maxMs": 20.854,
+          "over50ms": 0,
+          "over100ms": 0
+        },
+        {
+          "name": "FunctionCall",
+          "count": 1,
+          "medianMs": 20.813,
+          "p95Ms": 20.813,
+          "maxMs": 20.813,
+          "over50ms": 0,
+          "over100ms": 0
+        }
+      ],
+      "maxClearMarkMs": 15.466,
+      "scope": "Instrumented trace only; not combined with plain formal timing. Candidate has no parsed matching GC interval >=20ms; no statement that GC is absent."
+    },
+    {
+      "arm": "candidate",
+      "input": {
+        "path": "E:\\project\\deepseek_h\\output\\candidate72-browser-20261011\\browser-v3\\trace-500-desktop-0-1-candidate.trace.json",
+        "sha256": "82467e885b40340a3e52a2ea22d2e51720ce666a02b4d48cefca35a1053ba888",
+        "bytes": 44798606
+      },
+      "thresholdMs": 20,
+      "longEventsByName": [
+        {
+          "name": "RunTask",
+          "count": 101,
+          "medianMs": 48.022,
+          "p95Ms": 62.183,
+          "maxMs": 98.115,
+          "over50ms": 34,
+          "over100ms": 0
+        }
+      ],
+      "maxClearMarkMs": 7.749,
+      "scope": "Instrumented trace only; not combined with plain formal timing. Candidate has no parsed matching GC interval >=20ms; no statement that GC is absent."
+    }
+  ],
+  "checks": {
+    "root": "E:\\project\\deepseek_h\\dsh-hallmark-app",
+    "node": "v24.12.0",
+    "selected": [
+      "test/app-hallmark/listing-prepare.test.ts",
+      "test/app-hallmark/listing-state-index.test.ts",
+      "test/apps-runtime/result-reader.test.ts",
+      "test/apps-runtime/result-reader-string-equivalence.test.ts",
+      "test/apps-runtime/business-model-projection.test.ts",
+      "test/apps-runtime/business-continuation.test.ts",
+      "test/apps-host/business-inspect-projection.test.ts",
+      "test/authoring/result-reader.test.ts",
+      "test/performance/data-transfer.test.ts",
+      "test/performance/data-transfer-byte-copy.test.ts",
+      "test/performance/transfer-guard-regressions.test.ts",
+      "test/plugin-apps/business-operations.test.ts",
+      "test/plugin-apps/business-content-lazy.test.ts",
+      "test/source-preview/preview.test.ts",
+      "test/source-preview/selection-interaction.test.ts",
+      "test/source-preview/formatter-sharing.test.ts",
+      "test/source-preview/formatter-sharing-compatibility.test.ts",
+      "test/collection/collection.test.ts"
+    ],
+    "results": [
+      {
+        "name": "tests",
+        "args": [
+          "--test",
+          "--test-concurrency=1",
+          "test/app-hallmark/listing-prepare.test.ts",
+          "test/app-hallmark/listing-state-index.test.ts",
+          "test/apps-runtime/result-reader.test.ts",
+          "test/apps-runtime/result-reader-string-equivalence.test.ts",
+          "test/apps-runtime/business-model-projection.test.ts",
+          "test/apps-runtime/business-continuation.test.ts",
+          "test/apps-host/business-inspect-projection.test.ts",
+          "test/authoring/result-reader.test.ts",
+          "test/performance/data-transfer.test.ts",
+          "test/performance/data-transfer-byte-copy.test.ts",
+          "test/performance/transfer-guard-regressions.test.ts",
+          "test/plugin-apps/business-operations.test.ts",
+          "test/plugin-apps/business-content-lazy.test.ts",
+          "test/source-preview/preview.test.ts",
+          "test/source-preview/selection-interaction.test.ts",
+          "test/source-preview/formatter-sharing.test.ts",
+          "test/source-preview/formatter-sharing-compatibility.test.ts",
+          "test/collection/collection.test.ts"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 5130,
+        "tests": 97,
+        "pass": 97,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      {
+        "name": "typecheck",
+        "args": [
+          "node_modules/typescript/bin/tsc",
+          "--noEmit"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 7154
+      },
+      {
+        "name": "component-typecheck",
+        "args": [
+          "node_modules/typescript/bin/tsc",
+          "--noEmit",
+          "-p",
+          "component-workspace/collected-products/tsconfig.json"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 989
+      },
+      {
+        "name": "component-build",
+        "args": [
+          "component-workspace/collected-products/node_modules/vite/bin/vite.js",
+          "build",
+          "component-workspace/collected-products"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 5253
+      },
+      {
+        "name": "apps-build",
+        "args": [
+          "scripts/build-apps-bundle.mjs"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 4293
+      },
+      {
+        "name": "plugin-build",
+        "args": [
+          "scripts/build-plugin.mjs"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 293
+      },
+      {
+        "name": "packaged-runtime",
+        "args": [
+          "--test",
+          "test/performance/runtime-artifact-isolation.test.ts"
+        ],
+        "exitCode": 0,
+        "signal": null,
+        "elapsedMs": 979
+      }
+    ]
+  },
+  "evidenceRoot": "E:/project/deepseek_h/output/candidate72-browser-20261011",
+  "evidence": [
+    {
+      "path": "browser-summary.json",
+      "bytes": 225596,
+      "sha256": "93faab4c31bd8fe2be0e231ccef72d6b250b028012875ab4e6e9336c4dcaa511"
+    },
+    {
+      "path": "browser-v3/build-manifest.json",
+      "bytes": 2977,
+      "sha256": "4fbe7d3db38d1fb45658781de15a770b7174d108fd8b059327ebb5222d515cc4"
+    },
+    {
+      "path": "browser-v4/build-manifest.json",
+      "bytes": 2977,
+      "sha256": "f5b89b68dfd5165463490c60d0c017139131d8a255564d90feec87b9def12ed0"
+    },
+    {
+      "path": "browser-v3/final-analysis.json",
+      "bytes": 2616448,
+      "sha256": "f74491f48069b6db643f9cde7f91d0696105ad4d2ba8ae3bd94739eec64745f8"
+    },
+    {
+      "path": "browser-v4/final-analysis.json",
+      "bytes": 55490,
+      "sha256": "a6444298ec52bbf869ac26c2dc80e9766918bd398ffa13bd4a03fe490efd2002"
+    },
+    {
+      "path": "paced-v3-desktop/summary.json",
+      "bytes": 16673,
+      "sha256": "7ad3fcb07e2098920c81edef586ed056ef83aea1395462387f288af66c0a0829"
+    },
+    {
+      "path": "paced-v3-mobile/summary.json",
+      "bytes": 16686,
+      "sha256": "80541dddfd2ae6dac6bb8f928a157f2e70582762ab5cc527841a40b7a9c81851"
+    },
+    {
+      "path": "merged-checks/summary.json",
+      "bytes": 3702,
+      "sha256": "7faa62aad9ebc40ab5bdd7f1a880dc952dc1005140cd036d25eae1099cc4adf8"
+    },
+    {
+      "path": "node-diagnostics/micro-trace-01/micro-trace-r2-s2-candidate.analysis.json",
+      "bytes": 50092,
+      "sha256": "967a86fedc670a057f334172095e2a96eb5bea66c2322f1d4012c1c350996de2"
+    },
+    {
+      "path": "node-diagnostics/wrapper-free-01/wrapper-free-gc-summary.json",
+      "bytes": 71680,
+      "sha256": "c7df17232c4c7abe609f59b8e2ad35b1ccc9e0b021ac7d51432c5fbdb5f292c6"
+    },
+    {
+      "path": "browser-v3/functional-48-desktop-raw.json",
+      "bytes": 5770360,
+      "sha256": "360241985e0a52570a8d1c2de27bb44a3a55ba21183e909f2e74722820654da5"
+    },
+    {
+      "path": "browser-v3/functional-48-mobile-raw.json",
+      "bytes": 5770402,
+      "sha256": "49172fd9336943d422211847006956d4dbfab4e5485179f27673241cdeb03131"
+    },
+    {
+      "path": "browser-v3/functional-500-desktop-raw.json",
+      "bytes": 38211228,
+      "sha256": "963106929698011d9e550eea61c37f67b9b7cb39936071013b5c72d16b3dd2be"
+    },
+    {
+      "path": "browser-v3/functional-500-mobile-raw.json",
+      "bytes": 38211222,
+      "sha256": "52a6bce301448cd265dd2b9124595fe6ea2e5c758807808512fd3767f7a2d91b"
+    },
+    {
+      "path": "browser-v3/timing-48-desktop-raw.json",
+      "bytes": 14179381,
+      "sha256": "7b23fb53c94489b903eef06980367547896349ad56cb75c251fbb9d38f466fa3"
+    },
+    {
+      "path": "browser-v3/timing-48-mobile-raw.json",
+      "bytes": 14084936,
+      "sha256": "97ba618702f09efeb9f75634182d82a0ec11ed25745c2682fd7c14f17a8e25b7"
+    },
+    {
+      "path": "browser-v3/timing-500-desktop-raw.json",
+      "bytes": 35849428,
+      "sha256": "75945c7b8c640a99d58f4e4f236950c6bc27b0d184644f1ae2c36be093a54867"
+    },
+    {
+      "path": "browser-v3/timing-500-mobile-raw.json",
+      "bytes": 21246673,
+      "sha256": "4efb461805a5b34478181e83c735cd0079ebddee9e62ff3ab23a00c5fb85b819"
+    },
+    {
+      "path": "browser-v3/trace-500-desktop-raw.json",
+      "bytes": 3595999,
+      "sha256": "d7d13c669bd476109d08059fbc60ced962f330fea81c6ef8913a271f516c74fa"
+    },
+    {
+      "path": "browser-v4/functional-48-desktop-raw.json",
+      "bytes": 5772767,
+      "sha256": "9055dd03ca0a23d7825de804f5713175034556e8c1a98ba3f821456c740791de"
+    },
+    {
+      "path": "browser-v4/functional-48-mobile-raw.json",
+      "bytes": 5772778,
+      "sha256": "08d553bd6b4b6ec8f2feaabb00bce601778809c3ef3ff8bb4aaeab1a95d7642f"
+    },
+    {
+      "path": "browser-v4/functional-500-desktop-raw.json",
+      "bytes": 38213712,
+      "sha256": "e9eb93d4ad7821adda0ffef63dad10d112ef3be822bda5a6098c8b292c66685b"
+    },
+    {
+      "path": "browser-v4/functional-500-mobile-raw.json",
+      "bytes": 38213569,
+      "sha256": "f613efe84f1153d7bfa74777187ac4284aad19ce274b2b56c8cf73b6c3951d50"
+    },
+    {
+      "path": "paced-v3-desktop/paced-500-desktop-raw.json",
+      "bytes": 24465800,
+      "sha256": "2265e2948d9741927fc3607fee406e51bb6dd44497edaeb1146885b2bd953cc6"
+    },
+    {
+      "path": "paced-v3-mobile/paced-500-mobile-raw.json",
+      "bytes": 24465156,
+      "sha256": "c5140c78c18ba7fe4675ac76ddc5b126b9744a532d4e61eedee5d12da74e928d"
+    }
+  ],
+  "originalBundles": [
+    {
+      "path": "E:\\project\\deepseek_h\\output\\candidate72-validation-20261011\\results\\frontend-supplement\\collected-baseline.mjs",
+      "bytes": 1231617,
+      "sha256": "2c030d242fb9b52fbe6c65d20fa33d613275631e468c99908a83b07765d12bb1"
+    },
+    {
+      "path": "E:\\project\\deepseek_h\\output\\candidate72-validation-20261011\\results\\frontend-supplement\\collected-candidate.mjs",
+      "bytes": 1232237,
+      "sha256": "f9fccf20f9f79d2f04634aac1539d9693cba221c1b6633b762b8d6288c58f1df"
+    }
+  ],
+  "limitations": [
+    "The original 212.980/198.862ms actions were untraced; the 185.1338ms recurrence is directly attributed, not a retroactive breakdown of the old events.",
+    "Wrapper-free private-Fiber diagnostics alter lookup/allocation and GC scheduling and support a harness contribution; they do not establish a unique WeakMap or Intl-finalizer cause.",
+    "Formal event-to-layout timing uses flushSync and forced layout; 11 actions share a turn followed by two rAF callbacks. Not INP or physical display latency.",
+    "CDP TaskDuration includes in-page audit/snapshot/serialization work in its interval.",
+    "Paced mobile event-to-second-rAF medians increased about 0.2ms and p95 about 0.1ms; no outliers removed.",
+    "Natural instant-invalid-image outcomes differ; controlled-image parity does not erase this. Image behavior implementation was not changed.",
+    "Synthetic local inputs and local Chrome only; no production deployment, live merchant or remote image-network performance measurement."
+  ]
+}

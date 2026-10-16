@@ -1,3 +1,4 @@
+import {uiProduct} from '../real-data/ui-scenarios.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -29,11 +30,11 @@ test('pending activation loses authority after target switch; old finally cannot
   const gate=new MutationGate();let busy=false;const old=gate.begin();busy=true;gate.reset();busy=false;assert.equal(old.controller.signal.aborted,true);assert.equal(gate.current(old),false);const next=gate.begin();busy=true;if(gate.current(old))busy=false;assert.equal(busy,true);assert.equal(gate.current(next),true);gate.reset();busy=false;assert.equal(gate.current(next),false);assert.equal(busy,false);const later=gate.begin();assert.equal(gate.current(later),true);
 });
 test('fieldMap/nested source paths are real and prototype traversal is blocked',()=>{
-  const row={offer_id:'oz-12',profit:{margin:.173},referenceProfit:{costMissing:true}};const binding={id:'b',datasetKey:'profit:1',fieldMap:{sku:'offer_id',margin:'profit.margin'}};
+  const row=uiProduct({offer_id:'oz-12',profit:{margin:.173},referenceProfit:{costMissing:true}},16);const binding={id:'b',datasetKey:'profit:1',fieldMap:{sku:'offer_id',margin:'profit.margin'}};
   assert.equal(mappedValue(row,'sku',binding),'oz-12');assert.equal(mappedValue(row,'margin',binding),.173);assert.equal(missingCost(row),true);assert.equal(valueAt(row,'__proto__.polluted'),undefined);assert.equal(valueAt(row,'constructor.name'),undefined);assert.equal(formatValue(mappedValue(row,'margin',binding),'percent'),'17.30%');
 });
 test('real sortable tables are stable, null and missing-cost profits stay last both directions',()=>{
-  const rows=[{id:'a',margin:.2},{id:'b',margin:.1},{id:'unknown',margin:0,costMissing:true},{id:'null',margin:null},{id:'tie',margin:.2}];
+  const rows=[uiProduct({id:'a',margin:.2},4),uiProduct({id:'b',margin:.1},6),uiProduct({id:'unknown',margin:0,costMissing:true},20),uiProduct({id:'null',margin:null},40),uiProduct({id:'tie',margin:.2},7)];
   assert.deepEqual(sortRows(rows,{field:'margin',direction:'desc'}).map(r=>r.id),['a','tie','b','unknown','null']);assert.deepEqual(sortRows(rows,{field:'margin',direction:'asc'}).map(r=>r.id),['b','a','tie','unknown','null']);assert.equal(rows[0].id,'a');
   const mapped=sortRows([{priceMinor:50},{priceMinor:20}],{field:'price',direction:'asc'},{id:'b',fieldMap:{price:'priceMinor'},datasetKey:'store_products:1'});assert.equal(mapped[0].priceMinor,20);
 });
@@ -73,13 +74,16 @@ test('registry contains only real Hallmark metadata; adding another name cannot 
 test('health is a narrow read-only DTO and never inferred from active chat or credentials',async()=>{
   const calls:string[]=[];const fetcher=(async(url:unknown)=>{calls.push(String(url));return new Response(JSON.stringify({serviceStatus:'ok',hallmarkStatus:'unavailable',ignoredSecret:'not-returned'}));}) as typeof fetch;const value=await new HallmarkBridge('',fetcher).health();assert.deepEqual(value,{serviceStatus:'ok',hallmarkStatus:'unavailable'});assert.equal(calls[0],'/api/hallmark-app?resource=health');
 });
-test('primary UI has an always-visible application rail, no modal and no initial selected app',()=>{
-  const page=readFileSync(new URL('../../packages/dsh-plugin/client/page.tsx',import.meta.url),'utf8');const plugin=readFileSync(new URL('../../packages/dsh-plugin/client/plugin.ts',import.meta.url),'utf8');const entry=readFileSync(new URL('../../packages/dsh-plugin/client/index.tsx',import.meta.url),'utf8');assert.ok(page.includes('hm-directory-rail hm-app-rail'));assert.ok(page.includes('useState<string|undefined>()'));assert.ok(page.includes('选择应用进入工作台'));assert.ok(!page.includes('<dialog'));assert.ok(!page.includes('showModal('));assert.ok(!plugin.includes('shell.overlay'));assert.ok(!entry.includes('selectPanel(null)'));assert.ok(entry.includes('workspace.openSession(sessionId)'));
+// Source guards are architectural checks; rendered state is covered in application-surfaces.test.ts.
+test('application entry keeps non-modal integration and workspace-navigation source guards',()=>{
+  const page=readFileSync(new URL('../../packages/dsh-plugin/client/page.tsx',import.meta.url),'utf8');const plugin=readFileSync(new URL('../../packages/dsh-plugin/client/plugin.ts',import.meta.url),'utf8');const entry=readFileSync(new URL('../../packages/dsh-plugin/client/index.tsx',import.meta.url),'utf8');assert.ok(!page.includes('<dialog'));assert.ok(!page.includes('showModal('));assert.ok(!plugin.includes('shell.overlay'));assert.ok(!entry.includes('selectPanel(null)'));assert.ok(entry.includes('workspace.openSession(sessionId)'));
 });
 test('workbench preview/read/save are session-independent but chat activation requires exact session',async()=>{
   const bodies:any[]=[];const fetcher=(async(_url:unknown,init:RequestInit)=>{if(init.body)bodies.push(JSON.parse(String(init.body)));return new Response(JSON.stringify({id:'v'}));}) as typeof fetch;const bridge=new HallmarkBridge('',fetcher);const draft=newDraft();await bridge.preview(draft);await bridge.saveComponent('v','Title');await bridge.saveTemplate('v','Template');assert.deepEqual(bodies.map(value=>value.action),['preview','saveComponent','saveTemplate']);assert.ok(bodies.every(value=>!Object.hasOwn(value,'sessionId')&&!Object.hasOwn(value,'userRequest')));await assert.rejects(bridge.activate(),/当前会话/);
 });
+// Actual tab roles and paging labels are covered by test/apps-components/product-image-loading.test.ts;
+// keep those contracts independent of JSX spelling or where the label is declared.
 test('source has native React seven-widget interaction and no HTML/raw-result/automatic-save escape hatch',()=>{
   const renderer=readFileSync(new URL('../../packages/dsh-plugin/client/renderer.tsx',import.meta.url),'utf8')+readFileSync(new URL('../../packages/dsh-plugin/client/widgets/product-table.tsx',import.meta.url),'utf8');const entry=readFileSync(new URL('../../packages/dsh-plugin/client/index.tsx',import.meta.url),'utf8');const api=readFileSync(new URL('../../packages/dsh-plugin/client/api.ts',import.meta.url),'utf8');
-  for(const type of ['stat_card','table','bar_chart','line_chart','product_card','status_badge','text'])assert.ok(renderer.includes(`'${type}'`));assert.ok(renderer.includes('aria-sort'));assert.ok(renderer.includes('role="tablist"'));assert.ok(renderer.includes('ArrowLeft'));assert.ok(renderer.includes('下一页'));assert.ok(!renderer.includes('dangerouslySetInnerHTML'));assert.ok(!entry.includes('block.result'));assert.ok(!api.includes('save_component'));assert.ok(!api.includes('save_entry'));assert.ok(!api.includes('update_price'));assert.ok(!api.includes('update_stock'));
+  for(const type of ['stat_card','table','bar_chart','line_chart','product_card','status_badge','text'])assert.ok(renderer.includes(`'${type}'`));assert.ok(renderer.includes('aria-sort'));assert.ok(renderer.includes('ArrowLeft'));assert.ok(!renderer.includes('dangerouslySetInnerHTML'));assert.ok(!entry.includes('block.result'));assert.ok(!api.includes('save_component'));assert.ok(!api.includes('save_entry'));assert.ok(!api.includes('update_price'));assert.ok(!api.includes('update_stock'));
 });

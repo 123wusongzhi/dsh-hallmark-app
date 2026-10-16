@@ -1,0 +1,58 @@
+{
+  "status": "PASS",
+  "blockingFindings": [],
+  "reviewedBuildScriptSha256": "edb260f4ddd74503c46d2e20cf1646f3b9a44269287e11444da5620161f95dea",
+  "archiveSha256": "c6560e9d43ecd4ae2157d18ed5f077da4d392b1d2e043d18d3a4b9394a4507ab",
+  "runtimeSha256": "28f4924a4173b595b0e015f2f5e3b86c62c18e22cd74c41173ec7f714b6bf11d",
+  "frozenDependency": {
+    "name": "zod",
+    "version": "4.3.6",
+    "jsFiles": 76,
+    "allVendoredFiles": 78,
+    "staticRelativeEdges": 180,
+    "javascriptBytes": 536571,
+    "bareDependencies": 0,
+    "dynamicImportsOrRequires": 0,
+    "missingTargetsOrEscapes": 0,
+    "packageAndLicense": "Byte-identical root package.json and MIT LICENSE",
+    "allCopiedFilesByteIdentical": true,
+    "vendorTreeSha256": "f665db8c0459be9f01e6e6b32231a5e5b0237b487bf581c361ced4163f1bf591"
+  },
+  "packedArtifact": {
+    "allManifestFileHashesVerified": 143,
+    "vendorFileSetExact": true,
+    "vendorBytesMatchFrozenSource": true,
+    "containsNodeModules": false
+  },
+  "runtimeOutput": {
+    "baselineBytes": 1344059,
+    "vendoredBytes": 1344095,
+    "byteIdenticalExceptTwoZodImportSpecifiers": true,
+    "nonBuiltinImports": [
+      "./vendor/zod/index.js"
+    ]
+  },
+  "guards": {
+    "externalGuardCasesPassed": 10,
+    "windowsContainmentCasesPassed": 6,
+    "windowsScope": "path.win32 semantics on Linux; native Windows execution not run"
+  },
+  "strictIsolation": {
+    "passed": true,
+    "node": "v24.19.0",
+    "temporaryCwdAndHome": true,
+    "nodePathAndNodeOptionsUnset": true,
+    "noAncestorDependencies": true,
+    "loadedModuleResolutionRestrictedToExtractedArtifactAndHarness": true,
+    "networkAttempts": 0,
+    "dependencyProvisioning": null,
+    "validation": "probe/validation.json"
+  },
+  "parityComparison": "parity-comparison.json",
+  "limitations": [
+    "No performance experiments run in independent review. Probe resource measurements are functional-validation diagnostics only.",
+    "No native Windows execution.",
+    "Full typecheck/test suite owned by parent."
+  ],
+  "productionChangesByReviewer": false
+}

@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {readFileSync,writeFileSync} from 'node:fs';
+const [aFile,bFile,out]=process.argv.slice(2),a=JSON.parse(readFileSync(aFile)),b=JSON.parse(readFileSync(bFile));
+assert.deepEqual(a.turns,b.turns,'All pre-edge Runtime responses and scheduler states');
+assert.deepEqual(a.edgeResult,b.edgeResult,'Repair, missing archive, outage fallback and disk-reopen responses');
+assert.deepEqual(a.schemaSnapshot,b.schemaSnapshot,'Current tables and indexes');
+assert.deepEqual(a.tableSnapshot,b.tableSnapshot,'All SQL metadata converges after the explicit forced refresh');
+assert.ok(a.edgeResult.upstreamAttempts>0,'Only locally simulated adapter outages are exercised');
+assert.equal(a.edgeResult.restartUpstreamAttempts,0);assert.equal(b.edgeResult.restartUpstreamAttempts,0);
+assert.equal(b.snapshotReads,0);
+const result={status:'PASS',grain:a.grain,n:a.n,allTablesExactlyEqual:true,currentSchemaExactlyEqual:true,edgeResponsesCompared:['repaired','missing','failed','restart'],restartUpstreamAttempts:0,localOutageAttempts:a.edgeResult.upstreamAttempts};
+if(out)writeFileSync(out,JSON.stringify(result,null,2));console.log(JSON.stringify(result));

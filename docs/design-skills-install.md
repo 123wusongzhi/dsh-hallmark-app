@@ -1,5 +1,13 @@
 # DSH 组件设计技能安装与使用
 
+## 当前项目技能交付（2026-10-10）
+
+项目维护的两项技能为 `hallmark-component-design` 与 `ozon-listing`。构建包将两者及引用文件放入 `skills/`，用随包 `lib/install-skills.ps1 -LocalOnly` 安装到实际 `<DSH_HOME>/skills`；未配置 DSH_HOME 时为 `%USERPROFILE%/.dsh/skills`。默认桌面安装器读取已经验证的同版本发行包技能。`-ValidateOnly` 只检查，不写入。
+
+官方 `dsh-skill-filesystem` 从该目录发现技能，`dsh-tool-skill` 在下一 Agent 步骤公布可用目录，并通过原生 `skill` 工具按需读取正文；`/ozon-listing` 保持用户直接调用。插件内的 `skills/` 是交付来源，不是另建一个技能发现服务。安装保留所有其他技能，仅备份并更新上述两项项目技能。详情见 [Ozon 经营操作区](ozon-business-operations.md)。
+
+下文的候选版本与验收数量是历史记录，不表示当前版本完成相同现场验收。
+
 正式验收为**35 PASS/0 FAIL/45 NOT_RUN**，原35张PASS绑定10/11/12/14/15，不迁17。candidate.17已官方同名16→17覆盖安装，812/812、145输入/33产物冻结，独立包32检查/17负例及官方ValidateOnly通过，20文件源码窄复核闭合；实际Runtime17/schema4/健康/Hallmark与原2755行历史前缀核验。局部兼容使用私有新归档和模拟ready，不代签原Bill/Native。模型读取技能、原侧栏点击/失败重开与设计质量仍待验，四门禁NOT_ACCEPTED、R未签，见[A.2执行页](apps-a2-execution.md)。
 
 新增TST-046/047的完整最低本地FIXTURE/实际命令已独立V通过，绑定candidate.15；原33卡保留各自10/11/12/14身份，6项旧source/build材料没有原归档执行hash链，不补原声明、不迁移15，具体I/V/hash与边界见[A.2执行记录](apps-a2-execution.md)。
@@ -20,7 +28,7 @@
 .\scripts\install-design-skills.ps1 -LocalOnly -DestinationDirectory '<已核实的当前 DSH skills 绝对目录>'
 ```
 
-默认目录为用户配置目录下 `.dsh/skills`；当前 DSH 使用其他 profile/home 时先核实，不把默认值当目标证据。`-LocalOnly` 只安装/更新项目自己的 hallmark-component-design。脚本检查 frontmatter、逐文件 hash，并在替换前备份/校验旧版；未变文件保持不动。不要为了更新项目适配技能重装或覆盖已修改的 Impeccable、shadcn、json-render 上游技能。
+默认目录遵循 DSH_HOME，未配置时为用户配置目录下 `.dsh/skills`；当前 DSH 使用其他 profile/home 时先核实，不把默认值当目标证据。`-LocalOnly` 只安装/更新项目自己的 hallmark-component-design 与 ozon-listing。脚本检查 frontmatter、逐文件 hash，并在替换前备份/校验旧版；未变文件保持不动。不要为了更新项目适配技能重装或覆盖已修改的 Impeccable、shadcn、json-render 上游技能。
 
 省略 LocalOnly 的五技能安装需已准备好并核实上游 staging；它是初始安装/固定来源流程，不是本轮默认升级步骤。`artifacts/design-skills-backups/` 和 `evidence/apps-a2-20261007/design-skills/` 为本机私有恢复/验证材料，不是公共下载链接。技能安装不会更新插件、启动 Runtime、迁移数据或擅自重启 DSH。
 
