@@ -25,4 +25,16 @@ test('actual packaged Runtime validates pricing and packaging without checkout d
   assert.equal(result.parity.invalidPackaging.length, 10);
   assert.equal(result.parity.packagingResolved.weightGrams, Math.round(recordedPackaging.weightKg*1000)*3);
   assert.equal(result.parity.profit.data.products[0].profit.actualMinor, recordedSalesProduct.pricing.sellerMinor);
+  const identities = result.parity.profitIdentities.map((row: any) => row.productId);
+  assert.ok(identities.includes(1));
+  assert.ok(identities.includes('1'));
+  assert.ok(identities.includes('9007199254740993'), 'decimal string IDs retain precision beyond safe numeric range');
+  for (const row of result.parity.profitIdentities) {
+    assert.equal(row.profit.status, 'ok');
+    assert.equal(String(row.profit.data.products[0].productId), String(row.productId));
+    const profit = row.profit.data.products[0].profit;
+    assert.equal(profit.actualMinor, recordedSalesProduct.pricing.sellerMinor);
+    assert.equal(profit.pricingQuote.planId, 'low');
+    assert.equal(profit.packageGrams, recordedSalesProduct.declaredWeight.grams);
+  }
 });

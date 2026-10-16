@@ -1,6 +1,8 @@
-# 测试与 UX 问题优化报告：#76–86
+# 测试与 UX 问题优化报告：#76–86 及打包一致性复核
 
 日期：2026-10-16（北京时间）。首批开发基线：`e36a9a408467b1d6cac6f1654363534c79b2e027`；提交目标：`fix/agent-binding-preview`。按用户要求先独立复现，再评估收益、参考方案并做最小修正；本批还接续处理了运行中新建的 #82–86。#76–85 已在 `266d1ba5a302705f219a3365e9c6bb3fa0190c6e` 发布，#86 以该提交为独立复现基线。没有合并对方整条测试分支。
+
+原遗留的打包探针失败已在后续复核修复。最新独立树 Node 24 默认范围 2313/2314，仍有 1 项目录端口 EACCES，不能称全仓全绿；具体先红后绿、兼容性与范围见“打包一致性后续复核”，下文旧轮次结果保留原时点。
 
 ## 优化了什么
 
@@ -64,9 +66,50 @@
 
 两工作区两版类型检查、正式来源审计均通过，测试失败/跳过/取消/todo 均为 0。独立树 1328、主工作区 1361 个验证输入前后 SHA 完全一致。主工作区合入时 118 个已有工作文件逐字节不变；本次只提交 settings 模块、已有测试和本报告三文件，不带入用户业务改动。测试后仅补入本段结果文档，生产与测试字节保持已验证版本。
 
-本项没有重复默认全仓、SDK 生成或 bundle 构建；本次新增逻辑没有新模块依赖，组合组保留原 32 项 SDK 构建回归，且不把 #85 全仓结果沿用到 #86。既有 packaged parity 失败仍未修复。全部网络隔离，无真实商家或凭据写入，未做这批 UX 的浏览器视觉、原生桌面或商家端到端验收。
+本项没有重复默认全仓、SDK 生成或 bundle 构建；本次新增逻辑没有新模块依赖，组合组保留原 32 项 SDK 构建回归，且不把 #85 全仓结果沿用到 #86。截至 #86 整合时 packaged parity 失败尚未处理，后续修复见下节。全部网络隔离，无真实商家或凭据写入，未做这批 UX 的浏览器视觉、原生桌面或商家端到端验收。
 
 本项完整原始输出、前后探针、包装先红/后绿、输入 SHA、主工作区保护及发布记录位于 artifacts/ux-issue86-20261016/。
+
+## 打包一致性后续复核（开发基线 08a8ff5）
+
+按用户要求独立复现并判断实际影响后处理。原用例 actual packaged Runtime validates pricing and packaging without checkout dependencies 在 Node 22.18.0、24.12.0 各 1 项失败、0 跳过：probe 把公开脱敏 productId=test-reference-2 转 Number 得到 NaN，再被 canonical JSON 的 $.productId: expected JSON value 正确拒绝，尚未进入利润业务读取。这会阻断构建后的隔离制品验收与默认测试，但不是 npm build 无法生成归档，也没有证据表明已安装 Runtime 的利润计算损坏。
+
+修复限定为 parity-probe.mjs 和原 runtime-artifact-isolation.test.ts：合法正安全整数和合法正十进制文本保留原类型/精度；非平台协议的脱敏 ID 在探针内显式投影为本地控制值 1。本地 catalog、商品、价格、属性响应使用同一身份，取消 productId 的 Number 强转。原录制采购、售价、币种、SKU、重量、状态等事实不变；未修改 fixture、冻结 corpus、生产 Runtime、业务校验或数据来源分类。
+
+同一真实导出的 Runtime 分别运行数值 1、文本 1、长文本 9007199254740993，使用独立店铺、独立规则和唯一 invocation，回调按请求的店铺查对应 fixture，避免跨店闭包或缓存假通过。三个输入实际返回文本 1、文本 1、原长文本，售价均为 4497 分、计费重量 100 克、物流方案 low。长文本没有舍入。保留原 profit/gatewayCalls 字段，并保留每个子场景的完整响应。
+
+原 15 个非法定价配置、11 组报价、10 个非法包装输入、CAS/批量回滚/重量优先级、6 次 Notes 操作、归档哈希、零外网和不依赖 checkout/node_modules 等断言均保留；只在原用例补充身份兼容断言，没有新增测试文件或 skip。这三个是同一用例内的真实子场景，不虚增 Node 测试数量。
+
+| 对照与验证范围 | Node 22.18.0 | Node 24.12.0 |
+| --- | --- | --- |
+| 同一原 candidate.76 归档、原 probe/test | 0/1，1 失败、0 跳过 | 0/1，1 失败、0 跳过 |
+| 同一归档、最终 probe/test | 1/1，0 失败/跳过 | 1/1，0 失败/跳过 |
+| 原归档独立 validateArtifact 全量输出 | PASS | PASS |
+| 独立工作树重新构建后的相关 8 文件 | 133/133 | 包含在下行默认范围中 |
+| 独立工作树重新构建后的默认 test/**/*.test.ts | 未重复默认全仓 | 2313/2314，1 项目录端口 EACCES，跳过/取消 0 |
+| 主工作区现有 candidate.98 归档及相关 8 文件 | 158/158 | 158/158 |
+
+打包用例在默认范围也实际通过（ok 1841）。默认范围唯一剩余失败是 directory-draft-etag.test.ts 启动 HTTP fixture 时 listen EACCES: permission denied 127.0.0.1:53396，发生在业务断言之前，且该用例先于打包用例执行。未修改该文件，单独重跑 Node22/24 各 2/2，原失败 TAP 保留，不能用重跑通过替代本轮 2313/2314 的完整结果。事后读取的 Windows excluded-port 表不包含 53396，不能确定具体拒绝来源或声称命中排除段；没有更改系统端口/权限。主区已有相关端口重试候选仍为用户 WIP，本次未导入或替其声明修复。
+
+两版原归档完整 parity 对象深等，包括所有响应、SQLite schema 和表行；SHA-256 为 2c0274f358c24d57ab6581d3a44cdf8051f2afdabfebbc4d33035c0dc442d364。没有删字段或添加输出 normalization，也未把新增多身份输出与历史单身份 JSON 直接比较。gatewayCalls 是各店铺累计记录，不能据此声称请求数减少。
+
+对照阶段原归档 SHA 为 d88f45b72a8c1677a517d19251dc55d6b52aa130574f36719aec338a2cb896f4，冻结 corpus SHA 为 9c45a56450fee1ec58438852bc991046965c8d1d91958094f5b59c038cf85a23，两者在同归档先红后绿阶段未变。之后重新构建独立树得到归档 SHA 3682dad9b1ffe654e7e26ae5037c9fed791dbcea6b7f6e280d5b2e3b67dce202；其 lib/runtime.js SHA 仍为 f8f0dc510573ba9c172a32dcf83e8bd4d0e282f1cc8fe1614502070cf78dd148，与原归档 Runtime 字节完全一致。新归档已经进入上表相关/默认测试，不能用旧包通过代替新包验证。
+
+两工作区两版类型检查和正式数据来源审计均通过；本次独立树 1331、主工作区 1368 个验证输入在各自最终运行前后 SHA 一致。测试后仅补入结果文档，已验证脚本、测试和归档不变。默认范围采用 concurrency=1 和 TAP 报告，没有过滤用例。此前 #85 的 2290/2291 是历史结果；#86 后本来新增了 23 项测试，不把本轮总数变化误算成该探针新增测试。
+
+主区此前已有局部 alias-1 候选，本次经独立复现后保留这个有效思路，扩展为合法原 ID 保留和三种协议表示验证；只整合本任务脚本/原测试，原候选字节另行归档。整合时 124 个既有工作文件中，除这一任务重叠脚本外其余 123 个 SHA 不变。主区复用已有 candidate.98 归档，不运行该区构建、不覆盖其版本或业务候选；没有宣称所有主区 WIP 已重新打包或全仓验收。只提交探针、原测试及本报告。
+
+中间增测曾暴露探针准备错误：重复 invocation 被 Runtime 拒绝 INVOCATION_CONFLICT；跨店 mock 闭包指向当前 ID 被拒 PRODUCT_IDENTITY_MISMATCH。两次失败日志保留，修复的是探针作用域与调用身份，没有放宽 Runtime 守卫；上表采用最终修正结果。
+
+可复核命令（准备好项目依赖及当前冻结 corpus 后，分别使用对应 Node）：
+
+    node scripts/build-apps-bundle.mjs
+    node --test --test-reporter=tap test/performance/runtime-artifact-isolation.test.ts
+    node --test --test-reporter=tap --test-concurrency=1 "test/**/*.test.ts"
+    node node_modules/typescript/bin/tsc --noEmit
+    node scripts/audit-real-test-data.mjs
+
+完整先红后绿 TAP、全量 parity/isolation/归档 manifest、默认测试、主区合入与 SHA 证据位于 artifacts/packaged-parity-20261016/。本项不涉及桌面安装或真实商家写入，未用私人语料或真实凭据验收，也不声称修复历史 provider/source-flow 间歇问题。
 
 ## 保留的限制与交付
 
@@ -78,7 +121,7 @@
 
 - actual packaged Runtime validates pricing and packaging without checkout dependencies
 
-packaged parity 的已记录错误为公开字符串 productId 转 Number 后产生 NaN，canonicalJson 报 $.productId: expected JSON value；该文件未作为本任务修改或提交。用户在主工作区已有相关候选，本次未导入或替其声明修复。历史 provider association 的 on_sale/unknown 间歇失败、source-flow HTTP 503 等记录也没有在本任务修复；即使某次未再出现，也不表示已解决。#84 是 UI 加载状态问题，与 provider 状态判断不同。不能把本批 UI 定向通过写成全仓全绿。
+packaged parity 在 #76–86 阶段的错误为公开字符串 productId 转 Number 后产生 NaN，canonicalJson 报 $.productId: expected JSON value；当时没有修改该文件或替主区候选声明修复。此次后续复核已修正探针输入，保留生产 JSON 校验与冻结记录，完整结果见上节。历史 provider association 的 on_sale/unknown 间歇失败、source-flow HTTP 503 等记录也没有在本任务修复；即使某次未再出现，也不表示已解决。#84 是 UI 加载状态问题，与 provider 状态判断不同。不能把本批 UI 定向通过写成全仓全绿。
 
 首次出现的 helper、打包 stub、准备器语法错误和新增错误请求数假设均单独保留，不计为产品复现；修正 harness 后才记录真正失败。没有对实际生产源码做临时 mutation；原基线对照采用只读打包或先复现再永久修复。
 
