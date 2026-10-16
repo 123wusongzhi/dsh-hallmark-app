@@ -13,7 +13,7 @@ import {create,act} from 'react-test-renderer';
 import assert from 'node:assert/strict';
 import {BusinessSettings} from './packages/plugin-apps/client/business-settings.tsx';
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
-const originalFetch=globalThis.fetch,requests=[],reads=[];let tree,holdStoreSave=false,releaseStoreSave;
+const originalFetch=globalThis.fetch,requests=[],reads=[];let tree,holdStoreSave=false,releaseStoreSave,holdRead=false,releaseRead,failPricingSave=false;
 const store=(id,name)=>({...uiStore({},id==='bill'?0:1),id,name,platform:'ozon',sourceConnectionId:'board',revision:3,credentialRevision:1,hasCredentials:true,enabled:true,currency:'CNY',createdAt:'2026-10-10',updatedAt:'2026-10-10'});
 let stores=[store('bill','Bill 店铺'),store('helen','Helen 店铺')];
 // Pricing ranges and revision transitions are explicit derivatives of the captured pricing settings.
@@ -26,7 +26,9 @@ globalThis.fetch=async(url,options)=>{
  if(String(url).includes('resource=businessSettings')){
   const query=new URL(String(url),'http://local.test').searchParams;reads.push(Object.fromEntries(query));
   const selected=stores.find(row=>row.id===(query.get('storeId')??'bill'));
-  return Response.json({connections:[{connectionId:'board',displayName:'原采集平台'}],connectionId:'board',stores,store:selected,pricing:{...config,storeId:selected.id}});
+  const snapshot={connections:[{connectionId:'board',displayName:'原采集平台'}],connectionId:'board',stores,store:selected,pricing:{...config,storeId:selected.id}};
+  if(holdRead){holdRead=false;await new Promise(resolve=>{releaseRead=resolve;});}
+  return Response.json(snapshot);
  }
  const body=JSON.parse(options.body);requests.push(body);assert.equal(body.action,'businessSettings');assert.equal(body.connectionId,'board');
  assert.equal(Object.hasOwn(body,'sessionId'),false,'traditional settings do not require a chat');
@@ -36,7 +38,7 @@ globalThis.fetch=async(url,options)=>{
   const previous=stores.find(row=>row.id===body.input.id);assert.equal(body.input.expectedRevision,previous.revision);
   const next={...previous,name:body.input.name,revision:previous.revision+1};stores=stores.map(row=>row.id===next.id?next:row);return Response.json({store:next});
  }
- if(body.operation==='pricing.save'){config={...body.input.config,storeId:body.input.storeId,revision:8,updatedAt:'2026-10-10'};return Response.json({pricing:config});}
+ if(body.operation==='pricing.save'){if(failPricingSave)return Response.json({error:{code:'CONFLICT',message:'规则保存失败，请重试。'}},{status:409});config={...body.input.config,storeId:body.input.storeId,revision:8,updatedAt:'2026-10-10'};return Response.json({pricing:config});}
  throw Error('unexpected request '+body.operation);
 };
 const settle=async()=>{for(let i=0;i<8;i++)await new Promise(resolve=>setImmediate(resolve));};
@@ -152,5 +154,68 @@ test('the confirmed two-tier template is a draft and preserves separately config
  const saved=requests.find(row=>row.operation==='pricing.save').input.config;
  assert.equal(saved.plans.length,2);assert.equal(saved.plans[1].fixedMinor,1800);assert.equal(saved.plans[1].minPriceMinor,13500);
  assert.ok(saved.plans.every(row=>row.logisticsMicrosPerGram===39300&&row.commissionPpm===200000));assert.equal(saved.maxAutoPriceMinor,30000);
+ `);
+});
+
+
+test('reload asks before discarding pricing edits; cancellation preserves inputs without reading or writing', async () => {
+ await runScenario(`
+ globalThis.confirm=()=>{throw Error('No synchronous global dialog');};
+ await change('固定费用（元／销售件）','19.99');await change('上品目标利润率（%）','57');
+ const before=reads.length;await click('重新读取');
+ assert.ok(button('保留修改'));assert.ok(button('放弃并重新读取'));assert.equal(tree.root.findByType('fieldset').props.disabled,false);assert.equal(reads.length,before);assert.equal(requests.length,0);
+ assert.equal(control('固定费用（元／销售件）').props.value,'19.99');assert.equal(control('上品目标利润率（%）').props.value,'57');
+ assert.equal(control('经营店铺').props.disabled,true);assert.equal(control('采集来源连接').props.disabled,true);
+ await click('保留修改');assert.equal(button('放弃并重新读取'),undefined);await click('重新读取');assert.equal(reads.length,before);
+ await click('放弃并重新读取');assert.equal(button('保留修改'),undefined);assert.equal(reads.length,before+1);assert.equal(requests.length,0);
+ assert.equal(control('固定费用（元／销售件）').props.value,'14');assert.equal(control('上品目标利润率（%）').props.value,'60');assert.equal(control('经营店铺').props.disabled,false);
+ await click('重新读取');assert.equal(button('保留修改'),undefined,'clean reload needs no confirmation');assert.equal(reads.length,before+2);
+ `);
+});
+
+test('failed pricing save retains edits and cancellation still performs no reads', async () => {
+ await runScenario(`
+ await change('固定费用（元／销售件）','19.99');const before=reads.length;failPricingSave=true;
+ await click('重新读取');const beforeSave=button('放弃并重新读取').props.onClick;
+ await click('保存已修改的经营规则');await act(async()=>{beforeSave();await settle();});assert.match(text(tree.toJSON()),/规则保存失败/);assert.equal(reads.length,before);
+ await click('重新读取');await click('保留修改');assert.equal(reads.length,before);assert.equal(control('固定费用（元／销售件）').props.value,'19.99');assert.equal(requests.length,1);
+ failPricingSave=false;await click('保存已修改的经营规则');assert.equal(requests.length,2);assert.equal(requests[1].input.config.plans[0].fixedMinor,1999);assert.equal(requests[1].input.expectedRevision,7);
+ `);
+});
+
+test('discard reload keeps newer edits and store choices isolated from late reads', async () => {
+ await runScenario(`
+ await change('固定费用（元／销售件）','19.99');holdRead=true;await click('重新读取');await click('放弃并重新读取');
+ await change('固定费用（元／销售件）','23');await act(async()=>{releaseRead();await settle();});
+ assert.equal(control('固定费用（元／销售件）').props.value,'23');assert.equal(control('经营店铺').props.disabled,true);
+ holdRead=true;await click('重新读取');await click('放弃并重新读取');await change('经营店铺','helen');await act(async()=>{releaseRead();await settle();});
+ assert.equal(control('店铺名称').props.value,'Helen 店铺');assert.equal(control('固定费用（元／销售件）').props.value,'14');assert.equal(requests.length,0);
+ `);
+});
+
+
+test('inline discard intent expires on new edits, identity changes and leaving the active panel', async () => {
+ await runScenario(`
+ await change('固定费用（元／销售件）','19.99');const before=reads.length;
+ await click('重新读取');const stale=button('放弃并重新读取').props.onClick;
+ await change('固定费用（元／销售件）','23');assert.equal(button('放弃并重新读取'),undefined);
+ await act(async()=>{stale();await settle();});assert.equal(reads.length,before);assert.equal(control('固定费用（元／销售件）').props.value,'23');
+ for(const props of [{storeId:'bill',sessionId:'new-session'},{storeId:'helen',sessionId:'new-session'},{storeId:'helen',sessionId:'new-session',active:false}]){
+  await click('重新读取');const old=button('放弃并重新读取').props.onClick;
+  await act(async()=>{tree.update(<BusinessSettings {...props}/>);await settle();});assert.equal(button('放弃并重新读取'),undefined);
+  await act(async()=>{old();await settle();});assert.equal(reads.length,before);assert.equal(requests.length,0);assert.equal(control('固定费用（元／销售件）').props.value,'23');
+ }
+ `);
+});
+
+test('new identity and newer refresh reject older settings responses', async () => {
+ await runScenario(`
+ holdRead=true;await click('重新读取');config={...config,listingTargetMarginPpm:550000};
+ await act(async()=>{tree.update(<BusinessSettings storeId="bill" sessionId="new-session"/>);await settle();});
+ assert.equal(control('上品目标利润率（%）').props.value,'55');
+ await act(async()=>{releaseRead();await settle();});assert.equal(control('上品目标利润率（%）').props.value,'55');
+ holdRead=true;await click('重新读取');config={...config,listingTargetMarginPpm:520000};await click('重新读取');
+ assert.equal(control('上品目标利润率（%）').props.value,'52');await act(async()=>{releaseRead();await settle();});
+ assert.equal(control('上品目标利润率（%）').props.value,'52');assert.equal(requests.length,0);
  `);
 });

@@ -19,7 +19,8 @@ export function AssociationOverviewPage({storeId:initialStoreId,active=true}:{st
     return()=>controller.abort();
   },[connection,initialStoreId,active,pickerRevision]);
   useEffect(()=>{
-    if(!active||pickerBusy||!settings?.connectionId||!storeId)return;
+    // A replacement context may have no request; retire the previous loading state.
+    if(!active||pickerBusy||!settings?.connectionId||!storeId){setBusy(false);return;}
     const shouldRefresh=lastRefresh.current!==refresh;lastRefresh.current=refresh;
     const controller=new AbortController();setBusy(true);setError('');setData(undefined);
     void appsResource<AssociationOverview>('associations',{connectionId:settings.connectionId,storeId,direction,association,saleState,query,focus,page:String(page),refresh:shouldRefresh?'true':'false'},controller.signal).then(value=>{if(!controller.signal.aborted)setData(value);}).catch(cause=>{if(!controller.signal.aborted)setError(cause.message);}).finally(()=>{if(!controller.signal.aborted)setBusy(false);});

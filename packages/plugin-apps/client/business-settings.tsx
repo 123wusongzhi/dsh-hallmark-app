@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { appsResource, appsApiError } from './api.ts';
 import type { BusinessPricingConfig, BusinessPricingDraft, LogisticsPlan } from '../../business-pricing/src/index.ts';
 import { dynamicReferenceDraft } from '../../business-pricing/src/index.ts';
@@ -21,6 +21,10 @@ export function BusinessSettings({sessionId,storeId,active=true}:{sessionId?:str
   const [shop,setShop]=useState({name:'',clientId:'',apiKey:'',enabled:true}),[newShop,setNewShop]=useState(false);
   const [quoteInput,setQuoteInput]=useState({purchase:'',weight:'',price:'',action:'listing'}),[quote,setQuote]=useState<Record<string,any>>();
   const [packagingDirty,setPackagingDirty]=useState(false);
+  const [reloadRequest,setReloadRequest]=useState<number|null>(null),reloadVersion=useRef(0);
+  const cancelReload=()=>{reloadVersion.current++;setReloadRequest(null);};
+  useEffect(()=>{cancelReload();},[active,sessionId,storeId,connection,selected,newShop,dirty]);
+  const reload=()=>{cancelReload();setQuote(undefined);setDirty(false);setRefresh(value=>value+1);};
   useEffect(()=>{if(storeId&&!dirty&&!newShop)setSelected(storeId);},[storeId]);
   useEffect(()=>{
     if(!active||dirty)return;setQuote(undefined);const controller=new AbortController();
@@ -28,14 +32,14 @@ export function BusinessSettings({sessionId,storeId,active=true}:{sessionId?:str
       if(controller.signal.aborted)return;setView(data);setDraft(data.pricing??initialDraft());setPlanId(data.pricing?.defaultPlanId??data.pricing?.plans[0]?.id??'');
       setShop({name:newShop?'':data.store?.name??'',clientId:'',apiKey:'',enabled:newShop?true:data.store?.enabled??true});setError('');
     }).catch(cause=>{if(!controller.signal.aborted)setError(cause instanceof Error?cause.message:'经营设置读取失败。');});return()=>controller.abort();
-  },[active,connection,selected,refresh,newShop,dirty]);
+  },[active,sessionId,connection,selected,refresh,newShop,dirty]);
   const currentConnection=connection||view?.connectionId||'',currentStore=newShop?undefined:view?.store;
   const plan=draft?.plans.find(row=>row.id===planId);
   const automaticLogistics=draft?.logisticsSelection==='automatic';
   const canSave=!!currentConnection&&!busy;
-  const patch=(values:Partial<BusinessPricingDraft>)=>{setDraft(value=>value?{...value,...values}:value);setDirty(true);setQuote(undefined);};
+  const patch=(values:Partial<BusinessPricingDraft>)=>{cancelReload();setDraft(value=>value?{...value,...values}:value);setDirty(true);setQuote(undefined);};
   const patchPlan=(values:Partial<LogisticsPlan>)=>{if(draft&&plan)patch({plans:draft.plans.map(row=>row.id===plan.id?{...row,...values}:row)});};
-  const run=async(action:()=>Promise<void>)=>{if(busy)return;setBusy(true);setNotice('');setError('');try{await action();}catch(cause){setError(cause instanceof Error?cause.message:'操作未完成，请刷新核对。');}finally{setBusy(false);}};
+  const run=async(action:()=>Promise<void>)=>{if(busy)return;cancelReload();setBusy(true);setNotice('');setError('');try{await action();}catch(cause){setError(cause instanceof Error?cause.message:'操作未完成，请刷新核对。');}finally{setBusy(false);}};
   const saveShop=()=>run(async()=>{
     const credentials=shop.clientId||shop.apiKey?{clientId:shop.clientId,apiKey:shop.apiKey}:undefined;
     const result=await writeBusinessSettings<{store:OzonBusinessStore}>(sessionId,currentConnection,'store.save',{...(currentStore?{id:currentStore.id}:{}),name:shop.name,enabled:shop.enabled,currency:'CNY',expectedRevision:currentStore?.revision??0,...(credentials?{credentials}:{})});
@@ -44,7 +48,8 @@ export function BusinessSettings({sessionId,storeId,active=true}:{sessionId?:str
   const savePricing=()=>run(async()=>{if(!currentStore||!draft)return;const result=await writeBusinessSettings<{pricing:BusinessPricingConfig}>(sessionId,currentConnection,'pricing.save',{storeId:currentStore.id,config:draft,expectedRevision:view?.pricing?.revision??0});setView(value=>value?{...value,pricing:result.pricing}:value);setDraft(result.pricing);setDirty(false);setRefresh(value=>value+1);setNotice('经营规则已保存，将用于后续上品、调价和活动操作。');});
   const calculate=()=>run(async()=>{if(!currentStore)return;const result=await writeBusinessSettings<{quote:Record<string,any>}>(sessionId,currentConnection,'pricing.quote',{storeId:currentStore.id,action:quoteInput.action,...(!automaticLogistics&&planId?{planId}:{}),purchaseMinor:quoteInput.purchase===''?null:Math.round(Number(quoteInput.purchase)*100),weightGrams:quoteInput.weight===''?null:Number(quoteInput.weight),priceMinor:quoteInput.price===''?null:Math.round(Number(quoteInput.price)*100),pricingMode:quoteInput.price===''?'automatic':'manual'});setQuote(result.quote);});
   return <section className="business-settings" aria-label="经营设置"><style>{BUSINESS_SETTINGS_STYLES}</style><fieldset disabled={busy} className="business-settings-body">
-    <header><div><p className="business-settings-eyebrow">OZON · 经营设置</p><h2>把报价与规则留在这里</h2><p>维护店铺、物流渠道和定价口径。表格与 Agent 使用同一份已保存规则。</p></div><button disabled={busy} onClick={()=>{setQuote(undefined);setDirty(false);setRefresh(value=>value+1);}}>重新读取</button></header>
+    <header><div><p className="business-settings-eyebrow">OZON · 经营设置</p><h2>把报价与规则留在这里</h2><p>维护店铺、物流渠道和定价口径。表格与 Agent 使用同一份已保存规则。</p></div><button disabled={busy} onClick={()=>{if(busy)return;if(dirty)setReloadRequest(++reloadVersion.current);else reload();}}>重新读取</button></header>
+    {dirty&&reloadRequest!==null?<div className="business-settings-card" role="group" aria-label="确认重新读取经营规则"><p>有未保存的经营规则修改。重新读取将放弃这些修改。</p><div className="business-settings-actions"><button type="button" disabled={busy} onClick={cancelReload}>保留修改</button><button type="button" disabled={busy} onClick={()=>{if(!busy&&reloadRequest===reloadVersion.current)reload();}}>放弃并重新读取</button></div></div>:null}
     {notice?<p role="status" className="business-settings-success">{notice}</p>:null}{error?<p role="alert" className="business-settings-error">{error}</p>:null}
     
     <div className="business-settings-toolbar"><label>采集来源连接<select value={currentConnection} disabled={busy||dirty||packagingDirty} onChange={event=>{setConnection(event.target.value);setSelected('');setNewShop(false);setQuote(undefined);}}>{view?.connections.map(row=><option key={row.connectionId} value={row.connectionId}>{row.displayName}</option>)}</select></label><label>经营店铺<select value={newShop?'':currentStore?.id??''} disabled={busy||dirty} onChange={event=>{setSelected(event.target.value);setNewShop(false);setQuote(undefined);}}><option value="">选择店铺</option>{view?.stores.map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select></label><button disabled={!currentConnection||dirty||busy} onClick={()=>{setNewShop(true);setSelected('');setShop({name:'',clientId:'',apiKey:'',enabled:true});}}>新增店铺</button></div>

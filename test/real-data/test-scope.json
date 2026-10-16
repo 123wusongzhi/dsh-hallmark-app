@@ -163,7 +163,15 @@
     "test/store/store.test.ts",
     "test/acceptance/component-display/run-recovery.mjs",
     "test/apps-runtime/association-overview.test.ts",
-    "test/plugin-apps/association-overview-ui.test.ts"
+    "test/plugin-apps/association-overview-ui.test.ts",
+    "test/plugin-apps/business-draft-recovery.test.ts",
+    "test/plugin-apps/business-price-journey.test.ts",
+    "test/plugin-apps/business-store-read-recovery.test.ts",
+    "test/plugin-apps/information-batch-preview.test.ts",
+    "test/plugin-apps/listing-draft-editor.test.ts",
+    "test/plugin-apps/store-selection-entry.test.ts",
+    "test/plugin-apps/workbench-store-retry.test.ts",
+    "test/plugin-apps/workspace-resume.test.ts"
   ],
   "infrastructureFiles": [
     "test/apps-host/result-read-error-parity.test.ts",
@@ -326,7 +334,12 @@
     "test/performance/chunk-progress-deadline.test.ts",
     "test/apps-host/connection-status.test.ts",
     "test/apps-runtime/runtime-restart-http.test.ts",
-    "test/plugin-apps/connection-status-ui.test.ts"
+    "test/plugin-apps/connection-status-ui.test.ts",
+    "test/apps-components/agent-feedback.test.ts",
+    "test/apps-components/agent-feedback-boundaries.test.ts",
+    "test/plugin-apps/association-loading-lifecycle.test.ts",
+    "test/plugin-apps/business-draft-recovery-cache.test.ts",
+    "test/plugin-apps/information-owner-review.test.ts"
   ],
   "infrastructureReasons": {
     "test/apps-host/result-read-error-parity.test.ts": "Synthetic retained JSON through real Runtime, short GET and long Unicode POST, Host tools and model renderer verifies exact HTTP-400 rejection semantics, continuation and explicit corrected reads without merchant facts or requerying the Provider.",
@@ -489,7 +502,12 @@
     "test/performance/chunk-progress-deadline.test.ts": "Protocol transfer identity, bounded progress, cancellation and deadline tests with explicit control byte streams; no commodity or shop facts.",
     "test/apps-host/connection-status.test.ts": "Connection probe state transitions and restart eligibility; no business facts.",
     "test/apps-runtime/runtime-restart-http.test.ts": "Restart authentication, busy refusal and response ordering; no business facts.",
-    "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts."
+    "test/plugin-apps/connection-status-ui.test.ts": "Connection panel request lifecycle and recovery states; no business facts.",
+    "test/apps-components/agent-feedback.test.ts": "Component bridge submission feedback with deferred promises; opaque identities and protocol receipts only, no commodity facts.",
+    "test/apps-components/agent-feedback-boundaries.test.ts": "Component bridge context invalidation and identity isolation; opaque protocol values, no business payloads.",
+    "test/plugin-apps/association-loading-lifecycle.test.ts": "Association UI request lifecycle across empty contexts, abort and inactive states; routing IDs and empty envelopes, no commodity facts.",
+    "test/plugin-apps/business-draft-recovery-cache.test.ts": "Private draft cache isolation, encoded byte bounds and expiry using unparsed control strings; no commercial facts.",
+    "test/plugin-apps/information-owner-review.test.ts": "Material editor schema selection, owner changes and hidden lifecycle; opaque schema/owner markers, no commercial facts."
   },
   "fileModes": {
     "test/apps-host/collection-column-fidelity.test.ts": "Three original SKUs from an unchanged hash-checked frozen detail through real Adapter, CollectionService, Provider, Runtime HTTP and Host renderer; independent source attribute/image expectations and formal image metadata resource reads verify named column fidelity and explicit absent package/price nulls without downloading images.",

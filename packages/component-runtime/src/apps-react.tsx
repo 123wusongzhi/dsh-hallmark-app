@@ -250,21 +250,41 @@ function agentRequestNotSubmitted(error:unknown):boolean {
   return details.submitted===false||failure.retryPolicy==='never'&&['INVALID_INPUT','CONTEXT_REVISION_CONFLICT','CONTEXT_NOT_OWNED','CONTEXT_BUDGET_EXCEEDED','APPS_CONTEXT_BUDGET_EXCEEDED','UNSUPPORTED_HOST_CAPABILITY','CANCELLED_BEFORE_DISPATCH','APPS_HOST_CLOSED'].includes(String(failure.code));
 }
 /** Opt-in controls keep local selection, context publication and explicit agent submission separate. */
-export function AppsAgentActions({apps,selections,summary='',onInspectRequest}:{apps:Pick<ReturnType<typeof useApps>,'hello'|'context'|'updateContext'|'requestAgent'>;selections:SelectionEnvelope[];summary?:string;onInspectRequest?:(requestId:string)=>void}) {
-  const fingerprint=JSON.stringify({selections,summary}),[published,setPublished]=useState<string>(),[revision,setRevision]=useState<number>(),[text,setText]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[receipt,setReceipt]=useState<ComponentAgentReceipt>(),[inspectRequestId,setInspectRequestId]=useState<string>(),locked=useRef(false),inFlight=useRef(false);
-  const advertised=apps.hello?.supportedMethods??[],canUpdate=advertised.includes('updateContext'),canRequest=advertised.includes('requestAgent'),dirty=published!==fingerprint;
+/** These are submission receipts, never evidence that the agent finished the task. */
+function agentReceiptNotice(status:ComponentAgentReceipt['status']):string {
+  switch(status){
+    case 'prepared':return '任务已登记，等待派发。请检查原请求，勿重复提交。';
+    case 'dispatching':return '任务正在派发到当前聊天。请检查原请求，勿重复提交。';
+    case 'accepted':return '请求已提交并排队，等待代理处理。后续进展请在当前聊天查看，也可准备新任务。';
+    case 'unknown':return '任务提交结果待确认。请检查原请求，确认前不要重新提交。';
+    case 'failed':return '任务提交未完成。请检查原请求，确认未派发后再决定是否重试。';
+  }
+}
+
+type AppsAgentActionsProps={apps:Pick<ReturnType<typeof useApps>,'hello'|'context'|'updateContext'|'requestAgent'>;selections:SelectionEnvelope[];summary?:string;onInspectRequest?:(requestId:string)=>void};
+export function AppsAgentActions(props:AppsAgentActionsProps) {
+  const hello=props.apps.hello;
+  // Keep receipts and locks bound to the bridge identity, not transient props
+  // objects. A late response for an old identity must not affect its replacement.
+  const identity=JSON.stringify([hello?.protocolVersion,hello?.sessionId,hello?.viewId,hello?.buildId,hello?.frameInstanceId]);
+  return <AppsAgentActionsSession key={identity} {...props}/>;
+}
+function AppsAgentActionsSession({apps,selections,summary='',onInspectRequest}:AppsAgentActionsProps) {
+  const fingerprint=JSON.stringify({selections,summary}),[published,setPublished]=useState<string>(),[revision,setRevision]=useState<number>(),[text,setText]=useState(''),[notice,setNotice]=useState(''),[phase,setPhase]=useState<'publishing'|'submitting'>(),[taskState,setTaskState]=useState<ComponentAgentReceipt['status']|'idle'|'not_submitted'>('idle'),[receipt,setReceipt]=useState<ComponentAgentReceipt>(),[inspectRequestId,setInspectRequestId]=useState<string>(),locked=useRef(false),inFlight=useRef(false);
+  const advertised=apps.hello?.supportedMethods??[],canUpdate=advertised.includes('updateContext'),canRequest=advertised.includes('requestAgent'),dirty=published!==fingerprint,busy=phase!==undefined;
+  const progress=phase==='publishing'?'正在更新上下文，请稍候。':phase==='submitting'?'正在提交任务，请勿重复点击。':undefined;
   const current=object(apps.context).contextRevision,contextRevision=Number.isSafeInteger(current)&&Number(current)>=0?Number(current):apps.hello?.contextRevision??0;
   const publish=async()=>{
-    if(inFlight.current||!canUpdate||locked.current)return;inFlight.current=true;setBusy(true);setNotice('');
-    try{const value=await apps.updateContext({expectedContextRevision:contextRevision,selections,summary});setPublished(fingerprint);setRevision(value.contextRevision);setNotice(`上下文已更新（版本 ${value.contextRevision}），代理尚未唤醒。`);}
-    catch(error){setNotice(error instanceof Error?error.message:String(error));}finally{inFlight.current=false;setBusy(false);}
+    if(inFlight.current||!canUpdate||locked.current)return;inFlight.current=true;setPhase('publishing');setNotice('');
+    try{const value=await apps.updateContext({expectedContextRevision:contextRevision,selections,summary});setPublished(fingerprint);setRevision(value.contextRevision);setTaskState('idle');setNotice(`上下文已更新（版本 ${value.contextRevision}），代理尚未唤醒。`);}
+    catch(error){setPublished(undefined);setRevision(undefined);setNotice(`上下文更新未确认，代理任务尚未提交。请核对后重新更新上下文。${error instanceof Error?error.message:String(error)}`);}finally{inFlight.current=false;setPhase(undefined);}
   };
   const request=async()=>{
     if(inFlight.current||locked.current||dirty||!canRequest||!text.trim()||revision===undefined)return;
     // A submission can outlive the iframe response. Never repeat an uncertain request automatically.
-    locked.current=true;inFlight.current=true;setBusy(true);setNotice('');
-    try{const value=await apps.requestAgent({text:text.trim(),expectedContextRevision:revision});setReceipt(value);setInspectRequestId(value.requestId);setNotice(value.status==='accepted'?'请求已提交，等待代理处理。':`请求状态：${value.status}。请检查原请求。`);}
-    catch(error){if(agentRequestNotSubmitted(error)){locked.current=false;setReceipt(undefined);setInspectRequestId(undefined);setPublished(undefined);setRevision(undefined);setNotice(`${error instanceof Error?error.message:String(error)} 请求未提交；修正后请更新上下文，再显式请求代理。`);}else{const requestId=object(object(object(error).failure).details).requestId;if(typeof requestId==='string')setInspectRequestId(requestId);setNotice(`${error instanceof Error?error.message:String(error)} 请检查原请求，勿重复提交。`);}}finally{inFlight.current=false;setBusy(false);}
+    locked.current=true;inFlight.current=true;setPhase('submitting');setNotice('');
+    try{const value=await apps.requestAgent({text:text.trim(),expectedContextRevision:revision});setReceipt(value);setTaskState(value.status);setInspectRequestId(value.requestId);setNotice(agentReceiptNotice(value.status));}
+    catch(error){if(agentRequestNotSubmitted(error)){locked.current=false;setTaskState('not_submitted');setReceipt(undefined);setInspectRequestId(undefined);setPublished(undefined);setRevision(undefined);setNotice(`${error instanceof Error?error.message:String(error)} 请求未提交；修正后请更新上下文，再显式请求代理。`);}else{setTaskState('unknown');const requestId=object(object(object(error).failure).details).requestId;if(typeof requestId==='string')setInspectRequestId(requestId);setNotice(`${error instanceof Error?error.message:String(error)} ${agentReceiptNotice('unknown')}`);}}finally{inFlight.current=false;setPhase(undefined);}
   };
-  return <section aria-label="组件代理操作" data-context-state={dirty?'dirty':'published'}><p role="status">{notice||(dirty?'选择尚未发布。':'选择已发布。')}</p><button type="button" onClick={publish} disabled={busy||!canUpdate||locked.current}>更新上下文</button><label>代理任务 <input value={text} onChange={event=>setText(event.target.value)} disabled={busy||locked.current}/></label><button type="button" onClick={request} disabled={busy||dirty||!canRequest||!text.trim()||locked.current}>请求代理</button>{inspectRequestId&&onInspectRequest?<button type="button" onClick={()=>onInspectRequest(inspectRequestId)}>检查原请求</button>:null}{receipt?.status==='accepted'?<button type="button" disabled={busy} onClick={()=>{locked.current=false;setReceipt(undefined);setInspectRequestId(undefined);setText('');setNotice('请输入新任务后显式提交。');}}>准备新任务</button>:null}{!canUpdate||!canRequest?<p>此宿主尚未启用正式代理路径；可添加选择附件后手动发送。</p>:null}</section>;
+  return <section aria-label="组件代理操作" data-context-state={dirty?'dirty':'published'} data-agent-state={phase??taskState}><p role="status" aria-atomic="true">{progress??(notice||(dirty?'选择尚未发布。':'选择已发布。'))}</p><button type="button" onClick={publish} aria-busy={phase==='publishing'} disabled={busy||!canUpdate||locked.current}>更新上下文</button><label>代理任务 <input value={text} onChange={event=>setText(event.target.value)} disabled={busy||locked.current}/></label><button type="button" onClick={request} aria-busy={phase==='submitting'} disabled={busy||dirty||!canRequest||!text.trim()||locked.current}>请求代理</button>{inspectRequestId&&onInspectRequest?<button type="button" onClick={()=>onInspectRequest(inspectRequestId)}>检查原请求</button>:null}{receipt?.status==='accepted'?<button type="button" disabled={busy} onClick={()=>{locked.current=false;setTaskState('idle');setReceipt(undefined);setInspectRequestId(undefined);setText('');setNotice('请输入新任务后显式提交，上一任务的进展可在当前聊天查看。');}}>准备新任务</button>:null}{!busy&&locked.current&&!(inspectRequestId&&onInspectRequest)&&taskState!=='accepted'?<p>可回到当前聊天核对原请求，确认结果后再继续。</p>:null}{!canUpdate||!canRequest?<p>此宿主尚未启用正式代理路径；可添加选择附件后手动发送。</p>:null}</section>;
 }

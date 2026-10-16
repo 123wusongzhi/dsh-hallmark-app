@@ -46,8 +46,14 @@ try{
  await click('保存草稿');assert.deepEqual(plan.rows[0].payload,edited);assert.equal(requests.some(r=>r.operation==='submit'),false);
  await change('SKU 完整字段','local unsaved text');
  plan={...plan,rows:plan.rows.map(row=>({...row,payload:{...row.payload,name:'后台替换'}}))};
+ assert.equal(tree.root.findAllByType('button').find(n=>text(n)==='刷新批次').props.disabled,true,'unapplied JSON blocks destructive refresh');
+ assert.equal(tree.root.findByProps({'aria-label':'SKU 商品标题'}).props.disabled,true,'structured editing cannot overwrite unapplied JSON');
+ assert.equal(tree.root.findByProps({'aria-label':'筛选商品'}).props.disabled,true,'filtering cannot unmount unapplied JSON');
+ assert.equal(tree.root.findAllByType('button').find(n=>text(n)==='保存草稿').props.disabled,true);
+ assert.equal(field().props.value,'local unsaved text');
+ await click('放弃字段修改');
  await click('刷新批次');assert.equal(JSON.parse(field().props.value).name,'后台替换','same row identity still accepts replacement payload');
- await change('筛选商品','absent');assert.equal(tree.root.findAllByType('textarea').length,0);
+ await change('筛选商品','absent');assert.equal(tree.root.findAllByProps({'aria-label':'SKU 完整字段'}).length,0);
  await change('筛选商品','');assert.equal(JSON.parse(field().props.value).name,'后台替换','remount initializes latest payload');
  console.log('BUSINESS_CONTENT_LAZY_PASS');
 }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=originalFetch;JSON.stringify=originalStringify;}

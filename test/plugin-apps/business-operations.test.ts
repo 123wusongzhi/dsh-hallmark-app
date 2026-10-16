@@ -56,18 +56,19 @@ try{
  assert.doesNotMatch(JSON.stringify(tree.toJSON()),/请先在当前聊天启用此经营连接/,'successful refresh clears obsolete connection error');
  assert.match(JSON.stringify(tree.toJSON()),uiText(uiStore().name));assert.match(JSON.stringify(tree.toJSON()),/12 CNY/);
  assert.match(JSON.stringify(tree.toJSON()),/轻小件渠道/);assert.match(JSON.stringify(tree.toJSON()),/22.00 CNY/);assert.match(JSON.stringify(tree.toJSON()),/规则修订/);
+ const summaryProfits=tree.root.findAllByType('small').filter(node=>text(node).includes('预计利润：5.00 CNY · 利润率 22.73%'));assert.equal(summaryProfits.length,2,'profit and margin are visible for both rows without opening details');for(const node of summaryProfits){let parent=node.parent;while(parent){assert.notEqual(parent.type,'details');parent=parent.parent;}}
  assert.deepEqual(businessRowInput(plan.rows[0],{...plan.rows[0].payload,name:'changed only title'}).pricing,{planId:'light',mode:'automatic'});
  const located={...plan.rows[0],referenceSubjects:[{sourceImageUrl:'https://source.test/photo.png',subject:'左侧银色主体'}]};
  assert.deepEqual(businessRowInput(located,{...located.payload,name:'changed only title'}).referenceSubjects,located.referenceSubjects);
  assert.equal(businessRowInput(located).payload.referenceSubjects,undefined);
  await act(async()=>{tree.root.findByProps({'aria-label':'RED 售价'}).props.onChange({target:{value:'22'}});});
- assert.equal(button('提交整批变更').props.disabled,true,'save local edits before submit');
- await click('保存草稿');assert.equal(plan.rows[0].payload.price,'22');assert.deepEqual(plan.rows[0].pricing,{planId:'light',mode:'manual'});assert.equal(plan.rows[1].status,'succeeded');assert.equal(requests.filter(r=>r.operation==='submit').length,0,'saving does not review or submit');
+ assert.equal(button('确认整批范围后提交').props.disabled,true,'save local edits before submit');assert.match(JSON.stringify(tree.toJSON()),/上次保存报价 · 修改后待重算/);
+ await click('保存改价草稿');assert.equal(plan.rows[0].payload.price,'22');assert.deepEqual(plan.rows[0].pricing,{planId:'light',mode:'manual'});assert.equal(plan.rows[1].status,'succeeded');assert.equal(requests.filter(r=>r.operation==='submit').length,0,'saving does not review or submit');
  await act(async()=>{tree.root.findByProps({'aria-label':'RED 定价方式'}).props.onChange({target:{value:'automatic'}});tree.root.findByProps({'aria-label':'选择 RED'}).props.onChange({target:{checked:true}});});
  await act(async()=>{tree.root.findByProps({'aria-label':'批量填写售价'}).props.onChange({target:{value:'24'}});});
- await click('填入所选 1 行草稿');await click('保存草稿');assert.equal(plan.rows[0].payload.price,'24');assert.deepEqual(plan.rows[0].pricing,{planId:'light',mode:'manual'},'batch price override switches to manual and preserves plan');
+ await click('填入可见所选 1 行草稿');await click('保存改价草稿');assert.equal(plan.rows[0].payload.price,'24');assert.deepEqual(plan.rows[0].pricing,{planId:'light',mode:'manual'},'batch price override switches to manual and preserves plan');
  assert.equal(tree.root.findByProps({'aria-label':'BLUE 售价'}).props.disabled,true);
- lost=true;await click('提交整批变更');assert.ok(button('检查原操作'));assert.equal(button('提交整批变更').props.disabled,true);
+ lost=true;await click('确认整批范围后提交');await click('确认提交整批 2 个动作');assert.ok(button('检查原操作'));assert.equal(button('确认整批范围后提交').props.disabled,true);
  await click('检查原操作');assert.equal(requests.filter(r=>r.operation==='submit').length,1,'recovery never repeats original submit');assert.match(JSON.stringify(tree.toJSON()),/结果待核查/);
  assert.equal(tree.root.findByProps({'aria-label':'RED 售价'}).props.disabled,true);
  await click('核查平台状态');assert.equal(plan.rows[0].status,'succeeded');
