@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "policy": "All tests consuming commodity, SKU, collected source, shop, sale, logistics, activity or dictionary facts use recorded snapshots. Original records remain immutable. Alias, omission, failure, numeric boundary and scale modifications are explicit derived cases.",
   "requiredFiles": [
+    "test/plugin-apps/packaging-input-recovery.test.ts",
     "test/plugin-apps/pricing-validation-recovery.test.ts",
     "test/plugin-apps/table-browse-continuity.test.ts",
     "test/plugin-apps/business-new-form-navigation.test.ts",
@@ -299,6 +300,7 @@
     "test/plugin-apps/native-publication.test.ts",
     "test/plugin-apps/native-recovery.test.ts",
     "test/plugin-apps/native-save-lifecycle.test.ts",
+    "test/plugin-apps/native-save-read-recovery.test.ts",
     "test/plugin-apps/native-selection.test.ts",
     "test/plugin-apps/native-session.test.ts",
     "test/plugin-apps/native-sidebar-recovery.test.ts",
@@ -465,6 +467,7 @@
     "test/plugin-apps/native-publication.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/plugin-apps/native-recovery.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/plugin-apps/native-save-lifecycle.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
+    "test/plugin-apps/native-save-read-recovery.test.ts": "React save-form metadata recovery through real local HTTP Runtime/service; verified source archive and explicitly labeled backend preview evidence fixture, injected GET failure, no commodity payload or merchant execution.",
     "test/plugin-apps/native-selection.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/plugin-apps/native-session.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
     "test/plugin-apps/native-sidebar-recovery.test.ts": "Framework, storage, authentication, schema, formatter or protocol boundary test; no recorded commodity payload is constructed. Local control inputs are test conditions.",
@@ -561,6 +564,7 @@
     "test/plugin-apps/workbench-linked-cancellation.test.ts": "Recorded uiProduct base with explicit owner aliases, linked query/page cancellation, held abort-ignoring success/failure and fake refresh timers. Actual WorkbenchInstanceView, ProductList and SkuDetail run against read-only local fetch fixtures; no merchant network or writes.",
     "test/plugin-apps/business-recovery-actions.test.ts": "Recorded uiStore/uiProduct and purchase-cost evidence with explicit local rejection/decision/retry states. Real React and in-memory business engine verify corrective next actions, mixed batches, clock expiry without automatic resend, and edited-save recovery. Transport is an in-memory recorder; no merchant calls.",
     "test/plugin-apps/business-new-form-refresh.test.ts": "Recorded product/store base with explicit local offer/price inputs, engine-backed plans and controlled missing/empty/failed/delayed list receipts; no merchant transport.",
-    "test/plugin-apps/pricing-validation-recovery.test.ts": "Recorded store label and pricing values; explicit invalid rule boundaries and blank required field use enabled React controls with the real BusinessSettingsService, BusinessPricingRepository, RuntimeStore and production error classifier. Local gateway rejects every merchant call. Tests retain rejected inputs, cancel discard, correct and save without duplicating writes."
+    "test/plugin-apps/pricing-validation-recovery.test.ts": "Recorded store label and pricing values; explicit invalid rule boundaries and blank required field use enabled React controls with the real BusinessSettingsService, BusinessPricingRepository, RuntimeStore and production error classifier. Local gateway rejects every merchant call. Tests retain rejected inputs, cancel discard, correct and save without duplicating writes.",
+    "test/plugin-apps/packaging-input-recovery.test.ts": "Frozen corpus common-package product and two SKU facts; local identity aliases, numeric boundaries and explicit blank drafts are controlled derived cases. Enabled React controls route through real BusinessSettingsService, BusinessPackagingRepository and isolated RuntimeStore. No merchant calls; verifies numeric rejection, correction, clear, restore and discard semantics. Browser typing is not claimed."
   }
 }
