@@ -33,6 +33,17 @@ async function imageBytes(url:string,fetchImpl:typeof fetch,signal:AbortSignal):
 
 const outputSchema:JsonSchema={type:'object',properties:{questions:{type:'array',items:{type:'object',properties:{id:{type:'string'},version:{type:'string'},status:{type:'string',enum:['passed','rejected','pending']},choice:{type:['string','null']},message:{type:'string'},suggestion:{type:'string'}},required:['id','version','status','choice','message','suggestion'],additionalProperties:false}}},required:['questions'],additionalProperties:false};
 
+/** Stop observing an abandoned review without treating cancellation as a finding.
+ * Keep a rejection handler on the child result even after abort; disposal below owns cleanup.
+ */
+function reviewResultWithin<T>(result:Promise<T>,signal:AbortSignal):Promise<T> {
+  return new Promise<T>((resolve,reject)=>{
+    const abort=()=>{signal.removeEventListener('abort',abort);reject(signal.reason);};
+    result.then(value=>{signal.removeEventListener('abort',abort);resolve(value);},error=>{signal.removeEventListener('abort',abort);reject(error);});
+    if(signal.aborted)abort();else signal.addEventListener('abort',abort,{once:true});
+  });
+}
+
 /** A fresh spawn receives evidence and pixels, with no business tools or parent transcript. */
 export async function runIndependentReview(input:IndependentReviewRequest,parent:ReviewParent,services:ReviewAgentServices,signal:AbortSignal):Promise<IndependentReviewResult> {
   signal.throwIfAborted();
@@ -51,7 +62,7 @@ export async function runIndependentReview(input:IndependentReviewRequest,parent
   try{
     if(!run.localAgent?.ctx?.tools.guard)throw new Error('REVIEW_TOOL_GUARD_UNAVAILABLE');
     releaseGuard=run.localAgent.ctx.tools.guard(execution=>execution.name==='structured_output'?undefined:'Independent review may only return its structured findings.');
-    const result=await run.result;signal.throwIfAborted();
+    const result=await reviewResultWithin(run.result,signal);signal.throwIfAborted();
     if(result.stopReason!=='completed'||!isRecord(result.structured)||!Array.isArray(result.structured.questions))throw new Error('INDEPENDENT_REVIEW_INCOMPLETE');
     const questions=result.structured.questions;
     if(questions.length!==input.questions.length||new Set(questions.map(row=>isRecord(row)?row.id:undefined)).size!==input.questions.length
@@ -74,6 +85,8 @@ export async function withIndependentReviewPump<T>(transport:ReviewHostTransport
       if(ticket.owner.invocationId!==owner.invocationId||ticket.owner.sessionId!==owner.sessionId)throw new Error('REVIEW_OWNER_MISMATCH');
       let completion:ReviewCompletion;
       try{completion={result:await runIndependentReview(ticket.input,parent,services,signal)};}catch{if(signal.aborted)return;completion={error:'INDEPENDENT_REVIEW_UNAVAILABLE'};}
+      // Disposal may have awaited while the owning invocation ended.
+      if(signal.aborted)return;
       await transport.reviewComplete!(ticket,completion,signal);
     }
   })();

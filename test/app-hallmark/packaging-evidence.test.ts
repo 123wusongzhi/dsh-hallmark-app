@@ -1,6 +1,8 @@
 import { recordedNormalizedProduct, recordedProduct } from '../adapter/real-scenarios.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { prepareListing } from '../../packages/app-hallmark/src/listing-prepare.ts';
+import { BusinessPackagingRepository } from '../../packages/business-packaging/src/index.ts';
 import { applyExistingPackaging, readExistingCategoryHint } from '../../packages/app-hallmark/src/packaging-evidence.ts';
 import type { PackagingEvidenceReader } from '../../packages/app-hallmark/src/packaging-evidence.ts';
 import type { CollectionProduct } from '../../packages/collection/src/types.ts';
@@ -170,4 +172,95 @@ test('conflicting or absent linked categories yield no category hint', async () 
   await applyExistingPackaging([product()], empty, reader().read);
   assert.equal(readExistingCategoryHint(empty, 'source-cup'), undefined);
   assert.equal(readExistingCategoryHint(empty, 'unrelated'), undefined);
+});
+
+test('category fallback rejects a detached or reassigned exact source binding', async () => {
+  for (const patch of [
+    { sources: [] },
+    { sources: [{ productId: 'another-source', skuCode: 'red', sourceSkuMatched: true }] },
+    { sources: [{ productId: 'source-cup', skuCode: 'blue', sourceSkuMatched: true }] },
+    { sources: [{ productId: 'source-cup', skuCode: 'red', sourceSkuMatched: false }] },
+    { productId: '456' },
+    { procurementBinding: { components: [{ itemId: 'source-cup', sourceSkuId: 'red', quantity: 2 }] } },
+  ]) {
+    const store = memory(); catalog(store);
+    const gateway = reader([attr({ description_category_id: 1234, type_id: 5678 })]);
+    await applyExistingPackaging([product()], store, gateway.read);
+    assert.ok(readExistingCategoryHint(store, 'source-cup'));
+    catalog(store, patch);
+    // A later preparation may have complete packaging and skip enrichment entirely.
+    const source = product(); source.package = { ...blank(), weightGrams: 999, dimensionsMm: { length: 9, width: 8, height: 7 } };
+    await applyExistingPackaging([source], store, gateway.read);
+    assert.equal(gateway.calls.length, 1);
+    assert.equal(readExistingCategoryHint(store, 'source-cup'), undefined, JSON.stringify(patch));
+  }
+});
+
+test('category fallback retains unchanged bindings across unrelated catalog updates', async () => {
+  const store = memory(); catalog(store);
+  const gateway = reader([attr({ description_category_id: 1234, type_id: 5678 })]);
+  await applyExistingPackaging([product()], store, gateway.read);
+  const expected = readExistingCategoryHint(store, 'source-cup');
+  catalog(store, { status: 'archived', statusUpdatedAt: '2026-10-16T00:00:00.000Z' });
+  catalog(store, { storeId: 'other', offerId: 'unrelated', productId: '456', sources: [] });
+  assert.deepEqual(readExistingCategoryHint(store, 'source-cup'), expected);
+  const copy = readExistingCategoryHint(store, 'source-cup')!; copy.typeId = 9999;
+  assert.deepEqual(readExistingCategoryHint(store, 'source-cup'), expected);
+  assert.equal(gateway.calls.length, 1);
+});
+
+test('fresh preparation searches after detachment, while current hints and explicit categories still select templates', async () => {
+  const store = memory(); catalog(store);
+  await applyExistingPackaging([product()], store, reader([attr({ description_category_id: 1234, type_id: 5678 })]).read);
+  const source = product(), requests: RecordData[] = [];
+  const client: any = {
+    getStores: async () => ({ status: 'ok', raw: [{ id: 'bill' }] }),
+    getCategoryData: async (input: RecordData) => { requests.push(input); return { status: 'ok', raw: { result: [] } }; },
+  };
+  const collection: any = { getProduct: async () => structuredClone(source) };
+  const options = { store, client, collection, packaging: new BusinessPackagingRepository(store) };
+  const input = { storeId: 'bill', selections: [{ id: source.id }], knownRevisions: { [source.id]: source.revision }, refresh: true };
+  await prepareListing(input, options);
+  assert.equal(requests.at(-1)?.mode, 'template');
+  assert.equal(requests.at(-1)?.descriptionCategoryId, '1234');
+  catalog(store, { sources: [] });
+  await prepareListing(input, options);
+  assert.equal(requests.at(-1)?.mode, 'search');
+  await prepareListing({ ...input, categories: { [source.id]: { descriptionCategoryId: '4321', typeId: '8765' } } }, options);
+  assert.equal(requests.at(-1)?.mode, 'template');
+  assert.equal(requests.at(-1)?.descriptionCategoryId, '4321');
+  assert.equal(requests.at(-1)?.typeId, '8765');
+  assert.equal(requests.length, 3);
+});
+
+test('category fallback keeps exact store and source ownership when SKU and offer names collide', async () => {
+  const store = memory(); catalog(store);
+  await applyExistingPackaging([product()], store, reader([attr({ description_category_id: 1234, type_id: 5678 })]).read);
+  const expected = readExistingCategoryHint(store, 'source-cup');
+  catalog(store, { storeId: 'other', sources: [{ productId: 'another-source', skuCode: 'red', sourceSkuMatched: true }] });
+  assert.deepEqual(readExistingCategoryHint(store, 'source-cup'), expected);
+  catalog(store, { sources: [] });
+  assert.equal(readExistingCategoryHint(store, 'source-cup'), undefined);
+  // A colliding row in another shop cannot replace the detached evidence owner.
+  catalog(store, { storeId: 'other' });
+  assert.equal(readExistingCategoryHint(store, 'source-cup'), undefined);
+  catalog(store);
+  assert.deepEqual(readExistingCategoryHint(store, 'source-cup'), expected);
+  assert.equal(readExistingCategoryHint(store, 'another-source'), undefined);
+});
+
+test('unverifiable legacy hints fall back without deleting evidence and local read errors do not mutate it', async () => {
+  const store = memory(); catalog(store);
+  await applyExistingPackaging([product()], store, reader([attr({ description_category_id: 1234, type_id: 5678 })]).read);
+  const saved = store.get<any>('business_listing_category_hints', 'source-cup');
+  for (const bindings of [undefined, []]) {
+    store.put('business_listing_category_hints', 'source-cup', { ...saved, bindings });
+    assert.equal(readExistingCategoryHint(store, 'source-cup'), undefined);
+    assert.deepEqual(store.get('business_listing_category_hints', 'source-cup'), { ...saved, bindings });
+  }
+  store.put('business_listing_category_hints', 'source-cup', saved);
+  const unavailable = { ...store, list() { throw new Error('LOCAL_READ_UNAVAILABLE'); } } as CoreStore;
+  assert.throws(() => readExistingCategoryHint(unavailable, 'source-cup'), /LOCAL_READ_UNAVAILABLE/);
+  assert.deepEqual(store.get('business_listing_category_hints', 'source-cup'), saved);
+  assert.ok(readExistingCategoryHint(store, 'source-cup'));
 });

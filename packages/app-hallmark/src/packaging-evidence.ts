@@ -60,8 +60,19 @@ function unique<T>(values: Array<T | null>): T | null {
 
 /** The same attribute read supplies a useful category candidate, never approval. */
 export function readExistingCategoryHint(store: CoreStore, itemId: string): ExistingCategoryHint | undefined {
-  const record = store.get<{ category: ExistingCategoryHint | null }>('business_listing_category_hints', itemId);
-  return record?.category ? structuredClone(record.category) : undefined;
+  const record = store.get<{ category: ExistingCategoryHint | null; bindings?: Array<Pick<Binding, 'storeId' | 'offerId' | 'productId' | 'sourceSkuId'>> }>('business_listing_category_hints', itemId);
+  if (!record?.category || !record.bindings?.length) return undefined;
+  // A category fallback is evidence from an exact source association, not a saved
+  // category preference. Recheck that association even when packaging is complete
+  // and enrichment is skipped, or another preparation has detached the source.
+  const catalogs = new Map<string, RecordData[]>();
+  for (const binding of record.bindings) {
+    if (!catalogs.has(binding.storeId)) catalogs.set(binding.storeId, localBusinessProducts(store, binding.storeId));
+    const matches = catalogs.get(binding.storeId)!.filter(row => safeString(row.offerId) === binding.offerId && safeString(row.productId) === binding.productId);
+    const current = matches.length === 1 ? exactSingleBinding(matches[0]) : undefined;
+    if (!current || current.itemId !== itemId || current.sourceSkuId !== binding.sourceSkuId) return undefined;
+  }
+  return structuredClone(record.category);
 }
 
 /**
