@@ -232,7 +232,11 @@ function PackagingSettings({sessionId,connectionId,onDirty}:{sessionId?:string;c
   const previewComposition=()=>run(async()=>{
     if(composition.some(member=>!Number.isSafeInteger(member.quantity)||member.quantity<1))throw new Error('每个组成数量须为正整数。');
     const id=combinationId||globalThis.crypto.randomUUID(),data=await call<PackagingRead>('packaging.read',{compositions:[{id,members:composition.map(({itemId,sourceSkuId,quantity})=>({itemId,sourceSkuId,quantity}))}]});
-    const next=data.rows[0];if(!next)throw new Error('没有得到组合包装结果。');const replaced=rows.filter(row=>row.key===next.key).map(row=>row.key);
+    const next=data.rows[0];if(!next)throw new Error('没有得到组合包装结果。');
+    // Recalculating an existing composition is only a read. Keep its unsaved values
+    // and original CAS revision instead of silently rebasing over a newer override.
+    if(latest.current.changed.includes(next.key)){setComposition([]);setCombinationId('');setMessage('该组合已在表格中，未保存的包装修改已保留；本次读取未覆盖原草稿。请确认后保存。');return;}
+    const replaced=rows.filter(row=>row.key===next.key).map(row=>row.key);
     setRows(current=>[...current.filter(row=>!replaced.includes(row.key)),next]);setForms(current=>({...current,[next.key]:packagingForm(next)}));setChanged(current=>[...current.filter(key=>!replaced.includes(key)),next.key]);setLoadedIds(current=>[...new Set([...current,...composition.map(member=>member.itemId)])]);setComposition([]);setCombinationId('');setMessage('组合已加入表格草稿。确认数值后保存即可使用。');
   });
   const visible=rows.filter(row=>filter==='all'||filter===row.kind),selectedSingles=rows.filter(row=>row.kind==='sku'&&checked.includes(row.key));

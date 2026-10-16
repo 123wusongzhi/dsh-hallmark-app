@@ -1,12 +1,35 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdirSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
+import {mkdirSync,mkdtempSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 const REPO_ROOT=fileURLToPath(new URL('../..',import.meta.url));
 import {join,resolve,sep} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {build} from 'esbuild';
 import {uiFixturePrelude} from '../real-data/ui-scenarios.ts';
+
+const diagnosticStages=new Set(['fixture-start','mounted','first-task-open','search-restored','page-restored','visibility-restored','eviction-checked','store-switched','session-switched','app-switched','assertions-complete','cleanup-start','cleanup-complete','controlled-start']);
+function childDiagnostics(result:ReturnType<typeof spawnSync>,directory:string){
+ let stage:string|null=null;try{const value=JSON.parse(readFileSync(join(directory,'stage.json'),'utf8'));if(diagnosticStages.has(value))stage=value;}catch{}
+ let cleanup:string|null=null;try{const value=JSON.parse(readFileSync(join(directory,'cleanup.json'),'utf8'));if(value==='cleanup-start'||value==='cleanup-complete')cleanup=value;}catch{}
+ const code=(result.error as NodeJS.ErrnoException|undefined)?.code;
+ const diagnostics={status:result.status,signal:result.signal,errorCode:typeof code==='string'&&/^[A-Z0-9_]+$/.test(code)?code:result.error?'OTHER':null,stage,cleanup};
+ writeFileSync(join(directory,'result.json'),JSON.stringify(diagnostics));return diagnostics;
+}
+
+test('workspace child diagnostics retain bounded failure and timeout metadata',()=>{
+ const root=resolve(REPO_ROOT,'.test-tmp');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'workspace-diagnostics-'));
+ try{
+  writeFileSync(join(directory,'stage.json'),JSON.stringify('controlled-start'));
+  const failed=spawnSync(process.execPath,['-e','process.exit(7)'],{encoding:'utf8',timeout:2000});
+  assert.deepEqual(childDiagnostics(failed,directory),{status:7,signal:null,errorCode:null,stage:'controlled-start',cleanup:null});
+  const timed=spawnSync(process.execPath,['-e','setInterval(()=>{},1000)'],{encoding:'utf8',timeout:100});
+  const metadata=childDiagnostics(timed,directory);assert.equal(metadata.status,null);assert.equal(metadata.errorCode,'ETIMEDOUT');assert.equal(metadata.signal,'SIGTERM');assert.equal(metadata.stage,'controlled-start');
+  writeFileSync(join(directory,'cleanup.json'),JSON.stringify('cleanup-complete'));assert.equal(childDiagnostics(timed,directory).stage,'controlled-start');assert.equal(childDiagnostics(timed,directory).cleanup,'cleanup-complete');
+  writeFileSync(join(directory,'stage.json'),JSON.stringify('untrusted private input'));
+  assert.equal(childDiagnostics(failed,directory).stage,null);assert.doesNotMatch(readFileSync(join(directory,'result.json'),'utf8'),/private/);
+ }finally{rmSync(directory,{recursive:true,force:true});}
+});
 
 test('externally closed native views return to an active workbench while hidden boards stay paused',async()=>{
  const root=resolve(REPO_ROOT,'.test-tmp');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'workspace-resume-')),entry=join(directory,'fixture.mjs');let passed=false;
@@ -55,6 +78,8 @@ for(const fullDataset of [true,false])test(`workspace returns to a bounded, paus
  try{
   await build({stdin:{resolveDir:REPO_ROOT,loader:'tsx',contents:`
 import React from 'react';
+import {writeFileSync} from 'node:fs';
+const mark=stage=>writeFileSync(stage.startsWith('cleanup-')?${JSON.stringify(join(directory,'cleanup.json'))}:${JSON.stringify(join(directory,'stage.json'))},JSON.stringify(stage));mark('fixture-start');
 ${uiFixturePrelude()}
 import {create,act} from 'react-test-renderer';import assert from 'node:assert/strict';
 import {AppsWorkspace} from './packages/plugin-apps/client/workspace.tsx';
@@ -79,28 +104,28 @@ const click=async node=>{assert.ok(node);await act(async()=>{node.props.onClick(
 const open=async index=>{await click(tab('工作台'));await click(home().findByProps({'aria-label':'打开'+instances[index].title}));};
 const reads=()=>requests.filter(row=>row.body).length;
 try{
- await act(async()=>{tree=create(draw());await flush();});assert.equal(reads(),0,'the home catalogue does not load every card');
- await open(0);const first=detail('task-0').findByType(WorkbenchInstanceView);assert.equal(reads(),1);
+ await act(async()=>{tree=create(draw());await flush();});mark('mounted');assert.equal(reads(),0,'the home catalogue does not load every card');
+ await open(0);mark('first-task-open');const first=detail('task-0').findByType(WorkbenchInstanceView);assert.equal(reads(),1);
  await act(async()=>first.findByProps({'aria-label':'搜索当前快照'}).props.onChange({target:{value:'not-a-product'}}));
  await click(tab('工作台'));await click(tab('采购商品'));
- const resumed=detail('task-0').findByType(WorkbenchInstanceView);
+ mark('search-restored');const resumed=detail('task-0').findByType(WorkbenchInstanceView);
  assert.equal(resumed.findByProps({'aria-label':'搜索当前快照'}).props.value,'not-a-product','returning to an open tab must retain its search');assert.equal(reads(),1,'resuming a fresh task must not reread its full snapshot');
  await act(async()=>resumed.findByProps({'aria-label':'搜索当前快照'}).props.onChange({target:{value:''}}));
  await click(resumed.findAllByType('button').find(node=>text(node)==='下一页'));assert.match(text(resumed),/11–20/);
  await open(1);await click(tab('采购商品'));assert.match(text(detail('task-0')),/11–20/,'local page remains selected');
- const beforeHide=reads();pageVisible=false;await act(async()=>{tree.update(draw());await flush();});assert.equal(tree.root.findAllByType(WorkbenchInstanceView).filter(node=>node.props.active!==false).length,0);assert.equal(reads(),beforeHide);pageVisible=true;await act(async()=>{tree.update(draw());await flush();});assert.equal(reads(),beforeHide);
- await open(2);await open(3);assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,3,'only three recently opened data panes stay mounted');assert.ok(tab('库存快照'),'eviction does not close its navigation tab');assert.equal(detail('task-1'),undefined,'least recently used pane is evicted');
+ mark('page-restored');const beforeHide=reads();pageVisible=false;await act(async()=>{tree.update(draw());await flush();});assert.equal(tree.root.findAllByType(WorkbenchInstanceView).filter(node=>node.props.active!==false).length,0);assert.equal(reads(),beforeHide);pageVisible=true;await act(async()=>{tree.update(draw());await flush();});assert.equal(reads(),beforeHide);
+ mark('visibility-restored');await open(2);await open(3);assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,3,'only three recently opened data panes stay mounted');assert.ok(tab('库存快照'),'eviction does not close its navigation tab');assert.equal(detail('task-1'),undefined,'least recently used pane is evicted');
  const beforeEvictedOpen=reads();await click(tab('库存快照'));assert.equal(reads(),beforeEvictedOpen+1,'an evicted tab reopens with a fresh reader');assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,3);
- const beforeClose=reads();await click(tree.root.findByProps({'aria-label':'关闭采集资料'}));assert.equal(detail('task-3'),undefined);assert.equal(reads(),beforeClose,'closing a tab does not save or reread');
+ mark('eviction-checked');const beforeClose=reads();await click(tree.root.findByProps({'aria-label':'关闭采集资料'}));assert.equal(detail('task-3'),undefined);assert.equal(reads(),beforeClose,'closing a tab does not save or reread');
  // A store switch invalidates transient state while keeping persistent workbench cards.
  board={...board,revision:2,context:{storeId:'shop-b'}};await act(async()=>{window.dispatchEvent(new CustomEvent('apps-workbench-changed',{detail:{appId:'hallmark',board}}));await flush();});
  await click(tab('采购商品'));assert.equal(detail('task-0').findByProps({'aria-label':'搜索当前快照'}).props.value,'');assert.equal(requests.filter(row=>row.body).at(-1).body.params.context.storeId,'shop-b');
- const beforeSession=reads();session='B';await act(async()=>{tree.update(draw());await flush();});assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,0,'a new native chat does not inherit another chat’s transient panes');assert.equal(tab('工作台').props['aria-pressed'],true);assert.equal(reads(),beforeSession,'a session switch does not read another chat’s previously selected task');
- await open(0);const beforeApp=reads();await click(tree.root.findByProps({'data-switch-app':'notes'}));assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,0);assert.equal(tab('采购商品'),undefined,'app switch drops another app’s task tabs');assert.equal(reads(),beforeApp);
- assert.ok(requests.filter(row=>row.body).every(row=>row.body.operation==='read'));console.log('WORKSPACE_RESUME_PASS');
-}finally{if(tree)await act(async()=>tree.unmount());}
+ mark('store-switched');const beforeSession=reads();session='B';await act(async()=>{tree.update(draw());await flush();});assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,0,'a new native chat does not inherit another chat’s transient panes');assert.equal(tab('工作台').props['aria-pressed'],true);assert.equal(reads(),beforeSession,'a session switch does not read another chat’s previously selected task');
+ mark('session-switched');await open(0);const beforeApp=reads();await click(tree.root.findByProps({'data-switch-app':'notes'}));assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,0);assert.equal(tab('采购商品'),undefined,'app switch drops another app’s task tabs');assert.equal(reads(),beforeApp);
+ mark('app-switched');assert.ok(requests.filter(row=>row.body).every(row=>row.body.operation==='read'));mark('assertions-complete');console.log('WORKSPACE_RESUME_PASS');
+}finally{mark('cleanup-start');if(tree)await act(async()=>tree.unmount());mark('cleanup-complete');}
 `},plugins:[{name:'directory-isolation',setup(builder){builder.onLoad({filter:/[\\/]plugin-apps[\\/]client[\\/]directory\.tsx$/},()=>({contents:"export function AppsDirectory(p){return <div><button data-switch-app='notes' onClick={()=>p.onAppChange('notes')}>笔记应用</button>{p.navigation}{p.children}</div>}",loader:'tsx'}));}}],banner:{js:"import {createRequire} from 'node:module';const require=createRequire(import.meta.url);"},outfile:entry,bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-test-renderer']});
-  const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:20000,cwd:REPO_ROOT,windowsHide:true});writeFileSync(join(directory,'stdout.txt'),result.stdout??'');writeFileSync(join(directory,'stderr.txt'),result.stderr??'');assert.equal(result.status,0,(result.stdout??'')+(result.stderr??'')+'\nFixture retained at '+directory);assert.match(result.stdout,/WORKSPACE_RESUME_PASS/);passed=true;
+  const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:20000,cwd:REPO_ROOT,windowsHide:true});writeFileSync(join(directory,'stdout.txt'),result.stdout??'');writeFileSync(join(directory,'stderr.txt'),result.stderr??'');const diagnostics=childDiagnostics(result,directory);assert.equal(result.status,0,JSON.stringify(diagnostics)+'\n'+(result.stdout??'')+(result.stderr??'')+'\nFixture retained at '+directory);assert.match(result.stdout,/WORKSPACE_RESUME_PASS/);passed=true;
  }finally{assert.ok(resolve(directory).startsWith(root+sep+'workspace-resume-'));if(passed)rmSync(directory,{recursive:true,force:true,maxRetries:3});}
 });
 
