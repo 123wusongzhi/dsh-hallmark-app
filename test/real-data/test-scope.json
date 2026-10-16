@@ -167,7 +167,8 @@
     "test/apps-host/collection-column-fidelity.test.ts",
     "test/plugin-apps/business-price-journey.test.ts",
     "test/plugin-apps/workspace-resume.test.ts",
-    "test/plugin-apps/business-draft-recovery.test.ts"
+    "test/plugin-apps/business-draft-recovery.test.ts",
+    "test/plugin-apps/business-store-entry.test.ts"
   ],
   "infrastructureFiles": [
     "test/authoring/failed-build-http-recovery.test.ts",
@@ -534,6 +535,7 @@
     "test/acceptance/component-display/run-recovery.mjs": "Immutable recorded source snapshots in an isolated production Runtime child and Chromium; owned process crash, default recovery timing and genuine SDK ready; no live business writes.",
     "test/plugin-apps/business-price-journey.test.ts": "Recorded product titles and store labels with explicit local price, currency, selection, transport receipt and fault controls; actual React component and BusinessOperations engine use an in-memory store and a closed fixture endpoint. No merchant network or platform write.",
     "test/plugin-apps/workspace-resume.test.ts": "Recorded uiProduct/uiStore fixtures with explicit owner aliases, pagination scale and denied/late-response controls for production workspace state retention.",
-    "test/plugin-apps/business-draft-recovery.test.ts": "Recorded product/listing/store base through production AppsWorkspace and BusinessOperations; explicit local aliases, price/text edits, permission faults, delayed receipts, revision changes and capacity controls. No merchant execution."
+    "test/plugin-apps/business-draft-recovery.test.ts": "Recorded product/listing/store base through production AppsWorkspace and BusinessOperations; explicit local aliases, price/text edits, permission faults, delayed receipts, revision changes and capacity controls. No merchant execution.",
+    "test/plugin-apps/business-store-entry.test.ts": "Recorded store snapshots through production AppsWorkspace, WorkbenchBoard and BusinessOperations. Explicit empty-board, session/app/navigation changes, delayed or denied save controls verify one-shot store-entry return; all network calls mocked, no merchant execution. React event counts only, not browser click measurements."
   }
 }

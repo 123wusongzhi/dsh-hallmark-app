@@ -41,7 +41,7 @@ export async function businessOperation<T>(scope: Scope, operation: BusinessOper
   return (['ok', 'partial'].includes(value?.status) ? value.data : value) as T;
 }
 
-export function BusinessOperations({ sessionId, storeId, active = true }: { sessionId?: string; storeId?: string; active?: boolean }) {
+export function BusinessOperations({ sessionId, storeId, active = true, onChooseStore }: { sessionId?: string; storeId?: string; active?: boolean; onChooseStore?: () => void }) {
   const [stores, setStores] = useState<WorkbenchStoreOption[]>([]), [storeError, setStoreError] = useState('');
   const [drafts] = useState(() => new BusinessDraftRecovery()), [cacheNotice, setCacheNotice] = useState<DraftCacheNotice>(), [, refreshCache] = useState(0);
   useEffect(() => { const controller = new AbortController(); appsResource<WorkbenchStores>('stores', { appId: 'hallmark' }, controller.signal).then(result => { if (!controller.signal.aborted) setStores(result.stores); }).catch(error => { if (!controller.signal.aborted) setStoreError(error.message); }); return () => controller.abort(); }, []);
@@ -50,11 +50,11 @@ export function BusinessOperations({ sessionId, storeId, active = true }: { sess
   const identity = scope ? scopeKey(scope) : JSON.stringify([sessionId, storeId]);
   return <>
     {cacheNotice ? <p role="status" className="apps-business-notice">{cacheNotice === 'retained' ? '离开的未保存修改已按原聊天和店铺暂存，当前页面不会使用这些修改。' : cacheNotice === 'too_large' ? '未保存修改超过暂存容量，未能保留。' : cacheNotice === 'evicted' ? '较早的未保存修改已因暂存容量上限清除。' : '超过 30 分钟的未保存暂存已清除。'}暂存不等于保存，最多保留 30 分钟；关闭工作区或刷新后清除。请及时保存草稿。<button type="button" onClick={() => setCacheNotice(undefined)}>知道了</button></p> : null}
-    <BusinessOperationsEditor key={identity} sessionId={sessionId} storeId={storeId} store={store} scope={scope} identity={identity} active={active} drafts={drafts} onCacheNotice={setCacheNotice} onRecoveryResolved={() => setCacheNotice(previous => previous === 'retained' ? undefined : previous)} storeError={storeError}/>
+    <BusinessOperationsEditor key={identity} sessionId={sessionId} storeId={storeId} store={store} scope={scope} identity={identity} active={active} drafts={drafts} onCacheNotice={setCacheNotice} onRecoveryResolved={() => setCacheNotice(previous => previous === 'retained' ? undefined : previous)} storeError={storeError} onChooseStore={onChooseStore}/>
   </>;
 }
 
-function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, active, drafts, onCacheNotice, onRecoveryResolved, storeError }: { sessionId?: string; storeId?: string; store?: WorkbenchStoreOption; scope?: Scope; identity: string; active: boolean; drafts: BusinessDraftRecovery; onCacheNotice: (notice: DraftCacheNotice) => void; onRecoveryResolved: () => void; storeError: string }) {
+function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, active, drafts, onCacheNotice, onRecoveryResolved, storeError, onChooseStore }: { sessionId?: string; storeId?: string; store?: WorkbenchStoreOption; scope?: Scope; identity: string; active: boolean; drafts: BusinessDraftRecovery; onCacheNotice: (notice: DraftCacheNotice) => void; onRecoveryResolved: () => void; storeError: string; onChooseStore?: () => void }) {
   const [plans, setPlans] = useState<BusinessPlan[]>([]), [planId, setPlanId] = useState('');
   const [editingListingId, setEditingListingId] = useState('');
   const [rawEdits, setRawEdits] = useState<Record<string, string>>({}), rawEditedIds = Object.keys(rawEdits), rawDirty = rawEditedIds.length > 0;
@@ -141,7 +141,7 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
   const hiddenSelected = selected.filter(id => !visible.some(row => row.rowId === id)).length;
   return <section className="apps-business" aria-label="经营操作" aria-busy={busy || loadingPlans}><style>{BUSINESS_STYLES}{BUSINESS_PRICING_STYLES}</style>
     <header className="apps-business-heading"><div><span className="apps-business-eyebrow">OZON · 经营操作</span><h2>{store?.name ?? '经营操作'}</h2><p>查看改前改后、编辑草稿，确认整批范围后审核并执行。</p></div><button type="button" disabled={!scope || disabled || dirty || loadingPlans} onClick={() => setRefresh(value => value + 1)}>{loadingPlans ? '正在读取…' : '刷新批次'}</button></header>
-    {!sessionId ? <p className="apps-business-empty">请选择一个聊天，继续使用同一应用连接。</p> : !storeId ? <p className="apps-business-empty">先在工作台选择店铺，再打开经营操作。</p> : !store ? <p className="apps-business-empty">正在读取所选店铺的连接…</p> : <>
+    {!sessionId ? <p className="apps-business-empty">请选择一个聊天，继续使用同一应用连接。</p> : !storeId ? <div className="apps-business-empty"><p>选择店铺后继续经营操作。</p>{onChooseStore ? <button type="button" onClick={onChooseStore}>选择店铺并继续</button> : <p>先在工作台选择店铺，再打开经营操作。</p>}</div> : !store ? <p className="apps-business-empty">正在读取所选店铺的连接…</p> : <>
       <div className="apps-business-toolbar"><label>操作批次<select aria-label="操作批次" disabled={disabled || dirty} value={planId} onChange={event => { setPlanId(event.target.value); setSelected([]); setEdits({}); setRawEdits({}); setPricingEdits({}); }}><option value="">新建批次</option>{plans.map(item => <option key={item.planId} value={item.planId}>{item.title} · {item.rows.length} 个动作</option>)}</select></label><button type="button" disabled={disabled || dirty} onClick={() => { setPlanId(''); setSelected([]); }}>新建批次</button>{plan ? <span className="apps-business-revision">版本 {plan.revision} · {new Date(plan.updatedAt).toLocaleString('zh-CN')}</span> : null}</div>
       {pending ? <div className="apps-business-alert" role="status"><span>原操作回执待确认。检查原操作即可继续。</span><button type="button" disabled={busy} onClick={() => void recover()}>检查原操作</button></div> : null}
       {storeError ? <p role="alert">{storeError}</p> : null}
