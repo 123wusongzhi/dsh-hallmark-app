@@ -24,7 +24,7 @@ function fixture(collectionRows?:Record<string,any[]>){
   getProducts:async()=>ok({response:{items:[recordedPlatformProduct({id:1,product_id:1,sku:101,offer_id:'A',price:{price,currency_code:currency}})]}}),
   request:async(storeId:string,input:OzonBusinessRequest)=>{assert.equal(storeId,'shop');const write=directWrites.has(input.path);calls.push({transport:'ozon-direct',storeId,write,...input});if(!write)return readResponse();if(unknown){price='50';return {status:'unknown' as const,error:{code:'OUTCOME_UNKNOWN',message:'timeout',retryable:false}};}if(input.path==='/v1/product/import/prices')price=String((input.body?.prices as any[])[0].price);return ok({outcome:'response_received',httpStatus:200,response:{result:[{updated:true}]}});}
  } as unknown as OzonBusinessGateway;
- const broker:CoreBroker={getStoreTask:async()=>ok({taskId:'task'}),getListingTask:async()=>ok({taskId:'listing'}),requestId:(kind:string,id:string,index:number)=>`${kind}-${id}-${index}`},provider=new HallmarkProvider({store:port,client:collectionRows?(id)=>({...client,searchCollectedItems:async()=>{collectionReads.push(id);return ok(collectionRows[id]??[]);}}):client,broker,businessGateway:()=>direct?gateway:undefined,inspectOperation:(id,signal)=>runtime.inspect(id,signal)});
+ const broker:CoreBroker={getStoreTask:async()=>ok({taskId:'task'}),getListingTask:async()=>ok({taskId:'listing'}),requestId:(kind:string,id:string,index:number)=>`${kind}-${id}-${index}`},provider=new HallmarkProvider({store:port,client:collectionRows?(id:string)=>({...client,searchCollectedItems:async()=>{collectionReads.push(id);return ok(structuredClone(collectionRows[id]??[]));}}):client,broker,businessGateway:()=>direct?gateway:undefined,inspectOperation:(id,signal)=>runtime.inspect(id,signal)});
  const original=provider.execute.bind(provider);provider.execute=async(context)=>{executes++;return original(context);};
  const runtime=new AppsRuntime(store);runtime.register(provider);
  for(const connectionId of ['c','d']){runtime.addConnection({appId:'hallmark',connectionId,displayName:connectionId,config:{backend:'fixture'},configRevision:1,enabled:true});runtime.bind({sessionId:'s',appId:'hallmark',connectionId,enabled:true,boundAt:new Date().toISOString()});}
@@ -315,15 +315,15 @@ test('unconfigured store writes stop at connection setup and never reactivate ol
 });
 
 test('connection namespaces isolate snapshots and retain stale data when refresh is unavailable',async()=>{
- const collectionRows={c:[recordedSummary({},0)],d:[recordedSummary({},20)]},f=fixture(collectionRows);
+ const collectionRows={c:[recordedSummary({},0)],d:[recordedSummary({},20)]};
+ const identity=(row:any)=>({id:row.id,title:row.title,source:row.source}),expected={c:collectionRows.c.map(identity),d:collectionRows.d.map(identity)},f=fixture(collectionRows);
  try{
-  // Distinct frozen source rows expose a Provider cache accidentally shared by two bindings.
-  const identity=(row:any)=>({id:row.id,title:row.title,source:row.source});
+  // Frozen input projections distinguish the two connections before either cache is populated.
   for(const connectionId of ['c','d','c'] as const){
    const result=await f.invoke('hallmark.collection.search',{}, {connectionId});assert.equal(result.status,'ok');
-   assert.deepEqual(data(result).items.map(identity),collectionRows[connectionId].map(identity),`collection rows must belong to connection ${connectionId}`);
+   assert.deepEqual(data(result).items.map(identity),expected[connectionId],`collection rows must belong to connection ${connectionId}`);
   }
-  assert.deepEqual(f.collectionReads,['c','d'],'each connection reads its own source once and then reuses only its own cache');
+  assert.deepEqual(f.collectionReads,['c','d'],'each connection reads its own source once before c reuses its cache');
   await f.invoke('hallmark.products.list',{storeId:'shop'});assert.equal(f.port('d').get('snapshots','store_products:shop'),undefined);const before=f.port('c').get('snapshots','store_products:shop');f.down();const refresh=await f.invoke('hallmark.datasets.refresh',{datasetKey:'store_products:shop'});assert.equal(refresh.status,'unavailable');assert.deepEqual(f.port('c').get('snapshots','store_products:shop')?.payload,before?.payload);assert.equal(f.port('c').get('snapshots','store_products:shop')?.lastSuccessAt,before?.lastSuccessAt);const cached=await f.invoke('hallmark.products.list',{storeId:'shop'});assert.equal(cached.status,'ok');assert.equal(cached.provenance?.[0].freshness,'stale');assert.equal(f.calls.length,0);}finally{await f.runtime.dispose();f.store.close();}
 });
 
