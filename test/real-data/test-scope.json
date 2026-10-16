@@ -168,7 +168,9 @@
     "test/plugin-apps/business-price-journey.test.ts",
     "test/plugin-apps/workspace-resume.test.ts",
     "test/plugin-apps/business-draft-recovery.test.ts",
-    "test/plugin-apps/business-store-entry.test.ts"
+    "test/plugin-apps/business-store-entry.test.ts",
+    "test/plugin-apps/business-store-read-recovery.test.ts",
+    "test/plugin-apps/workbench-store-retry.test.ts"
   ],
   "infrastructureFiles": [
     "test/authoring/failed-build-http-recovery.test.ts",
@@ -335,7 +337,8 @@
     "test/apps-host/explicit-intent-retry.test.ts",
     "test/apps-host/result-read-error-parity.test.ts",
     "test/plugin-apps/information-owner-review.test.ts",
-    "test/plugin-apps/business-draft-recovery-cache.test.ts"
+    "test/plugin-apps/business-draft-recovery-cache.test.ts",
+    "test/plugin-apps/association-loading-lifecycle.test.ts"
   ],
   "infrastructureReasons": {
     "test/authoring/failed-build-http-recovery.test.ts": "Explicit exit-7 subprocess, real signed authoring evidence, SQLite receipt and actual committed HTTP response loss exercise failure-checkpoint recovery without any browser, commodity data, merchant action or publishable build.",
@@ -502,7 +505,8 @@
     "test/apps-host/explicit-intent-retry.test.ts": "Synthetic non-business in-memory counter Provider through real Host tools, HTTP, Runtime, SQLite and model JSON rendering verifies committed-response loss, read-only success recovery and explicit stable-intent retries without duplicate execution; no merchant facts, merchant writes, automatic mutation replay, or access-policy controls.",
     "test/apps-host/result-read-error-parity.test.ts": "Synthetic JSON values and long escaped keys exercise real read-only Provider, Runtime, HTTP, transport and registered Host result pagination, semantic rejection and corrected reads; no commodity facts, merchant writes or permission-policy controls.",
     "test/plugin-apps/information-owner-review.test.ts": "Production editor and board lifecycle contract: field keys, owner marker strings, schema metadata and controlled permission responses only; no commodity, stock, price, logistics or real shop facts are constructed.",
-    "test/plugin-apps/business-draft-recovery-cache.test.ts": "Pure in-memory cache lifetime, owner-key isolation, byte/count bounds and clone contracts with opaque text and plan/version identifiers; no commodity or shop facts."
+    "test/plugin-apps/business-draft-recovery-cache.test.ts": "Pure in-memory cache lifetime, owner-key isolation, byte/count bounds and clone contracts with opaque text and plan/version identifiers; no commodity or shop facts.",
+    "test/plugin-apps/association-loading-lifecycle.test.ts": "Real React request/loading lifecycle under isolated deferred fetch, using opaque routing identifiers and empty response envelopes only; no product or merchant-data claims."
   },
   "fileModes": {
     "test/apps-host/collection-column-fidelity.test.ts": "Three original SKUs from an unchanged hash-checked frozen detail through real Adapter, CollectionService, Provider, Runtime HTTP and Host renderer; independent source attribute/image expectations and formal image metadata resource reads verify named column fidelity and explicit absent package/price nulls without downloading images.",
@@ -536,6 +540,7 @@
     "test/plugin-apps/business-price-journey.test.ts": "Recorded product titles and store labels with explicit local price, currency, selection, transport receipt and fault controls; actual React component and BusinessOperations engine use an in-memory store and a closed fixture endpoint. No merchant network or platform write.",
     "test/plugin-apps/workspace-resume.test.ts": "Recorded uiProduct/uiStore fixtures with explicit owner aliases, pagination scale and denied/late-response controls for production workspace state retention.",
     "test/plugin-apps/business-draft-recovery.test.ts": "Recorded product/listing/store base through production AppsWorkspace and BusinessOperations; explicit local aliases, price/text edits, permission faults, delayed receipts, revision changes and capacity controls. No merchant execution.",
-    "test/plugin-apps/business-store-entry.test.ts": "Recorded store snapshots through production AppsWorkspace, WorkbenchBoard and BusinessOperations. Explicit empty-board, session/app/navigation changes, delayed or denied save controls verify one-shot store-entry return; all network calls mocked, no merchant execution. React event counts only, not browser click measurements."
+    "test/plugin-apps/business-store-entry.test.ts": "Recorded store snapshots through production AppsWorkspace, WorkbenchBoard and BusinessOperations. Explicit empty-board, session/app/navigation changes, delayed or denied save controls verify one-shot store-entry return; all network calls mocked, no merchant execution. React event counts only, not browser click measurements.",
+    "test/plugin-apps/business-store-read-recovery.test.ts": "Recorded uiStore/uiProduct snapshots through production BusinessOperations. Explicit empty, missing-owner, network, denied and held read controls verify recovery, cancellation identity isolation, double-click cooldown, ready editor keepalive and retained drafts; all fetch calls isolated, no merchant execution."
   }
 }
