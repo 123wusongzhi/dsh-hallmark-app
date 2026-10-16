@@ -70,6 +70,18 @@ export function businessResult(plan:BusinessPlan,context:ExecutionContext):Capab
  return {...base,status:'ok',data};
 }
 function link(store:CoreStore,context:ExecutionContext,planId:string):void {if(context.operationId)store.put('business_runtime_operations',context.operationId,{operationId:context.operationId,planId,sessionId:'sessionId'in context.request.source?context.request.source.sessionId:null});}
+/** Only verified source scope is exposed; never echo unbounded row payloads or stale references. */
+class ListingSourceRevisionError extends Error {
+ readonly code='LISTING_SOURCE_REVISION_CHANGED';
+ readonly details:Record<string,JsonValue>;
+ constructor(storeId:string,itemId:string,skuIds:string[],revision:string){
+  super('LISTING_SOURCE_REVISION_CHANGED');
+  const guidance='在本次调用的同一连接读取当前来源资料并核对原销售组成，再重新准备已授权的商品范围。不要沿用旧准备版本、直接替换版本号或重复提交原写入。';
+  const recovery={capability:'hallmark.collection.read',input:{id:itemId,skuIds,revision,limit:10,maxBytes:8000}};
+  const verified={storeId,recovery};
+  this.details=Buffer.byteLength(JSON.stringify(verified))<=3000?{...verified,guidance}:{guidance,recoveryOmitted:'verified_scope_exceeds_budget',requiredInput:['original source item ID','original selected source SKU IDs']};
+ }
+}
 /** Resolve only inside this connection's business store; reject mixed or stale composition references. */
 export async function resolveListingRows(store:CoreStore,storeId:string,rows:BusinessRowInput[],preparationRevision?:string,getProductRevision?:(id:string)=>Promise<string>):Promise<BusinessRowInput[]> {
  const revisions=new Map<string,Promise<string>>();
@@ -85,7 +97,7 @@ export async function resolveListingRows(store:CoreStore,storeId:string,rows:Bus
   if(row.procurement&&canonicalJson(row.procurement)!==canonicalJson(procurement))throw Error('LISTING_PROCUREMENT_MISMATCH');
   if(getProductRevision)for(const itemId of new Set<string>(procurement.map((p:RecordData)=>p.itemId))){
    let pending=revisions.get(itemId);if(!pending){pending=getProductRevision(itemId);revisions.set(itemId,pending);}const current=await pending;
-   if(current!==snapshot.sourceRevisions[itemId])throw Error('LISTING_SOURCE_REVISION_CHANGED');
+   if(current!==snapshot.sourceRevisions[itemId])throw new ListingSourceRevisionError(storeId,itemId,[...new Set<string>(procurement.filter((p:RecordData)=>p.itemId===itemId).map((p:RecordData)=>p.sourceSkuId))],current);
   }
   return {...row,preparationRevision:revision,procurement};
  }));
@@ -121,7 +133,7 @@ export async function executeBusiness(operations:BusinessOperations,store:CoreSt
   link(store,context,plan.planId);
   plan=await operations.submit({planId:plan.planId,expectedRevision:operation==='restore'?plan.revision:args.expectedRevision},context.signal);
   return businessResult(plan,context);
- }catch(error){return {...base,status:'failed',error:{code:error instanceof Error?error.message:'BUSINESS_OPERATION_FAILED',message:error instanceof Error?error.message:'经营操作未完成。',retryPolicy:'never'}};}
+ }catch(error){if(error instanceof ListingSourceRevisionError)return {...base,status:'failed',error:{code:error.code,message:'上品准备引用的来源资料已更新，请先读取当前资料并核对销售组成。',retryPolicy:'never',details:error.details}};return {...base,status:'failed',error:{code:error instanceof Error?error.message:'BUSINESS_OPERATION_FAILED',message:error instanceof Error?error.message:'经营操作未完成。',retryPolicy:'never'}};}
 }
 export async function executeLegacyBusiness(operations:BusinessOperations,store:CoreStore,client:CoreClient,context:ExecutionContext):Promise<CapabilityResult>{
  const args=context.request.input as RecordData,action=legacyBusinessKind(context.request.capabilityId)!,storeId=args.storeId;

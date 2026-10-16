@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {realSourceProducts,realStores,realStoreProducts} from '../real-data/corpus.ts';
+import {projectModelResult} from '../../packages/app-runtime/src/projection.ts';
 import {AppsRuntime,RuntimeStore} from '../../packages/app-runtime/src/index.ts';
 import {HallmarkProvider,HallmarkStorePort} from '../../packages/app-hallmark/src/index.ts';
 import {CollectionService} from '../../packages/collection/src/index.ts';
@@ -41,6 +42,39 @@ test('provider rejects an outdated preparation source revision before saving ano
     const stale=structuredClone(original);stale.revision='outdated-preparation-control';stale.sourceRevisions[source.id]='outdated-source-revision-control';port.put('business_listing_preparations',stale.revision,stale);
     const rejected:any=await invoke('hallmark.listing.draft.create',{storeId,preparationRevision:stale.revision,rows:[row]});
     assert.equal(rejected.status,'failed','provider must pass the current source revision reader into draft resolution');assert.equal(rejected.error.code,'LISTING_SOURCE_REVISION_CHANGED');
+    const model=JSON.parse(projectModelResult(db,rejected).content);
+    if(!model.error.details?.recovery)t.diagnostic('Baseline: source revision failure has no verified source identity or executable read route.');
+    assert.equal(model.error.retryPolicy,'never');
+    assert.equal(model.error.details.recovery.capability,'hallmark.collection.read');
+    assert.deepEqual(model.error.details.recovery.input,{id:source.id,skuIds:[sku.sourceSkuId],revision:current.revision,limit:10,maxBytes:8000});
+    const read:any=await invoke(model.error.details.recovery.capability,model.error.details.recovery.input);assert.equal(read.status,'ok',JSON.stringify(read));
+    assert.equal(read.data.items[0].revision,current.revision);
+    assert.ok(Buffer.byteLength(JSON.stringify(model))<5000);assert.equal(projectModelResult(db,rejected).fullResultRef,undefined);
+    // Neither a huge caller payload nor an untrusted preparation reference is echoed into recovery.
+    const huge='negative-input-control-'.repeat(10000);
+    const hugePayload:any=await invoke('hallmark.listing.draft.create',{storeId,preparationRevision:stale.revision,rows:[{...row,payload:{name:huge}}]});
+    assert.equal(hugePayload.error.code,'LISTING_SOURCE_REVISION_CHANGED');assert.deepEqual(hugePayload.error.details,model.error.details);assert.ok(!JSON.stringify(hugePayload).includes(huge));
+    const missing:any=await invoke('hallmark.listing.draft.create',{storeId,preparationRevision:huge,rows:[row]});
+    assert.equal(missing.error.code,'LISTING_PREPARATION_NOT_FOUND');assert.equal(missing.error.details,undefined);assert.ok(Buffer.byteLength(JSON.stringify(missing))<1000);
+    assert.ok(stores.length>1);
+    const wrongStore:any=await invoke('hallmark.listing.draft.create',{storeId:String(stores[1].id),preparationRevision:stale.revision,rows:[row]});
+    assert.equal(wrongStore.error.code,'LISTING_PREPARATION_NOT_FOUND');assert.equal(wrongStore.error.details,undefined);
+    const wrongSale:any=await invoke('hallmark.listing.draft.create',{storeId,preparationRevision:stale.revision,rows:[{...row,saleId:'missing-sale-control'}]});
+    assert.equal(wrongSale.error.code,'LISTING_SALE_NOT_FOUND');assert.equal(wrongSale.error.details,undefined);
+    // A changed source after the error must fail a pinned read rather than silently accept a newer revision.
+    const getProduct=collection.getProduct.bind(collection);
+    const mocked=t.mock.method(collection,'getProduct',async(...args:Parameters<typeof getProduct>)=>({...await getProduct(...args),revision:'newer-source-revision-control'}));
+    const raced:any=await invoke(model.error.details.recovery.capability,model.error.details.recovery.input);
+    assert.equal(raced.status,'failed');assert.equal(raced.error.code,'COLLECTION_REVISION_CHANGED');mocked.mock.restore();
+    // A removed original SKU remains blocked; recovery never broadens to other source SKUs.
+    const removed=t.mock.method(collection,'getProduct',async(...args:Parameters<typeof getProduct>)=>({...await getProduct(...args),skus:[]}));
+    const missingSku:any=await invoke(model.error.details.recovery.capability,model.error.details.recovery.input);
+    assert.equal(missingSku.status,'failed');assert.equal(missingSku.error.code,'COLLECTION_SKU_NOT_FOUND');removed.mock.restore();
+    // Oversized verified source metadata is omitted atomically, with no partial executable scope.
+    const oversized=t.mock.method(collection,'getProduct',async(...args:Parameters<typeof getProduct>)=>({...await getProduct(...args),revision:huge}));
+    const bounded:any=await invoke('hallmark.listing.draft.create',{storeId,preparationRevision:stale.revision,rows:[row]});
+    assert.equal(bounded.error.code,'LISTING_SOURCE_REVISION_CHANGED');assert.equal(bounded.error.details.recovery,undefined);
+    assert.equal(bounded.error.details.recoveryOmitted,'verified_scope_exceeds_budget');assert.ok(Buffer.byteLength(JSON.stringify(bounded))<2000);oversized.mock.restore();
     assert.equal(port.list('business_plans').length,1,'outdated material references must not create a second draft');assert.equal(db.list('operations').length,0);assert.equal(networkCalls,0);
   }finally{await runtime.dispose();db.close();}
 });
