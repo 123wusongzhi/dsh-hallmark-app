@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { CollectionAsset, CollectionPackage, CollectionPrice, CollectionProduct, CollectionSku } from './types.ts';
 
-export const COLLECTION_MAPPING_VERSION = 'collection-3';
+export const COLLECTION_MAPPING_VERSION = 'collection-4';
 export const hash = (value: unknown): string => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 24);
 export const object = (value: unknown): Record<string, any> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, any> : {};
 const text = (value: unknown): string | null => typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -46,8 +46,12 @@ export function normalizePurchaseCost(sku: Record<string, any>, defaults: { curr
   const base = goods ?? price(sku.price, currency, unit, 'purchase_cost');
   // The legacy Taobao detail's price is already goods + freight; goodsPrice is goods only.
   if (!base || (!goods && defaults.source === 'taobao_tmall')) return base;
-  const freight = price(object(defaults.delivery).freightAmount, defaults.currency ?? base.currency, unit, 'purchase_cost');
-  if (!freight || Number(freight.amount) === 0) return base;
+  const freightAmount = object(defaults.delivery).freightAmount;
+  // Missing freight is zero; an explicit invalid amount is not evidence of free shipping.
+  if (freightAmount == null) return base;
+  const freight = price(freightAmount, defaults.currency ?? base.currency, unit, 'purchase_cost');
+  if (!freight) return null;
+  if (Number(freight.amount) === 0) return base;
   if (freight.currency !== base.currency) return null;
   const goodsMinor = Math.round(Number(base.amount) * 100), freightMinor = Math.round(Number(freight.amount) * 100);
   const totalMinor = goodsMinor + freightMinor;
@@ -114,7 +118,7 @@ export function normalizeProduct(detail: Record<string, any>, sourceId = 'legacy
   const unknowns: CollectionProduct['unknowns'] = [];
   if (skus.some(s => !s.id)) unknowns.push({ field: 'sku.id', reason: '来源 SKU 身份缺失或重复，未以列表行号代替' });
   const missingCost = skus.filter(s => !s.purchaseCost).map(s => s.id).filter((s): s is string => !!s);
-  if (missingCost.length) unknowns.push({ field: 'purchaseCost', reason: '来源 SKU 售价或币种不可用，或运费币种不一致', skuIds: missingCost });
+  if (missingCost.length) unknowns.push({ field: 'purchaseCost', reason: '来源 SKU 售价或币种不可用，或运费金额无效／币种不一致', skuIds: missingCost });
   const weightMissing = skus.filter(s => s.package?.weightGrams == null && commonPackage.weightGrams == null).map(s => s.id).filter((s): s is string => !!s);
   const dimsMissing = skus.filter(s => s.package?.dimensionsMm == null && commonPackage.dimensionsMm == null).map(s => s.id).filter((s): s is string => !!s);
   if (weightMissing.length) unknowns.push({ field: 'package.weightGrams', reason: '来源未提供可用发货重量', skuIds: weightMissing });

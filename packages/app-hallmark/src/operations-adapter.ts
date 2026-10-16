@@ -230,7 +230,9 @@ export class HallmarkBusinessAdapter implements BusinessSourcePort,BusinessTrans
     const procurement:TrustedRowContext['procurement']=[],sourceDetails:RecordData[]=[],collectionProducts:CollectionProduct[]=[],sourceReferenceItems=new Map<string,Set<string>>();
     for(const itemId of [...new Set(selections.map(s=>s.itemId))]){
       if(!this.collection&&!this.client.getCollectedItemDetail)throw new Error('SOURCE_SKU_DETAILS_UNAVAILABLE');
-      const detail=this.collection?await this.collection.getLegacyDetail(itemId):requireResponse(await this.client.getCollectedItemDetail!(itemId));if(String(detail.id)!==itemId||!Array.isArray(detail.skus))throw new Error('SOURCE_ITEM_IDENTITY_INVALID');
+      // Execution/review refreshes must reach captured source facts as well as platform reads.
+      // Refresh once; reuse the normalized cache below rather than forcing a second fetch.
+      const detail=this.collection?await this.collection.getLegacyDetail(itemId,{refresh:fresh}):requireResponse(await this.client.getCollectedItemDetail!(itemId));if(String(detail.id)!==itemId||!Array.isArray(detail.skus))throw new Error('SOURCE_ITEM_IDENTITY_INVALID');
       const product=this.collection?await this.collection.getProduct(itemId):undefined;if(product)collectionProducts.push(product);
       const referenceUrls=product?product.assets.map(asset=>asset.url):[detail.mainImage,...detail.images??[],...detail.descriptionImages??[],...detail.skus.map((sku:RecordData)=>sku.image)];
       for(const url of referenceUrls)if(typeof url==='string'&&url.startsWith('https://')){const itemIds=sourceReferenceItems.get(url)??new Set<string>();itemIds.add(itemId);sourceReferenceItems.set(url,itemIds);}

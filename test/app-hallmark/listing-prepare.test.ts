@@ -11,6 +11,7 @@ import {CollectionService} from '../../packages/collection/src/index.ts';
 import {BusinessPackagingRepository} from '../../packages/business-packaging/src/index.ts';
 import {BusinessPricingRepository,dynamicReferenceDraft} from '../../packages/business-pricing/src/index.ts';
 import {prepareListing,collectionListingStates} from '../../packages/app-hallmark/src/listing-prepare.ts';
+import {BusinessOperations} from '../../packages/app-hallmark/src/operations/index.ts';
 import {HallmarkBusinessAdapter} from '../../packages/app-hallmark/src/operations-adapter.ts';
 import type {CoreClient} from '../../packages/core/src/types.ts';
 import {projectModelResult} from '../../packages/app-runtime/src/projection.ts';
@@ -320,5 +321,122 @@ test('hundreds of offers for one source SKU continue through bounded preparation
    if(!result.continuation)break;result=await prepareListing(result.continuation.input,f.options);
   }
   assert.equal(saleCount,1);assert.equal(offers.length,210);assert.equal(new Set(offers).size,210);assert.ok(pages>1);assert.deepEqual(offsets,Array.from({length:20},(_,i)=>(i+1)*10));assert.equal(f.counts().detailReads,1);
+ }finally{f.database.close();}
+});
+
+test('listing cost keeps invalid captured freight unknown across exact SKU quantities',async()=>{
+ const f=fixture(2);try{
+  const detail=f.details.get('p1')!;
+  detail.delivery={freightAmount:-1};
+  const input={storeId:'bill',selections:[{id:'p1',skuIds:['sku-1']}],compositions:[{id:'pair',members:[{itemId:'p1',sourceSkuId:'sku-1',quantity:2}]}]};
+  let page=await prepareListing(input,f.options);
+  assert.equal(page.sales[0].purchaseMinor,null);
+  assert.deepEqual(page.sales[0].procurement,input.compositions[0].members);
+  const invalidRevision=page.salesRevision;
+  detail.delivery={freightAmount:0};detail.skus[0].goodsPrice=999;detail.skus[1].goodsPrice=3.43;
+  page=await prepareListing({...input,refresh:true},f.options);
+  assert.equal(page.sales[0].purchaseMinor,686,'exact selected SKU cost times two, not adjacent SKU');
+  assert.notEqual(page.salesRevision,invalidRevision,'corrected source changes saved sale dependencies');
+  detail.skus[1].currency='USD';
+  page=await prepareListing({...input,refresh:true},f.options);
+  assert.equal(page.sales[0].purchaseMinor,null,'non-CNY costs are never implicitly converted');
+ }finally{f.database.close();}
+});
+
+
+test('automatic draft pricing cannot fall back to legacy prices after invalid freight',async()=>{
+ for(const withCollection of [true,false]){
+  const f=fixture(1);try{
+   const detail=f.details.get('p1')!;detail.delivery={freightAmount:-1};
+   detail.skus[0].goodsPrice=3.43;detail.skus[0].price=1;
+   const adapter=new HallmarkBusinessAdapter({...f.options,...(!withCollection?{collection:undefined,packaging:undefined}:{}),broker:{getStoreTask:async()=>{throw Error('no task');},getListingTask:async()=>{throw Error('no task');},requestId:()=>''}});
+   const context=await adapter.load({storeId:'bill',fresh:false,row:{action:'listing',target:{offerId:'invalid-freight'},procurement:[{itemId:'p1',sourceSkuId:'sku-0',quantity:2}],pricing:{mode:'automatic'},payload:{offer_id:'invalid-freight',name:'Кружка',description_category_id:1,type_id:2,attributes:[],weight:330,weight_unit:'g'}}});
+   assert.equal(context.procurement[0].unitPrice,null);
+   assert.equal(context.pricingQuote?.status,'blocked');
+   assert.equal(context.pricingQuote?.suggestedPriceMinor,null);
+   assert.equal(context.normalizedPayload?.price,undefined);
+  }finally{f.database.close();}
+ }
+});
+
+test('fresh execution source load refreshes captured cost and exact SKU mapping before pricing',async()=>{
+ const f=fixture(1);try{
+  (f.client as any).storeDataRead=async()=>({status:'ok',raw:{items:[]}});
+  const adapter=new HallmarkBusinessAdapter({...f.options,broker:{getStoreTask:async()=>{throw Error('no task');},getListingTask:async()=>{throw Error('no task');},requestId:()=>''}});
+  const input={storeId:'bill',fresh:false,row:{action:'listing' as const,target:{offerId:'fresh-cost'},procurement:[{itemId:'p1',sourceSkuId:'sku-0',quantity:2}],pricing:{mode:'automatic' as const},payload:{offer_id:'fresh-cost',name:'Кружка',description_category_id:1,type_id:2,attributes:[]}}};
+  const draft=await adapter.load(input);assert.equal(draft.pricingQuote?.breakdown.purchaseMinor,686);
+  f.details.get('p1')!.skus[0].goodsPrice=10;
+  const cached=await adapter.load(input);assert.equal(cached.pricingQuote?.breakdown.purchaseMinor,686);assert.equal(f.counts().detailReads,1);
+  const fresh=await adapter.load({...input,fresh:true});
+  assert.equal(fresh.pricingQuote?.breakdown.purchaseMinor,2000);
+  assert.equal(f.counts().detailReads,2,'one coherent source refresh, not two network reads');
+  assert.notDeepEqual(fresh.source,draft.source);
+  f.details.get('p1')!.skus[0].sourceSkuId='replacement';
+  await assert.rejects(adapter.load({...input,fresh:true}),/PROCUREMENT_SOURCE_INVALID/);
+ }finally{f.database.close();}
+});
+
+test('fresh source failure never reuses a cached listing procurement cost',async()=>{
+ const f=fixture(1);try{
+  (f.client as any).storeDataRead=async()=>({status:'ok',raw:{items:[]}});
+  const adapter=new HallmarkBusinessAdapter({...f.options,broker:{getStoreTask:async()=>{throw Error('no task');},getListingTask:async()=>{throw Error('no task');},requestId:()=>''}});
+  const input={storeId:'bill',fresh:false,row:{action:'listing' as const,target:{offerId:'fresh-failure'},procurement:[{itemId:'p1',sourceSkuId:'sku-0',quantity:1}],pricing:{mode:'automatic' as const},payload:{offer_id:'fresh-failure',name:'Кружка',description_category_id:1,type_id:2,attributes:[]}}};
+  await adapter.load(input);
+  const read=f.client.getCollectedItemDetail!;
+  f.client.getCollectedItemDetail=async()=>({status:'error',error:{code:'SOURCE_OFFLINE',message:'source unavailable'}} as any);
+  await assert.rejects(adapter.load({...input,fresh:true}),/source unavailable/);
+  assert.equal((await adapter.load(input)).pricingQuote?.breakdown.purchaseMinor,343,'draft may still use its cached facts');
+  f.client.getCollectedItemDetail=read;f.details.get('p1')!.skus[0].goodsPrice=10;
+  assert.equal((await adapter.load({...input,fresh:true})).pricingQuote?.breakdown.purchaseMinor,1000,'later refresh retries after failure');
+ }finally{f.database.close();}
+});
+
+
+test('actual adapter refresh blocks changed or unavailable post-review source before outbox dispatch',async()=>{
+ for(const change of ['cost','unavailable','none'] as const){
+  const f=fixture(1);try{
+   (f.client as any).storeDataRead=async()=>({status:'ok',raw:{items:[]}});
+   const adapter=new HallmarkBusinessAdapter({...f.options,broker:{getStoreTask:async()=>{throw Error('no task');},getListingTask:async()=>{throw Error('no task');},requestId:()=>''}});
+   let sends=0,reviews=0;
+   const engine=new BusinessOperations({store:f.store,source:adapter,transport:{execute:async()=>{sends++;return {status:'succeeded'};},inspect:async()=>{throw Error('unexpected inspect');}},reviewer:{review:async request=>{
+    reviews++;
+    if(change==='cost')f.details.get('p1')!.skus[0].goodsPrice=10;
+    if(change==='unavailable')f.client.getCollectedItemDetail=async()=>({status:'error',error:{code:'SOURCE_OFFLINE',message:'source unavailable'}} as any);
+    return {status:'passed',questions:request.questions.map(q=>({id:q.id,version:q.version,status:'passed',reviewer:'decisions',reasonCode:'passed'})),evidence:{versions:request.versions,requests:[],thresholds:{pass:.95,reject:.1}}};
+   }}});
+   const draft=await engine.create({storeId:'bill',rows:[{action:'listing',target:{offerId:'review-source'},procurement:[{itemId:'p1',sourceSkuId:'sku-0',quantity:1}],pricing:{mode:'automatic'},payload:{offer_id:'review-source',name:'Кружка',description_category_id:1,type_id:2,attributes:[]}}]});
+   assert.equal(sends,0);
+   const result=await engine.submit({planId:draft.planId,expectedRevision:draft.revision});
+   assert.equal(reviews,1,JSON.stringify(result.rows[0].issues));
+   if(change==='none'){
+    assert.equal(result.rows[0].status,'succeeded');assert.equal(sends,1);assert.equal(f.counts().detailReads,3);
+   }else{
+    assert.equal(result.rows[0].status,'blocked');assert.equal(sends,0);
+    assert.ok(result.rows[0].issues.some(issue=>issue.code===(change==='cost'?'CONTENT_CHANGED_DURING_REVIEW':'SOURCE_UNAVAILABLE')));
+    assert.equal(f.store.list('business_executions').length,0,'no dispatch intent from stale review');
+   }
+  }finally{f.database.close();}
+ }
+});
+
+
+test('concurrent execution refreshes join one inflight source read while ordinary drafts stay cached',async()=>{
+ const f=fixture(1);try{
+  (f.client as any).storeDataRead=async()=>({status:'ok',raw:{items:[]}});
+  const adapter=new HallmarkBusinessAdapter({...f.options,broker:{getStoreTask:async()=>{throw Error('no task');},getListingTask:async()=>{throw Error('no task');},requestId:()=>''}});
+  const input={storeId:'bill',fresh:false,row:{action:'listing' as const,target:{offerId:'concurrent-refresh'},procurement:[{itemId:'p1',sourceSkuId:'sku-0',quantity:1}],pricing:{mode:'automatic' as const},payload:{offer_id:'concurrent-refresh',name:'Кружка',description_category_id:1,type_id:2,attributes:[]}}};
+  await adapter.load(input);
+  const read=f.client.getCollectedItemDetail!;let release!:()=>void,entered!:()=>void;
+  const gate=new Promise<void>(resolve=>{release=resolve;}),started=new Promise<void>(resolve=>{entered=resolve;});
+  f.client.getCollectedItemDetail=async id=>{entered();await gate;return read(id);};
+  f.details.get('p1')!.skus[0].goodsPrice=10;
+  const first=adapter.load({...input,fresh:true});
+  await new Promise<void>((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('fresh source read did not start')),1000);started.then(()=>{clearTimeout(timeout);resolve();},reject);});
+  const second=adapter.load({...input,fresh:true});
+  const draft=await adapter.load(input);assert.equal(draft.pricingQuote?.breakdown.purchaseMinor,343);
+  await new Promise<void>(resolve=>setImmediate(resolve));release();
+  const results=await Promise.all([first,second]);
+  assert.deepEqual(results.map(result=>result.pricingQuote?.breakdown.purchaseMinor),[1000,1000]);
+  assert.equal(f.counts().detailReads,2,'one original read and one shared refresh');
  }finally{f.database.close();}
 });

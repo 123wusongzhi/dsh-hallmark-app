@@ -83,6 +83,44 @@ test('purchase cost adds captured freight once and uses zero when freight was no
   assert.equal(mixed.skus[0].purchaseCost, null, 'do not add CNY freight directly to USD goods');
 });
 
+test('explicit invalid captured freight never becomes a goods-only purchase cost', () => {
+  for (const freightAmount of [-1, '-0.01', '', ' ', 'not-a-number', true, {}, [], Infinity]) {
+    const detail = fixture('invalid-captured-freight', 1);
+    detail.source = 'alibaba_com'; detail.delivery = { freightAmount };
+    const product = normalizeProduct(detail);
+    assert.equal(product.skus[0].purchaseCost, null, `invalid captured freight: ${String(freightAmount)}`);
+    assert.deepEqual(product.unknowns.find(value => value.field === 'purchaseCost')?.skuIds, ['sku-0']);
+  }
+});
+
+test('absent freight and already-inclusive legacy totals remain valid negative controls', () => {
+  for (const freightAmount of [undefined, null, 0, '0']) {
+    const detail = fixture('absent-captured-freight', 1);
+    detail.source = 'alibaba_com'; detail.delivery = { freightAmount };
+    assert.equal(normalizeProduct(detail).skus[0].purchaseCost?.amount, '1.25');
+  }
+  const detail = fixture('inclusive-legacy-freight', 1);
+  detail.source = 'taobao_tmall'; detail.delivery = { freightAmount: -1 };
+  delete detail.skus[0].goodsPrice; detail.skus[0].price = 12.25;
+  assert.equal(normalizeProduct(detail).skus[0].purchaseCost?.amount, '12.25');
+});
+
+test('fresh collection-3 cache invalidates a goods-only cost with malformed freight', async () => {
+  const detail = fixture('cached-invalid-freight', 1);
+  detail.source = 'alibaba_com'; detail.delivery = { freightAmount: -1 };
+  const { service, values, calls } = setup([detail]);
+  await service.getProduct(detail.id);
+  const key = `collection_products/legacy-collection:${detail.id}`, saved = values.get(key);
+  saved.product.mapping.version = 'collection-3'; saved.product.revision = 'old-invalid-freight';
+  saved.product.skus[0].purchaseCost = { amount: '1.25', currency: 'CNY', unit: null, meaning: 'purchase_cost' };
+  const fetchedAtMs = saved.fetchedAtMs;
+  const updated = await service.getProduct(detail.id);
+  assert.equal(updated.skus[0].purchaseCost, null);
+  assert.notEqual(updated.revision, 'old-invalid-freight');
+  assert.equal(values.get(key).fetchedAtMs, fetchedAtMs);
+  assert.equal(calls.detail, 1, 'remap saved facts without fetching');
+});
+
 test('fresh legacy cache is remapped from saved source detail without waiting or fetching again', async () => {
   const detail = fixture('cached-price', 1); detail.source = 'alibaba_com';
   detail.skus = [recordedSku({ sourceSkuId: 'offer', sourceSellingPrice: { amount: '2.35', currency: 'CNY' } }, undefined, undefined, ["goodsPrice","price","id","code"])];
