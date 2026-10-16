@@ -176,7 +176,8 @@
     "test/plugin-apps/workbench-linked-cancellation.test.ts",
     "test/plugin-apps/business-recovery-actions.test.ts",
     "test/plugin-apps/business-discard-recovery.test.ts",
-    "test/plugin-apps/listing-packaging.test.ts"
+    "test/plugin-apps/listing-packaging.test.ts",
+    "test/plugin-apps/business-new-form-refresh.test.ts"
   ],
   "infrastructureFiles": [
     "test/authoring/failed-build-http-recovery.test.ts",
@@ -554,6 +555,7 @@
     "test/plugin-apps/business-store-read-recovery.test.ts": "Recorded uiStore/uiProduct snapshots through production BusinessOperations. Explicit empty, missing-owner, network, denied and held read controls verify recovery, cancellation identity isolation, double-click cooldown, ready editor keepalive and retained drafts; all fetch calls isolated, no merchant execution.",
     "test/plugin-apps/business-confirmation-revalidation.test.ts": "Recorded uiStore/uiProduct labels with explicit revision, price, missing/denied and delayed read controls. Production React confirmation is exercised across active-panel resume; closed fixture permits only list and resource reads, no merchant writes.",
     "test/plugin-apps/workbench-linked-cancellation.test.ts": "Recorded uiProduct base with explicit owner aliases, linked query/page cancellation, held abort-ignoring success/failure and fake refresh timers. Actual WorkbenchInstanceView, ProductList and SkuDetail run against read-only local fetch fixtures; no merchant network or writes.",
-    "test/plugin-apps/business-recovery-actions.test.ts": "Recorded uiStore/uiProduct and purchase-cost evidence with explicit local rejection/decision/retry states. Real React and in-memory business engine verify corrective next actions, mixed batches, clock expiry without automatic resend, and edited-save recovery. Transport is an in-memory recorder; no merchant calls."
+    "test/plugin-apps/business-recovery-actions.test.ts": "Recorded uiStore/uiProduct and purchase-cost evidence with explicit local rejection/decision/retry states. Real React and in-memory business engine verify corrective next actions, mixed batches, clock expiry without automatic resend, and edited-save recovery. Transport is an in-memory recorder; no merchant calls.",
+    "test/plugin-apps/business-new-form-refresh.test.ts": "Recorded product/store base with explicit local offer/price inputs, engine-backed plans and controlled missing/empty/failed/delayed list receipts; no merchant transport."
   }
 }

@@ -48,7 +48,12 @@ test('candidate Apps client opens explicit gateway cards in the native right pan
       assert.ok(registered.has('apps_invoke'));assert.equal([...registered.keys()].filter(key=>String(key).startsWith('hallmark_')).length,4);assert.equal([...registered.keys()].filter(key=>key==='hallmark-apps').length,1);
       selectionInputBridge.attachmentRuntime(attachmentRuntime);selectionInputBridge.observeSession('s');const unbind=selectionInputBridge.bind('s',{actions:{addAttachments:ids=>{attachments=[...attachments,...ids];return true;},submit:()=>{submissions++;throw new Error('No auto submission');}},readState:()=>({phase:'plain',attachmentIds:attachments}),disabledReason:()=>undefined});
       let tree,client;try{
-        const ToolView=registered.get('apps_invoke');await act(async()=>{tree=create(<ToolView sessionId="s" phase="result" block={{meta}}/>,{createNodeMock:node=>node.type==='iframe'?{contentWindow:child}:null});await new Promise(resolve=>setTimeout(resolve,50));});
+        const ToolView=registered.get('apps_invoke');await act(async()=>{tree=create(<ToolView sessionId="s" phase="result" block={{meta}}/>,{createNodeMock:node=>node.type==='iframe'?{contentWindow:child}:null});});
+        // The card loads its view over HTTP; elapsed time does not establish readiness.
+        const openGatewayButton=()=>tree.root.findAllByType('button').find(button=>button.children.join('')==='打开组件 ↗');
+        const gatewayDeadline=Date.now()+2000;
+        while(!openGatewayButton()&&Date.now()<gatewayDeadline)await act(async()=>{await new Promise(resolve=>setTimeout(resolve,10));});
+        assert.ok(openGatewayButton(),'Gateway open button did not become ready within 2 seconds');
         assert.equal(tree.root.findAllByType('iframe').length,0);assert.equal(tree.root.findByProps({'data-view-id':meta.apps.viewId}).props['data-build-id'],meta.apps.buildId);
         await act(async()=>tree.root.findAllByType('button').find(button=>button.children.join('')==='打开组件 ↗').props.onClick());assert.equal(openedViewId,meta.apps.viewId);await act(async()=>tree.unmount());
         const Pane=NativePane,tabSignal=new AbortController().signal;assert.ok(Pane);await act(async()=>{tree=create(<Pane sessionId="s" useTabInfo={()=>({tab:{navigation:{params:{viewId:openedViewId},revision:1},signal:tabSignal,visible:true,actions:{openTab:sidebarRight.openTab}}})}/>,{createNodeMock:node=>node.type==='iframe'?{contentWindow:child}:null});});
