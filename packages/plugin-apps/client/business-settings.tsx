@@ -18,47 +18,119 @@ function Numeric({label,value,scale=1,onChange,optional=false,help}:{label:strin
 export function BusinessSettings({sessionId,storeId,active=true}:{sessionId?:string;storeId?:string;active?:boolean}){
   const [view,setView]=useState<SettingsView>(),[connection,setConnection]=useState(''),[selected,setSelected]=useState(storeId??''),[draft,setDraft]=useState<BusinessPricingDraft>(),[planId,setPlanId]=useState('');
   const [notice,setNotice]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[dirty,setDirty]=useState(false),[refresh,setRefresh]=useState(0);
-  const [shop,setShop]=useState({name:'',clientId:'',apiKey:'',enabled:true}),[newShop,setNewShop]=useState(false);
+  const [shop,setShop]=useState({name:'',clientId:'',apiKey:'',enabled:true,baselineName:'',baselineEnabled:true}),[newShop,setNewShop]=useState(false);
   const [quoteInput,setQuoteInput]=useState({purchase:'',weight:'',price:'',action:'listing'}),[quote,setQuote]=useState<Record<string,any>>();
   const [packagingDirty,setPackagingDirty]=useState(false);
+  type StoreIntent={version:number;storeId:string};
+  const externalStore=useRef(storeId),intentVersion=useRef(0);
+  const [pendingStore,setPendingStore]=useState<StoreIntent|null>(null),[switchingStore,setSwitchingStore]=useState<StoreIntent|null>(null);
+  const [switchConfirmation,setSwitchConfirmation]=useState<{intent:number;edit:number}|null>(null);
+  // Store settings are shared across sessions. The loaded editor, not sessionId, owns a save.
+  const editorOwner=useRef('');editorOwner.current=`${view?.connectionId??''}\0${view?.store?.id??''}`;
+  const shopEdited=!!view&&(shop.name!==shop.baselineName||shop.enabled!==shop.baselineEnabled||!!shop.clientId||!!shop.apiKey);
+  const canFollowStore=!newShop&&!shopEdited&&!packagingDirty;
+  const cancelStoreIntent=()=>{intentVersion.current++;setPendingStore(null);setSwitchingStore(null);setSwitchConfirmation(null);};
+  const followStore=(intent:StoreIntent)=>{
+    if(intent.version!==intentVersion.current)return;
+    setPendingStore(null);setSwitchConfirmation(null);setSwitchingStore(intent);setQuote(undefined);setNotice('');setError('');
+    // An external store resolves its own connection; never combine it with an old explicit connection.
+    setConnection('');setSelected(intent.storeId);setRefresh(value=>value+1);
+  };
   const [reloadRequest,setReloadRequest]=useState<number|null>(null),reloadVersion=useRef(0);
-  const cancelReload=()=>{reloadVersion.current++;setReloadRequest(null);};
+  const cancelReload=()=>{reloadVersion.current++;setReloadRequest(null);setSwitchConfirmation(null);};
   useEffect(()=>{cancelReload();},[active,sessionId,storeId,connection,selected,newShop,dirty]);
-  const reload=()=>{cancelReload();setQuote(undefined);setDirty(false);setRefresh(value=>value+1);};
-  useEffect(()=>{if(storeId&&!dirty&&!newShop)setSelected(storeId);},[storeId]);
+  const reload=()=>{if(pendingStore)cancelStoreIntent();cancelReload();setQuote(undefined);setDirty(false);setRefresh(value=>value+1);};
   useEffect(()=>{
-    if(!active||dirty)return;setQuote(undefined);const controller=new AbortController();
+    if(externalStore.current===storeId)return;
+    externalStore.current=storeId;cancelReload();
+    const intent={version:++intentVersion.current,storeId:storeId??''};
+    setSwitchConfirmation(null);
+    if(!storeId||storeId===view?.store?.id||!canFollowStore){
+      setPendingStore(null);
+      if(switchingStore||storeId===view?.store?.id){setSwitchingStore(null);setConnection(view?.connectionId??'');setSelected(view?.store?.id??'');}
+      return;
+    }
+    if(dirty||busy){setPendingStore(intent);return;}
+    followStore(intent);
+  },[storeId]);
+  useEffect(()=>{
+    if(pendingStore&&!dirty&&!busy&&active&&canFollowStore)followStore(pendingStore);
+  },[pendingStore,dirty,busy,active,canFollowStore]);
+  useEffect(()=>{
+    if(!active||dirty||shopEdited)return;setQuote(undefined);const controller=new AbortController();const target=switchingStore;
     appsResource<SettingsView>('businessSettings',{...(connection?{connectionId:connection}:{}),...(!newShop&&selected?{storeId:selected}:{})},controller.signal).then(data=>{
-      if(controller.signal.aborted)return;setView(data);setDraft(data.pricing??initialDraft());setPlanId(data.pricing?.defaultPlanId??data.pricing?.plans[0]?.id??'');
-      setShop({name:newShop?'':data.store?.name??'',clientId:'',apiKey:'',enabled:newShop?true:data.store?.enabled??true});setError('');
-    }).catch(cause=>{if(!controller.signal.aborted)setError(cause instanceof Error?cause.message:'经营设置读取失败。');});return()=>controller.abort();
-  },[active,sessionId,connection,selected,refresh,newShop,dirty]);
+      if(controller.signal.aborted||(target&&target.version!==intentVersion.current))return;if(target&&data.store?.id!==target.storeId)throw new Error('工作台选择的店铺暂不可用，仍保留当前店铺。');setView(data);if(target)setSwitchingStore(null);setDraft(data.pricing??initialDraft());setPlanId(data.pricing?.defaultPlanId??data.pricing?.plans[0]?.id??'');
+      setShop({name:newShop?'':data.store?.name??'',clientId:'',apiKey:'',enabled:newShop?true:data.store?.enabled??true,baselineName:newShop?'':data.store?.name??'',baselineEnabled:newShop?true:data.store?.enabled??true});setError('');
+    }).catch(cause=>{if(!controller.signal.aborted&&(!target||target.version===intentVersion.current))setError(cause instanceof Error?cause.message:'经营设置读取失败。');});return()=>controller.abort();
+  },[active,sessionId,connection,selected,refresh,newShop,dirty,shopEdited]);
   const currentConnection=connection||view?.connectionId||'',currentStore=newShop?undefined:view?.store;
   const plan=draft?.plans.find(row=>row.id===planId);
   const automaticLogistics=draft?.logisticsSelection==='automatic';
-  const canSave=!!currentConnection&&!busy;
+  const canSave=!!currentConnection&&!busy&&!switchingStore;
   const patch=(values:Partial<BusinessPricingDraft>)=>{cancelReload();setDraft(value=>value?{...value,...values}:value);setDirty(true);setQuote(undefined);};
   const patchPlan=(values:Partial<LogisticsPlan>)=>{if(draft&&plan)patch({plans:draft.plans.map(row=>row.id===plan.id?{...row,...values}:row)});};
   const run=async(action:()=>Promise<void>)=>{if(busy)return;cancelReload();setBusy(true);setNotice('');setError('');try{await action();}catch(cause){setError(cause instanceof Error?cause.message:'操作未完成，请刷新核对。');}finally{setBusy(false);}};
   const saveShop=()=>run(async()=>{
     const credentials=shop.clientId||shop.apiKey?{clientId:shop.clientId,apiKey:shop.apiKey}:undefined;
     const result=await writeBusinessSettings<{store:OzonBusinessStore}>(sessionId,currentConnection,'store.save',{...(currentStore?{id:currentStore.id}:{}),name:shop.name,enabled:shop.enabled,currency:'CNY',expectedRevision:currentStore?.revision??0,...(credentials?{credentials}:{})});
-    setView(value=>value?{...value,store:result.store,stores:[...value.stores.filter(row=>row.id!==result.store.id),result.store]}:value);setShop(value=>({...value,clientId:'',apiKey:''}));setSelected(result.store.id);setNewShop(false);if(!dirty)setRefresh(value=>value+1);setNotice('店铺连接已保存。');
+    setView(value=>value?{...value,store:result.store,stores:[...value.stores.filter(row=>row.id!==result.store.id),result.store]}:value);setShop({name:result.store.name,enabled:result.store.enabled,clientId:'',apiKey:'',baselineName:result.store.name,baselineEnabled:result.store.enabled});setSelected(result.store.id);setNewShop(false);if(!dirty)setRefresh(value=>value+1);setNotice('店铺连接已保存。');
   });
-  const savePricing=()=>run(async()=>{if(!currentStore||!draft)return;const result=await writeBusinessSettings<{pricing:BusinessPricingConfig}>(sessionId,currentConnection,'pricing.save',{storeId:currentStore.id,config:draft,expectedRevision:view?.pricing?.revision??0});setView(value=>value?{...value,pricing:result.pricing}:value);setDraft(result.pricing);setDirty(false);setRefresh(value=>value+1);setNotice('经营规则已保存，将用于后续上品、调价和活动操作。');});
+  const savePricing=()=>run(async()=>{
+    if(!currentStore||!draft)return;
+    const owner=editorOwner.current;
+    const result=await writeBusinessSettings<{pricing:BusinessPricingConfig}>(sessionId,currentConnection,'pricing.save',{
+      storeId:currentStore.id,config:draft,expectedRevision:view?.pricing?.revision??0,
+    });
+    if(editorOwner.current!==owner)return;
+    setView(value=>value?{...value,pricing:result.pricing}:value);setDraft(result.pricing);setDirty(false);setRefresh(value=>value+1);
+    setNotice(`${currentStore.name} 的经营规则已保存，将用于后续上品、调价和活动操作。`);
+  });
   const calculate=()=>run(async()=>{if(!currentStore)return;const result=await writeBusinessSettings<{quote:Record<string,any>}>(sessionId,currentConnection,'pricing.quote',{storeId:currentStore.id,action:quoteInput.action,...(!automaticLogistics&&planId?{planId}:{}),purchaseMinor:quoteInput.purchase===''?null:Math.round(Number(quoteInput.purchase)*100),weightGrams:quoteInput.weight===''?null:Number(quoteInput.weight),priceMinor:quoteInput.price===''?null:Math.round(Number(quoteInput.price)*100),pricingMode:quoteInput.price===''?'automatic':'manual'});setQuote(result.quote);});
   return <section className="business-settings" aria-label="经营设置"><style>{BUSINESS_SETTINGS_STYLES}</style><fieldset disabled={busy} className="business-settings-body">
-    <header><div><p className="business-settings-eyebrow">OZON · 经营设置</p><h2>把报价与规则留在这里</h2><p>维护店铺、物流渠道和定价口径。表格与 Agent 使用同一份已保存规则。</p></div><button disabled={busy} onClick={()=>{if(busy)return;if(dirty)setReloadRequest(++reloadVersion.current);else reload();}}>重新读取</button></header>
+    <header><div><p className="business-settings-eyebrow">OZON · 经营设置</p><h2>把报价与规则留在这里</h2><p>维护店铺、物流渠道和定价口径。表格与 Agent 使用同一份已保存规则。</p></div><button disabled={busy||shopEdited} onClick={()=>{if(busy||shopEdited)return;if(dirty)setReloadRequest(++reloadVersion.current);else reload();}}>重新读取</button></header>
     {dirty&&reloadRequest!==null?<div className="business-settings-card" role="group" aria-label="确认重新读取经营规则"><p>有未保存的经营规则修改。重新读取将放弃这些修改。</p><div className="business-settings-actions"><button type="button" disabled={busy} onClick={cancelReload}>保留修改</button><button type="button" disabled={busy} onClick={()=>{if(!busy&&reloadRequest===reloadVersion.current)reload();}}>放弃并重新读取</button></div></div>:null}
+    {pendingStore?<div className="business-settings-card" role="group" aria-label="工作台店铺切换待处理">
+      <p>工作台已切换店铺。这里仍是 {view?.store?.name??'当前店铺'} 的规则。
+        {dirty?'规则有未保存修改，保存成功后将切换；也可以明确放弃修改后切换。':'规则已保存，其他未保存修改处理完后再切换。'}
+        也可以继续编辑当前店铺，不跟随本次切换。</p>
+      <div className="business-settings-actions">
+        <button type="button" disabled={busy} onClick={()=>{
+          if(!busy&&pendingStore.version===intentVersion.current)cancelStoreIntent();
+        }}>继续编辑，不跟随本次切换</button>
+        <button type="button" disabled={busy||!canFollowStore} onClick={()=>{
+          if(!busy&&canFollowStore&&pendingStore.version===intentVersion.current)
+            setSwitchConfirmation({intent:pendingStore.version,edit:reloadVersion.current});
+        }}>放弃修改并切换</button>
+      </div>
+      {switchConfirmation?<div role="group" aria-label="确认放弃规则并切换店铺">
+        <p>确认放弃当前店铺未保存的规则，并切换到工作台选择的店铺？</p>
+        <button type="button" disabled={busy} onClick={cancelReload}>保留修改，不切换</button>
+        <button type="button" disabled={busy||!canFollowStore} onClick={()=>{
+          if(!busy&&canFollowStore&&switchConfirmation.intent===intentVersion.current&&switchConfirmation.edit===reloadVersion.current){
+            setDirty(false);followStore(pendingStore);
+          }
+        }}>确认放弃并切换</button>
+      </div>:null}
+    </div>:null}
+    {shopEdited?<p className="business-settings-muted">店铺连接有未保存修改；请先保存连接，或恢复原值，再重新读取或切换店铺。</p>:null}
+    {switchingStore?<div role="status">
+      <p>{error?'目标店铺切换未完成':'正在切换到工作台选择的店铺'}；当前仍显示 {view?.store?.name??'原店铺'}，尚未切换。
+        可重新读取、另选店铺，或取消本次切换继续编辑原店铺。</p>
+      <button type="button" disabled={busy} onClick={()=>{
+        if(busy||switchingStore.version!==intentVersion.current)return;
+        cancelStoreIntent();setConnection(view?.connectionId??'');setSelected(view?.store?.id??'');setError('');
+      }}>取消切换，继续原店铺</button>
+    </div>:null}
     {notice?<p role="status" className="business-settings-success">{notice}</p>:null}{error?<p role="alert" className="business-settings-error">{error}</p>:null}
     
-    <div className="business-settings-toolbar"><label>采集来源连接<select value={currentConnection} disabled={busy||dirty||packagingDirty} onChange={event=>{setConnection(event.target.value);setSelected('');setNewShop(false);setQuote(undefined);}}>{view?.connections.map(row=><option key={row.connectionId} value={row.connectionId}>{row.displayName}</option>)}</select></label><label>经营店铺<select value={newShop?'':currentStore?.id??''} disabled={busy||dirty} onChange={event=>{setSelected(event.target.value);setNewShop(false);setQuote(undefined);}}><option value="">选择店铺</option>{view?.stores.map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select></label><button disabled={!currentConnection||dirty||busy} onClick={()=>{setNewShop(true);setSelected('');setShop({name:'',clientId:'',apiKey:'',enabled:true});}}>新增店铺</button></div>
+    <div className="business-settings-toolbar"><label>采集来源连接<select value={currentConnection} disabled={busy||dirty||packagingDirty||shopEdited} onChange={event=>{cancelStoreIntent();setConnection(event.target.value);setSelected('');setRefresh(value=>value+1);setNewShop(false);setQuote(undefined);}}>{view?.connections.map(row=><option key={row.connectionId} value={row.connectionId}>{row.displayName}</option>)}</select></label><label>经营店铺<select value={newShop?'':currentStore?.id??''} disabled={busy||dirty||shopEdited} onChange={event=>{cancelStoreIntent();setSelected(event.target.value);setRefresh(value=>value+1);setNewShop(false);setQuote(undefined);}}><option value="">选择店铺</option>{view?.stores.map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select></label><button disabled={!currentConnection||dirty||busy||shopEdited} onClick={()=>{cancelStoreIntent();setNewShop(true);setSelected('');setShop({name:'',clientId:'',apiKey:'',enabled:true,baselineName:'',baselineEnabled:true});}}>新增店铺</button></div>
+    <fieldset className="business-settings-editor" disabled={!!switchingStore} style={{border:0,margin:0,padding:0,minWidth:0}}>
     {view?.packagingAvailable&&currentConnection?<PackagingSettings key={currentConnection} sessionId={sessionId} connectionId={currentConnection} onDirty={setPackagingDirty}/>:null}
     <details className="business-settings-card" open={newShop||!currentStore}><summary>店铺连接 <span>{currentStore?.hasCredentials?'已配置 Ozon 凭据':'待配置'}</span></summary><div className="business-settings-grid">
-      <label className="business-setting-field"><span>店铺名称</span><input value={shop.name} onChange={event=>setShop(value=>({...value,name:event.target.value}))}/></label>
-      <label className="business-setting-field"><span>Client ID</span><input autoComplete="off" value={shop.clientId} placeholder={currentStore?.hasCredentials?'留空保留现有凭据':''} onChange={event=>setShop(value=>({...value,clientId:event.target.value}))}/></label>
-      <label className="business-setting-field"><span>API Key</span><input type="password" autoComplete="new-password" value={shop.apiKey} onChange={event=>setShop(value=>({...value,apiKey:event.target.value}))}/></label>
-      <label className="business-settings-check"><input type="checkbox" checked={shop.enabled} onChange={event=>setShop(value=>({...value,enabled:event.target.checked}))}/>启用店铺</label>
+      <label className="business-setting-field"><span>店铺名称</span><input value={shop.name} onChange={event=>{cancelReload();setShop(value=>({...value,name:event.target.value}));}}/></label>
+      <label className="business-setting-field"><span>Client ID</span><input autoComplete="off" value={shop.clientId} placeholder={currentStore?.hasCredentials?'留空保留现有凭据':''} onChange={event=>{cancelReload();setShop(value=>({...value,clientId:event.target.value}));}}/></label>
+      <label className="business-setting-field"><span>API Key</span><input type="password" autoComplete="new-password" value={shop.apiKey} onChange={event=>{cancelReload();setShop(value=>({...value,apiKey:event.target.value}));}}/></label>
+      <label className="business-settings-check"><input type="checkbox" checked={shop.enabled} onChange={event=>{cancelReload();setShop(value=>({...value,enabled:event.target.checked}));}}/>启用店铺</label>
     </div><div className="business-settings-actions"><button disabled={!canSave||!shop.name} onClick={saveShop}>保存店铺连接</button><button disabled={!canSave||!currentStore} onClick={()=>void run(async()=>{if(!currentStore)return;const result=await writeBusinessSettings<{connected:boolean;message?:string}>(sessionId,currentConnection,'store.check',{storeId:currentStore.id});if(!result.connected)throw new Error(result.message??'店铺连接未通过，请检查凭据。');setNotice('已成功读取 Ozon，店铺连接正常。');})}>测试连接</button></div></details>
     {currentStore&&draft?<>
       <section className="business-settings-card"><h3>利润计算方式</h3><label className="business-setting-field"><span>物流方案选择</span><select value={draft.logisticsSelection??'fixed'} onChange={event=>patch({logisticsSelection:event.target.value as 'automatic'|'fixed'})}><option value="automatic">按售价与重量自动匹配</option><option value="fixed">固定方案（兼容原有规则）</option></select></label><p className="business-settings-muted">{automaticLogistics?'实际卖家售价或待提交的售价、计费重量决定适用方案。多个方案条件重合时，按固定费＋运费＋佣金总费用最高的方案计算利润。手动填写售价也会自动匹配。':'当前沿用指定方案计算。切换为自动匹配后，每次按售价与重量重新选择；已有报价不改写。'}</p><details><summary>已确认的两档参考报价</summary><p className="business-settings-muted">售价低于 135 元：固定费 3.16 元；135 元及以上：固定费 18 元。两档运费均为 39.3 元／kg、佣金 20%。135 元是方案分界，不是售价上限。</p><button type="button" onClick={()=>{const reference=dynamicReferenceDraft();patch({logisticsSelection:'automatic',defaultPlanId:reference.defaultPlanId,plans:reference.plans,source:{kind:'user',description:'已确认的两档动态物流报价：售价低于 135 元固定费 3.16 元，135 元及以上固定费 18 元；运费 39.3 元/kg，佣金 20%。经营目标与售价限制保留当前设置。'}});setPlanId(reference.plans[0]?.id??'');setNotice('参考报价已填入草稿，请检查经营底线并保存后生效。');}}>填入两档参考报价草稿</button><small>替换当前草稿中的物流方案，保留已设置的利润目标与售价限制；保存后才生效。</small></details></section>
@@ -87,7 +159,7 @@ export function BusinessSettings({sessionId,storeId,active=true}:{sessionId?:str
       </div><p className="business-settings-muted">目标利润用于建议价；提交底线是单独的经营限制。利润率＝利润÷售价，运费与佣金分别向上取分。</p>{draft.source?<p className="business-settings-source">配置来源：{draft.source.description}</p>:null}<div className="business-settings-actions"><button className="business-settings-primary" disabled={!canSave||!dirty} onClick={savePricing}>{busy?'正在保存…':`保存${dirty?'已修改的':''}经营规则`}</button>{dirty?<span>有未保存修改</span>:null}</div></section>
       <section className="business-settings-card"><h3>按已保存规则试算</h3><p className="business-settings-muted">{automaticLogistics?'输入采购合计、计费重量及实际或待提交售价，自动匹配物流方案。留空售价时求建议价，再按建议价确认方案。':'输入一件销售商品的采购合计与计费重量，按当前选中固定方案计算。'}</p><div className="business-settings-grid"><label className="business-setting-field"><span>用途</span><select value={quoteInput.action} onChange={event=>{setQuote(undefined);setQuoteInput(value=>({...value,action:event.target.value}));}}><option value="listing">上品</option><option value="price">普通调价</option><option value="promotion.update">活动调价</option></select></label><label className="business-setting-field"><span>采购合计（元）</span><input type="number" min="0" step="0.01" value={quoteInput.purchase} onChange={event=>{setQuote(undefined);setQuoteInput(value=>({...value,purchase:event.target.value}));}}/></label><label className="business-setting-field"><span>计费重量（克）</span><input type="number" min="1" step="1" value={quoteInput.weight} onChange={event=>{setQuote(undefined);setQuoteInput(value=>({...value,weight:event.target.value}));}}/></label><label className="business-setting-field"><span>试算售价（元，留空求建议价）</span><input type="number" min="0" step="0.01" value={quoteInput.price} onChange={event=>{setQuote(undefined);setQuoteInput(value=>({...value,price:event.target.value}));}}/></label></div><button disabled={!canSave||dirty||!view?.pricing} onClick={calculate}>计算价格与利润</button>{dirty?<small>先保存修改，再按新规则试算。</small>:null}{quote?<QuoteSummary quote={quote}/>:null}</section>
     </>:<div className="business-settings-empty">先保存一个 Ozon 店铺连接，再配置物流报价和经营规则。</div>}
-  </fieldset></section>;
+  </fieldset></fieldset></section>;
 }
 type PackagingForm={length:string;width:string;height:string;weight:string};
 type PackagingComposition={itemId:string;sourceSkuId:string;quantity:number;title?:string};

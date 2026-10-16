@@ -42,11 +42,11 @@ try{
  await act(async()=>{tree.root.findByProps({className:'packaging-search-item'}).findByType('input').props.onChange({target:{checked:true}});await settle();});
  await click('读取所选商品的包装');assert.deepEqual(requests.map(row=>row.operation),['packaging.search','packaging.read']);
 `;
-async function scenario(source:string){
+async function scenario(source:string,setup=fixture){
   const root=resolve('.test-tmp');mkdirSync(root,{recursive:true});const directory=mkdtempSync(resolve(root,'packaging-ui-'));
   try{
     const entry=resolve(directory,'ui.mjs');
-    await build({stdin:{resolveDir:process.cwd(),sourcefile:'packaging-ui-test.tsx',loader:'tsx',contents:fixture+source+`\nconsole.log('PACKAGING_UI_PASS');}finally{if(tree)await act(async()=>tree.unmount());}`},banner:{js:"import {createRequire} from 'node:module';const require=createRequire(import.meta.url);"},outfile:entry,bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-test-renderer']});
+    await build({stdin:{resolveDir:process.cwd(),sourcefile:'packaging-ui-test.tsx',loader:'tsx',contents:setup+source+`\nconsole.log('PACKAGING_UI_PASS');}finally{if(tree)await act(async()=>tree.unmount());}`},banner:{js:"import {createRequire} from 'node:module';const require=createRequire(import.meta.url);"},outfile:entry,bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-test-renderer']});
     const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:20000});assert.equal(result.status,0,result.error?.message??result.stderr);assert.match(result.stdout,/PACKAGING_UI_PASS/);
   }finally{assert.ok(resolve(directory).startsWith(root+sep+'packaging-ui-'));rmSync(directory,{recursive:true,force:true,maxRetries:3});}
 }
@@ -67,3 +67,16 @@ test('packaging UI edits multi-SKU quantities, persists automatic combinations a
  await change('red length','30');const writes=requests.filter(row=>row.operation==='packaging.save').length;await click('保存包装修改');assert.equal(requests.filter(row=>row.operation==='packaging.save').length,writes);assert.match(text(tree.toJSON()),/尺寸请填写完整/);
  await change('red width','12');await change('red height','8');await click('保存包装修改');assert.deepEqual(repository.readOverride({kind:'sku',itemId:'p1',sourceSkuId:'red'}).values.dimensionsCm,{length:30,width:12,height:8});
 `));
+
+test('external cross-connection loading disables packaging edits while local cancellation retains rows',async()=>{
+ const setup=fixture.replace('let tree;', 'let tree,holdSettingsRead=false,releaseSettingsRead;').replace(
+  "if(String(url).includes('resource=businessSettings'))return Response.json({connections:[{connectionId:'source',displayName:'采集来源'}],connectionId:'source',stores:[],store:null,pricing:null,packagingAvailable:true});",
+  "if(String(url).includes('resource=businessSettings')){const cross=new URL(String(url),'http://local.test').searchParams.get('storeId')==='cross';if(holdSettingsRead){holdSettingsRead=false;await new Promise(resolve=>releaseSettingsRead=resolve);}return Response.json({connections:[{connectionId:'source',displayName:'采集来源'},{connectionId:'other',displayName:'其他连接'}],connectionId:cross?'other':'source',stores:[],store:cross?{...uiStore(),id:'cross',name:'跨连接测试店铺',sourceConnectionId:'other',enabled:true}:null,pricing:null,packagingAvailable:true});}"
+ );
+ await scenario(`
+ holdSettingsRead=true;await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});
+ let node=input('red weight'),blocked=false;while(node){if(node.type==='fieldset'&&node.props.disabled)blocked=true;node=node.parent;}assert.equal(blocked,true,'a real browser blocks edits to packaging while its connection may be replaced');
+ await click('取消切换，继续原店铺');await act(async()=>{releaseSettingsRead();await settle();});
+ assert.ok(input('red weight'));assert.equal(field('采集来源连接').props.value,'source');assert.equal(requests.filter(row=>row.operation==='packaging.save').length,0);
+ `,setup);
+});

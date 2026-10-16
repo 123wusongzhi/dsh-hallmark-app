@@ -13,9 +13,9 @@ import {create,act} from 'react-test-renderer';
 import assert from 'node:assert/strict';
 import {BusinessSettings} from './packages/plugin-apps/client/business-settings.tsx';
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
-const originalFetch=globalThis.fetch,requests=[],reads=[];let tree,holdStoreSave=false,releaseStoreSave,holdRead=false,releaseRead,failPricingSave=false;
+const originalFetch=globalThis.fetch,requests=[],reads=[];let tree,holdStoreSave=false,releaseStoreSave,holdRead=false,releaseRead,failPricingSave=false,holdPricingSave=false,releasePricingSave,failNextRead=false;
 const store=(id,name)=>({...uiStore({},id==='bill'?0:1),id,name,platform:'ozon',sourceConnectionId:'board',revision:3,credentialRevision:1,hasCredentials:true,enabled:true,currency:'CNY',createdAt:'2026-10-10',updatedAt:'2026-10-10'});
-let stores=[store('bill','Bill 店铺'),store('helen','Helen 店铺')];
+let stores=[store('bill','Bill 店铺'),store('helen','Helen 店铺'),{...store('cross','跨连接测试店铺'),sourceConnectionId:'other'}];
 // Pricing ranges and revision transitions are explicit derivatives of the captured pricing settings.
 let config={...recordedPricingSettings,schemaVersion:1,storeId:'bill',revision:7,updatedAt:'2026-10-10',currency:'CNY',defaultPlanId:'light',plans:[
  {id:'light',name:'轻小件渠道',enabled:true,fixedMinor:1400,logisticsMicrosPerGram:85000,commissionPpm:150000},
@@ -24,9 +24,9 @@ let config={...recordedPricingSettings,schemaVersion:1,storeId:'bill',revision:7
  source:{kind:'legacy-platform',description:'从原平台导入的报价方案',importedAt:'2026-10-10'}};
 globalThis.fetch=async(url,options)=>{
  if(String(url).includes('resource=businessSettings')){
-  const query=new URL(String(url),'http://local.test').searchParams;reads.push(Object.fromEntries(query));
-  const selected=stores.find(row=>row.id===(query.get('storeId')??'bill'));
-  const snapshot={connections:[{connectionId:'board',displayName:'原采集平台'}],connectionId:'board',stores,store:selected,pricing:{...config,storeId:selected.id}};
+  const query=new URL(String(url),'http://local.test').searchParams;reads.push(Object.fromEntries(query));if(failNextRead){failNextRead=false;return Response.json({error:{message:'本地模拟读取失败'}},{status:503});}
+  const selected=stores.find(row=>row.id===(query.get('storeId')??'bill'));if(query.get('connectionId')&&query.get('connectionId')!==selected.sourceConnectionId)return Response.json({error:{code:'STORE_NOT_FOUND',message:'店铺不属于当前经营连接。'}},{status:404});
+  const snapshot={connections:[{connectionId:'board',displayName:'原采集平台'},{connectionId:'other',displayName:'测试其他连接'}],connectionId:selected.sourceConnectionId,stores:stores.filter(row=>row.sourceConnectionId===selected.sourceConnectionId),store:selected,pricing:{...config,storeId:selected.id}};
   if(holdRead){holdRead=false;await new Promise(resolve=>{releaseRead=resolve;});}
   return Response.json(snapshot);
  }
@@ -36,9 +36,9 @@ globalThis.fetch=async(url,options)=>{
  if(body.operation==='store.save'){
   if(holdStoreSave)await new Promise(resolve=>{releaseStoreSave=resolve;});
   const previous=stores.find(row=>row.id===body.input.id);assert.equal(body.input.expectedRevision,previous.revision);
-  const next={...previous,name:body.input.name,revision:previous.revision+1};stores=stores.map(row=>row.id===next.id?next:row);return Response.json({store:next});
+  const next={...previous,name:body.input.name.trim(),revision:previous.revision+1};stores=stores.map(row=>row.id===next.id?next:row);return Response.json({store:next});
  }
- if(body.operation==='pricing.save'){if(failPricingSave)return Response.json({error:{code:'CONFLICT',message:'规则保存失败，请重试。'}},{status:409});config={...body.input.config,storeId:body.input.storeId,revision:8,updatedAt:'2026-10-10'};return Response.json({pricing:config});}
+ if(body.operation==='pricing.save'){if(holdPricingSave)await new Promise(resolve=>releasePricingSave=resolve);if(failPricingSave)return Response.json({error:{code:'CONFLICT',message:'规则保存失败，请重试。'}},{status:409});config={...body.input.config,storeId:body.input.storeId,revision:8,updatedAt:'2026-10-10'};return Response.json({pricing:config});}
  throw Error('unexpected request '+body.operation);
 };
 const settle=async()=>{for(let i=0;i<8;i++)await new Promise(resolve=>setImmediate(resolve));};
@@ -179,7 +179,7 @@ test('failed pricing save retains edits and cancellation still performs no reads
  await click('重新读取');const beforeSave=button('放弃并重新读取').props.onClick;
  await click('保存已修改的经营规则');await act(async()=>{beforeSave();await settle();});assert.match(text(tree.toJSON()),/规则保存失败/);assert.equal(reads.length,before);
  await click('重新读取');await click('保留修改');assert.equal(reads.length,before);assert.equal(control('固定费用（元／销售件）').props.value,'19.99');assert.equal(requests.length,1);
- failPricingSave=false;await click('保存已修改的经营规则');assert.equal(requests.length,2);assert.equal(requests[1].input.config.plans[0].fixedMinor,1999);assert.equal(requests[1].input.expectedRevision,7);
+ failPricingSave=false,holdPricingSave=false,releasePricingSave,failNextRead=false;await click('保存已修改的经营规则');assert.equal(requests.length,2);assert.equal(requests[1].input.config.plans[0].fixedMinor,1999);assert.equal(requests[1].input.expectedRevision,7);
  `);
 });
 
@@ -217,5 +217,170 @@ test('new identity and newer refresh reject older settings responses', async () 
  holdRead=true;await click('重新读取');config={...config,listingTargetMarginPpm:520000};await click('重新读取');
  assert.equal(control('上品目标利润率（%）').props.value,'52');await act(async()=>{releaseRead();await settle();});
  assert.equal(control('上品目标利润率（%）').props.value,'52');assert.equal(requests.length,0);
+ `);
+});
+
+
+test('dirty external store intent is visible and follows once after a successful pricing save', async()=>{
+ await runScenario(`
+ await change('固定费用（元／销售件）','19.99');const before=reads.length;
+ await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});
+ assert.equal(reads.length,before);assert.equal(control('店铺名称').props.value,'Bill 店铺');
+ assert.equal(tree.root.findAllByProps({'aria-label':'工作台店铺切换待处理'}).length,1);
+ await click('保存已修改的经营规则');assert.equal(requests.at(-1).input.storeId,'bill');assert.equal(requests.at(-1).input.expectedRevision,7);
+ assert.equal(control('店铺名称').props.value,'Helen 店铺');assert.equal(reads.at(-1).storeId,'helen');
+ assert.equal(reads.filter(row=>row.storeId==='helen').length,1);assert.equal(tree.root.findAllByProps({'aria-label':'工作台店铺切换待处理'}).length,0);
+ `);
+});
+test('failed pricing save retains dirty editor and pending store without following',async()=>{
+ await runScenario(`
+ await change('固定费用（元／销售件）','19.99');failPricingSave=true;
+ await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});
+ await click('保存已修改的经营规则');assert.equal(control('店铺名称').props.value,'Bill 店铺');assert.equal(control('固定费用（元／销售件）').props.value,'19.99');
+ assert.match(text(tree.toJSON()),/有未保存修改/);assert.equal(reads.filter(row=>row.storeId==='helen').length,0);
+ `);
+});
+test('not following an external intent preserves edits and independent selection survives later saves',async()=>{
+ await runScenario(`
+ await change('固定费用（元／销售件）','19.99');await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});
+ const before=reads.length;await click('继续编辑，不跟随本次切换');assert.equal(reads.length,before);assert.equal(requests.length,0);
+ await click('保存已修改的经营规则');assert.equal(control('店铺名称').props.value,'Bill 店铺');
+ await change('经营店铺','helen');await change('经营店铺','bill');await change('固定费用（元／销售件）','22');await click('保存已修改的经营规则');
+ assert.equal(control('店铺名称').props.value,'Bill 店铺');assert.equal(requests.at(-1).input.storeId,'bill');
+ `);
+});
+test('external A B A cancels and newest external target wins over a pending save receipt',async()=>{
+ await runScenario(`
+ await change('固定费用（元／销售件）','19.99');await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});
+ await act(async()=>{tree.update(<BusinessSettings storeId="bill"/>);await settle();});assert.equal(tree.root.findAllByProps({'aria-label':'工作台店铺切换待处理'}).length,0);
+ holdPricingSave=true;await click('保存已修改的经营规则');await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});
+ await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});await act(async()=>{releasePricingSave();await settle();});
+ assert.equal(requests.at(-1).input.storeId,'bill');assert.equal(control('店铺名称').props.value,'跨连接测试店铺');assert.equal(reads.at(-1).connectionId,undefined);
+ assert.equal(reads.filter(row=>row.storeId==='helen').length,0);
+ `);
+});
+test('discard-and-switch is inline and stale confirmations cannot discard a new edit or new target',async()=>{
+ await runScenario(`
+ globalThis.confirm=()=>{throw Error('No synchronous dialogs');};
+ await change('固定费用（元／销售件）','19.99');await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});
+ await click('放弃修改并切换');const stale=button('确认放弃并切换').props.onClick;await change('固定费用（元／销售件）','22');
+ await act(async()=>{stale();await settle();});assert.equal(control('固定费用（元／销售件）').props.value,'22');assert.equal(control('店铺名称').props.value,'Bill 店铺');
+ await click('放弃修改并切换');const oldTarget=button('确认放弃并切换').props.onClick;await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});
+ await act(async()=>{oldTarget();await settle();});assert.equal(control('店铺名称').props.value,'Bill 店铺');
+ await click('放弃修改并切换');await click('保留修改，不切换');assert.equal(control('固定费用（元／销售件）').props.value,'22');
+ await click('放弃修改并切换');await click('确认放弃并切换');assert.equal(control('店铺名称').props.value,'跨连接测试店铺');assert.equal(requests.length,0);
+ `);
+});
+test('clean cross-connection external store resolves by store identity instead of stale explicit connection',async()=>{
+ await runScenario(`
+ await change('采集来源连接','board');await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});
+ assert.equal(reads.at(-1).connectionId,undefined);assert.equal(reads.at(-1).storeId,'cross');assert.equal(control('店铺名称').props.value,'跨连接测试店铺');
+ assert.equal(control('采集来源连接').props.value,'other');assert.equal(requests.length,0);
+ `);
+});
+test('manual local selection supersedes an in-flight external target and its late read',async()=>{
+ await runScenario(`
+ holdRead=true;await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});
+ assert.equal(control('店铺名称').props.value,'Bill 店铺');assert.equal(button('保存店铺连接').props.disabled,true);
+ await change('经营店铺','helen');assert.equal(control('店铺名称').props.value,'Helen 店铺');
+ await act(async()=>{releaseRead();await settle();});assert.equal(control('店铺名称').props.value,'Helen 店铺');
+ await change('固定费用（元／销售件）','22');await click('保存已修改的经营规则');assert.equal(control('店铺名称').props.value,'Helen 店铺');assert.equal(requests.at(-1).input.storeId,'helen');
+ `);
+});
+test('new shop and locally entered placeholder credentials are not discarded by external changes',async()=>{
+ await runScenario(`
+ await change('Client ID','TEST_ONLY_NOT_A_REAL_CREDENTIAL');await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});
+ assert.equal(control('Client ID').props.value,'TEST_ONLY_NOT_A_REAL_CREDENTIAL');assert.equal(control('店铺名称').props.value,'Bill 店铺');
+ await change('Client ID','');await click('新增店铺');await change('店铺名称','本地新店草稿');
+ await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});assert.equal(control('店铺名称').props.value,'本地新店草稿');assert.equal(requests.length,0);
+ `);
+});
+test('hidden pending pricing save defers following until active without a new write',async()=>{
+ await runScenario(`
+ await change('固定费用（元／销售件）','19.99');holdPricingSave=true;await click('保存已修改的经营规则');
+ await act(async()=>{tree.update(<BusinessSettings storeId="helen" active={false}/>);await settle();});await act(async()=>{releasePricingSave();await settle();});
+ assert.equal(control('店铺名称').props.value,'Bill 店铺');await act(async()=>{tree.update(<BusinessSettings storeId="helen" active/>);await settle();});
+ assert.equal(control('店铺名称').props.value,'Helen 店铺');assert.equal(requests.length,1);
+ `);
+});
+
+test('manual reload does not implicitly accept a pending external switch',async()=>{
+ await runScenario(`
+ await change('固定费用（元／销售件）','19.99');await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});
+ await click('重新读取');await click('放弃并重新读取');assert.equal(control('店铺名称').props.value,'Bill 店铺');assert.equal(reads.filter(row=>row.storeId==='helen').length,0);
+ assert.equal(tree.root.findAllByProps({'aria-label':'工作台店铺切换待处理'}).length,0);
+ `);
+});
+test('cancelled discard and later connection form edits invalidate captured switch callbacks',async()=>{
+ await runScenario(`
+ await change('固定费用（元／销售件）','19.99');await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});
+ await click('放弃修改并切换');const cancelled=button('确认放弃并切换').props.onClick;await click('保留修改，不切换');
+ await act(async()=>{cancelled();await settle();});assert.equal(control('店铺名称').props.value,'Bill 店铺');assert.match(text(tree.toJSON()),/有未保存修改/);
+ await click('放弃修改并切换');const beforeCredentials=button('确认放弃并切换').props.onClick;await change('Client ID','TEST_ONLY_NOT_A_REAL_CREDENTIAL');
+ await act(async()=>{beforeCredentials();await settle();});assert.equal(control('店铺名称').props.value,'Bill 店铺');assert.equal(control('Client ID').props.value,'TEST_ONLY_NOT_A_REAL_CREDENTIAL');assert.equal(requests.length,0);
+ `);
+});
+
+test('pricing save cannot refresh away later shop or placeholder credential edits to follow an intent',async()=>{
+ await runScenario(`
+ await change('固定费用（元／销售件）','19.99');await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});
+ await change('店铺名称','本地未保存店名');await change('Client ID','TEST_ONLY_NOT_A_REAL_CREDENTIAL');
+ await click('保存已修改的经营规则');assert.equal(control('店铺名称').props.value,'本地未保存店名');assert.equal(control('Client ID').props.value,'TEST_ONLY_NOT_A_REAL_CREDENTIAL');
+ assert.equal(reads.filter(row=>row.storeId==='helen').length,0);assert.equal(requests.length,1);assert.equal(requests[0].operation,'pricing.save');assert.equal(requests[0].input.storeId,'bill');
+ `);
+});
+
+test('failed external read clearly retains old owner and can cancel or retry without writes',async()=>{
+ await runScenario(`
+ failNextRead=true;await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});
+ assert.equal(control('店铺名称').props.value,'Bill 店铺');assert.equal(control('采集来源连接').props.value,'board');assert.equal(button('保存店铺连接').props.disabled,true);assert.match(text(tree.toJSON()),/目标店铺切换未完成/);
+ await click('取消切换，继续原店铺');assert.equal(control('店铺名称').props.value,'Bill 店铺');assert.equal(button('保存店铺连接').props.disabled,false);
+ failNextRead=true;await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});assert.equal(control('店铺名称').props.value,'Bill 店铺');
+ await click('重新读取');assert.equal(control('店铺名称').props.value,'Helen 店铺');assert.equal(button('保存店铺连接').props.disabled,false);assert.equal(requests.length,0);
+ `);
+});
+
+test('external target equal to loaded editor cancels a different in-flight local route permanently',async()=>{
+ await runScenario(`
+ await change('经营店铺','helen');holdRead=true;await change('经营店铺','bill');
+ await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});await act(async()=>{releaseRead();await settle();});
+ assert.equal(control('店铺名称').props.value,'Helen 店铺');await change('固定费用（元／销售件）','22');await click('保存已修改的经营规则');
+ assert.equal(control('店铺名称').props.value,'Helen 店铺');assert.equal(reads.at(-1).storeId,'helen');assert.equal(requests.at(-1).input.storeId,'helen');
+ `);
+});
+
+test('pending external undefined cancels and newer external read wins over the late target',async()=>{
+ await runScenario(`
+ await change('固定费用（元／销售件）','19.99');await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});
+ await act(async()=>{tree.update(<BusinessSettings/>);await settle();});assert.equal(tree.root.findAllByProps({'aria-label':'工作台店铺切换待处理'}).length,0);
+ await click('保存已修改的经营规则');assert.equal(control('店铺名称').props.value,'Bill 店铺');
+ holdRead=true;await act(async()=>{tree.update(<BusinessSettings storeId="cross"/>);await settle();});
+ await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});await act(async()=>{releaseRead();await settle();});
+ assert.equal(control('店铺名称').props.value,'Helen 店铺');assert.equal(control('采集来源连接').props.value,'board');
+ `);
+});
+
+test('manual selection matching an in-flight external target starts a new locally owned read',async()=>{
+ await runScenario(`
+ holdRead=true;await act(async()=>{tree.update(<BusinessSettings storeId="helen"/>);await settle();});
+ await change('经营店铺','helen');await act(async()=>{releaseRead();await settle();});
+ assert.equal(control('店铺名称').props.value,'Helen 店铺');assert.equal(button('保存店铺连接').props.disabled,false);assert.equal(requests.length,0);
+ `);
+});
+
+test('unsaved shop input explicitly blocks reload instead of falsely clearing a pricing draft',async()=>{
+ await runScenario(`
+ await change('固定费用（元／销售件）','19.99');await change('店铺名称','本地未保存店名');
+ assert.equal(button('重新读取').props.disabled,true);assert.match(text(tree.toJSON()),/再重新读取或切换店铺/);assert.match(text(tree.toJSON()),/有未保存修改/);
+ assert.equal(control('固定费用（元／销售件）').props.value,'19.99');assert.equal(requests.length,0);
+ await change('店铺名称','Bill 店铺');await click('重新读取');await click('放弃并重新读取');
+ assert.equal(control('固定费用（元／销售件）').props.value,'14');assert.doesNotMatch(text(tree.toJSON()),/有未保存修改/);
+ `);
+});
+
+test('accepted normalized shop name clears the form guard after connection save',async()=>{
+ await runScenario(`
+ await change('店铺名称','  本地规范化名称  ');await click('保存店铺连接');
+ assert.equal(control('店铺名称').props.value,'本地规范化名称');assert.equal(control('经营店铺').props.disabled,false);assert.equal(button('重新读取').props.disabled,false);
  `);
 });

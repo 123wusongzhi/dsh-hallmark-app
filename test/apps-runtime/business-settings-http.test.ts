@@ -54,6 +54,8 @@ test('ERP settings retain store ownership, private credentials, pricing revision
   assert.equal(settings.read(undefined,second.id).connectionId,'other');
   assert.equal(settings.read(undefined,'legacy-not-imported').store,null);assert.equal(settings.read(undefined,'legacy-not-imported').connections.length,2);
   assert.throws(()=>settings.read('local',second.id),/店铺不属于/);
+  const routed=await host.ui(new Request(`http://localhost/api/dsh-apps?resource=businessSettings&storeId=${second.id}`));assert.equal(routed.status,200);const routedView=await routed.json();assert.equal(routedView.connectionId,'other');assert.equal(routedView.store.id,second.id);
+  const mismatched=await host.ui(new Request(`http://localhost/api/dsh-apps?resource=businessSettings&connectionId=local&storeId=${second.id}`));assert.notEqual(mismatched.status,200,'an old explicit connection must not be combined with an external target store');
   const sourceSearch=await post('packaging.search',{query:''});assert.equal(sourceSearch.status,200);assert.equal((await sourceSearch.json()).items[0].id,'source-product');
   const sourceRead=await post('packaging.read',{itemIds:['source-product']});assert.equal(sourceRead.status,200,await sourceRead.clone().text());const packageRow=(await sourceRead.json()).rows[0];assert.equal(packageRow.result.weightKg,uiProduct({},20).sourcePackage.weightKg);
   const savedPackage=await post('packaging.save',{rows:[{target:packageRow.target,values:{weightKg:.45},expectedRevision:0}]});assert.equal(savedPackage.status,200);assert.equal(packaging.readOverride(packageRow.target)?.values.weightKg,.45,'Host forwards maintenance through the real Runtime repository');
