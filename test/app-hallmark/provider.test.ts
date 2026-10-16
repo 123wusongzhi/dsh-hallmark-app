@@ -1,4 +1,4 @@
-import { recordedSample, recordedRaw, recordedPlatformProduct, recordedProduct, recordedDetail, recordedSku } from '../adapter/real-scenarios.ts';
+import { recordedSample, recordedRaw, recordedPlatformProduct, recordedProduct, recordedDetail, recordedSku, recordedSummary } from '../adapter/real-scenarios.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -13,8 +13,8 @@ import type { CoreClient, CoreBroker, AdapterResponse } from '../../packages/cor
 import type { OzonBusinessGateway, OzonBusinessRequest, OzonBusinessStore } from '../../packages/ozon-business/src/index.ts';
 
 const ok=(raw:any):AdapterResponse=>({status:'ok',raw,provenance:{source:'hallmark_snapshot',endpoint:'/fixture',fetchedAt:'2026-10-07T00:00:00Z'}});
-function fixture(){
- const store=new RuntimeStore(':memory:'),ports=new Map<string,HallmarkStorePort>(),calls:any[]=[];let unknown=false,price='100',currency='RUB',unavailable=false,executes=0,direct=false;
+function fixture(collectionRows?:Record<string,any[]>){
+ const store=new RuntimeStore(':memory:'),ports=new Map<string,HallmarkStorePort>(),calls:any[]=[],collectionReads:string[]=[];let unknown=false,price='100',currency='RUB',unavailable=false,executes=0,direct=false;
  const port=(id:string)=>{let value=ports.get(id);if(!value){value=new HallmarkStorePort(store,id);ports.set(id,value);}return value;};
  const readResponse=()=>ok({outcome:'response_received',httpStatus:200,response:{result:{items:[recordedPlatformProduct({id:1,product_id:1,sku:101,offer_id:'A',price:{price,currency_code:currency}})]}}});
  const client:CoreClient={getStores:async()=>ok([{id:'shop',shopName:'Shop'}]),getStoreProducts:async()=>unavailable?{status:'unavailable',error:{code:'DOWN',message:'Down',retryable:true}}:ok({stores:[{id:'shop'}],products:[recordedProduct({storeId:'shop',offerId:'A',productId:1,price:100,sources:[],profit:{costMinor:5000,profitMinor:1000,actualMargin:0.1},original:{preserved:true}}),recordedProduct({storeId:'shop',offerId:'B',productId:2,sources:[],profit:{costMinor:null,actualMargin:1}})]}),syncStoreProducts:async()=>unavailable?{status:'unavailable',error:{code:'DOWN',message:'Down',retryable:true}}:ok({}),getTargetMargin:async()=>ok({targetMargin:0.2}),searchCollectedItems:async()=>ok([{id:'item',title:'Original',skuCount:1}]),getCollectedItem:async(id)=>ok(recordedRaw({id,content:'{}',truncated:false})),platformCall:async(taskId,input)=>{calls.push({write:true,taskId,...input});if(unknown)price='50';return unknown?{status:'unknown',error:{code:'OUTCOME_UNKNOWN',message:'timeout',retryable:false}}:ok({outcome:'response_received',httpStatus:200,response:{result:[{updated:true}]}});},platformRead:async(taskId,input)=>{calls.push({write:false,taskId,...input});return readResponse();}};
@@ -24,12 +24,12 @@ function fixture(){
   getProducts:async()=>ok({response:{items:[recordedPlatformProduct({id:1,product_id:1,sku:101,offer_id:'A',price:{price,currency_code:currency}})]}}),
   request:async(storeId:string,input:OzonBusinessRequest)=>{assert.equal(storeId,'shop');const write=directWrites.has(input.path);calls.push({transport:'ozon-direct',storeId,write,...input});if(!write)return readResponse();if(unknown){price='50';return {status:'unknown' as const,error:{code:'OUTCOME_UNKNOWN',message:'timeout',retryable:false}};}if(input.path==='/v1/product/import/prices')price=String((input.body?.prices as any[])[0].price);return ok({outcome:'response_received',httpStatus:200,response:{result:[{updated:true}]}});}
  } as unknown as OzonBusinessGateway;
- const broker:CoreBroker={getStoreTask:async()=>ok({taskId:'task'}),getListingTask:async()=>ok({taskId:'listing'}),requestId:(kind:string,id:string,index:number)=>`${kind}-${id}-${index}`},provider=new HallmarkProvider({store:port,client,broker,businessGateway:()=>direct?gateway:undefined,inspectOperation:(id,signal)=>runtime.inspect(id,signal)});
+ const broker:CoreBroker={getStoreTask:async()=>ok({taskId:'task'}),getListingTask:async()=>ok({taskId:'listing'}),requestId:(kind:string,id:string,index:number)=>`${kind}-${id}-${index}`},provider=new HallmarkProvider({store:port,client:collectionRows?(id:string)=>({...client,searchCollectedItems:async()=>{collectionReads.push(id);return ok(structuredClone(collectionRows[id]??[]));}}):client,broker,businessGateway:()=>direct?gateway:undefined,inspectOperation:(id,signal)=>runtime.inspect(id,signal)});
  const original=provider.execute.bind(provider);provider.execute=async(context)=>{executes++;return original(context);};
  const runtime=new AppsRuntime(store);runtime.register(provider);
  for(const connectionId of ['c','d']){runtime.addConnection({appId:'hallmark',connectionId,displayName:connectionId,config:{backend:'fixture'},configRevision:1,enabled:true});runtime.bind({sessionId:'s',appId:'hallmark',connectionId,enabled:true,boundAt:new Date().toISOString()});}
  const invoke=(capabilityId:string,input:any={},extra:Partial<InvocationRequest>={})=>runtime.invoke({protocolVersion:'1.0',invocationId:randomUUID(),traceId:randomUUID(),appId:'hallmark',connectionId:'c',capabilityId,capabilityVersion:'1.0.0',input,source:{kind:'agent',sessionId:'s',nativeCallId:randomUUID()},deadlineAt:new Date(Date.now()+60000).toISOString(),...extra});
- return {store,ports,port,provider,runtime,client,broker,gateway,calls,invoke,readResponse,enableDirect:()=>{direct=true;provider.invalidateConnection('c');provider.invalidateConnection('d');},executes:()=>executes,setUnknown:()=>{unknown=true;},confirm:()=>{price='100';},setPrice:(value:string,code='RUB')=>{price=value;currency=code;},down:()=>{unavailable=true;}};
+ return {store,ports,port,provider,runtime,client,broker,gateway,calls,collectionReads,invoke,readResponse,enableDirect:()=>{direct=true;provider.invalidateConnection('c');provider.invalidateConnection('d');},executes:()=>executes,setUnknown:()=>{unknown=true;},confirm:()=>{price='100';},setPrice:(value:string,code='RUB')=>{price=value;currency=code;},down:()=>{unavailable=true;}};
 }
 function data(result:CapabilityResult):any{assert.ok('data' in result,JSON.stringify(result));return result.data;}
 test('collection tools refresh status automatically and reuse it; precise native observations feed legacy cards',async()=>{
@@ -315,7 +315,16 @@ test('unconfigured store writes stop at connection setup and never reactivate ol
 });
 
 test('connection namespaces isolate snapshots and retain stale data when refresh is unavailable',async()=>{
- const f=fixture();try{await f.invoke('hallmark.products.list',{storeId:'shop'});assert.equal(f.port('d').get('snapshots','store_products:shop'),undefined);const before=f.port('c').get('snapshots','store_products:shop');f.down();const refresh=await f.invoke('hallmark.datasets.refresh',{datasetKey:'store_products:shop'});assert.equal(refresh.status,'unavailable');assert.deepEqual(f.port('c').get('snapshots','store_products:shop')?.payload,before?.payload);assert.equal(f.port('c').get('snapshots','store_products:shop')?.lastSuccessAt,before?.lastSuccessAt);const cached=await f.invoke('hallmark.products.list',{storeId:'shop'});assert.equal(cached.status,'ok');assert.equal(cached.provenance?.[0].freshness,'stale');assert.equal(f.calls.length,0);}finally{await f.runtime.dispose();f.store.close();}
+ const collectionRows={c:[recordedSummary({},0)],d:[recordedSummary({},20)]};
+ const identity=(row:any)=>({id:row.id,title:row.title,source:row.source}),expected={c:collectionRows.c.map(identity),d:collectionRows.d.map(identity)},f=fixture(collectionRows);
+ try{
+  // Frozen input projections distinguish the two connections before either cache is populated.
+  for(const connectionId of ['c','d','c'] as const){
+   const result=await f.invoke('hallmark.collection.search',{}, {connectionId});assert.equal(result.status,'ok');
+   assert.deepEqual(data(result).items.map(identity),expected[connectionId],`collection rows must belong to connection ${connectionId}`);
+  }
+  assert.deepEqual(f.collectionReads,['c','d'],'each connection reads its own source once before c reuses its cache');
+  await f.invoke('hallmark.products.list',{storeId:'shop'});assert.equal(f.port('d').get('snapshots','store_products:shop'),undefined);const before=f.port('c').get('snapshots','store_products:shop');f.down();const refresh=await f.invoke('hallmark.datasets.refresh',{datasetKey:'store_products:shop'});assert.equal(refresh.status,'unavailable');assert.deepEqual(f.port('c').get('snapshots','store_products:shop')?.payload,before?.payload);assert.equal(f.port('c').get('snapshots','store_products:shop')?.lastSuccessAt,before?.lastSuccessAt);const cached=await f.invoke('hallmark.products.list',{storeId:'shop'});assert.equal(cached.status,'ok');assert.equal(cached.provenance?.[0].freshness,'stale');assert.equal(f.calls.length,0);}finally{await f.runtime.dispose();f.store.close();}
 });
 
 

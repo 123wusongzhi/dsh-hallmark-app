@@ -15,7 +15,7 @@ test('identical fresh cache hit skips archive write; divergent/saved-only cache 
  const product=realStoreProducts().products[0];
  const initialReader=async()=>({status:'ok',data:{items:[{...Object.fromEntries(OZON_COMPOSITION_SOURCE_FIELDS.products.map(k=>[k,null])),productId:product.productId,sku:product.sku,title:product.title}],warnings:['retained warning'],dataTime:null}} as any);
  try{
-  const first:any=await readOzonComposition(args,port,{} as any,undefined,initialReader);assert.equal(first.status,'ok');
+  const first:any=await readOzonComposition(args,port,{} as any,undefined,initialReader);assert.equal(first.status,'ok');assert.ok(first.data.warnings.includes('retained warning'),'first response must retain the upstream warning');
   let puts=0;const put=port.put.bind(port);port.put=(collection,id,value)=>{puts++;return put(collection,id,value);};
   const hit:any=await readOzonComposition(args,port,{} as any,undefined,async()=>{throw Error('fresh source must not refetch');});assert.equal(hit.status,'ok');assert.equal(puts,0);assert.deepEqual(hit.data.items,first.data.items);assert.deepEqual(hit.data.warnings,first.data.warnings);
   const archived=runtime.list<any>('provider_records').find(row=>row.namespace==='ozon_composition_source_results');
