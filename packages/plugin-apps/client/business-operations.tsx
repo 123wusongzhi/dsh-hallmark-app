@@ -1,7 +1,7 @@
 import {businessRecoveryAction, businessRecoveryMessage, businessSubmissionScope, businessRecoveryDeadline, businessConfirmationFingerprint} from '../../app-presentation/src/materials/business-recovery.ts';
 import { BusinessDraftRecovery, type BusinessDraftSnapshot, type DraftCacheNotice } from './business-draft-recovery.ts';
 import {ListingDraftEditor} from './listing-draft-editor.tsx';
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { BusinessAction, BusinessPlan, BusinessRow, BusinessRowInput } from '../../app-hallmark/src/operations/types.ts';
 import { BUSINESS_ACTION_LABELS, BUSINESS_FIELD_LABELS, BUSINESS_STATUS_LABELS, businessMoney, businessPriceAction, businessPricingQuote, businessRowInput, businessValue, editableBusinessRow, filterBusinessRows, parseBusinessPayload } from '../../app-presentation/src/materials/business-operations.ts';
 import { appsApiError, appsResource, type WorkbenchStores, type WorkbenchStoreOption } from './api.ts';
@@ -79,6 +79,12 @@ export function BusinessOperations({ sessionId, storeId, active = true, onChoose
 
 function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, active, drafts, onCacheNotice, onRecoveryResolved, storeRead, onRetryStores, onChooseStore }: { sessionId?: string; storeId?: string; store?: WorkbenchStoreOption; scope?: Scope; identity: string; active: boolean; drafts: BusinessDraftRecovery; onCacheNotice: (notice: DraftCacheNotice) => void; onRecoveryResolved: () => void; storeRead?: StoreRead; onRetryStores: () => void; onChooseStore?: () => void }) {
   const [plans, setPlans] = useState<BusinessPlan[]>([]), [planId, setPlanId] = useState('');
+  const [newRowState, setNewRowState] = useState({ snapshot: '', dirty: false });
+  const [navigation, setNavigation] = useState<{ identity: string; from: string; target: string; snapshot: string }>();
+  const navigationPermit = useRef<typeof navigation>();
+  const reportNewRow = useCallback((snapshot: string, dirty: boolean) => {
+    setNewRowState(previous => previous.snapshot === snapshot && previous.dirty === dirty ? previous : { snapshot, dirty });
+  }, []);
   const [editingListingId, setEditingListingId] = useState('');
   const [rawEdits, setRawEdits] = useState<Record<string, string>>({}), rawEditedIds = Object.keys(rawEdits), rawDirty = rawEditedIds.length > 0;
   const [query, setQuery] = useState(''), [status, setStatus] = useState(''), [selected, setSelected] = useState<string[]>([]), [batchPrice, setBatchPrice] = useState(''), [batchCurrency, setBatchCurrency] = useState('');
@@ -188,6 +194,22 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
     if (pricing.mode === 'automatic') setEdits(previous => { const payload = { ...(previous[row.rowId] ?? row.payload) }; delete payload.price; return { ...previous, [row.rowId]: payload }; });
   };
   const disabled = busy || loadingPlans || !!pending || !!confirmation || !!recoveryDraft, restorable = plan?.rows.filter(row => selected.includes(row.rowId) && row.status === 'succeeded' && row.action !== 'stock').map(row => row.rowId) ?? [];
+  // Only explicit local navigation is interceptable. Owner changes still retire this editor.
+  useLayoutEffect(() => { setNavigation(undefined); }, [identity, planId, newRowState.snapshot, active, disabled, dirty, plans]);
+  useLayoutEffect(() => {
+    navigationPermit.current = active && !disabled && !dirty ? navigation : undefined;
+    return () => { navigationPermit.current = undefined; };
+  });
+  const navigate = (target: string) => {
+    setNavigation(undefined); setDiscardReloadPlanId(undefined); setPlanId(target);
+    setSelected([]); setEdits({}); setRawEdits({}); setPricingEdits({});
+  };
+  const requestNavigation = (target: string) => {
+    if (!active || disabled || flight.current || dirty || (target && !plans.some(item => item.planId === target))) return;
+    if (target === planId) { navigationPermit.current = undefined; setNavigation(undefined); return; }
+    if (newRowState.dirty) setNavigation({ identity, from: planId, target, snapshot: newRowState.snapshot });
+    else navigate(target);
+  };
   const selectedPrices = visible.filter(row => selected.includes(row.rowId) && editableBusinessRow(row) && ['price', 'promotion.enroll', 'promotion.update'].includes(row.action));
   const batchCurrencies = [...new Set(selectedPrices.map(row => priceCurrency(edits[row.rowId] ?? row.payload)).filter((value): value is string => !!value))];
   const chosenCurrency = batchCurrencies.includes(batchCurrency) ? batchCurrency : batchCurrencies.length === 1 ? batchCurrencies[0] : '';
@@ -200,7 +222,11 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
       <button type="button" disabled={!active} onClick={onRetryStores}>{!storeRead || storeRead.status === 'loading' ? '取消并重新读取' : '重新读取店铺'}</button>
       {onChooseStore ? <button type="button" onClick={onChooseStore}>重新选择店铺</button> : <p>请返回工作台选择店铺，再打开经营操作。</p>}
     </div> : <>
-      <div className="apps-business-toolbar"><label>操作批次<select aria-label="操作批次" disabled={disabled || dirty} value={planId} onChange={event => { setDiscardReloadPlanId(undefined); setPlanId(event.target.value); setSelected([]); setEdits({}); setRawEdits({}); setPricingEdits({}); }}><option value="">新建批次</option>{discardReloadPlanId && !plan ? <option value={discardReloadPlanId}>原批次暂不可读取</option> : null}{plans.map(item => <option key={item.planId} value={item.planId}>{item.title} · {item.rows.length} 个动作</option>)}</select></label><button type="button" disabled={disabled || dirty} onClick={() => { setDiscardReloadPlanId(undefined); setPlanId(''); setSelected([]); }}>新建批次</button>{plan ? <span className="apps-business-revision">版本 {plan.revision} · {new Date(plan.updatedAt).toLocaleString('zh-CN')}</span> : null}</div>
+      <div className="apps-business-toolbar"><label>操作批次<select aria-label="操作批次" disabled={disabled || dirty} value={planId} onChange={event => requestNavigation(event.target.value)}><option value="">新建批次</option>{discardReloadPlanId && !plan ? <option value={discardReloadPlanId}>原批次暂不可读取</option> : null}{plans.map(item => <option key={item.planId} value={item.planId}>{item.title} · {item.rows.length} 个动作</option>)}</select></label><button type="button" disabled={disabled || dirty} onClick={() => requestNavigation('')}>新建批次</button>{plan ? <span className="apps-business-revision">版本 {plan.revision} · {new Date(plan.updatedAt).toLocaleString('zh-CN')}</span> : null}</div>
+      {navigation ? <section aria-label="放弃新增输入确认" className="apps-business-notice"><p>尚未添加的经营动作包含未保存输入。切换批次会放弃这些输入，此操作不能撤销。</p><button type="button" onClick={() => { navigationPermit.current = undefined; setNavigation(undefined); }}>继续编辑</button><button type="button" disabled={!active || disabled || dirty} onClick={() => {
+        if (navigationPermit.current !== navigation || owner.current !== navigation.identity || planId !== navigation.from || newRowState.snapshot !== navigation.snapshot || !active || disabled || flight.current || dirty || (navigation.target && !plans.some(item => item.planId === navigation.target))) return;
+        navigationPermit.current = undefined; navigate(navigation.target);
+      }}>放弃新增输入并切换</button></section> : null}
       {pending ? <div className="apps-business-alert" role="status"><span>原操作回执待确认。检查原操作即可继续。</span><button type="button" disabled={busy} onClick={() => void recover()}>检查原操作</button></div> : null}
       {recoveryDraft ? <section aria-label="恢复未保存修改" className="apps-business-notice"><p>{recoveryPlan ? '发现此聊天和店铺下的未保存修改，原批次版本已核对。' : '暂存对应的批次已变化或不可读取，不能直接恢复旧修改。'}暂存不等于保存，仅在当前工作区保留最多 30 分钟；关闭工作区或刷新后会清除。</p>{recoveryPlan ? <button type="button" disabled={busy || !!pending || dirty || loadingPlans} onClick={restoreDraft}>恢复修改</button> : null}<button type="button" disabled={busy} onClick={() => { drafts.drop(identity); onRecoveryResolved(); refreshRecovery(value => value + 1); }}>放弃暂存</button></section> : null}
       {listError ? <p className="apps-business-notice" role="alert">{listError}</p> : null}
@@ -230,7 +256,7 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
         <footer className="apps-business-actions">{dirty ? <button type="button" disabled={disabled || !active} onClick={() => { if (!disabled && active) setDiscardConfirmation({}); }}>放弃未保存修改</button> : null}<span>{dirty ? `${new Set([...editedIds, ...rawEditedIds]).size} 行尚未保存` : `已选 ${selected.length} 行 · 提交范围为整批 ${plan.rows.length} 个动作`}</span><button type="button" disabled={disabled || !dirty || rawDirty} onClick={() => void run('revise', { planId: plan.planId, expectedRevision: plan.revision, rows: editedRows.map(row => businessRowInput(row, edits[row.rowId] ?? row.payload, businessPriceAction(row.action) ? rowPricing(row) : row.pricing)) }, '草稿已保存，尚未提交。')}>{saveLabel}</button><button type="button" disabled={disabled || dirty} onClick={() => void run('inspect', { planId: plan.planId }, '已更新平台处理状态。')}>核查平台状态</button><button type="button" disabled={disabled || dirty || !restorable.length} onClick={() => void run('restore', { planId: plan.planId, rowIds: restorable }, '已生成恢复草稿，请查看后提交。')}>恢复所选已完成项</button><button type="button" className="apps-primary" disabled={disabled || dirty || !actionableRows.length} onClick={() => setConfirmation(structuredClone(plan))}>确认整批范围后提交</button></footer>
       </> : null}
       {confirmation ? <SubmissionConfirmation now={recoveryNow} plan={confirmation} storeName={store.name} hiddenCount={confirmation.rows.filter(row => !visible.some(candidate => candidate.rowId === row.rowId)).length} unselectedCount={confirmation.rows.filter(row => !selected.includes(row.rowId)).length} busy={busy || !!pending} checking={!active || loadingPlans || !listVerified || currentDecision !== confirmedDecision} onCancel={() => { confirmationPermit.current = undefined; setConfirmation(undefined); }} onConfirm={() => { if (confirmationPermit.current !== confirmation || !active || loadingPlans || !listVerified || listError || busy || pending || dirty || !actionableRows.length || currentDecision !== confirmedDecision) return; const snapshot = confirmation; confirmationPermit.current = undefined; setConfirmation(undefined); void run('submit', { planId: snapshot.planId, expectedRevision: snapshot.revision }, '已取得本次提交结果，请查看各行状态。'); }}/> : null}
-      <NewBusinessRow key={`${identity}:${planId || 'new'}`} disabled={disabled || dirty || !!discardReloadPlanId && (!listVerified || !plan || !!listError)} pricingConfig={pricingConfig} onAdd={(title, row) => void run(plan ? 'revise' : 'create', plan ? { planId: plan.planId, expectedRevision: plan.revision, rows: [row] } : { storeId: store.id, title, rows: [row] }, '草稿已保存，尚未提交。')}/>
+      <NewBusinessRow key={`${identity}:${planId || 'new'}`} disabled={disabled || dirty || !!discardReloadPlanId && (!listVerified || !plan || !!listError)} pricingConfig={pricingConfig} onStateChange={reportNewRow} onAdd={(title, row) => void run(plan ? 'revise' : 'create', plan ? { planId: plan.planId, expectedRevision: plan.revision, rows: [row] } : { storeId: store.id, title, rows: [row] }, '草稿已保存，尚未提交。')}/>
     </>}
   </section>;
 }
@@ -289,9 +315,14 @@ function ContentDetails({ row, payload, disabled, onChange, rawText, onRawChange
   const images = [...new Set([payload.primary_image, ...(Array.isArray(payload.images) ? payload.images : [])].filter((url): url is string => typeof url === 'string' && /^https?:\/\//.test(url)))];
   return <details className="apps-business-content"><summary>查看 / 编辑完整内容</summary>{images.length ? <div className="apps-business-images">{images.map(url => <a key={url} href={url} target="_blank" rel="noreferrer"><img src={url} alt={`${row.target.offerId} 商品图`} loading="lazy"/></a>)}</div> : null}<textarea aria-label={`${row.target.offerId} 完整字段`} value={text} disabled={disabled} onChange={event => { setError(''); onRawChange(event.target.value === savedText ? undefined : event.target.value); }} spellCheck={false}/><button type="button" disabled={disabled} onClick={() => { try { onChange(parseBusinessPayload(text)); onRawChange(undefined); setError('已应用到待保存草稿。'); } catch { setError('字段格式有误，请保留完整对象及引号。'); } }}>应用字段修改</button>{text !== savedText ? <button type="button" disabled={disabled} onClick={() => { setError('已放弃未应用的字段修改。'); onRawChange(undefined); }}>放弃字段修改</button> : null}{error ? <small role="status">{error}</small> : null}</details>;
 }
-function NewBusinessRow({ disabled, pricingConfig, onAdd }: { disabled: boolean; pricingConfig: BusinessPricingConfig | null; onAdd: (title: string, row: BusinessRowInput) => void }) {
+function NewBusinessRow({ disabled, pricingConfig, onStateChange, onAdd }: { onStateChange: (snapshot: string, dirty: boolean) => void; disabled: boolean; pricingConfig: BusinessPricingConfig | null; onAdd: (title: string, row: BusinessRowInput) => void }) {
   const [action, setAction] = useState<Exclude<BusinessAction, 'listing'>>('price'), [offerId, setOfferId] = useState(''), [price, setPrice] = useState(''), [stock, setStock] = useState(''), [actionId, setActionId] = useState(''), [warehouseId, setWarehouseId] = useState(''), [error, setError] = useState('');
   const [pricing, setPricing] = useState<NonNullable<BusinessRowInput['pricing']>>({ mode: 'automatic' });
+  // Include hidden action fields: switching action does not erase their user input.
+  // Config/default pricing is not a user edit and is deliberately outside this snapshot.
+  const snapshot = JSON.stringify([action, offerId, price, stock, actionId, warehouseId, pricing.mode, pricing.planId ?? '']);
+  const initialSnapshot = useRef(snapshot);
+  useLayoutEffect(() => { onStateChange(snapshot, snapshot !== initialSnapshot.current); }, [snapshot, onStateChange]);
   const promotion = action.startsWith('promotion.'), hasPrice = action === 'price' || action === 'promotion.enroll' || action === 'promotion.update', hasStock = action === 'stock' || action === 'promotion.enroll' || action === 'promotion.update';
   return <details className="apps-business-add"><summary>添加经营动作</summary><p>输入准确的销售货号；商品身份、改前值和已有采购关联由程序读取。自动定价按已保存的物流与利润规则计算，手动定价仍检查经营底线。上品内容可由 Agent 制作后出现在此表。</p><form onSubmit={event => { event.preventDefault(); setError(''); if (!offerId.trim()) { setError('请填写销售货号。'); return; } if (hasPrice && pricing.mode === 'manual' && (!price.trim() || !Number.isFinite(Number(price)) || Number(price) <= 0)) { setError('手动定价需要填写有效售价。'); return; } const payload: Record<string, unknown> = action === 'archive' ? { archived: true } : {}; if (hasPrice && pricing.mode === 'manual') payload.price = price; if (hasStock) payload.stock = Number(stock); if (promotion) payload.action_id = Number(actionId); if (action === 'stock') payload.warehouse_id = Number(warehouseId); onAdd(`${BUSINESS_ACTION_LABELS[action]} · ${offerId.trim()}`, { action, target: { offerId: offerId.trim() }, payload, ...(hasPrice ? { pricing: pricingConfig?.logisticsSelection === 'automatic' ? { mode: pricing.mode } : pricing } : {}) }); }}>
     <label>动作<select aria-label="新增动作" disabled={disabled} value={action} onChange={event => setAction(event.target.value as typeof action)}>{Object.entries(BUSINESS_ACTION_LABELS).filter(([key]) => key !== 'listing').map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>销售货号<input required aria-label="新增销售货号" disabled={disabled} value={offerId} onChange={event => setOfferId(event.target.value)}/></label>

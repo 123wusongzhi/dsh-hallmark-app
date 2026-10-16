@@ -36,25 +36,37 @@ test('diagnostics UI copies four linked IDs from the actual scoped Host HTTP que
       globalThis.window=new EventTarget();
       Object.defineProperty(globalThis,'navigator',{configurable:true,value:{clipboard:{writeText:async text=>{clipboardCalls.push(text);if(clipboardFails)throw new Error('Clipboard denied fixture');}}}});
       globalThis.fetch=async(target,options)=>{const value=String(target);requests.push({url:value,method:options?.method??'GET'});if(value.startsWith('/api/dsh-apps'))return host.ui(new Request('http://client.fixture'+value,options));if(value.includes('model'))modelRequests++;return nativeFetch(target,options);};
-      const settle=()=>new Promise(resolve=>setTimeout(resolve,50));
       const copyButton=()=>tree.root.findAllByType('button').find(button=>button.children.join('')==='复制诊断标识');
       const visibleCodes=()=>tree.root.findAllByType('code').map(node=>node.children.join(''));
+      const notice=()=>tree.root.findAllByProps({role:'status'}).map(node=>node.children.join('')).join(' | ');
+      const waitFor=async(predicate,label)=>{
+        const deadline=performance.now()+3000;
+        while(!predicate()){
+          assert.ok(performance.now()<deadline,'Timed out waiting for '+label+'; codes='+JSON.stringify(visibleCodes())+'; notice='+notice()+'; requests='+JSON.stringify(requests));
+          await act(async()=>{await new Promise(resolve=>setTimeout(resolve,10));});
+        }
+      };
       try{
         const before=store.list('invocations').length;
-        await act(async()=>{tree=create(<AppsDirectory currentSessionId="A"/>);await settle();});
+        await act(async()=>{tree=create(<AppsDirectory currentSessionId="A"/>);});
+        await waitFor(()=>visibleCodes().length>0,'session A diagnostics');
         assert.deepEqual(visibleCodes().slice(0,4),['diagnostic-A','trace-A',results.A.operation.operationId,'run-A']);assert.ok(!visibleCodes().includes('diagnostic-B'));
-        await act(async()=>{copyButton().props.onClick();await settle();});
+        await act(async()=>{copyButton().props.onClick();});
+        await waitFor(()=>clipboardCalls.length===1&&notice()!=='','first clipboard result');
         assert.deepEqual(JSON.parse(clipboardCalls[0]),{invocationId:'diagnostic-A',traceId:'trace-A',operationId:results.A.operation.operationId,runId:'run-A',appId:'notes',connectionId:'n',capabilityId:'notes.notes.create',capabilityVersion:'1.0.0'});
         const copied=JSON.parse(clipboardCalls[0]),invocation=store.get('invocations',copied.invocationId),operation=store.get('operations',copied.operationId),providerRecord=store.list('provider_records').find(row=>row.appId==='notes'&&row.connectionId===copied.connectionId&&row.namespace==='operations'&&row.recordId===copied.operationId);
         assert.equal(invocation.request.traceId,copied.traceId);assert.equal(invocation.parentRunId,copied.runId);assert.equal(invocation.operationId,copied.operationId);assert.equal(invocation.result.error.code,'REVISION_CONFLICT');assert.equal(operation.state,'failed');assert.equal(operation.request.invocationId,copied.invocationId);assert.equal(providerRecord.value.result.invocationId,copied.invocationId);assert.equal(providerRecord.value.result.traceId,copied.traceId);assert.equal(providerRecord.value.result.error.code,'REVISION_CONFLICT');
         assert.equal(tree.root.findByProps({role:'status'}).children.join(''),'调用诊断标识已复制。');
-        clipboardFails=true;await act(async()=>{copyButton().props.onClick();await settle();});
+        clipboardFails=true;await act(async()=>{copyButton().props.onClick();});
+        await waitFor(()=>clipboardCalls.length===2&&notice()!=='调用诊断标识已复制。','clipboard rejection result');
         assert.equal(tree.root.findByProps({role:'status'}).children.join(''),'请从下方调用标识选择文字并复制。');
-        clipboardFails=false;await act(async()=>{tree.update(<AppsDirectory currentSessionId="B"/>);await settle();});
+        clipboardFails=false;await act(async()=>{tree.update(<AppsDirectory currentSessionId="B"/>);});
+        await waitFor(()=>visibleCodes().length>0&&visibleCodes()[0]!=='diagnostic-A','session B diagnostics');
         assert.deepEqual(visibleCodes().slice(0,4),['diagnostic-B','trace-B',results.B.operation.operationId,'run-B']);assert.ok(!visibleCodes().includes('diagnostic-A'));
-        await act(async()=>{copyButton().props.onClick();await settle();});
+        await act(async()=>{copyButton().props.onClick();});
+        await waitFor(()=>clipboardCalls.length===3,'session B clipboard result');
         assert.equal(JSON.parse(clipboardCalls[2]).invocationId,'diagnostic-B');assert.equal(clipboardCalls.length,3);
-        await act(async()=>{tree.update(<AppsDirectory/>);await settle();});assert.equal(copyButton(),undefined);assert.equal(visibleCodes().length,0);
+        await act(async()=>{tree.update(<AppsDirectory/>);});assert.equal(copyButton(),undefined);assert.equal(visibleCodes().length,0);
         assert.equal(store.list('invocations').length,before);assert.equal(requests.filter(row=>row.method==='POST').length,0);assert.equal(modelRequests,0);
         assert.deepEqual(requests.filter(row=>row.url.includes('resource=diagnostics')).map(row=>row.url.split('sessionId=')[1]),['A','B']);
         console.log(JSON.stringify({actualHostHttp:true,currentSessionFiltered:true,linkedIdKinds:4,clipboardCalls:3,clipboardFailureVisible:true,runtimeAndProviderFailureLocated:true,newInvocations:0,modelRequests,installedDshGuiCovered:false}));
