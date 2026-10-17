@@ -6,13 +6,22 @@ import {spawnSync} from 'node:child_process';
 import {build} from 'esbuild';
 
 // Only transport receipts, field definitions and UI edits are fixture controls; no merchant data or writes.
-async function fixture(body:string,prepare='',countKeys=false){
+async function fixture(body:string,prepare='',countKeys=false,layoutProbe=false){
   const root=resolve('artifacts');mkdirSync(root,{recursive:true});const directory=mkdtempSync(join(root,'material-close-')),entry=join(directory,'fixture.mjs');
   try{
     await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:setup+prepare+`
 try{await act(async()=>{tree=create(draw());});await settle();
 `+body+`
-assert.equal(confirmations,0,'never call a global confirmation');}finally{if(tree)await act(async()=>tree.unmount());}`},banner:{js:"import {createRequire} from 'node:module';const require=createRequire(import.meta.url);"},plugins:countKeys?[{name:'count-semantic-keys',setup(builder){builder.onLoad({filter:/[\\/]plugin-apps[\\/]client[\\/]material-library\.tsx$/},args=>({contents:readFileSync(args.path,'utf8').replace('  const spec=instance.design as unknown as ViewSpec,refs=workbenchRefs(instance);','  globalThis.materialKeyCalls=(globalThis.materialKeyCalls??0)+1;\n  const spec=instance.design as unknown as ViewSpec,refs=workbenchRefs(instance);'),loader:'tsx',resolveDir:resolve(args.path,'..')}));}}]:[],bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react-dom','react/jsx-runtime','react-test-renderer'],outfile:entry,logLevel:'silent'});
+assert.equal(confirmations,0,'never call a global confirmation');}finally{if(tree)await act(async()=>tree.unmount());}`},banner:{js:"import {createRequire} from 'node:module';const require=createRequire(import.meta.url);"},plugins:countKeys||layoutProbe?[{name:'observe-material-render',setup(builder){builder.onLoad({filter:/[\\/]plugin-apps[\\/]client[\\/]material-library\.tsx$/},args=>{
+      let contents=readFileSync(args.path,'utf8');
+      if(countKeys)contents=contents.replace('  const spec=instance.design as unknown as ViewSpec,refs=workbenchRefs(instance);','  globalThis.materialKeyCalls=(globalThis.materialKeyCalls??0)+1;\n  const spec=instance.design as unknown as ViewSpec,refs=workbenchRefs(instance);');
+      if(layoutProbe){
+        // Observe the committed tree and old handlers in layout; business conditions and scheduling stay unchanged.
+        const branch=contents.match(/^  if\((.+)\)return <section className="apps-material-library"/m);assert.ok(branch,'material access branch exists');
+        contents=contents.replace(branch[0],`  React.useLayoutEffect(()=>{if(currentWorkbench===null)(globalThis as any).__denialProbe?.();});\n`+branch[0]);
+      }
+      return {contents,loader:'tsx',resolveDir:resolve(args.path,'..')};
+    });}}]:[],bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react-dom','react/jsx-runtime','react-test-renderer'],outfile:entry,logLevel:'silent'});
     const result=spawnSync(process.execPath,[entry],{encoding:'utf8',timeout:15000});if(countKeys)process.stdout.write(result.stdout);assert.equal(result.status,0,result.error?.message??result.stderr);
   }finally{rmSync(directory,{recursive:true,force:true});}
 }
@@ -144,4 +153,101 @@ console.log(JSON.stringify({phase:'pending-app-selection',appId:lib().props.appI
 assert.equal(lib().props.appId,'hallmark','switching applications cannot unload the pending editor and its newer edits');assert.equal(input('工作台组件名称').props.value,'发送后继续编辑');assert.equal(notes.props.disabled,true);
 assert.equal(buttons().find(n=>n.props.className==='apps-app-row'&&text(n).includes('Hallmark')).props['aria-pressed'],true);
 await click(button('工作台'));assert.equal(button('工作台').props['aria-pressed'],true,'other local tasks remain available');failSave=true;await act(async()=>releaseSave());await settle();assert.equal(buttons().find(n=>n.props.className==='apps-app-row'&&text(n).includes('Notes')).props.disabled,false);
+`));
+
+for(const [status,html] of [[401,false],[403,false],[404,false],[403,true],[404,true]] as const)test(`material metadata ${status} ${html?'HTML':'JSON'} revokes stale editor and callbacks until a successful metadata read`,()=>fixture(`
+await click(button('配置'));await change(input('工作台组件名称'),'合法草稿');const staleSave=button('保存配置').props.onClick;
+const originalFetch=globalThis.fetch;let metadataStatus=${status};globalThis.fetch=async(url,options)=>new URL(String(url),'http://fixture').searchParams.get('resource')==='workbench'&&metadataStatus?(${html}&&metadataStatus!==503?new Response('gateway denied',{status:metadataStatus}):Response.json({status:'failed',error:{message:'metadata denied'}},{status:metadataStatus})):originalFetch(url,options);
+await click(button('刷新目录'));
+assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,0,'denied metadata must unmount old preview');
+assert.equal(!!input('工作台组件名称'),false,'denied metadata must hide old configuration');
+await act(async()=>staleSave());await settle();assert.equal(writes(),0,'stale save closure cannot write');
+metadataStatus=503;await click(button('重新读取'));assert.equal(!!input('工作台组件名称'),false,'temporary failure cannot unlock denial');
+metadataStatus=0;await click(button('重新读取'));assert.equal(input('工作台组件名称').props.value,'合法草稿');await act(async()=>staleSave());assert.equal(writes(),0,'pre-denial capability stays expired after recovery');await click(button('保存配置'));assert.equal(writes(),1);
+`));
+
+test('material transient metadata and component-only 404 retain legitimate draft without writes',()=>fixture(`
+await click(button('配置'));await change(input('工作台组件名称'),'暂时失败仍保留');
+const originalFetch=globalThis.fetch;let mode='transient';globalThis.fetch=async(url,options)=>{const resource=new URL(String(url),'http://fixture').searchParams.get('resource'),body=options?.body?JSON.parse(options.body):undefined;if(mode==='transient'&&resource==='workbench')return Response.json({status:'failed',error:{message:'temporary'}},{status:503});if(mode==='component'&&body?.operation==='read')return Response.json({status:'failed',error:{message:'component missing'}},{status:404});return originalFetch(url,options);};
+await click(button('刷新目录'));assert.equal(input('工作台组件名称').props.value,'暂时失败仍保留');assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,1);assert.equal(writes(),0);
+mode='component';await click(button('重新读取'));assert.equal(input('工作台组件名称').props.value,'暂时失败仍保留');assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,1);assert.equal(writes(),0);
+`));
+
+test('parent metadata denial revokes a hidden material editor and ignores old snapshots',()=>fixture(`
+await click(button('配置'));await change(input('工作台组件名称'),'隐藏编辑');const staleSave=button('保存配置').props.onClick;
+await click(button('工作台'));const originalFetch=globalThis.fetch;globalThis.fetch=async(url,options)=>new URL(String(url),'http://fixture').searchParams.get('resource')==='workbench'?Response.json({status:'failed',error:{message:'parent denied'}},{status:403}):originalFetch(url,options);
+const {WorkbenchBoard}=await import('./packages/plugin-apps/client/workbench-board.tsx');const old=board;
+const boardView=tree.root.findAllByType(WorkbenchBoard)[0];await act(async()=>tree.root.findByType(AppsDirectory).props.onRefreshViews());await settle();
+assert.equal(!!input('工作台组件名称'),false);await act(async()=>staleSave());assert.equal(writes(),0);
+await act(async()=>boardView.props.onChange({...old,revision:99}));await click(button('素材库'));assert.equal(!!input('工作台组件名称'),false);assert.equal(writes(),0);
+`));
+
+test('metadata denial aborts pending editor reads and ignores late data',()=>fixture(`
+await click(button('配置'));await change(input('工作台组件名称'),'读取中草稿');let release,signal;const originalFetch=globalThis.fetch;
+globalThis.fetch=async(url,options)=>{if(new URL(String(url),'http://fixture').searchParams.get('resource')==='dataSources'){signal=options.signal;await new Promise(resolve=>release=resolve);}return originalFetch(url,options);};
+await click(button('刷新目录'));assert.ok(release);const {WorkbenchBoard}=await import('./packages/plugin-apps/client/workbench-board.tsx');await act(async()=>tree.root.findAllByType(WorkbenchBoard)[0].props.onReadDenied('hallmark'));assert.equal(signal.aborted,true);assert.equal(!!input('工作台组件名称'),false);
+await act(async()=>release());await settle();assert.equal(!!input('工作台组件名称'),false);assert.equal(writes(),0);
+`));
+
+test('metadata rereads never resolve or replay a pending material save after denial',()=>fixture(`
+await click(button('配置'));await change(input('工作台组件名称'),'保存回执前草稿');holdSave=true;await click(button('保存配置'));assert.equal(writes(),1);const {WorkbenchBoard}=await import('./packages/plugin-apps/client/workbench-board.tsx');await act(async()=>tree.root.findAllByType(WorkbenchBoard)[0].props.onReadDenied('hallmark'));await settle();assert.equal(!!input('工作台组件名称'),false);assert.equal(label('关闭素材库').props.disabled,true);
+await click(button('重新读取'));assert.equal(label('关闭素材库').props.disabled,true);assert.equal(button('正在保存…').props.disabled,true);assert.equal(writes(),1);
+await act(async()=>releaseSave());await settle();assert.equal(button('素材库').props['aria-pressed'],true,'late save must not navigate or revive old capability');assert.equal(input('工作台组件名称').props.value,'保存回执前草稿');assert.equal(writes(),1);assert.equal(label('关闭素材库').props.disabled,false);
+`));
+
+test('independent metadata denial keeps late successful save factual without granting access',()=>fixture(`
+await click(button('配置'));await change(input('工作台组件名称'),'已发保存');holdSave=true;await click(button('保存配置'));const oldSave=button('正在保存…').props.onClick;assert.equal(writes(),1);
+const {WorkbenchBoard}=await import('./packages/plugin-apps/client/workbench-board.tsx');await act(async()=>tree.root.findAllByType(WorkbenchBoard)[0].props.onReadDenied('hallmark'));await settle();
+await act(async()=>releaseSave());await settle();assert.equal(board.instances[0].title,'已发保存','real receipt succeeded');assert.equal(Boolean(input('工作台组件名称')),false);assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,0);assert.equal(writes(),1);assert.doesNotMatch(text(tree.toJSON()),/保存失败|revision conflict/);
+await act(async()=>oldSave());await settle();assert.equal(writes(),1,'expired pre-denial callback never replays after known receipt');
+await click(button('重新读取'));assert.equal(input('工作台组件名称').props.value,'已发保存');assert.equal(writes(),1);await act(async()=>oldSave());assert.equal(writes(),1);
+`));
+
+test('independent temporary metadata formats preserve legitimate editor and preview',()=>fixture(`
+await click(button('配置'));await change(input('工作台组件名称'),'合法未保存输入');const originalFetch=globalThis.fetch;let mode='html';globalThis.fetch=async(url,options)=>{if(new URL(String(url),'http://fixture').searchParams.get('resource')==='workbench'){if(mode==='network')throw new TypeError('controlled network failure');return new Response(mode==='html'?'<html>temporary</html>':'{bad',{status:mode==='html'?502:200});}return originalFetch(url,options);};
+for(const value of ['html','json','network']){mode=value;await click(button(value==='html'?'刷新目录':'重新读取'));assert.equal(input('工作台组件名称').props.value,'合法未保存输入');assert.equal(tree.root.findAllByType(WorkbenchInstanceView).length,1);assert.equal(writes(),0);}
+`));
+
+
+
+test('parent denial blocks the first layout commit and expires pre-denial save handlers',()=>fixture(`
+await click(button('配置'));const staleSave=button('保存配置').props.onClick,seen=[];
+globalThis.__denialProbe=()=>{seen.push({editor:!!input('工作台组件名称'),previews:tree.root.findAllByType(WorkbenchInstanceView).length});void staleSave();};
+const {WorkbenchBoard}=await import('./packages/plugin-apps/client/workbench-board.tsx');await act(async()=>tree.root.findAllByType(WorkbenchBoard)[0].props.onReadDenied('hallmark'));await settle();
+assert.ok(seen.length);assert.equal(seen.some(value=>value.editor||value.previews>0),false,'first parent-null layout commit must already revoke editor/preview');assert.equal(writes(),0,'pre-denial save is already expired before passive effects');
+`,'',false,true));
+
+test('independent same-commit denial prevents resumed automatic initialize',()=>fixture(`
+await act(async()=>tree.unmount());tree=undefined;
+const design2=createMaterialView('product-list');design2.widgets[0].options={...design2.widgets[0].options,materialId:'product-procurement'};
+const item={...board.instances[0],materialId:'product-procurement',design:design2,dataSources:{}};board={...board,context:{storeId:'shop'},instances:[item]};
+let initCalls=0,holdMetadata=false,initialSignal;const previousFetch=globalThis.fetch;
+globalThis.fetch=async(url,options)=>{const resource=new URL(String(url),'http://fixture').searchParams.get('resource'),body=options?.body?JSON.parse(options.body):undefined;
+ if(resource==='stores')return Response.json({stores:[{id:'shop',name:'shop',connectionId:'audit'}]});
+ if(resource==='workbench'&&holdMetadata)return new Promise(()=>{});
+ if(body?.operation==='initialize'){initCalls++;initialSignal=options.signal;return new Promise(()=>{});}
+ return previousFetch(url,options);
+};
+const drawMaterial=(active,current)=> <MaterialLibrary appId='hallmark' sessionId='chat' initial={item} currentWorkbench={current} active={active} onComplete={()=>{}}/>;
+await act(async()=>{tree=create(drawMaterial(true,board));});await settle();assert.equal(initCalls,1,'missing source starts initial authorized initialize');
+await act(async()=>tree.update(drawMaterial(false,board)));await settle();assert.equal(initialSignal.aborted,true);
+holdMetadata=true;await act(async()=>tree.update(drawMaterial(true,null)));await settle();assert.equal(initCalls,1,'null denial and resume in one commit cannot start another initialize');
+`));
+
+test('independent same-commit denial prevents resumed range read',()=>fixture(`
+await act(async()=>tree.unmount());tree=undefined;
+source.capabilityId='hallmark.ozon.products';source.parameters=[{name:'warehouseId',type:'string',label:'仓库'}];
+board={...board,context:{storeId:'shop'}};const item=board.instances[0],warehouse={...source,id:'warehouses',capabilityId:'hallmark.ozon.warehouses',parameters:[],fields:[{role:'ozon.warehouseId',path:'id',confirmed:true},{role:'ozon.warehouseName',path:'name',confirmed:true}]};
+let rangeCalls=0,holdMetadata=false,rangeSignal;const previousFetch=globalThis.fetch;
+globalThis.fetch=async(url,options)=>{const resource=new URL(String(url),'http://fixture').searchParams.get('resource'),body=options?.body?JSON.parse(options.body):undefined;
+ if(resource==='stores')return Response.json({stores:[{id:'shop',name:'shop',connectionId:'audit'}]});
+ if(resource==='dataSources')return Response.json({dataSources:[source,warehouse]});
+ if(resource==='workbench'&&holdMetadata)return new Promise(()=>{});
+ if(body?.operation==='preview'&&body.params.scope?.startsWith('conditions:')){rangeCalls++;rangeSignal=options.signal;return new Promise(()=>{});}
+ return previousFetch(url,options);
+};
+const drawMaterial=(active,current)=> <MaterialLibrary appId='hallmark' sessionId='chat' initial={item} currentWorkbench={current} active={active} onComplete={()=>{}}/>;
+await act(async()=>{tree=create(drawMaterial(true,board));});await settle();assert.equal(rangeCalls,1);
+await act(async()=>tree.update(drawMaterial(false,board)));await settle();assert.equal(rangeSignal.aborted,true);
+holdMetadata=true;await act(async()=>tree.update(drawMaterial(true,null)));await settle();assert.equal(rangeCalls,1,'null denial and resume in one commit cannot start another range read');
 `));
