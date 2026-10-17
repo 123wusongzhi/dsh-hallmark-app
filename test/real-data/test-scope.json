@@ -363,7 +363,8 @@
     "test/plugin-apps/material-close-draft.test.ts",
     "test/plugin-apps/material-agent-request.test.ts",
     "test/materials/business-recovery.test.ts",
-    "test/apps-host/review-agent-lifecycle.test.ts"
+    "test/apps-host/review-agent-lifecycle.test.ts",
+    "test/plugin-apps/material-save-receipt-audit.test.ts"
   ],
   "infrastructureReasons": {
     "test/authoring/failed-build-http-recovery.test.ts": "Explicit exit-7 subprocess, real signed authoring evidence, SQLite receipt and actual committed HTTP response loss exercise failure-checkpoint recovery without any browser, commodity data, merchant action or publishable build.",
@@ -537,7 +538,8 @@
     "test/plugin-apps/material-close-draft.test.ts": "Production React workspace/material editor draft closing with isolated field-definition and transport receipt controls; no business product payload or merchant writes.",
     "test/plugin-apps/material-agent-request.test.ts": "Production React Agent request draft lifecycle with isolated field definitions and transport receipts; no business product payload, external agent calls or merchant writes.",
     "test/materials/business-recovery.test.ts": "Actual engine admission compared with UI guidance using explicit local statuses, error codes and fixed deadlines; source/reviewer/transport denied, no commodity or pricing facts.",
-    "test/apps-host/review-agent-lifecycle.test.ts": "Independent reviewer cancellation, late result observation, finalization and guarded disposal controls only; no commodity facts or provider calls."
+    "test/apps-host/review-agent-lifecycle.test.ts": "Independent reviewer cancellation, late result observation, finalization and guarded disposal controls only; no commodity facts or provider calls.",
+    "test/plugin-apps/material-save-receipt-audit.test.ts": "Real React with real WorkbenchLibrary and in-memory RuntimeStore; synthetic configuration identities, transport faults and CAS recovery only, no merchant records or business writes."
   },
   "fileModes": {
     "test/apps-host/collection-column-fidelity.test.ts": "Three original SKUs from an unchanged hash-checked frozen detail through real Adapter, CollectionService, Provider, Runtime HTTP and Host renderer; independent source attribute/image expectations and formal image metadata resource reads verify named column fidelity and explicit absent package/price nulls without downloading images.",
