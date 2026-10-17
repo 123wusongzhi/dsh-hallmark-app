@@ -105,7 +105,7 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
   const discardPermit = useRef<object>(), confirmationPermit = useRef<BusinessPlan>();
   const [confirmation, setConfirmation] = useState<BusinessPlan>(), [busyOperation, setBusyOperation] = useState<BusinessOperation>();
   const [pending, setPending] = useState<PendingRequest | undefined>(() => scope ? pendingRequests.get(scopeKey(scope)) : undefined), [refresh, setRefresh] = useState(0), flight = useRef(false);
-  const owner = useRef(identity);
+  const owner = useRef(identity), acceptedResult = useRef(0);
   useLayoutEffect(() => { owner.current = identity; return () => { owner.current = ''; }; }, [identity]);
   const [listVerified, setListVerified] = useState(false), [, refreshRecovery] = useState(0);
   const editedIds = new Set([...Object.keys(edits), ...Object.keys(pricingEdits)]);
@@ -134,7 +134,7 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
   const editedRows = plan?.rows.filter(row => editedIds.has(row.rowId)) ?? [];
   const saveLabel = editedRows.length > 0 && editedRows.every(row => ['price', 'promotion.enroll', 'promotion.update'].includes(row.action)) ? '保存改价草稿' : '保存草稿';
   // Inspection refreshes server outcomes without discarding local selection or unapplied batch inputs.
-  const accept = (next: BusinessPlan, preserveSelection = false) => { drafts.drop(identity); setPlans(rows => [next, ...rows.filter(item => item.planId !== next.planId)]); setPlanId(next.planId); setEdits({}); setRawEdits({}); setPricingEdits({}); setSelected(previous => preserveSelection ? previous.filter(id => next.rows.some(row => row.rowId === id)) : []); setConfirmation(undefined); setDiscardConfirmation(undefined); setDiscardReloadPlanId(undefined); if (!preserveSelection) { setBatchPrice(''); setBatchCurrency(''); } };
+  const accept = (next: BusinessPlan, preserveSelection = false) => { acceptedResult.current++; drafts.drop(identity); setPlans(rows => [next, ...rows.filter(item => item.planId !== next.planId)]); setPlanId(next.planId); setEdits({}); setRawEdits({}); setPricingEdits({}); setSelected(previous => preserveSelection ? previous.filter(id => next.rows.some(row => row.rowId === id)) : []); setConfirmation(undefined); setDiscardConfirmation(undefined); setDiscardReloadPlanId(undefined); if (!preserveSelection) { setBatchPrice(''); setBatchCurrency(''); } };
   useEffect(() => { setBatchPrice(''); setBatchCurrency(''); }, [planId]);
   // The keyed editor never renders a previous owner's state, even before effects run.
   // Capture committed state only; interrupted renders must not overwrite the recovery snapshot.
@@ -159,12 +159,16 @@ function BusinessOperationsEditor({ sessionId, storeId, store, scope, identity, 
     return () => controller.abort();
   }, [identity, active, refresh]);
   useEffect(() => {
-    if (!scope || !active || dirty) { setLoadingPlans(false); return; } const target = identity; let cancelled = false; setLoadingPlans(true); setListVerified(false);
+    if (!scope || !active || dirty) { setLoadingPlans(false); return; } const target = identity, resultVersion = acceptedResult.current; let cancelled = false; setLoadingPlans(true); setListVerified(false);
     businessOperation<{ plans: BusinessPlan[] } | BusinessPlan[]>(scope, 'list', { storeId: scope.storeId }).then(result => {
-      if (cancelled || owner.current !== target) return; const rows = Array.isArray(result) ? result : result.plans;
+      if (cancelled || owner.current !== target) return;
+      // A resumed read may have captured rows before a mutation/inspection settled.
+      // Re-read rather than replacing the newer receipt with that older snapshot.
+      if (resultVersion !== acceptedResult.current) { setRefresh(value => value + 1); return; }
+      const rows = Array.isArray(result) ? result : result.plans;
       if (discardReloadPlanId) setNotice('已放弃未保存修改；已完成最新批次读取，尚未提交任何经营动作。');
       setListVerified(true); setPlans(rows); setPlanId(current => discardReloadPlanId ?? (newRowDirty.current || batchReadIntent.current || rows.some(row => row.planId === current) ? current : rows[0]?.planId ?? '')); setListError(discardReloadPlanId && !rows.some(row => row.planId === discardReloadPlanId) ? '原批次已不可读取，未切换到其他批次。请刷新重试，或明确选择其他批次。' : '');
-    }).catch(error => { if (!cancelled && owner.current === target) { setListVerified(false); setPlans([]); setListError(error.message); if (discardReloadPlanId) setNotice('未保存修改已放弃，但最新批次读取失败。请点击刷新批次重试。'); } })
+    }).catch(error => { if (!cancelled && owner.current === target) { if (resultVersion !== acceptedResult.current) { setRefresh(value => value + 1); return; } setListVerified(false); setPlans([]); setListError(error.message); if (discardReloadPlanId) setNotice('未保存修改已放弃，但最新批次读取失败。请点击刷新批次重试。'); } })
       .finally(() => { if (!cancelled && owner.current === target) setLoadingPlans(false); });
     return () => { cancelled = true; };
     // Discard requests a read via refresh. Clearing its target on explicit navigation must not start another read.

@@ -189,7 +189,8 @@
     "test/plugin-apps/business-discard-recovery.test.ts",
     "test/plugin-apps/listing-packaging.test.ts",
     "test/plugin-apps/business-new-form-refresh.test.ts",
-    "test/plugin-apps/material-range-read-recovery.test.ts"
+    "test/plugin-apps/material-range-read-recovery.test.ts",
+    "test/plugin-apps/business-resume-receipt-order.test.ts"
   ],
   "infrastructureFiles": [
     "test/authoring/failed-build-http-recovery.test.ts",
@@ -584,6 +585,7 @@
     "test/plugin-apps/business-inspect-selection.test.ts": "Recorded product and store labels through production React and BusinessOperations inspection; explicit local draft/completed/pending states, missing receipt, failed and delayed read controls. No source review or merchant writes; selections, filters and unapplied batch inputs survive inspection.",
     "test/app-hallmark/listing-category-cursor.test.ts": "Integrity-checked recorded stores and category constraints; explicit corrupt/deleted cursor controls; actual Runtime model projection verifies bounded same-snapshot restart and no guessed scope.",
     "test/plugin-apps/business-batch-refresh-continuity.test.ts": "Recorded product/store fixtures with explicit local offer aliases, shared cross-plan row ID and unapplied batch input; real React and BusinessOperations engine, missing/empty/delayed/401/403 list controls. No merchant transport or writes. Historical replay and guard-removal negative controls preserve identical assertions.",
-    "test/plugin-apps/packaging-composition-continuity.test.ts": "Frozen corpus common-package product and SKU facts, local identity aliases and explicit edit drafts. Real React BusinessSettings through BusinessSettingsService, BusinessPackagingRepository and isolated RuntimeStore. Controlled delayed/failed reads, external local override, reordered members and stale-handler probe verify draft/CAS preservation; clean/new composition/cancel controls. No merchant calls or native browser typing claim."
+    "test/plugin-apps/packaging-composition-continuity.test.ts": "Frozen corpus common-package product and SKU facts, local identity aliases and explicit edit drafts. Real React BusinessSettings through BusinessSettingsService, BusinessPackagingRepository and isolated RuntimeStore. Controlled delayed/failed reads, external local override, reordered members and stale-handler probe verify draft/CAS preservation; clean/new composition/cancel controls. No merchant calls or native browser typing claim.",
+    "test/plugin-apps/business-resume-receipt-order.test.ts": "Recorded store/product and procurement basis, real React and SQLite-backed BusinessOperations. Explicit local mixed outcomes and delayed read controls verify same-revision receipt ordering across tab resume, single-flight confirmation, fresh authoritative read and owner isolation. No live merchant calls."
   }
 }
