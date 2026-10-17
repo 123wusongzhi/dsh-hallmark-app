@@ -21,7 +21,7 @@ export function BusinessSettings({sessionId,storeId,active=true}:{sessionId?:str
   const [shop,setShop]=useState({name:'',clientId:'',apiKey:'',enabled:true,baselineName:'',baselineEnabled:true}),[newShop,setNewShop]=useState(false);
   const [quoteInput,setQuoteInput]=useState({purchase:'',weight:'',price:'',action:'listing'}),[quote,setQuote]=useState<Record<string,any>>();
   const [packagingDirty,setPackagingDirty]=useState(false);
-  type StoreIntent={version:number;storeId:string};
+  type StoreIntent={version:number;storeId:string;connectionId?:string;manual?:boolean};
   const externalStore=useRef(storeId),intentVersion=useRef(0);
   const [pendingStore,setPendingStore]=useState<StoreIntent|null>(null),[switchingStore,setSwitchingStore]=useState<StoreIntent|null>(null);
   const [switchConfirmation,setSwitchConfirmation]=useState<{intent:number;edit:number}|null>(null);
@@ -29,7 +29,7 @@ export function BusinessSettings({sessionId,storeId,active=true}:{sessionId?:str
   const editorOwner=useRef('');editorOwner.current=`${view?.connectionId??''}\0${view?.store?.id??''}`;
   const shopEdited=!!view&&(shop.name!==shop.baselineName||shop.enabled!==shop.baselineEnabled||!!shop.clientId||!!shop.apiKey);
   const canFollowStore=!newShop&&!shopEdited&&!packagingDirty;
-  const cancelStoreIntent=()=>{intentVersion.current++;setPendingStore(null);setSwitchingStore(null);setSwitchConfirmation(null);};
+  const cancelStoreIntent=()=>{intentVersion.current++;setPendingStore(null);setSwitchingStore(null);setSwitchConfirmation(null);setConnection(view?.connectionId??'');setSelected(view?.store?.id??'');};
   const followStore=(intent:StoreIntent)=>{
     if(intent.version!==intentVersion.current)return;
     setPendingStore(null);setSwitchConfirmation(null);setSwitchingStore(intent);setQuote(undefined);setNotice('');setError('');
@@ -59,11 +59,15 @@ export function BusinessSettings({sessionId,storeId,active=true}:{sessionId?:str
   useEffect(()=>{
     if(!active||dirty||shopEdited)return;setQuote(undefined);const controller=new AbortController();const target=switchingStore;
     appsResource<SettingsView>('businessSettings',{...(connection?{connectionId:connection}:{}),...(!newShop&&selected?{storeId:selected}:{})},controller.signal).then(data=>{
-      if(controller.signal.aborted||(target&&target.version!==intentVersion.current))return;if(target&&(data.store?.id!==target.storeId||!data.connectionId?.trim()))throw new Error('工作台选择的店铺暂不可用，仍保留当前店铺。');setView(data);if(target)setSwitchingStore(null);setDraft(data.pricing??initialDraft());setPlanId(data.pricing?.defaultPlanId??data.pricing?.plans[0]?.id??'');
+      if(controller.signal.aborted||(target&&target.version!==intentVersion.current))return;if(target&&((target.storeId&&data.store?.id!==target.storeId)||(target.connectionId&&data.connectionId!==target.connectionId)||!data.connectionId?.trim()))throw new Error(target.manual?'所选连接或店铺暂不可用，仍保留当前店铺。':'工作台选择的店铺暂不可用，仍保留当前店铺。');setView(data);if(target)setSwitchingStore(null);setDraft(data.pricing??initialDraft());setPlanId(data.pricing?.defaultPlanId??data.pricing?.plans[0]?.id??'');
       setShop({name:newShop?'':data.store?.name??'',clientId:'',apiKey:'',enabled:newShop?true:data.store?.enabled??true,baselineName:newShop?'':data.store?.name??'',baselineEnabled:newShop?true:data.store?.enabled??true});setError('');
     }).catch(cause=>{if(!controller.signal.aborted&&(!target||target.version===intentVersion.current))setError(cause instanceof Error?cause.message:'经营设置读取失败。');});return()=>controller.abort();
   },[active,sessionId,connection,selected,refresh,newShop,dirty,shopEdited]);
-  const currentConnection=connection||view?.connectionId||'',currentStore=newShop?undefined:view?.store;
+  const currentConnection=view?.connectionId||connection||'',currentStore=newShop?undefined:view?.store;
+  const selectTarget=(connectionId:string,storeId:string)=>{
+    cancelStoreIntent();setSwitchingStore({version:intentVersion.current,storeId,connectionId,manual:true});
+    setConnection(connectionId);setSelected(storeId);setRefresh(value=>value+1);setNewShop(false);setQuote(undefined);setNotice('');setError('');
+  };
   const plan=draft?.plans.find(row=>row.id===planId);
   const automaticLogistics=draft?.logisticsSelection==='automatic';
   const canSave=!!currentConnection&&!busy&&!switchingStore;
@@ -114,7 +118,7 @@ export function BusinessSettings({sessionId,storeId,active=true}:{sessionId?:str
     </div>:null}
     {shopEdited?<p className="business-settings-muted">店铺连接有未保存修改；请先保存连接，或恢复原值，再重新读取或切换店铺。</p>:null}
     {switchingStore?<div role="status">
-      <p>{error?'目标店铺切换未完成':'正在切换到工作台选择的店铺'}；当前仍显示 {view?.store?.name??'原店铺'}，尚未切换。
+      <p>{error?'目标店铺切换未完成':switchingStore.manual?'正在读取所选连接或店铺':'正在切换到工作台选择的店铺'}；当前仍显示 {view?.store?.name??'原店铺'}，尚未切换。
         可重新读取、另选店铺，或取消本次切换继续编辑原店铺。</p>
       <button type="button" disabled={busy} onClick={()=>{
         if(busy||switchingStore.version!==intentVersion.current)return;
@@ -123,7 +127,7 @@ export function BusinessSettings({sessionId,storeId,active=true}:{sessionId?:str
     </div>:null}
     {notice?<p role="status" className="business-settings-success">{notice}</p>:null}{error?<p role="alert" className="business-settings-error">{error}</p>:null}
     
-    <div className="business-settings-toolbar"><label>采集来源连接<select value={currentConnection} disabled={busy||dirty||packagingDirty||shopEdited} onChange={event=>{cancelStoreIntent();setConnection(event.target.value);setSelected('');setRefresh(value=>value+1);setNewShop(false);setQuote(undefined);}}>{view?.connections.map(row=><option key={row.connectionId} value={row.connectionId}>{row.displayName}</option>)}</select></label><label>经营店铺<select value={newShop?'':currentStore?.id??''} disabled={busy||dirty||shopEdited} onChange={event=>{cancelStoreIntent();setSelected(event.target.value);setRefresh(value=>value+1);setNewShop(false);setQuote(undefined);}}><option value="">选择店铺</option>{view?.stores.map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select></label><button disabled={!currentConnection||dirty||busy||shopEdited} onClick={()=>{cancelStoreIntent();setNewShop(true);setSelected('');setShop({name:'',clientId:'',apiKey:'',enabled:true,baselineName:'',baselineEnabled:true});}}>新增店铺</button></div>
+    <div className="business-settings-toolbar"><label>采集来源连接<select value={currentConnection} disabled={busy||dirty||packagingDirty||shopEdited} onChange={event=>{selectTarget(event.target.value,'');}}>{view?.connections.map(row=><option key={row.connectionId} value={row.connectionId}>{row.displayName}</option>)}</select></label><label>经营店铺<select value={newShop?'':currentStore?.id??''} disabled={busy||dirty||shopEdited} onChange={event=>{selectTarget(currentConnection,event.target.value);}}><option value="">选择店铺</option>{view?.stores.map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select></label><button disabled={!currentConnection||dirty||busy||shopEdited} onClick={()=>{cancelStoreIntent();setNewShop(true);setSelected('');setShop({name:'',clientId:'',apiKey:'',enabled:true,baselineName:'',baselineEnabled:true});}}>新增店铺</button></div>
     <fieldset className="business-settings-editor" disabled={!!switchingStore} style={{border:0,margin:0,padding:0,minWidth:0}}>
     {view?.packagingAvailable&&currentConnection?<PackagingSettings key={currentConnection} sessionId={sessionId} connectionId={currentConnection} onDirty={setPackagingDirty}/>:null}
     <details className="business-settings-card" open={newShop||!currentStore}><summary>店铺连接 <span>{currentStore?.hasCredentials?'已配置 Ozon 凭据':'待配置'}</span></summary><div className="business-settings-grid">

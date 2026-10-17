@@ -29,7 +29,7 @@ let config={...recordedPricingSettings,schemaVersion:1,storeId:'bill',revision:7
 globalThis.fetch=async(url,options)=>{
  if(String(url).includes('resource=businessSettings')){
   const query=new URL(String(url),'http://local.test').searchParams;reads.push(Object.fromEntries(query));if(failNextRead){failNextRead=false;return Response.json({error:{message:'本地模拟读取失败'}},{status:503});}
-  const selected=stores.find(row=>row.id===(query.get('storeId')??'bill'));if(query.get('connectionId')&&query.get('connectionId')!==selected.sourceConnectionId)return Response.json({error:{code:'STORE_NOT_FOUND',message:'店铺不属于当前经营连接。'}},{status:404});
+  const selected=query.get('storeId')?stores.find(row=>row.id===query.get('storeId')):stores.find(row=>row.sourceConnectionId===(query.get('connectionId')??'board'));if(query.get('connectionId')&&query.get('connectionId')!==selected.sourceConnectionId)return Response.json({error:{code:'STORE_NOT_FOUND',message:'店铺不属于当前经营连接。'}},{status:404});
   const snapshot={connections:[{connectionId:'board',displayName:'原采集平台'},{connectionId:'other',displayName:'测试其他连接'}],connectionId:selected.sourceConnectionId,stores:stores.filter(row=>row.sourceConnectionId===selected.sourceConnectionId),store:selected,pricing:{...config,storeId:selected.id},packagingAvailable};
   if(nextReadOverride){const override=nextReadOverride;nextReadOverride=undefined;return Response.json({...snapshot,...override});}
   if(holdRead){holdRead=false;await new Promise(resolve=>{releaseRead=resolve;});}
@@ -69,7 +69,7 @@ async function runScenario(scenario: string): Promise<void> {
 ${scenario}
  console.log('BUSINESS_SETTINGS_UI_PASS');
 }finally{if(tree)await act(async()=>tree.unmount());globalThis.fetch=originalFetch;}
-` }, banner: { js: "import {createRequire} from 'node:module';const require=createRequire(import.meta.url);" }, outfile: entry, bundle: true, platform: 'node', format: 'esm', jsx: 'automatic', external: ['react', 'react/jsx-runtime', 'react-test-renderer'] });
+` }, banner: { js: "import {createRequire} from 'node:module';const require=createRequire(import.meta.url);" }, outfile: entry, bundle: true, platform: 'node', format: 'esm', jsx: 'automatic', external: ['react', 'react/jsx-runtime', 'react-test-renderer'], plugins: process.env.DSH_MANUAL_SWITCH_BASELINE ? [{name:'historical-settings',setup(plugin){plugin.onLoad({filter:/plugin-apps[\\/]client[\\/]business-settings\.tsx$/},()=>{const result=spawnSync('git',['show',process.env.DSH_MANUAL_SWITCH_BASELINE+':packages/plugin-apps/client/business-settings.tsx'],{encoding:'utf8'});assert.equal(result.status,0,result.stderr);return {contents:result.stdout,loader:'tsx'};});}}] : [] });
     const result = spawnSync(process.execPath, [entry], { encoding: 'utf8', timeout: 20000 });
     assert.equal(result.status, 0, result.error?.message ?? result.stderr); assert.match(result.stdout, /BUSINESS_SETTINGS_UI_PASS/);
   } finally { assert.ok(resolve(directory).startsWith(root + sep + 'business-settings-ui-')); rmSync(directory, { recursive: true, force: true, maxRetries: 3 }); }
@@ -447,5 +447,77 @@ for(const stage of ['composition','bulk'])test(`unapplied ${stage} packaging inp
  assert.equal(control('店铺名称').props.value,'Bill 店铺','applied row edits still require their original-connection save');
  await click('保存包装修改');assert.equal(control('店铺名称').props.value,'跨连接测试店铺');
  const save=requests.find(row=>row.operation==='packaging.save');assert.equal(save.connectionId,'board');assert.equal(save.input.rows[0].values.weightKg,0.7);assert.equal(reads.filter(row=>row.storeId==='cross').length,1);
+ `);
+});
+
+test('manual connection switches retain the accepted editor owner and can recover after a failed read', async () => {
+  await runScenario(`
+ failNextRead=true;
+ await change('采集来源连接','other');
+ assert.equal(control('采集来源连接').props.value,'board','failed selection must not relabel the old editor with the new connection');
+ assert.equal(control('店铺名称').props.value,'Bill 店铺');
+ assert.equal(tree.root.findByProps({className:'business-settings-editor'}).props.disabled,true,'failed target must not permit mixed-owner writes');
+ assert.match(text(tree.toJSON()),/尚未切换/);
+ assert.equal(requests.length,0);
+ await click('取消切换，继续原店铺');
+ assert.equal(tree.root.findByProps({className:'business-settings-editor'}).props.disabled,false);
+ await change('采购合计（元）','3.43');await click('计算价格与利润');
+ assert.equal(requests.at(-1).connectionId,'board');assert.equal(requests.at(-1).input.storeId,'bill');
+ `);
+});
+
+
+test('manual target read pending, success, replacement and retry keep an atomic editor owner', async () => {
+ await runScenario(`
+ holdRead=true;await change('采集来源连接','other');
+ assert.equal(control('采集来源连接').props.value,'board');
+ assert.equal(tree.root.findByProps({className:'business-settings-editor'}).props.disabled,true);
+ assert.equal(button('保存店铺连接').props.disabled,true);
+ const oldRelease=releaseRead;
+ await change('经营店铺','helen');
+ assert.equal(control('店铺名称').props.value,'Helen 店铺');
+ await act(async()=>{oldRelease();await settle();});
+ assert.equal(control('店铺名称').props.value,'Helen 店铺','ignored abort cannot overwrite later manual selection');
+ failNextRead=true;await change('采集来源连接','other');
+ assert.equal(control('采集来源连接').props.value,'board');await click('重新读取');
+ assert.equal(control('采集来源连接').props.value,'other');
+ assert.equal(control('店铺名称').props.value,'跨连接测试店铺');
+ assert.equal(tree.root.findByProps({className:'business-settings-editor'}).props.disabled,false);
+ assert.equal(requests.length,0,'all switching is read-only');
+ `);
+});
+
+
+test('manual missing target cannot install null and retries without losing the accepted owner', async () => {
+ await runScenario(`
+ nextReadOverride={store:null,pricing:null};await change('经营店铺','helen');
+ assert.equal(control('店铺名称').props.value,'Bill 店铺');
+ assert.match(text(tree.toJSON()),/所选连接或店铺暂不可用/);
+ assert.equal(tree.root.findByProps({className:'business-settings-editor'}).props.disabled,true);
+ await click('重新读取');assert.equal(control('店铺名称').props.value,'Helen 店铺');
+ await change('固定费用（元／销售件）','19.99');
+ assert.equal(control('经营店铺').props.disabled,true,'dirty rules retain the existing no-discard guard');
+ assert.equal(control('采集来源连接').props.disabled,true);
+ assert.equal(control('固定费用（元／销售件）').props.value,'19.99');
+ assert.equal(requests.length,0);
+ `);
+});
+
+
+test('new shop after failed or pending connection switch uses the accepted connection', async () => {
+ await runScenario(`
+ for(const pending of [false,true]){
+  if(pending)holdRead=true;else failNextRead=true;
+  await change('采集来源连接','other');
+  const late=releaseRead;
+  assert.equal(control('采集来源连接').props.value,'board');
+  await click('新增店铺');
+  assert.equal(control('采集来源连接').props.value,'board');
+  assert.equal(reads.at(-1).connectionId,'board');
+  assert.equal(control('店铺名称').props.value,'');
+  if(pending){await act(async()=>{late();await settle();});assert.equal(control('采集来源连接').props.value,'board');}
+  assert.equal(requests.length,0);
+  await change('经营店铺','bill');
+ }
  `);
 });
